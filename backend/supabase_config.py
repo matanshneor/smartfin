@@ -27,6 +27,16 @@ def get_client():
         return None
 
 
+def set_auth_token(access_token: str):
+    """Inject the user's JWT so RLS policies resolve auth.uid() correctly."""
+    client = get_client()
+    if client and access_token:
+        try:
+            client.postgrest.auth(access_token)
+        except Exception as e:
+            print(f"[WARNING] set_auth_token: {e}")
+
+
 # ─── Auth ─────────────────────────────────────────────────────────────────────
 
 def sign_in(email: str, password: str):
