@@ -3,56 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#6366f1">
+    <meta name="theme-color" content="#4648d4">
     <title>SmartFin – הרשמה</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body class="auth-body">
 
     <div class="auth-container">
-        <div class="auth-logo">
+        <div class="auth-hero">
             <div class="auth-logo-icon">💰</div>
             <h1 class="auth-app-name">SmartFin</h1>
-            <p class="auth-tagline">צור חשבון חדש</p>
+            <p class="auth-tagline">צור חשבון ותתחיל לנהל את התקציב</p>
         </div>
 
-        {% if error %}
-        <div class="alert alert-error">{{ error }}</div>
-        {% endif %}
+        <div class="auth-form-card">
+            <h2 class="auth-form-title">יצירת חשבון חדש</h2>
 
-        <form class="auth-form" method="POST" action="{{ url_for('signup') }}" novalidate>
-            <div class="form-group">
-                <label class="form-label" for="name">שם מלא</label>
-                <input class="form-input" type="text" id="name" name="name"
-                       placeholder="ישראל ישראלי" required autocomplete="name">
-            </div>
+            {% if error %}
+            <div class="alert alert-error">{{ error }}</div>
+            {% endif %}
 
-            <div class="form-group">
-                <label class="form-label" for="email">אימייל</label>
-                <input class="form-input" type="email" id="email" name="email"
-                       placeholder="your@email.com" required autocomplete="email" inputmode="email">
-            </div>
+            <form class="auth-form" method="POST" action="{{ url_for('signup') }}" novalidate>
+                <div class="form-group">
+                    <label class="form-label" for="name">שם מלא</label>
+                    <input class="form-input" type="text" id="name" name="name"
+                           placeholder="ישראל ישראלי" required autocomplete="name">
+                </div>
 
-            <div class="form-group">
-                <label class="form-label" for="password">סיסמה (לפחות 6 תווים)</label>
-                <input class="form-input" type="password" id="password" name="password"
-                       placeholder="••••••••" required autocomplete="new-password" minlength="6">
-            </div>
+                <div class="form-group">
+                    <label class="form-label" for="email">אימייל</label>
+                    <input class="form-input" type="email" id="email" name="email"
+                           placeholder="your@email.com" required autocomplete="email" inputmode="email">
+                </div>
 
-            <div class="form-group">
-                <label class="form-label" for="invite_code">קוד הזמנה (אופציונלי)</label>
-                <input class="form-input" type="text" id="invite_code" name="invite_code"
-                       placeholder="הדבק קוד אם קיבלת מבן משפחה" autocomplete="off" dir="ltr">
-                <p class="invite-hint">ללא קוד – תיפתח משפחה חדשה עבורך</p>
-            </div>
+                <div class="form-group">
+                    <label class="form-label" for="password">סיסמה (לפחות 6 תווים)</label>
+                    <input class="form-input" type="password" id="password" name="password"
+                           placeholder="••••••••" required autocomplete="new-password" minlength="6">
+                </div>
 
-            <button type="submit" class="submit-btn">הירשם</button>
-        </form>
+                <div class="form-group">
+                    <label class="form-label" for="invite_code">קוד הזמנה (אופציונלי)</label>
+                    <input class="form-input" type="text" id="invite_code" name="invite_code"
+                           placeholder="הדבק קוד אם קיבלת מבן משפחה" autocomplete="off" dir="ltr">
+                    <p style="font-size:0.75rem;color:var(--color-text-muted);margin-top:4px;font-weight:500;">
+                        ללא קוד – תיפתח משפחה חדשה עבורך
+                    </p>
+                </div>
 
-        <p class="auth-switch">
-            יש לך חשבון כבר?
-            <a href="{{ url_for('login') }}" class="auth-link">התחבר</a>
-        </p>
+                <button type="submit" class="submit-btn">הירשם ←</button>
+            </form>
+
+            <p class="auth-switch">
+                יש לך חשבון כבר?
+                <a href="{{ url_for('login') }}" class="auth-link">התחבר</a>
+            </p>
+        </div>
     </div>
 
 </body>

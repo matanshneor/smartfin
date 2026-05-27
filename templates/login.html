@@ -3,47 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#6366f1">
+    <meta name="theme-color" content="#4648d4">
     <title>SmartFin – התחברות</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body class="auth-body">
 
     <div class="auth-container">
-        <div class="auth-logo">
+        <div class="auth-hero">
             <div class="auth-logo-icon">💰</div>
             <h1 class="auth-app-name">SmartFin</h1>
             <p class="auth-tagline">ניהול תקציב משפחתי חכם</p>
         </div>
 
-        {% if success %}
-        <div class="alert alert-success">{{ success }}</div>
-        {% endif %}
+        <div class="auth-form-card">
+            <h2 class="auth-form-title">ברוכים השבים 👋</h2>
 
-        {% if error %}
-        <div class="alert alert-error">{{ error }}</div>
-        {% endif %}
+            {% if success %}
+            <div class="alert alert-success">{{ success }}</div>
+            {% endif %}
 
-        <form class="auth-form" method="POST" action="{{ url_for('login') }}" novalidate>
-            <div class="form-group">
-                <label class="form-label" for="email">אימייל</label>
-                <input class="form-input" type="email" id="email" name="email"
-                       placeholder="your@email.com" required autocomplete="email" inputmode="email">
-            </div>
+            {% if error %}
+            <div class="alert alert-error">{{ error }}</div>
+            {% endif %}
 
-            <div class="form-group">
-                <label class="form-label" for="password">סיסמה</label>
-                <input class="form-input" type="password" id="password" name="password"
-                       placeholder="••••••••" required autocomplete="current-password">
-            </div>
+            <form class="auth-form" method="POST" action="{{ url_for('login') }}" novalidate>
+                <div class="form-group">
+                    <label class="form-label" for="email">אימייל</label>
+                    <input class="form-input" type="email" id="email" name="email"
+                           placeholder="your@email.com" required autocomplete="email" inputmode="email">
+                </div>
 
-            <button type="submit" class="submit-btn">התחבר</button>
-        </form>
+                <div class="form-group">
+                    <label class="form-label" for="password">סיסמה</label>
+                    <input class="form-input" type="password" id="password" name="password"
+                           placeholder="••••••••" required autocomplete="current-password">
+                </div>
 
-        <p class="auth-switch">
-            אין לך חשבון עדיין?
-            <a href="{{ url_for('signup') }}" class="auth-link">הירשם עכשיו</a>
-        </p>
+                <button type="submit" class="submit-btn">התחבר</button>
+            </form>
+
+            <p class="auth-switch">
+                אין לך חשבון עדיין?
+                <a href="{{ url_for('signup') }}" class="auth-link">הירשם עכשיו</a>
+            </p>
+        </div>
     </div>
 
 </body>
