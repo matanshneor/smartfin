@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>SmartFin – שגיאה {{ code }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="auth-body">
+    <div class="auth-container" style="text-align: center;">
+        <div style="font-size: 4rem; margin-bottom: 16px;">
+            {% if code == 404 %}🔍{% else %}⚠️{% endif %}
+        </div>
+        <h1 style="font-size: 3rem; color: var(--color-primary); margin-bottom: 8px;">{{ code }}</h1>
+        <p style="color: var(--color-text); font-size: 1.1rem; margin-bottom: 24px;">{{ message }}</p>
+        <a href="/" class="submit-btn" style="display: inline-block; text-decoration: none;">חזור לדף הראשי</a>
+    </div>
+</body>
+</html>

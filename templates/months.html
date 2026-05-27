@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}SmartFin – ארכיון חודשים{% endblock %}
+
+{% block content %}
+
+<header class="page-header months-header">
+    <h1>ארכיון חודשים</h1>
+    <p class="page-subtitle">היסטוריית תקציב המשפחה</p>
+</header>
+
+{% if archive %}
+
+<!-- Year groups -->
+{% set current_year = namespace(val=None) %}
+{% for entry in archive %}
+
+    {% if entry.year != current_year.val %}
+        {% if current_year.val is not none %}</ul>{% endif %}
+        {% set current_year.val = entry.year %}
+        <div class="year-divider">
+            <span class="year-label">{{ entry.year }}</span>
+        </div>
+        <ul class="months-list">
+    {% endif %}
+
+    {% set balance = entry.balance | float %}
+    {% set is_surplus = balance >= 0 %}
+
+    <li class="month-item">
+        <a href="{{ url_for('dashboard', year=entry.year, month=entry.month) }}"
+           class="month-link" aria-label="{{ entry.month }}/{{ entry.year }}">
+
+            <!-- Status dot -->
+            <div class="month-dot {% if is_surplus %}surplus{% else %}deficit{% endif %}">
+                {% if is_surplus %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="18 15 12 9 6 15"/>
+                </svg>
+                {% else %}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                </svg>
+                {% endif %}
+            </div>
+
+            <!-- Month name + bar -->
+            <div class="month-info">
+                <div class="month-name-row">
+                    <span class="month-name">{{ _HEBREW_MONTHS[entry.month] }}</span>
+                    <span class="month-balance {% if is_surplus %}surplus{% else %}deficit{% endif %}">
+                        {% if is_surplus %}+{% endif %}₪{{ "{:,.0f}".format(balance | abs) }}
+                    </span>
+                </div>
+
+                <!-- Mini progress bar -->
+                {% set total = entry.income | float %}
+                {% set expense_pct = ((entry.expense | float / total * 100) | round | int) if total > 0 else 0 %}
+                <div class="month-bar-track">
+                    <div class="month-bar-fill {% if expense_pct > 90 %}danger{% endif %}"
+                         style="width: {{ [expense_pct, 100] | min }}%;"></div>
+                </div>
+
+                <div class="month-stats">
+                    <span class="stat income">↑ ₪{{ "{:,.0f}".format(entry.income | float) }}</span>
+                    <span class="stat expense">↓ ₪{{ "{:,.0f}".format(entry.expense | float) }}</span>
+                    <span class="stat savings">💰 ₪{{ "{:,.0f}".format(entry.savings | float) }}</span>
+                </div>
+            </div>
+
+            <!-- Chevron -->
+            <div class="month-chevron">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"/>
+                </svg>
+            </div>
+        </a>
+    </li>
+
+{% endfor %}
+</ul>
+
+<!-- Summary totals -->
+<div class="archive-summary">
+    <h2 class="archive-summary-title">סיכום כולל</h2>
+    <div class="archive-totals">
+        <div class="archive-total-item income">
+            <p class="total-label">סה"כ הכנסות</p>
+            <p class="total-amount">₪{{ "{:,.0f}".format(archive | sum(attribute='income') | float) }}</p>
+        </div>
+        <div class="archive-total-item expense">
+            <p class="total-label">סה"כ הוצאות</p>
+            <p class="total-amount">₪{{ "{:,.0f}".format(archive | sum(attribute='expense') | float) }}</p>
+        </div>
+        <div class="archive-total-item savings">
+            <p class="total-label">סה"כ חיסכון</p>
+            <p class="total-amount">₪{{ "{:,.0f}".format(archive | sum(attribute='savings') | float) }}</p>
+        </div>
+    </div>
+</div>
+
+{% else %}
+
+<div class="empty-state" style="margin: 24px 16px;">
+    <p class="empty-icon">📅</p>
+    <p class="empty-text">אין נתונים היסטוריים עדיין</p>
+    <p class="empty-sub">הוסף עסקאות כדי לראות את ההיסטוריה</p>
+</div>
+
+{% endif %}
+
+{% endblock %}

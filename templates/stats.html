@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}SmartFin – גרפים{% endblock %}
+
+{% block content %}
+
+<header class="page-header stats-header">
+    <div class="stats-header-top">
+        <div>
+            <h1>גרפים ואנליטיקה</h1>
+            <p class="page-subtitle">{{ month_label }}</p>
+        </div>
+        <!-- Month switcher -->
+        {% set prev_month = month - 1 if month > 1 else 12 %}
+        {% set prev_year  = year if month > 1 else year - 1 %}
+        {% set next_month = month + 1 if month < 12 else 1 %}
+        {% set next_year  = year if month < 12 else year + 1 %}
+        <div class="stats-month-nav">
+            <a href="{{ url_for('stats', year=prev_year, month=prev_month) }}" class="stats-nav-btn">‹</a>
+            <a href="{{ url_for('stats', year=next_year, month=next_month) }}" class="stats-nav-btn">›</a>
+        </div>
+    </div>
+</header>
+
+<!-- Top KPI row -->
+<section class="kpi-row">
+    <div class="kpi-card">
+        <p class="kpi-label">יתרה</p>
+        <p class="kpi-value {% if summary.balance >= 0 %}surplus{% else %}deficit{% endif %}">
+            {% if summary.balance >= 0 %}+{% endif %}₪{{ "{:,.0f}".format(summary.balance) }}
+        </p>
+    </div>
+    <div class="kpi-card">
+        <p class="kpi-label">ניצול תקציב</p>
+        <p class="kpi-value">{{ summary.expense_pct }}%</p>
+    </div>
+    <div class="kpi-card">
+        <p class="kpi-label">חיסכון</p>
+        <p class="kpi-value savings">₪{{ "{:,.0f}".format(summary.savings) }}</p>
+    </div>
+</section>
+
+<!-- ── Chart 1: Expense by Category (Doughnut) ── -->
+<section class="chart-card">
+    <h2 class="chart-title">הוצאות לפי קטגוריה</h2>
+
+    {% if category_breakdown %}
+    <div class="doughnut-wrap">
+        <canvas id="categoryChart" aria-label="גרף הוצאות לפי קטגוריה"></canvas>
+        <div class="doughnut-center">
+            <p class="doughnut-total">₪{{ "{:,.0f}".format(summary.expense) }}</p>
+            <p class="doughnut-label">הוצאות</p>
+        </div>
+    </div>
+
+    <ul class="legend-list">
+        {% for item in category_breakdown %}
+        <li class="legend-item">
+            <span class="legend-dot" style="background: var(--chart-color-{{ loop.index0 % 8 }});"></span>
+            <span class="legend-icon">{{ item.icon }}</span>
+            <span class="legend-name">{{ item.name }}</span>
+            <span class="legend-pct">{{ item.pct }}%</span>
+            <span class="legend-amount">₪{{ "{:,.0f}".format(item.total) }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+
+    {% else %}
+    <div class="chart-empty">
+        <p>📊</p>
+        <p>אין נתוני הוצאות לחודש זה</p>
+    </div>
+    {% endif %}
+</section>
+
+<!-- ── Chart 2: Monthly Trend (Bar) ── -->
+<section class="chart-card">
+    <h2 class="chart-title">מגמה חודשית – 6 חודשים אחרונים</h2>
+
+    {% if monthly_trend %}
+    <div class="bar-chart-wrap">
+        <canvas id="trendChart" aria-label="גרף מגמה חודשית"></canvas>
+    </div>
+    {% else %}
+    <div class="chart-empty">
+        <p>📈</p>
+        <p>אין מספיק נתונים להצגת מגמה</p>
+    </div>
+    {% endif %}
+</section>
+
+<!-- ── Section 3: Member Breakdown ── -->
+{% if member_breakdown %}
+<section class="chart-card">
+    <h2 class="chart-title">פירוט לפי חבר משפחה – {{ month_label }}</h2>
+
+    <ul class="members-list">
+        {% for m in member_breakdown %}
+        {% set total = m.expense + m.income %}
+        <li class="member-row">
+            <div class="member-avatar">{{ m.name[0] }}</div>
+            <div class="member-info">
+                <div class="member-name-row">
+                    <span class="member-name">{{ m.name }}</span>
+                    <span class="member-expense">↓ ₪{{ "{:,.0f}".format(m.expense) }}</span>
+                </div>
+                {% set max_expense = member_breakdown | map(attribute='expense') | max %}
+                <div class="member-bar-track">
+                    <div class="member-bar-fill"
+                         style="width: {{ ((m.expense / max_expense * 100) | round | int) if max_expense > 0 else 0 }}%;"></div>
+                </div>
+                <div class="member-stats-row">
+                    <span class="member-stat income">↑ ₪{{ "{:,.0f}".format(m.income) }}</span>
+                    {% if m.savings > 0 %}
+                    <span class="member-stat savings">💰 ₪{{ "{:,.0f}".format(m.savings) }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+<script>
+(function () {
+    // Chart color palette
+    const COLORS = [
+        '#6366f1','#22c55e','#ef4444','#f59e0b',
+        '#3b82f6','#ec4899','#14b8a6','#8b5cf6'
+    ];
+
+    Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    Chart.defaults.plugins.legend.display = false;
+
+    // ── Doughnut: Category breakdown ──
+    const breakdownData = {{ breakdown_json | safe }};
+    if (breakdownData.length > 0) {
+        const ctx = document.getElementById('categoryChart');
+        if (ctx) {
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: breakdownData.map(d => d.name),
+                    datasets: [{
+                        data:            breakdownData.map(d => d.total),
+                        backgroundColor: COLORS.slice(0, breakdownData.length),
+                        borderWidth:     0,
+                        hoverOffset:     6,
+                    }]
+                },
+                options: {
+                    cutout: '70%',
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ` ₪${ctx.parsed.toLocaleString()} (${breakdownData[ctx.dataIndex].pct}%)`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // Inject CSS chart colors as custom properties
+    COLORS.forEach(function (color, i) {
+        document.documentElement.style.setProperty('--chart-color-' + i, color);
+    });
+
+    // ── Bar: Monthly trend ──
+    const trendData = {{ trend_json | safe }};
+    if (trendData.length > 0) {
+        const ctx2 = document.getElementById('trendChart');
+        if (ctx2) {
+            new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: trendData.map(d => d.month_name),
+                    datasets: [
+                        {
+                            label:           'הכנסות',
+                            data:            trendData.map(d => d.income),
+                            backgroundColor: 'rgba(34,197,94,0.75)',
+                            borderRadius:    4,
+                        },
+                        {
+                            label:           'הוצאות',
+                            data:            trendData.map(d => d.expense),
+                            backgroundColor: 'rgba(239,68,68,0.75)',
+                            borderRadius:    4,
+                        },
+                        {
+                            label:           'חיסכון',
+                            data:            trendData.map(d => d.savings),
+                            backgroundColor: 'rgba(59,130,246,0.75)',
+                            borderRadius:    4,
+                        }
+                    ]
+                },
+                options: {
+                    responsive:          true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display:  true,
+                            position: 'bottom',
+                            labels: { boxWidth: 12, padding: 16, font: { size: 12 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ` ${ctx.dataset.label}: ₪${ctx.parsed.y.toLocaleString()}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 11 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            ticks: {
+                                font:     { size: 11 },
+                                callback: v => '₪' + v.toLocaleString()
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+})();
+</script>
+{% endblock %}

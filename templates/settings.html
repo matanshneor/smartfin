@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}SmartFin – הגדרות{% endblock %}
+
+{% block content %}
+
+<header class="page-header">
+    <h1>הגדרות</h1>
+</header>
+
+<!-- ── Family Section ── -->
+<section class="settings-section">
+    <h2 class="settings-section-title">המשפחה שלנו</h2>
+
+    <div class="settings-card">
+        <!-- Family name -->
+        <div class="family-name-row">
+            <div class="family-icon">🏠</div>
+            <div class="family-name-info">
+                <p class="family-name-label">שם המשפחה</p>
+                <p class="family-name-value" id="familyNameDisplay">{{ family.get('name', 'המשפחה שלי') }}</p>
+            </div>
+            <button class="icon-btn" id="editFamilyNameBtn" aria-label="ערוך שם משפחה">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Edit family name inline -->
+        <div class="family-name-edit" id="familyNameEdit">
+            <input class="form-input" type="text" id="familyNameInput"
+                   value="{{ family.get('name', 'המשפחה שלי') }}" maxlength="50">
+            <div class="edit-actions">
+                <button class="btn-sm btn-primary" id="saveFamilyNameBtn">שמור</button>
+                <button class="btn-sm btn-ghost"   id="cancelFamilyNameBtn">ביטול</button>
+            </div>
+        </div>
+
+        <!-- Invite code -->
+        {% if family.get('id') %}
+        <div class="invite-code-row">
+            <div>
+                <p class="invite-code-label">קוד הזמנה למשפחה</p>
+                <p class="invite-code-value" id="inviteCode">{{ family['id'] }}</p>
+            </div>
+            <button class="icon-btn" id="copyCodeBtn" aria-label="העתק קוד">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+            </button>
+        </div>
+        <p class="invite-code-hint">שתף קוד זה עם בני משפחה בזמן ההרשמה כדי שיצטרפו לאותה משפחה</p>
+        {% endif %}
+    </div>
+
+    <!-- Members list -->
+    {% if members %}
+    <div class="settings-card">
+        <p class="settings-card-title">חברי המשפחה ({{ members | length }})</p>
+        <ul class="members-settings-list">
+            {% for m in members %}
+            <li class="member-settings-row">
+                <div class="member-avatar-sm">{{ m.avatar_initial or m.name[0] }}</div>
+                <div class="member-settings-info">
+                    <p class="member-settings-name">{{ m.name }}</p>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</section>
+
+<!-- ── Categories Section ── -->
+<section class="settings-section">
+    <h2 class="settings-section-title">קטגוריות</h2>
+
+    <!-- Expense categories -->
+    <div class="settings-card">
+        <p class="settings-card-title">הוצאות</p>
+        <ul class="categories-list" id="expenseCatList">
+            {% for cat in categories if cat.type == 'expense' %}
+            <li class="category-row" data-id="{{ cat.id }}" data-custom="{{ cat.is_custom | lower }}">
+                <span class="cat-row-icon">{{ cat.icon }}</span>
+                <span class="cat-row-name">{{ cat.name }}</span>
+                {% if cat.is_custom %}
+                <button class="delete-cat-btn" data-id="{{ cat.id }}" aria-label="מחק קטגוריה">✕</button>
+                {% else %}
+                <span class="cat-system-badge">מובנה</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Income categories -->
+    <div class="settings-card">
+        <p class="settings-card-title">הכנסות</p>
+        <ul class="categories-list" id="incomeCatList">
+            {% for cat in categories if cat.type == 'income' %}
+            <li class="category-row" data-id="{{ cat.id }}" data-custom="{{ cat.is_custom | lower }}">
+                <span class="cat-row-icon">{{ cat.icon }}</span>
+                <span class="cat-row-name">{{ cat.name }}</span>
+                {% if cat.is_custom %}
+                <button class="delete-cat-btn" data-id="{{ cat.id }}" aria-label="מחק קטגוריה">✕</button>
+                {% else %}
+                <span class="cat-system-badge">מובנה</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Savings categories -->
+    <div class="settings-card">
+        <p class="settings-card-title">חיסכון</p>
+        <ul class="categories-list" id="savingsCatList">
+            {% for cat in categories if cat.type == 'savings' %}
+            <li class="category-row" data-id="{{ cat.id }}" data-custom="{{ cat.is_custom | lower }}">
+                <span class="cat-row-icon">{{ cat.icon }}</span>
+                <span class="cat-row-name">{{ cat.name }}</span>
+                {% if cat.is_custom %}
+                <button class="delete-cat-btn" data-id="{{ cat.id }}" aria-label="מחק קטגוריה">✕</button>
+                {% else %}
+                <span class="cat-system-badge">מובנה</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Add category form -->
+    <div class="settings-card add-cat-card">
+        <p class="settings-card-title">הוסף קטגוריה מותאמת</p>
+        <form class="add-cat-form" id="addCatForm" novalidate>
+            <div class="add-cat-row">
+                <input class="form-input emoji-input" type="text" id="newCatIcon"
+                       placeholder="🏷" maxlength="2" value="🏷">
+                <input class="form-input" type="text" id="newCatName"
+                       placeholder="שם הקטגוריה" maxlength="30" required>
+            </div>
+            <select class="form-input" id="newCatType">
+                <option value="expense">הוצאה</option>
+                <option value="income">הכנסה</option>
+                <option value="savings">חיסכון</option>
+            </select>
+            <p class="form-error" id="addCatError"></p>
+            <button type="submit" class="submit-btn">+ הוסף קטגוריה</button>
+        </form>
+    </div>
+</section>
+
+<!-- ── Account Section ── -->
+<section class="settings-section">
+    <h2 class="settings-section-title">חשבון</h2>
+    <div class="settings-card">
+        <div class="account-row">
+            <div class="member-avatar-lg">{{ user.avatar_initial }}</div>
+            <div>
+                <p class="account-name">{{ user.name }}</p>
+            </div>
+        </div>
+        <a href="{{ url_for('logout') }}" class="logout-btn">התנתק</a>
+    </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+
+    // ── Family name edit ──
+    const nameDisplay   = document.getElementById('familyNameDisplay');
+    const nameEdit      = document.getElementById('familyNameEdit');
+    const nameInput     = document.getElementById('familyNameInput');
+    const editBtn       = document.getElementById('editFamilyNameBtn');
+    const saveBtn       = document.getElementById('saveFamilyNameBtn');
+    const cancelBtn     = document.getElementById('cancelFamilyNameBtn');
+
+    if (editBtn) {
+        editBtn.addEventListener('click', function () {
+            nameEdit.classList.add('visible');
+            nameInput.focus();
+        });
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function () {
+            nameEdit.classList.remove('visible');
+            nameInput.value = nameDisplay.textContent;
+        });
+    }
+
+    if (saveBtn) {
+        saveBtn.addEventListener('click', function () {
+            const newName = nameInput.value.trim();
+            if (!newName) return;
+            fetch('/api/family', {
+                method:  'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ name: newName }),
+            })
+            .then(r => r.json())
+            .then(function (d) {
+                if (d.status === 'ok') {
+                    nameDisplay.textContent = newName;
+                    nameEdit.classList.remove('visible');
+                }
+            });
+        });
+    }
+
+    // ── Copy invite code ──
+    const copyBtn    = document.getElementById('copyCodeBtn');
+    const inviteCode = document.getElementById('inviteCode');
+
+    if (copyBtn && inviteCode) {
+        copyBtn.addEventListener('click', function () {
+            navigator.clipboard.writeText(inviteCode.textContent.trim()).then(function () {
+                copyBtn.textContent = '✓';
+                setTimeout(function () {
+                    copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+                }, 2000);
+            });
+        });
+    }
+
+    // ── Delete category ──
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.delete-cat-btn');
+        if (!btn) return;
+        const id  = btn.dataset.id;
+        const row = btn.closest('.category-row');
+        if (!id || !row) return;
+
+        if (!confirm('למחוק קטגוריה זו?')) return;
+
+        fetch('/api/categories/' + id, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(function (d) {
+            if (d.status === 'ok') {
+                row.style.opacity = '0';
+                row.style.height  = '0';
+                row.style.overflow = 'hidden';
+                row.style.transition = 'all 0.25s';
+                setTimeout(() => row.remove(), 260);
+            }
+        });
+    });
+
+    // ── Add category ──
+    const addForm  = document.getElementById('addCatForm');
+    const addError = document.getElementById('addCatError');
+
+    if (addForm) {
+        addForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            addError.textContent = '';
+
+            const icon = document.getElementById('newCatIcon').value.trim() || '🏷';
+            const name = document.getElementById('newCatName').value.trim();
+            const type = document.getElementById('newCatType').value;
+
+            if (!name) {
+                addError.textContent = 'נא להזין שם קטגוריה';
+                return;
+            }
+
+            fetch('/api/categories', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ name, icon, type }),
+            })
+            .then(r => r.json())
+            .then(function (cat) {
+                if (cat.error) { addError.textContent = cat.error; return; }
+
+                // Append to the right list
+                const listMap = { expense: 'expenseCatList', income: 'incomeCatList', savings: 'savingsCatList' };
+                const list    = document.getElementById(listMap[type]);
+                if (list) {
+                    const li = document.createElement('li');
+                    li.className   = 'category-row';
+                    li.dataset.id  = cat.id;
+                    li.dataset.custom = 'true';
+                    li.innerHTML = `
+                        <span class="cat-row-icon">${cat.icon}</span>
+                        <span class="cat-row-name">${cat.name}</span>
+                        <button class="delete-cat-btn" data-id="${cat.id}" aria-label="מחק קטגוריה">✕</button>
+                    `;
+                    list.appendChild(li);
+                }
+
+                // Reset form
+                document.getElementById('newCatName').value = '';
+                document.getElementById('newCatIcon').value = '🏷';
+            })
+            .catch(function () {
+                addError.textContent = 'שגיאת רשת';
+            });
+        });
+    }
+
+})();
+</script>
+{% endblock %}
