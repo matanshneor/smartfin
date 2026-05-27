@@ -4,11 +4,17 @@ from functools import wraps
 from datetime import datetime
 import json
 import os
-import supabase_config as db
+from . import supabase_config as db
 
 load_dotenv()
 
-app = Flask(__name__)
+_BASE = os.path.dirname(__file__)
+app = Flask(
+    __name__,
+    template_folder=os.path.join(_BASE, '..', 'frontend', 'templates'),
+    static_folder=os.path.join(_BASE, '..', 'frontend', 'static'),
+    static_url_path='/static',
+)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-production")
 
 

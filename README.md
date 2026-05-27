@@ -8,6 +8,24 @@
 - **Database & Auth:** Supabase (PostgreSQL + Auth)
 - **Deployment:** Railway
 
+## מבנה הפרויקט
+
+```
+SmartFin/
+├── backend/              # Python – Flask + Supabase
+│   ├── app.py            # Routes + auth
+│   ├── supabase_config.py
+│   ├── schema.sql
+│   ├── schema_functions.sql
+│   └── supabase/migrations/
+├── frontend/             # HTML + CSS + JS
+│   ├── templates/        # Jinja2 templates
+│   └── static/           # CSS, icons, PWA assets
+├── Procfile
+├── requirements.txt
+└── runtime.txt
+```
+
 ## הרצה מקומית
 
 ```bash
@@ -19,7 +37,7 @@ cp .env.example .env
 # ערוך את .env עם ה-credentials שלך
 
 # 3. הרצת האפליקציה
-flask run
+FLASK_APP=backend.app flask run
 ```
 
 ## הגדרת Supabase
@@ -53,29 +71,6 @@ supabase db push
    gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
    ```
 
-## מבנה הקבצים
-
-```
-SmartFin/
-├── app.py                   # Flask routes + auth
-├── supabase_config.py       # DB queries
-├── schema.sql               # Database schema
-├── schema_functions.sql     # SQL functions (get_months_archive, etc.)
-├── supabase/migrations/     # Supabase CLI migrations
-├── static/
-│   ├── css/style.css
-│   ├── icons/               # PWA icons
-│   ├── manifest.json        # PWA manifest
-│   └── sw.js                # Service worker
-└── templates/
-    ├── base.html            # Bottom nav + PWA meta
-    ├── index.html           # Dashboard
-    ├── months.html          # Archive
-    ├── stats.html           # Analytics (Chart.js)
-    ├── settings.html        # Settings
-    ├── login.html / signup.html
-    └── error.html
-```
 
 ## פיצ'רים
 
