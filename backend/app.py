@@ -20,6 +20,13 @@ app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-production")
 
 # ─── Auth helpers ─────────────────────────────────────────────────────────────
 
+@app.before_request
+def inject_auth():
+    token = session.get("access_token")
+    if token:
+        db.set_auth_token(token)
+
+
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -55,10 +62,13 @@ def login():
             error = "אימייל או סיסמה שגויים"
         else:
             user = response.user
+            # Set JWT before querying profiles (RLS requires auth.uid())
+            db.set_auth_token(response.session.access_token)
             profile = db.get_profile(user.id)
 
             session["user_id"]        = user.id
             session["user_email"]     = user.email
+            session["access_token"]   = response.session.access_token
             session["user_name"]      = profile.get("name", "משתמש") if profile else "משתמש"
             session["avatar_initial"] = (profile.get("avatar_initial") or "מ") if profile else "מ"
             session["family_id"]      = profile.get("family_id") if profile else None
