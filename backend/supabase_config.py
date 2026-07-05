@@ -201,6 +201,261 @@ def ensure_family(user_id: str, family_name: str = "המשפחה שלי"):
         return None
 
 
+# ─── Family settings (העדפות משפחה) ──────────────────────────────────────────
+
+# ברירות המחדל = ההתנהגות ההיסטורית של האתר. משפחה עם settings ריק מקבלת
+# בדיוק את מה שהיה עד היום; רק מה שהמשפחה שינתה נשמר ב-DB.
+DEFAULT_FAMILY_SETTINGS = {
+    "owner_attribution": {"expense": True, "income": True, "savings": False},
+    "anomaly": {"enabled": True, "percent": 150, "min_gap": 300},
+    "show_workplace": True,
+}
+
+
+def _merge_settings(base: dict, patch: dict) -> dict:
+    """מיזוג ברמה אחת של עומק — מפתחות מקוננים (owner_attribution, anomaly)
+    מתמזגים במקום להימחק כשמעדכנים רק חלק מהם."""
+    out = {k: (dict(v) if isinstance(v, dict) else v) for k, v in base.items()}
+    for k, v in (patch or {}).items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict):
+            out[k].update(v)
+        else:
+            out[k] = v
+    return out
+
+
+def get_family_settings(family_id: str) -> dict:
+    """ההגדרות האפקטיביות של משפחה: ברירות מחדל + מה שנשמר ב-DB."""
+    stored = (get_family(family_id) or {}).get("settings") or {}
+    return _merge_settings(DEFAULT_FAMILY_SETTINGS, stored)
+
+
+def update_family_settings(family_id: str, patch: dict) -> bool:
+    """ממזג עדכון חלקי לתוך ההגדרות השמורות של המשפחה."""
+    client = get_client()
+    if not client or not family_id:
+        return False
+    try:
+        stored = (get_family(family_id) or {}).get("settings") or {}
+        merged = _merge_settings(stored, patch)
+        client.table("families").update({"settings": merged}).eq("id", family_id).execute()
+        return True
+    except Exception as e:
+        print(f"[ERROR] update_family_settings: {e}")
+        return False
+
+
+# ─── Receipt scanning (צילום קבלה) ────────────────────────────────────────────
+
+RECEIPT_MONTHLY_LIMIT = 100
+_RECEIPT_MEDIA_TYPES = ("image/jpeg", "image/png", "image/webp")
+
+
+def receipt_scans_this_month(family_id: str) -> int:
+    """כמה סריקות מוצלחות בוצעו החודש — סריקות שנכשלו לא נרשמות ולא נספרות."""
+    client = get_client()
+    if not client or not family_id:
+        return 0
+    try:
+        from datetime import date
+        today = date.today()
+        start = f"{today.year}-{today.month:02d}-01"
+        result = client.table("receipt_scans").select("id", count="exact") \
+            .eq("family_id", family_id).gte("created_at", start).execute()
+        return result.count or 0
+    except Exception as e:
+        print(f"[ERROR] receipt_scans_this_month: {e}")
+        return 0
+
+
+def record_receipt_scan(family_id: str, user_id: str):
+    """רושם סריקה מוצלחת לצורך מכסת RECEIPT_MONTHLY_LIMIT."""
+    client = get_client()
+    if not client:
+        return
+    try:
+        client.table("receipt_scans").insert(
+            {"family_id": family_id, "user_id": user_id}, returning="minimal"
+        ).execute()
+    except Exception as e:
+        print(f"[ERROR] record_receipt_scan: {e}")
+
+
+def upload_receipt(access_token: str, family_id: str, image_bytes: bytes, content_type: str):
+    """מעלה תמונת קבלה לתיקיית המשפחה ב-bucket הפרטי 'receipts'.
+    נעשה עם ה-JWT של המשתמש (לא מפתח השירות) כדי ש-RLS יאמת לפי המשפחה שלו.
+    Returns (storage_path, error)."""
+    import httpx, uuid as _uuid
+
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    if not url or not key:
+        return None, "Database not configured"
+
+    ext  = "jpg" if content_type == "image/jpeg" else content_type.split("/")[-1]
+    path = f"{family_id}/{_uuid.uuid4()}.{ext}"
+    try:
+        response = httpx.post(
+            f"{url}/storage/v1/object/receipts/{path}",
+            headers={
+                "apikey": key,
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": content_type,
+            },
+            content=image_bytes,
+            timeout=20,
+        )
+        if response.status_code >= 400:
+            return None, "העלאת הקבלה נכשלה"
+        return path, None
+    except Exception as e:
+        return None, str(e)
+
+
+def get_receipt_signed_url(access_token: str, path: str):
+    """קישור זמני (5 דקות) לצפייה בתמונת קבלה. Returns (url, error)."""
+    import httpx
+
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    if not url or not key:
+        return None, "Database not configured"
+    try:
+        response = httpx.post(
+            f"{url}/storage/v1/object/sign/receipts/{path}",
+            headers={
+                "apikey": key,
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+            },
+            json={"expiresIn": 300},
+            timeout=10,
+        )
+        if response.status_code >= 400:
+            return None, "לא ניתן להציג את הקבלה"
+        signed = response.json().get("signedURL")
+        return f"{url}/storage/v1{signed}", None
+    except Exception as e:
+        return None, str(e)
+
+
+def delete_receipt(access_token: str, path: str):
+    """מוחקת קובץ קבלה מהאחסון (למשל כשמוחקים את העסקה המצורפת)."""
+    import httpx
+
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    if not url or not key or not path:
+        return
+    try:
+        httpx.request(
+            "DELETE",
+            f"{url}/storage/v1/object/receipts",
+            headers={
+                "apikey": key,
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+            },
+            json={"prefixes": [path]},
+            timeout=10,
+        )
+    except Exception as e:
+        print(f"[ERROR] delete_receipt: {e}")
+
+
+def get_transaction_receipt_path(transaction_id: str, family_id: str):
+    client = get_client()
+    if not client:
+        return None
+    try:
+        result = client.table("transactions").select("receipt_path") \
+            .eq("id", transaction_id).eq("family_id", family_id).single().execute()
+        return (result.data or {}).get("receipt_path")
+    except Exception:
+        return None
+
+
+def scan_receipt(image_bytes: bytes, content_type: str, category_names: list):
+    """שולח תמונת קבלה ל-Claude ומחלץ סכום, בית עסק, תאריך וקטגוריה מוצעת
+    מתוך קטגוריות ההוצאות של המשפחה בלבד. Returns (data_dict, error)."""
+    import base64
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return None, "סריקת קבלות אינה מוגדרת בשרת"
+
+    try:
+        import anthropic
+    except ImportError:
+        return None, "סריקת קבלות אינה זמינה כרגע"
+
+    media_type = content_type if content_type in _RECEIPT_MEDIA_TYPES else "image/jpeg"
+    b64 = base64.standard_b64encode(image_bytes).decode("utf-8")
+
+    category_prop = {"type": "string", "description": "השאר ריק אם אין התאמה ברורה."}
+    if category_names:
+        category_prop["enum"] = category_names
+
+    tool = {
+        "name": "extract_receipt",
+        "description": "מחלץ מתמונת קבלה ישראלית את הסכום, שם בית העסק, התאריך והקטגוריה המתאימה.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number",
+                    "description": "הסכום הכולל ששולם, מספר בלבד. אם התמונה אינה קבלה קריאה, החזר 0.",
+                },
+                "merchant": {
+                    "type": "string",
+                    "description": "שם בית העסק כפי שמופיע בקבלה.",
+                },
+                "date": {
+                    "type": "string",
+                    "description": "תאריך העסקה בפורמט YYYY-MM-DD. השאר ריק אם לא ברור.",
+                },
+                "category_name": category_prop,
+            },
+            "required": ["amount", "merchant"],
+        },
+    }
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=300,
+            tools=[tool],
+            tool_choice={"type": "tool", "name": "extract_receipt"},
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": b64}},
+                    {"type": "text", "text": "זו תמונה של קבלה ישראלית. חלץ ממנה את הנתונים באמצעות הכלי."},
+                ],
+            }],
+        )
+        for block in message.content:
+            if block.type == "tool_use":
+                data = block.input or {}
+                try:
+                    amount = float(data.get("amount") or 0)
+                except (TypeError, ValueError):
+                    amount = 0
+                if amount <= 0:
+                    return None, "לא הצלחתי לקרוא את הקבלה — נסה שוב או הזן ידנית"
+                return {
+                    "amount":         amount,
+                    "merchant":       (data.get("merchant") or "").strip(),
+                    "date":           (data.get("date") or "").strip() or None,
+                    "category_name":  (data.get("category_name") or "").strip() or None,
+                }, None
+        return None, "לא הצלחתי לקרוא את הקבלה — נסה שוב או הזן ידנית"
+    except Exception as e:
+        print(f"[ERROR] scan_receipt: {e}")
+        return None, "שגיאה בסריקת הקבלה — נסה שוב"
+
+
 # ─── Transactions ─────────────────────────────────────────────────────────────
 
 def get_monthly_summary(family_id: str, year: int, month: int) -> dict:
@@ -233,7 +488,7 @@ def get_monthly_summary(family_id: str, year: int, month: int) -> dict:
         return _empty_summary()
 
 
-def get_recent_transactions(family_id: str, limit: int = 5) -> list:
+def get_recent_transactions(family_id: str, limit: int = 5, settings: dict = None) -> list:
     """Returns the most recent transactions with category and user info."""
     client = get_client()
     if not client:
@@ -246,13 +501,13 @@ def get_recent_transactions(family_id: str, limit: int = 5) -> list:
             .order("created_at", desc=True) \
             .limit(limit) \
             .execute()
-        return _format_transactions(result.data)
+        return _format_transactions(result.data, settings)
     except Exception as e:
         print(f"[ERROR] get_recent_transactions: {e}")
         return []
 
 
-def get_month_transactions(family_id: str, year: int, month: int) -> list:
+def get_month_transactions(family_id: str, year: int, month: int, settings: dict = None) -> list:
     """Returns all transactions for a given month."""
     client = get_client()
     if not client:
@@ -265,7 +520,7 @@ def get_month_transactions(family_id: str, year: int, month: int) -> list:
             .lt("date", _next_month(year, month)) \
             .order("date", desc=True) \
             .execute()
-        return _format_transactions(result.data)
+        return _format_transactions(result.data, settings)
     except Exception as e:
         print(f"[ERROR] get_month_transactions: {e}")
         return []
@@ -283,7 +538,7 @@ def add_transaction(data: dict):
         return None, str(e)
 
 
-def get_recurring_transactions(family_id: str) -> list:
+def get_recurring_transactions(family_id: str, settings: dict = None) -> list:
     """Returns all recurring transactions for the family."""
     client = get_client()
     if not client:
@@ -295,7 +550,7 @@ def get_recurring_transactions(family_id: str) -> list:
             .eq("is_recurring", True) \
             .order("amount", desc=True) \
             .execute()
-        return _format_transactions(result.data)
+        return _format_transactions(result.data, settings)
     except Exception as e:
         print(f"[ERROR] get_recurring_transactions: {e}")
         return []
@@ -606,12 +861,20 @@ def get_monthly_trend(family_id: str, num_months: int = 6) -> list:
         return []
 
 
-def get_anomalies(family_id: str, year: int, month: int, summary: dict) -> list:
+def get_anomalies(family_id: str, year: int, month: int, summary: dict,
+                  settings: dict = None) -> list:
     """Flags unusual data for the month:
-    - expense categories running 50%+ above their 3-previous-months average (min ₪300 gap)
+    - expense categories running above the family's threshold vs their
+      3-previous-months average (percent + minimum gap from settings)
     - expenses exceeding income
     - negative checking-account balance (עו"ש)
     Returns a list of {"severity": "warning"|"danger", "text": str}."""
+    cfg = (settings or DEFAULT_FAMILY_SETTINGS).get("anomaly", {})
+    if not cfg.get("enabled", True):
+        return []
+    ratio   = float(cfg.get("percent", 150)) / 100.0
+    min_gap = float(cfg.get("min_gap", 300))
+
     alerts = []
 
     if summary.get("income", 0) > 0 and summary.get("expense", 0) > summary["income"]:
@@ -664,7 +927,7 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict) -> list:
             if not past:
                 continue
             avg = sum(past.values()) / len(past)
-            if avg > 0 and total > avg * 1.5 and total - avg >= 300:
+            if avg > 0 and total > avg * ratio and total - avg >= min_gap:
                 pct = round((total / avg - 1) * 100)
                 alerts.append({
                     "severity": "warning",
@@ -676,9 +939,9 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict) -> list:
     return alerts
 
 
-def get_member_breakdown(family_id: str, year: int, month: int) -> list:
-    """Returns expense totals per family member for a given month.
-    רק הוצאות משויכות לבני משפחה — הכנסות וחיסכון הם משפחתיים."""
+def get_member_breakdown(family_id: str, year: int, month: int, type_: str = "expense") -> list:
+    """Returns totals per family member for a given month and transaction type.
+    נקרא רק עבור סוגים שהמשפחה הפעילה בהם שיוך (ראה get_family_settings)."""
     client = get_client()
     if not client:
         return []
@@ -686,7 +949,7 @@ def get_member_breakdown(family_id: str, year: int, month: int) -> list:
         result = client.table("transactions") \
             .select("amount, profiles(name, workplace)") \
             .eq("family_id", family_id) \
-            .eq("type", "expense") \
+            .eq("type", type_) \
             .gte("date", f"{year}-{month:02d}-01") \
             .lt("date", _next_month(year, month)) \
             .execute()
@@ -796,7 +1059,11 @@ def _next_month(year: int, month: int) -> str:
     return f"{year}-{month + 1:02d}-01"
 
 
-def _format_transactions(rows: list) -> list:
+def _format_transactions(rows: list, settings: dict = None) -> list:
+    cfg = settings or DEFAULT_FAMILY_SETTINGS
+    # מקום עבודה נשען על שיוך ההכנסה לבן משפחה — בלי שיוך הכנסות אין את מי להציג
+    show_workplace = (cfg.get("show_workplace", True)
+                      and cfg.get("owner_attribution", {}).get("income", True))
     out = []
     for row in rows:
         cat = row.get("categories") or {}
@@ -812,12 +1079,14 @@ def _format_transactions(rows: list) -> list:
             "category_icon":        cat.get("icon", "📦"),
             "user_id":              row.get("user_id"),
             "user_name":            first_name(user.get("name", "")) if row.get("user_id") else "משותף",
-            # מיקום העבודה מוצג רק על הכנסות משכורת
+            # מיקום העבודה מוצג רק על הכנסות משכורת, ורק אם המשפחה בחרה בכך
             "workplace":            (user.get("workplace")
-                                     if row["type"] == "income" and "משכורת" in cat.get("name", "")
+                                     if show_workplace and row["type"] == "income"
+                                        and "משכורת" in cat.get("name", "")
                                      else None),
             "is_recurring":         row.get("is_recurring", False),
             "recurring_frequency":  row.get("recurring_frequency"),
             "recurring_end_date":   str(row["recurring_end_date"]) if row.get("recurring_end_date") else None,
+            "has_receipt":          bool(row.get("receipt_path")),
         })
     return out

@@ -116,8 +116,13 @@
                     data-recurring-end-date="{{ tx.recurring_end_date or '' }}">
                     <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
                     <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}</span>
+                    {% if family_settings.owner_attribution.expense %}
                     {% set color = member_colors.get(tx.user_id) %}
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
+                    {% endif %}
+                    {% if tx.has_receipt %}
+                    <button type="button" class="receipt-badge" data-receipt-id="{{ tx.id }}" title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</button>
+                    {% endif %}
                     <span class="cat-tx-amount expense">₪{{ "{:,.0f}".format(tx.amount) }}</span>
                 </li>
                 {% endfor %}
@@ -186,6 +191,10 @@
                     data-recurring-end-date="{{ tx.recurring_end_date or '' }}">
                     <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
                     <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}</span>
+                    {% if family_settings.owner_attribution.savings %}
+                    {% set color = member_colors.get(tx.user_id) %}
+                    <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
+                    {% endif %}
                     <span class="cat-tx-amount savings">₪{{ "{:,.0f}".format(tx.amount) }}</span>
                 </li>
                 {% endfor %}
@@ -259,8 +268,10 @@
                     data-recurring-end-date="{{ tx.recurring_end_date or '' }}">
                     <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
                     <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}</span>
+                    {% if family_settings.owner_attribution.income %}
                     {% set color = member_colors.get(tx.user_id) %}
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
+                    {% endif %}
                     <span class="cat-tx-amount income">₪{{ "{:,.0f}".format(tx.amount) }}</span>
                 </li>
                 {% endfor %}
@@ -296,15 +307,15 @@
     </ul>
 </section>
 
-<!-- Chart 5: הוצאות לפי בן משפחה -->
-{% if member_breakdown %}
+<!-- Chart 5: חלוקה בין בני המשפחה — גרף לכל סוג עסקה שהמשפחה משייכת -->
+{% for mb in member_breakdowns %}
 <section class="chart-card">
-    <h2 class="chart-title">הוצאות לפי בן משפחה</h2>
+    <h2 class="chart-title">{{ mb.label }} לפי בן משפחה</h2>
     <div class="line-chart-wrap">
-        <canvas id="membersChart" aria-label="הוצאות לפי בן משפחה"></canvas>
+        <canvas id="membersChart-{{ mb.type }}" aria-label="{{ mb.label }} לפי בן משפחה"></canvas>
     </div>
 </section>
-{% endif %}
+{% endfor %}
 
 <!-- כל העסקאות של החודש -->
 {% if month_transactions %}
@@ -327,9 +338,12 @@
                     data-recurring-end-date="{{ tx.recurring_end_date or '' }}">
                     <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
                     <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}</span>
-                    {% if tx.type != 'savings' %}
+                    {% if family_settings.owner_attribution[tx.type] %}
                     {% set color = member_colors.get(tx.user_id) %}
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
+                    {% endif %}
+                    {% if tx.has_receipt %}
+                    <button type="button" class="receipt-badge" data-receipt-id="{{ tx.id }}" title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</button>
                     {% endif %}
                     <span class="cat-tx-amount {{ tx.type }}">{% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ "{:,.0f}".format(tx.amount) }}</span>
                 </li>
@@ -480,44 +494,48 @@
         }
     }
 
-    // ── 5. הוצאות לפי בן משפחה (הכנסות וחיסכון הם משפחתיים — לא משויכים) ──
+    // ── 5. חלוקה בין בני המשפחה — גרף נפרד לכל סוג שהמשפחה הפעילה בו שיוך ──
     const membersData = {{ members_json | safe }};
-    if (membersData.length > 0) {
-        const ctx = document.getElementById('membersChart');
-        if (ctx) {
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: membersData.map(m => m.name),
-                    datasets: [{
-                        label:           'הוצאות',
-                        data:            membersData.map(m => m.expense),
-                        backgroundColor: 'rgba(160,69,69,0.9)',
-                        borderRadius:    6,
-                        maxBarThickness: 64,
-                    }]
-                },
-                options: {
-                    responsive:          true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: c => ` הוצאות: ₪${c.parsed.y.toLocaleString()}`
-                            }
-                        }
-                    },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { font: { size: 12 } } },
-                        y: {
-                            grid: { color: GRID_LINE },
-                            ticks: { font: { size: 11 }, callback: v => '₪' + v.toLocaleString() }
+    const MEMBER_COLORS = {
+        expense: 'rgba(160,69,69,0.9)',   // אדום מעומעם
+        income:  'rgba(61,107,84,0.9)',   // ירוק מעומעם
+        savings: 'rgba(166,124,0,0.9)',   // זהב
+    };
+    membersData.forEach(function (mb) {
+        const ctx = document.getElementById('membersChart-' + mb.type);
+        if (!ctx || !mb.rows.length) return;
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: mb.rows.map(m => m.name),
+                datasets: [{
+                    label:           mb.label,
+                    data:            mb.rows.map(m => m.expense),
+                    backgroundColor: MEMBER_COLORS[mb.type],
+                    borderRadius:    6,
+                    maxBarThickness: 64,
+                }]
+            },
+            options: {
+                responsive:          true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: c => ` ${mb.label}: ₪${c.parsed.y.toLocaleString()}`
                         }
                     }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { size: 12 } } },
+                    y: {
+                        grid: { color: GRID_LINE },
+                        ticks: { font: { size: 11 }, callback: v => '₪' + v.toLocaleString() }
+                    }
                 }
-            });
-        }
-    }
+            }
+        });
+    });
 })();
 </script>
 {% endblock %}
