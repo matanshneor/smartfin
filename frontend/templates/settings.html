@@ -206,6 +206,115 @@
         </div>
     </section>
 
+    <!-- ═══ קבוצה: העדפות משפחה ═══ -->
+    <section class="settings-group">
+        <button type="button" class="settings-group-header">
+            <span class="group-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
+                    <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
+                    <line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>
+                </svg>
+            </span>
+            <span class="group-text">
+                <span class="group-title">העדפות משפחה</span>
+                <span class="group-sub">שיוך עסקאות, התראות ותצוגה</span>
+            </span>
+            <span class="group-chevron">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+        </button>
+
+        <div class="settings-group-body">
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">שיוך הוצאות</p>
+                    <p class="group-row-hint">בוחרים "של מי" כל הוצאה, ובעמוד החודש מופיע גרף חלוקה</p>
+                </div>
+                <label class="pref-switch">
+                    <input type="checkbox" data-pref-type="expense"
+                           {% if family_settings.owner_attribution.expense %}checked{% endif %}>
+                    <span class="pref-slider"></span>
+                </label>
+            </div>
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">שיוך הכנסות</p>
+                    <p class="group-row-hint">בוחרים "של מי" כל הכנסה, ובעמוד החודש מופיע גרף חלוקה</p>
+                </div>
+                <label class="pref-switch">
+                    <input type="checkbox" data-pref-type="income"
+                           {% if family_settings.owner_attribution.income %}checked{% endif %}>
+                    <span class="pref-slider"></span>
+                </label>
+            </div>
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">שיוך חיסכון</p>
+                    <p class="group-row-hint">בוחרים "של מי" כל חיסכון, ובעמוד החודש מופיע גרף חלוקה</p>
+                </div>
+                <label class="pref-switch">
+                    <input type="checkbox" data-pref-type="savings"
+                           {% if family_settings.owner_attribution.savings %}checked{% endif %}>
+                    <span class="pref-slider"></span>
+                </label>
+            </div>
+
+            <div class="group-divider"></div>
+
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">התראות על חריגות</p>
+                    <p class="group-row-hint">התרעה כשקטגוריית הוצאה גבוהה בהרבה מהרגיל שלה בשלושת החודשים האחרונים</p>
+                </div>
+                <label class="pref-switch">
+                    <input type="checkbox" id="anomalyEnabled"
+                           {% if family_settings.anomaly.enabled %}checked{% endif %}>
+                    <span class="pref-slider"></span>
+                </label>
+            </div>
+            <div class="anomaly-fields {% if not family_settings.anomaly.enabled %}off{% endif %}" id="anomalyFields">
+                <p class="field-hint anomaly-intro">שני התנאים הבאים צריכים להתקיים <strong>יחד</strong> כדי לקבל התראה:</p>
+                <div class="anomaly-inputs">
+                    <div class="form-group">
+                        <label class="form-label" for="anomalyPercent">1. ההוצאה גבוהה לפחות ב-</label>
+                        <div class="suffix-input-wrap">
+                            <input type="number" inputmode="numeric" id="anomalyPercent" class="form-input suffix-input"
+                                   min="100" max="1000" step="5" value="{{ family_settings.anomaly.percent }}">
+                            <span class="suffix-unit">%</span>
+                        </div>
+                        <p class="field-hint">מהממוצע הרגיל בקטגוריה (100% = בדיוק כמו הרגיל)</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="anomalyGap">2. וגם הפער בפועל לפחות</label>
+                        <div class="amount-input-wrap">
+                            <span class="amount-currency">₪</span>
+                            <input type="number" inputmode="numeric" id="anomalyGap" class="form-input amount-input"
+                                   min="0" max="100000" step="50" value="{{ family_settings.anomaly.min_gap }}">
+                        </div>
+                        <p class="field-hint">כדי שהתראה לא תופעל מקטגוריה זולה שקפצה בכמה שקלים בודדים</p>
+                    </div>
+                </div>
+                <p class="field-hint anomaly-example" id="anomalySentence"></p>
+            </div>
+
+            <div class="group-divider"></div>
+
+            <div class="group-row" id="workplaceRow">
+                <div class="group-row-info">
+                    <p class="group-row-label">מקום עבודה על שורות משכורת</p>
+                    <p class="group-row-hint" id="workplaceNote">מוצג בקטן מתחת למשכורת של כל בן משפחה</p>
+                </div>
+                <label class="pref-switch">
+                    <input type="checkbox" id="showWorkplace"
+                           {% if family_settings.show_workplace %}checked{% endif %}>
+                    <span class="pref-slider"></span>
+                </label>
+            </div>
+        </div>
+    </section>
+
     <!-- ═══ קבוצה 3: עסקאות קבועות ═══ -->
     <section class="settings-group">
         <button type="button" class="settings-group-header">
@@ -726,6 +835,88 @@
         });
     }
 
+})();
+
+// ── העדפות משפחה: שמירה מיידית של כל שינוי ──
+(function () {
+    const attrSwitches   = document.querySelectorAll('[data-pref-type]');
+    const anomalyEnabled = document.getElementById('anomalyEnabled');
+    const anomalyFields  = document.getElementById('anomalyFields');
+    const anomalyPercent = document.getElementById('anomalyPercent');
+    const anomalyGap     = document.getElementById('anomalyGap');
+    const anomalySentence = document.getElementById('anomalySentence');
+    const showWorkplace  = document.getElementById('showWorkplace');
+    const workplaceRow   = document.getElementById('workplaceRow');
+    const workplaceNote  = document.getElementById('workplaceNote');
+    if (!anomalyEnabled) return;
+
+    function savePrefs(patch) {
+        fetch('/api/family/settings', {
+            method:  'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(patch),
+        })
+        .then(r => r.json())
+        .then(function (data) {
+            if (data.error) { window.showToast(data.error, 'error'); return; }
+            // המודאל הגלובלי קורא מכאן — בורר "של מי?" מתעדכן בלי רענון
+            window.SF_ATTRIBUTION = data.settings.owner_attribution;
+            window.showToast('ההעדפות נשמרו ✓');
+        })
+        .catch(function () { window.showToast('שגיאת רשת – נסה שוב', 'error'); });
+    }
+
+    // דוגמה קונקרטית עם קטגוריה היפותטית של ₪1,000 בחודש — הופכת את שני
+    // התנאים המופשטים (אחוז + פער) למספר שקלים מוחשי אחד שקל להבין.
+    function updateSentence() {
+        const pct = parseInt(anomalyPercent.value, 10) || 150;
+        const gap = parseInt(anomalyGap.value, 10) || 0;
+        const EXAMPLE_AVG = 1000;
+        const threshold = Math.max(EXAMPLE_AVG * (pct / 100), EXAMPLE_AVG + gap);
+        anomalySentence.textContent =
+            `לדוגמה: קטגוריה שבדרך כלל עולה כ-₪${EXAMPLE_AVG.toLocaleString()} בחודש תסומן כחריגה ` +
+            `רק אם ההוצאה החודש עברה ₪${Math.round(threshold).toLocaleString()}`;
+    }
+
+    // מקום עבודה נשען על שיוך הכנסות — בלי שיוך אין את מי להציג
+    const workplaceDefaultNote = workplaceNote.textContent;
+    function updateWorkplaceState() {
+        const incomeOn = document.querySelector('[data-pref-type="income"]').checked;
+        showWorkplace.disabled = !incomeOn;
+        workplaceRow.classList.toggle('disabled', !incomeOn);
+        workplaceNote.textContent = incomeOn ? workplaceDefaultNote : 'דורש שיוך הכנסות';
+    }
+
+    attrSwitches.forEach(function (sw) {
+        sw.addEventListener('change', function () {
+            const patch = {};
+            patch[this.dataset.prefType] = this.checked;
+            savePrefs({ owner_attribution: patch });
+            if (this.dataset.prefType === 'income') updateWorkplaceState();
+        });
+    });
+
+    anomalyEnabled.addEventListener('change', function () {
+        anomalyFields.classList.toggle('off', !this.checked);
+        savePrefs({ anomaly: { enabled: this.checked } });
+    });
+
+    [anomalyPercent, anomalyGap].forEach(function (inp) {
+        inp.addEventListener('input', updateSentence);
+        inp.addEventListener('change', function () {
+            savePrefs({ anomaly: {
+                percent: parseInt(anomalyPercent.value, 10) || 150,
+                min_gap: parseInt(anomalyGap.value, 10) || 0,
+            }});
+        });
+    });
+
+    showWorkplace.addEventListener('change', function () {
+        savePrefs({ show_workplace: this.checked });
+    });
+
+    updateSentence();
+    updateWorkplaceState();
 })();
 </script>
 {% endblock %}

@@ -109,11 +109,14 @@
                 <p class="tx-amount {{ tx.type }}">
                     {% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ "{:,.0f}".format(tx.amount) }}
                 </p>
-                {% if tx.type != 'savings' %}
+                {% if family_settings.owner_attribution[tx.type] %}
                 {% set color = member_colors.get(tx.user_id) %}
                 <span class="owner-pill owner-{{ color if color is not none else 'shared' }}">
                     {{ tx.user_name if tx.user_id else 'משותפת' }}
                 </span>
+                {% endif %}
+                {% if tx.has_receipt %}
+                <button type="button" class="receipt-badge" data-receipt-id="{{ tx.id }}" title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</button>
                 {% endif %}
             </div>
         </li>

@@ -32,6 +32,8 @@
                 <span class="step-dot" id="dotStep2">2</span>
                 <span class="step-line"></span>
                 <span class="step-dot" id="dotStep3">3</span>
+                <span class="step-line"></span>
+                <span class="step-dot" id="dotStep4">4</span>
             </div>
 
             <div class="form-error" id="onboardingError" role="alert"></div>
@@ -70,8 +72,52 @@
                 </div>
             </section>
 
-            <!-- Step 3: קטגוריות -->
+            <!-- Step 3: איך תרצו לעקוב? (שיוך עסקאות לבני משפחה) -->
             <section class="onboarding-step" id="step3" style="display:none;">
+                <h2 class="auth-form-title">איך תרצו לעקוב?</h2>
+                <p class="onboarding-sub">
+                    בסוגי העסקאות שתפעילו תוכלו לסמן "של מי" כל עסקה — ולראות חלוקה בין בני
+                    המשפחה. אפשר לשנות הכל בכל רגע דרך ההגדרות.
+                </p>
+
+                <ul class="pref-list onboarding-pref-list">
+                    <li class="pref-row">
+                        <span class="pref-label">שיוך הוצאות
+                            <span class="pref-note">מי הוציא — בן משפחה מסוים או הוצאה משותפת</span>
+                        </span>
+                        <label class="pref-switch">
+                            <input type="checkbox" id="obAttrExpense" checked>
+                            <span class="pref-slider"></span>
+                        </label>
+                    </li>
+                    <li class="pref-row">
+                        <span class="pref-label">שיוך הכנסות
+                            <span class="pref-note">משכורת של מי נכנסה</span>
+                        </span>
+                        <label class="pref-switch">
+                            <input type="checkbox" id="obAttrIncome" checked>
+                            <span class="pref-slider"></span>
+                        </label>
+                    </li>
+                    <li class="pref-row">
+                        <span class="pref-label">שיוך חיסכון
+                            <span class="pref-note">רוב המשפחות חוסכות ביחד — כבוי כברירת מחדל</span>
+                        </span>
+                        <label class="pref-switch">
+                            <input type="checkbox" id="obAttrSavings">
+                            <span class="pref-slider"></span>
+                        </label>
+                    </li>
+                </ul>
+
+                <div class="onboarding-actions">
+                    <button type="button" class="btn-sm btn-ghost" id="backTo2Btn">חזרה</button>
+                    <button type="button" class="submit-btn" id="toStep4Btn">המשך</button>
+                </div>
+            </section>
+
+            <!-- Step 4: קטגוריות -->
+            <section class="onboarding-step" id="step4" style="display:none;">
                 <h2 class="auth-form-title">בחרו את הקטגוריות שלכם</h2>
                 <p class="onboarding-sub">
                     הצענו סט בסיסי לפי סוג — אפשר להסיר מה שלא רלוונטי, לשנות שם או אייקון, ולהוסיף קטגוריות משלכם.
@@ -104,7 +150,7 @@
                 {% endfor %}
 
                 <div class="onboarding-actions">
-                    <button type="button" class="btn-sm btn-ghost" id="backTo2Btn">חזרה</button>
+                    <button type="button" class="btn-sm btn-ghost" id="backTo3Btn">חזרה</button>
                     <button type="button" class="submit-btn" id="finishBtn">סיום והתחלה</button>
                 </div>
             </section>
@@ -115,12 +161,14 @@
     <script>
     (function () {
         const errorBox = document.getElementById('onboardingError');
-        const steps    = { 1: document.getElementById('step1'), 2: document.getElementById('step2'), 3: document.getElementById('step3') };
-        const dots     = { 1: document.getElementById('dotStep1'), 2: document.getElementById('dotStep2'), 3: document.getElementById('dotStep3') };
+        const steps    = { 1: document.getElementById('step1'), 2: document.getElementById('step2'),
+                           3: document.getElementById('step3'), 4: document.getElementById('step4') };
+        const dots     = { 1: document.getElementById('dotStep1'), 2: document.getElementById('dotStep2'),
+                           3: document.getElementById('dotStep3'), 4: document.getElementById('dotStep4') };
 
         function goToStep(n) {
             errorBox.textContent = '';
-            [1, 2, 3].forEach(function (i) {
+            [1, 2, 3, 4].forEach(function (i) {
                 steps[i].style.display = i === n ? 'block' : 'none';
                 dots[i].classList.toggle('active', i <= n);
             });
@@ -136,6 +184,8 @@
         document.getElementById('backTo1Btn').addEventListener('click', () => goToStep(1));
         document.getElementById('toStep3Btn').addEventListener('click', () => goToStep(3));
         document.getElementById('backTo2Btn').addEventListener('click', () => goToStep(2));
+        document.getElementById('toStep4Btn').addEventListener('click', () => goToStep(4));
+        document.getElementById('backTo3Btn').addEventListener('click', () => goToStep(3));
 
         // Copy invite code
         document.getElementById('copyInviteBtn').addEventListener('click', function () {
@@ -214,6 +264,11 @@
                 body:    JSON.stringify({
                     family_name: document.getElementById('familyName').value.trim(),
                     categories:  categories,
+                    owner_attribution: {
+                        expense: document.getElementById('obAttrExpense').checked,
+                        income:  document.getElementById('obAttrIncome').checked,
+                        savings: document.getElementById('obAttrSavings').checked,
+                    },
                 }),
             })
             .then(r => r.json())

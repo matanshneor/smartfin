@@ -614,6 +614,25 @@ ul { list-style: none; }
 .owner-3 { background: rgba(59, 95, 160, 0.12);  color: #3B5FA0; }
 .owner-shared { background: rgba(28, 25, 23, 0.07); color: var(--color-text-muted); }
 
+/* תג קבלה מצורפת — לחיצה פותחת את התמונה, לא את עריכת העסקה */
+.receipt-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--color-gold-dim);
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.receipt-badge:hover { background: var(--color-gold-border); }
+
 /* ─── Empty state ─────────────────────────────────────────────── */
 
 .empty-state {
@@ -2573,6 +2592,12 @@ li.zero-cat-row { display: none; }
 .onboarding-actions .submit-btn { flex: 2; }
 .onboarding-actions .btn-ghost { flex: 1; padding: 14px 0; border-radius: var(--radius-sm); }
 
+.onboarding-pref-list .pref-row {
+    border-bottom: 1px solid var(--color-gold-border);
+}
+
+.onboarding-pref-list .pref-row:last-child { border-bottom: none; }
+
 .invite-code-card {
     text-align: center;
     margin-bottom: 18px;
@@ -2653,3 +2678,113 @@ li.zero-cat-row { display: none; }
     }
     .anim-rise { opacity: 1; }
 }
+
+/* ═══ העדפות משפחה (עמוד ההגדרות + שלב באונבורדינג) ═══ */
+
+/* pref-list/pref-row/pref-label/pref-note: משמשים את אשף האונבורדינג בלבד
+   (עמוד ההגדרות משתמש ב-group-row הכללי, כדי להיות תואם לשאר הקבוצות) */
+.pref-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.pref-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+}
+
+.pref-label {
+    font-size: 0.9rem;
+    color: var(--color-text);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pref-note {
+    font-size: 0.72rem;
+    color: var(--color-text-muted, #78716C);
+}
+
+.group-row.disabled .group-row-label,
+.group-row.disabled .group-row-hint { opacity: 0.45; }
+
+/* מתג הפעלה/כיבוי */
+.pref-switch {
+    position: relative;
+    display: inline-block;
+    width: 46px;
+    height: 26px;
+    flex-shrink: 0;
+}
+
+.pref-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.pref-slider {
+    position: absolute;
+    inset: 0;
+    background: #D8D2C4;
+    border-radius: 26px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.pref-slider::before {
+    content: "";
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    top: 3px;
+    right: 3px;
+    background: #FFFFFF;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    transition: transform 0.2s ease;
+}
+
+.pref-switch input:checked + .pref-slider { background: var(--color-gold); }
+.pref-switch input:checked + .pref-slider::before { transform: translateX(-20px); }
+.pref-switch input:disabled + .pref-slider { opacity: 0.4; cursor: not-allowed; }
+.pref-switch input:focus-visible + .pref-slider { outline: 2px solid var(--color-gold-bright); outline-offset: 2px; }
+
+/* שדות סף ההתראות — נשענים על form-group/form-label/form-input הכלליים */
+.anomaly-fields { margin-top: 6px; }
+.anomaly-fields.off { display: none; }
+
+.anomaly-intro { margin-bottom: 10px; }
+
+.anomaly-inputs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.anomaly-example {
+    color: var(--color-gold);
+    font-weight: 500;
+}
+
+.anomaly-inputs .form-group { flex: 1; margin-bottom: 0; }
+
+/* קלט עם יחידה בסוף (למשל "150%") — תמונת מראה של amount-input-wrap/amount-currency */
+.suffix-input-wrap { position: relative; }
+
+.suffix-unit {
+    position: absolute;
+    inset-inline-end: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-muted, #78716C);
+    font-weight: 600;
+    pointer-events: none;
+}
+
+.suffix-input { padding-inline-end: 34px; }

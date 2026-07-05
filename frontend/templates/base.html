@@ -94,11 +94,12 @@
 
             <div class="modal-handle"></div>
 
-            <!-- Scan Receipt Button -->
+            <!-- Scan Receipt Button (הוצאות בלבד — ראה setType) -->
             <button class="scan-btn" id="scanBtn" type="button">
                 <span class="scan-btn-icon">📷</span>
                 <span class="scan-btn-text">סרוק קבלה</span>
             </button>
+            <input type="file" id="receiptInput" accept="image/*" capture="environment" hidden>
 
             <!-- Scanner Animation -->
             <div class="scanner-wrapper" id="scannerWrapper" aria-hidden="true">
@@ -138,6 +139,7 @@
                     <label class="form-label">קטגוריה</label>
                     <div class="category-grid" id="categoryGrid" role="radiogroup" aria-label="בחר קטגוריה"></div>
                     <input type="hidden" id="txCategory" name="category_id">
+                    <input type="hidden" id="txReceiptPath" name="receipt_path">
                 </div>
 
                 <div class="form-group" id="ownerGroup">
@@ -344,6 +346,8 @@
         const closeBtn     = document.getElementById('modalClose');
         const scanBtn      = document.getElementById('scanBtn');
         const scanWrapper  = document.getElementById('scannerWrapper');
+        const receiptInput = document.getElementById('receiptInput');
+        const txReceiptPath = document.getElementById('txReceiptPath');
         const toggleExp    = document.getElementById('toggleExpense');
         const toggleInc    = document.getElementById('toggleIncome');
         const toggleSav    = document.getElementById('toggleSavings');
@@ -366,6 +370,10 @@
         const modalTitle   = document.getElementById('modalTitle');
 
         const TYPE_LABELS = { expense: 'הוסף הוצאה', income: 'הוסף הכנסה', savings: 'הוסף חיסכון' };
+        // העדפות המשפחה: לאילו סוגי עסקאות מוצג בורר "של מי?"
+        // (על window כדי שעמוד ההגדרות יעדכן את המודאל מיד עם שינוי העדפה)
+        window.SF_ATTRIBUTION = {{ family_settings.owner_attribution | tojson if family_settings else '{}' }};
+        const OWNER_LABELS = { expense: 'של מי ההוצאה?', income: 'של מי ההכנסה?', savings: 'של מי החיסכון?' };
 
         let currentType   = 'expense';
         let editId        = null;   // null = adding a new transaction, otherwise editing this id
@@ -434,20 +442,27 @@
             txAmount.focus();
         }
 
-        function closeModal() {
-            overlay.classList.remove('open');
-            document.body.style.overflow = '';
+        function resetScanUI() {
             scanWrapper.classList.remove('active');
             scanBtn.disabled = false;
             scanBtn.querySelector('.scan-btn-text').textContent = 'סרוק קבלה';
+            receiptInput.value = '';
+        }
+
+        function closeModal() {
+            overlay.classList.remove('open');
+            document.body.style.overflow = '';
+            resetScanUI();
             formError.textContent = '';
         }
 
         function resetForm() {
             txForm.reset();
             txDate.value = todayStr();
+            txReceiptPath.value = '';
             formError.textContent = '';
             recurFields.classList.remove('visible');
+            resetScanUI();
         }
 
         function updateSubmitLabel() {
@@ -462,14 +477,15 @@
             toggleSav.classList.toggle('active', type === 'savings');
             document.querySelector('.modal-sheet').classList.toggle('income-mode', type === 'income');
             buildCategoryGrid(type, selectedCategoryId);
-            // בחירת בן משפחה — בהוצאות ובהכנסות; חיסכון הוא תמיד משפחתי
-            const hasOwner = type !== 'savings';
+            // בורר "של מי?" מופיע רק בסוגים שהמשפחה הפעילה בהם שיוך (העדפות משפחה)
+            const hasOwner = !!window.SF_ATTRIBUTION[type];
             ownerGroup.style.display = hasOwner ? '' : 'none';
             if (hasOwner) {
-                document.getElementById('ownerLabel').textContent =
-                    type === 'income' ? 'של מי ההכנסה?' : 'של מי ההוצאה?';
+                document.getElementById('ownerLabel').textContent = OWNER_LABELS[type];
                 buildOwnerToggle(selectedOwner);
             }
+            // סריקת קבלה קיימת רק בהוספת הוצאה חדשה — לא בעריכה ולא בהכנסה/חיסכון
+            scanBtn.style.display = (!editId && type === 'expense') ? '' : 'none';
             updateSubmitLabel();
         }
 
@@ -477,7 +493,6 @@
             editId = null;
             modalTitle.textContent = 'הוספת עסקה';
             deleteBtn.style.display = 'none';
-            scanBtn.style.display = '';
             resetForm();
             Promise.all([loadCategories(), loadMembers()]).then(function () {
                 setType('expense');
@@ -489,7 +504,6 @@
             editId = tx.id;
             modalTitle.textContent = 'עריכת עסקה';
             deleteBtn.style.display = 'block';
-            scanBtn.style.display = 'none';
             formError.textContent = '';
 
             Promise.all([loadCategories(), loadMembers()]).then(function () {
@@ -542,28 +556,79 @@
             recurFields.classList.toggle('visible', this.checked);
         });
 
-        // Scan simulation (add mode only)
+        // ── סריקת קבלה: לחיצה פותחת מצלמה/בחירת קובץ ──
         scanBtn.addEventListener('click', function () {
+            receiptInput.click();
+        });
+
+        // דוחסים בצד הלקוח לפני ההעלאה — קובץ קטן יותר, זול יותר, מהיר יותר
+        function compressImage(file) {
+            return new Promise(function (resolve) {
+                const img = new Image();
+                const reader = new FileReader();
+                reader.onload = function () { img.src = reader.result; };
+                img.onload = function () {
+                    const MAX = 1600;
+                    let w = img.width, h = img.height;
+                    if (w > MAX || h > MAX) {
+                        const scale = MAX / Math.max(w, h);
+                        w = Math.round(w * scale);
+                        h = Math.round(h * scale);
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    canvas.toBlob(function (blob) {
+                        resolve(blob || file);
+                    }, 'image/jpeg', 0.75);
+                };
+                img.onerror = function () { resolve(file); };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        receiptInput.addEventListener('change', function () {
+            const file = this.files[0];
+            if (!file) return;
+
             scanWrapper.classList.add('active');
             scanBtn.disabled = true;
             scanBtn.querySelector('.scan-btn-text').textContent = 'סורק…';
+            formError.textContent = '';
 
-            setTimeout(function () {
-                txAmount.value = '184.90';
-                txDescription.value = 'מגה בעיר';
-
-                const foodBtn = categoryGrid.querySelector('[data-type="expense"]');
-                if (foodBtn) {
-                    categoryGrid.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-                    foodBtn.classList.add('active');
-                    txCategory.value = foodBtn.dataset.value;
+            compressImage(file).then(function (blob) {
+                const formData = new FormData();
+                formData.append('image', blob, 'receipt.jpg');
+                return fetch('/api/receipts/scan', { method: 'POST', body: formData });
+            })
+            .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+            .then(function (result) {
+                resetScanUI();
+                if (!result.ok || result.data.error) {
+                    formError.textContent = (result.data && result.data.error) || 'לא הצלחתי לקרוא את הקבלה — נסה שוב או הזן ידנית';
+                    return;
                 }
-                setType('expense');
-
-                scanWrapper.classList.remove('active');
-                scanBtn.disabled = false;
+                const data = result.data;
+                txAmount.value = data.amount;
+                if (data.merchant) txDescription.value = data.merchant;
+                if (data.date) txDate.value = data.date;
+                txReceiptPath.value = data.receipt_path || '';
+                if (data.category_id) {
+                    const catBtn = categoryGrid.querySelector(`[data-value="${data.category_id}"]`);
+                    if (catBtn) {
+                        categoryGrid.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+                        catBtn.classList.add('active');
+                        txCategory.value = catBtn.dataset.value;
+                    }
+                }
                 scanBtn.querySelector('.scan-btn-text').textContent = '✓ סריקה הושלמה';
-            }, 2200);
+                window.showToast('הקבלה נסרקה — בדוק ואשר את הפרטים');
+            })
+            .catch(function () {
+                resetScanUI();
+                formError.textContent = 'שגיאת רשת – נסה שוב או הזן ידנית';
+            });
         });
 
         // Submit → POST (add) or PUT (edit)
@@ -584,10 +649,11 @@
                 category_id:         txCategory.value || null,
                 description:         txDescription.value.trim(),
                 date:                txDate.value,
-                owner:               currentType !== 'savings' ? (txOwner.value || null) : null,
+                owner:               window.SF_ATTRIBUTION[currentType] ? (txOwner.value || null) : null,
                 is_recurring:        recurringCb.checked,
                 recurring_frequency: recurringCb.checked ? txFrequency.value : null,
                 recurring_end_date:  recurringCb.checked ? (txEndDate.value || null) : null,
+                receipt_path:        currentType === 'expense' ? (txReceiptPath.value || null) : null,
             };
 
             submitBtn.disabled = true;
@@ -648,8 +714,23 @@
             });
         });
 
+        // ── תג 📎 על עסקה עם קבלה מצורפת: פותח את התמונה בלשונית חדשה ──
+        document.addEventListener('click', function (e) {
+            const badge = e.target.closest('.receipt-badge');
+            if (!badge) return;
+            e.stopPropagation();
+            fetch('/api/receipts/' + badge.dataset.receiptId)
+                .then(r => r.json())
+                .then(function (data) {
+                    if (data.url) window.open(data.url, '_blank');
+                    else window.showToast(data.error || 'לא ניתן להציג את הקבלה', 'error');
+                })
+                .catch(function () { window.showToast('שגיאת רשת', 'error'); });
+        });
+
         // ── פתיחת עריכה בלחיצה על עסקה קיימת (עמוד הבית + עמוד החודש) ──
         document.addEventListener('click', function (e) {
+            if (e.target.closest('.receipt-badge')) return;
             const row = e.target.closest('.transaction-item, .cat-tx-row');
             if (!row || !row.dataset.id) return;
 

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, g
 from dotenv import load_dotenv
 from functools import wraps
 from datetime import datetime, timedelta
@@ -63,6 +63,22 @@ def get_current_user():
         "family_id":      session.get("family_id"),
         "avatar_initial": session.get("avatar_initial", "מ"),
     }
+
+
+def family_settings():
+    """העדפות המשפחה המחוברת — נשלף פעם אחת לבקשה (cache על flask.g)."""
+    if "family_settings" not in g:
+        fid = session.get("family_id")
+        g.family_settings = db.get_family_settings(fid) if fid else dict(db.DEFAULT_FAMILY_SETTINGS)
+    return g.family_settings
+
+
+@app.context_processor
+def inject_family_settings():
+    """family_settings זמין בכל תבנית (התגיות, המודאל וקבוצת ההעדפות תלויים בו)."""
+    if "user_id" in session:
+        return {"family_settings": family_settings()}
+    return {"family_settings": None}
 
 
 def _member_colors(family_id):
@@ -255,6 +271,13 @@ def onboarding_complete():
     if family_name:
         db.update_family_name(user["family_id"], family_name)
 
+    # שלב "איך תרצו לעקוב?" — שיוך עסקאות לבני משפחה לפי בחירת המשפחה
+    if isinstance(body.get("owner_attribution"), dict):
+        oa = body["owner_attribution"]
+        db.update_family_settings(user["family_id"], {"owner_attribution": {
+            k: bool(oa.get(k, False)) for k in ("expense", "income", "savings")
+        }})
+
     count, err = db.bulk_add_categories(user["family_id"], categories)
     if err:
         return jsonify({"error": err}), 500
@@ -282,7 +305,7 @@ def dashboard():
         session["recurring_synced"] = today_str
 
     summary      = db.get_monthly_summary(family_id, now.year, now.month) if family_id else db._empty_summary()
-    transactions = db.get_recent_transactions(family_id) if family_id else []
+    transactions = db.get_recent_transactions(family_id, settings=family_settings()) if family_id else []
     categories   = db.get_categories(family_id)
 
     return render_template(
@@ -309,14 +332,24 @@ def month_view():
     month     = request.args.get("month", now.month, type=int)
     family_id = user["family_id"]
 
+    settings_ = family_settings()
     summary = db.get_monthly_summary(family_id, year, month) if family_id else db._empty_summary()
 
     expense_breakdown = db.get_category_breakdown(family_id, year, month, "expense") if family_id else []
     income_breakdown  = db.get_category_breakdown(family_id, year, month, "income")  if family_id else []
     savings_breakdown = db.get_category_breakdown(family_id, year, month, "savings") if family_id else []
-    member_breakdown  = db.get_member_breakdown(family_id, year, month)              if family_id else []
-    anomalies         = db.get_anomalies(family_id, year, month, summary)            if family_id else []
-    month_transactions = db.get_month_transactions(family_id, year, month)           if family_id else []
+    anomalies         = db.get_anomalies(family_id, year, month, summary, settings_) if family_id else []
+    month_transactions = db.get_month_transactions(family_id, year, month, settings_) if family_id else []
+
+    # גרף חלוקה בין בני משפחה לכל סוג עסקה שהמשפחה הפעילה בו שיוך
+    _type_labels = {"expense": "הוצאות", "income": "הכנסות", "savings": "חיסכון"}
+    member_breakdowns = []
+    if family_id:
+        for t in ("expense", "income", "savings"):
+            if settings_["owner_attribution"].get(t):
+                rows = db.get_member_breakdown(family_id, year, month, t)
+                if rows:
+                    member_breakdowns.append({"type": t, "label": _type_labels[t], "rows": rows})
 
     return render_template(
         "month.html",
@@ -326,7 +359,7 @@ def month_view():
         expense_breakdown=expense_breakdown,
         income_breakdown=income_breakdown,
         savings_breakdown=savings_breakdown,
-        member_breakdown=member_breakdown,
+        member_breakdowns=member_breakdowns,
         anomalies=anomalies,
         month_transactions=month_transactions,
         member_colors=_member_colors(family_id),
@@ -338,7 +371,7 @@ def month_view():
         expense_json=json.dumps(expense_breakdown),
         income_json=json.dumps(income_breakdown),
         savings_json=json.dumps(savings_breakdown),
-        members_json=json.dumps(member_breakdown),
+        members_json=json.dumps(member_breakdowns),
     )
 
 
@@ -370,7 +403,7 @@ def settings():
     categories = db.get_categories(family_id)
     members    = db.get_family_members(family_id)       if family_id else []
     family     = db.get_family(family_id)               if family_id else {}
-    recurring  = db.get_recurring_transactions(family_id) if family_id else []
+    recurring  = db.get_recurring_transactions(family_id, settings=family_settings()) if family_id else []
     profile   = db.get_profile(user["id"]) or {}
     full_name = profile.get("name", user["name"])
     name_parts = full_name.split(" ", 1)
@@ -445,10 +478,10 @@ def update_password():
 
 
 def _resolve_owner(body: dict, user: dict, tx_type: str):
-    """מי הבעלים של העסקה. הוצאות והכנסות ניתנות לשיוך לבן משפחה;
-    חיסכון הוא תמיד משפחתי (NULL) — חוסכים ביחד.
+    """מי הבעלים של העסקה — לפי העדפות המשפחה: סוג שהשיוך כבוי בו נשמר
+    תמיד כמשפחתי (NULL), גם אם הבקשה ניסתה לשלוח בעלים.
     ערכים: uuid של בן משפחה, "shared" = משותפת (NULL), ובלי owner — המחובר."""
-    if tx_type == "savings":
+    if not family_settings().get("owner_attribution", {}).get(tx_type, False):
         return None
     owner = body.get("owner")
     if owner == "shared":
@@ -496,6 +529,9 @@ def add_transaction():
         "recurring_frequency":  body.get("recurring_frequency"),
         "recurring_end_date":   body.get("recurring_end_date") or None,
     }
+    # קבלה מצורפת אפשרית רק בהוצאות; ריק = לא נוגעים בעמודה (לא מוחקים קבלה קיימת בעריכה)
+    if tx_type == "expense" and body.get("receipt_path"):
+        payload["receipt_path"] = body["receipt_path"]
 
     result, err = db.add_transaction(payload)
     if err:
@@ -536,6 +572,9 @@ def update_transaction(tx_id):
         "recurring_frequency":  body.get("recurring_frequency"),
         "recurring_end_date":   body.get("recurring_end_date") or None,
     }
+    # קבלה מצורפת אפשרית רק בהוצאות; ריק = לא נוגעים בעמודה (לא מוחקים קבלה קיימת בעריכה)
+    if tx_type == "expense" and body.get("receipt_path"):
+        payload["receipt_path"] = body["receipt_path"]
 
     result, err = db.update_transaction(tx_id, user["family_id"], payload)
     if err:
@@ -551,8 +590,81 @@ def update_transaction(tx_id):
 @login_required
 def delete_transaction(tx_id):
     user = get_current_user()
-    ok   = db.delete_transaction(tx_id, user["family_id"])
+    receipt_path = db.get_transaction_receipt_path(tx_id, user["family_id"])
+    ok = db.delete_transaction(tx_id, user["family_id"])
+    if ok and receipt_path:
+        db.delete_receipt(session.get("access_token"), receipt_path)
     return jsonify({"status": "ok" if ok else "error"}), 200 if ok else 500
+
+
+# ─── API: Receipt scanning (צילום קבלה) ───────────────────────────────────────
+
+@app.route("/api/receipts/scan", methods=["POST"])
+@login_required
+def scan_receipt_route():
+    user = get_current_user()
+    if not user["family_id"]:
+        return jsonify({"error": "No family linked to account"}), 400
+
+    if db.receipt_scans_this_month(user["family_id"]) >= db.RECEIPT_MONTHLY_LIMIT:
+        return jsonify({
+            "error": f"הגעתם למכסת הסריקות החודשית ({db.RECEIPT_MONTHLY_LIMIT}). ניתן להמשיך ולהזין ידנית.",
+        }), 429
+
+    file = request.files.get("image")
+    if not file or not file.filename:
+        return jsonify({"error": "לא התקבלה תמונה"}), 422
+
+    image_bytes = file.read()
+    if not image_bytes:
+        return jsonify({"error": "לא התקבלה תמונה"}), 422
+    if len(image_bytes) > 6 * 1024 * 1024:
+        return jsonify({"error": "התמונה גדולה מדי — נסה שוב עם תמונה קטנה יותר"}), 413
+
+    all_categories = db.get_categories(user["family_id"])
+    expense_category_names = [c["name"] for c in all_categories if c.get("type") == "expense"]
+
+    data, err = db.scan_receipt(image_bytes, file.mimetype or "image/jpeg", expense_category_names)
+    if err:
+        return jsonify({"error": err}), 422
+
+    # סריקה מוצלחת: נספרת במכסה גם אם העלאת התמונה לאחסון נכשלה
+    db.record_receipt_scan(user["family_id"], user["id"])
+
+    receipt_path, upload_err = db.upload_receipt(
+        session.get("access_token"), user["family_id"], image_bytes, file.mimetype or "image/jpeg"
+    )
+    if upload_err:
+        receipt_path = None
+
+    category_id = None
+    if data.get("category_name"):
+        for c in all_categories:
+            if c.get("type") == "expense" and c.get("name") == data["category_name"]:
+                category_id = c["id"]
+                break
+
+    return jsonify({
+        "status":       "ok",
+        "amount":       data["amount"],
+        "merchant":     data["merchant"],
+        "date":         data["date"],
+        "category_id":  category_id,
+        "receipt_path": receipt_path,
+    })
+
+
+@app.route("/api/receipts/<tx_id>", methods=["GET"])
+@login_required
+def view_receipt(tx_id):
+    user = get_current_user()
+    path = db.get_transaction_receipt_path(tx_id, user["family_id"])
+    if not path:
+        return jsonify({"error": "לא נמצאה קבלה מצורפת"}), 404
+    url, err = db.get_receipt_signed_url(session.get("access_token"), path)
+    if err:
+        return jsonify({"error": err}), 500
+    return jsonify({"url": url})
 
 
 # ─── API: Categories ──────────────────────────────────────────────────────────
@@ -618,6 +730,53 @@ def delete_category(cat_id):
 
 
 # ─── API: Family ──────────────────────────────────────────────────────────────
+
+@app.route("/api/family/settings", methods=["PUT"])
+@login_required
+def update_family_settings_route():
+    """עדכון העדפות המשפחה. מקבל עדכון חלקי וממזג לתוך הקיים."""
+    user = get_current_user()
+    if not user["family_id"]:
+        return jsonify({"error": "No family linked to account"}), 400
+
+    body  = request.get_json(silent=True) or {}
+    patch = {}
+
+    if isinstance(body.get("owner_attribution"), dict):
+        oa = body["owner_attribution"]
+        patch["owner_attribution"] = {
+            k: bool(oa[k]) for k in ("expense", "income", "savings") if k in oa
+        }
+
+    if isinstance(body.get("anomaly"), dict):
+        an, out = body["anomaly"], {}
+        if "enabled" in an:
+            out["enabled"] = bool(an["enabled"])
+        try:
+            if "percent" in an:
+                pct = int(an["percent"])
+                if not 100 <= pct <= 1000:
+                    return jsonify({"error": "אחוז ההתראה חייב להיות בין 100 ל-1000"}), 422
+                out["percent"] = pct
+            if "min_gap" in an:
+                gap = int(an["min_gap"])
+                if not 0 <= gap <= 100000:
+                    return jsonify({"error": "הפער המינימלי חייב להיות בין 0 ל-100,000"}), 422
+                out["min_gap"] = gap
+        except (TypeError, ValueError):
+            return jsonify({"error": "ערכי ההתראות חייבים להיות מספרים"}), 422
+        patch["anomaly"] = out
+
+    if "show_workplace" in body:
+        patch["show_workplace"] = bool(body["show_workplace"])
+
+    if not patch:
+        return jsonify({"error": "לא התקבלו הגדרות לעדכון"}), 422
+
+    if not db.update_family_settings(user["family_id"], patch):
+        return jsonify({"error": "שמירת ההעדפות נכשלה"}), 500
+    return jsonify({"status": "ok", "settings": db.get_family_settings(user["family_id"])})
+
 
 @app.route("/api/family", methods=["PUT"])
 @login_required
