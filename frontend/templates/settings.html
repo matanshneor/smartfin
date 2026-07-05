@@ -2,176 +2,355 @@
 
 {% block title %}SmartFin – הגדרות{% endblock %}
 
+{% block hero %}
+<div class="hero-top">
+    <div>
+        <h1 class="hero-title">הגדרות</h1>
+        <p class="hero-subtitle">{{ family.get('name', 'המשפחה שלי') }}</p>
+    </div>
+</div>
+
+<div class="hero-profile">
+    <div class="member-avatar-lg">{{ user.avatar_initial }}</div>
+    <div>
+        <p class="hero-profile-name">{{ account.full_name }}</p>
+        <p class="hero-profile-sub">חשבון משפחתי · {{ members | length }} חברים</p>
+    </div>
+</div>
+{% endblock %}
+
 {% block content %}
 
-<header class="page-header">
-    <h1>הגדרות</h1>
-</header>
+<div class="settings-groups">
 
-<!-- ── Family Section ── -->
-<section class="settings-section">
-    <h2 class="settings-section-title">המשפחה שלנו</h2>
-
-    <div class="settings-card">
-        <!-- Family name -->
-        <div class="family-name-row">
-            <div class="family-icon">🏠</div>
-            <div class="family-name-info">
-                <p class="family-name-label">שם המשפחה</p>
-                <p class="family-name-value" id="familyNameDisplay">{{ family.get('name', 'המשפחה שלי') }}</p>
-            </div>
-            <button class="icon-btn" id="editFamilyNameBtn" aria-label="ערוך שם משפחה">
+    <!-- ═══ קבוצה 1: המשפחה ═══ -->
+    <section class="settings-group">
+        <button type="button" class="settings-group-header">
+            <span class="group-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
                 </svg>
-            </button>
-        </div>
+            </span>
+            <span class="group-text">
+                <span class="group-title">המשפחה</span>
+                <span class="group-sub">{{ family.get('name', 'המשפחה שלי') }} · {{ members | length }} חברים</span>
+            </span>
+            <span class="group-chevron">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+        </button>
 
-        <!-- Edit family name inline -->
-        <div class="family-name-edit" id="familyNameEdit">
-            <input class="form-input" type="text" id="familyNameInput"
-                   value="{{ family.get('name', 'המשפחה שלי') }}" maxlength="50">
-            <div class="edit-actions">
-                <button class="btn-sm btn-primary" id="saveFamilyNameBtn">שמור</button>
-                <button class="btn-sm btn-ghost"   id="cancelFamilyNameBtn">ביטול</button>
-            </div>
-        </div>
-
-        <!-- Invite code -->
-        {% if family.get('id') %}
-        <div class="invite-code-row">
-            <div>
-                <p class="invite-code-label">קוד הזמנה למשפחה</p>
-                <p class="invite-code-value" id="inviteCode">{{ family['id'] }}</p>
-            </div>
-            <button class="icon-btn" id="copyCodeBtn" aria-label="העתק קוד">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                </svg>
-            </button>
-        </div>
-        <p class="invite-code-hint">שתף קוד זה עם בני משפחה בזמן ההרשמה כדי שיצטרפו לאותה משפחה</p>
-        {% endif %}
-    </div>
-
-    <!-- Members list -->
-    {% if members %}
-    <div class="settings-card">
-        <p class="settings-card-title">חברי המשפחה ({{ members | length }})</p>
-        <ul class="members-settings-list">
-            {% for m in members %}
-            <li class="member-settings-row">
-                <div class="member-avatar-sm">{{ m.avatar_initial or m.name[0] }}</div>
-                <div class="member-settings-info">
-                    <p class="member-settings-name">{{ m.name }}</p>
+        <div class="settings-group-body">
+            <!-- שם המשפחה -->
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">שם המשפחה</p>
+                    <p class="group-row-value" id="familyNameDisplay">{{ family.get('name', 'המשפחה שלי') }}</p>
                 </div>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
-</section>
-
-<!-- ── Categories Section ── -->
-<section class="settings-section">
-    <h2 class="settings-section-title">קטגוריות</h2>
-
-    <!-- Expense categories -->
-    <div class="settings-card">
-        <p class="settings-card-title">הוצאות</p>
-        <ul class="categories-list" id="expenseCatList">
-            {% for cat in categories if cat.type == 'expense' %}
-            <li class="category-row" data-id="{{ cat.id }}" data-custom="{{ cat.is_custom | lower }}">
-                <span class="cat-row-icon">{{ cat.icon }}</span>
-                <span class="cat-row-name">{{ cat.name }}</span>
-                {% if cat.is_custom %}
-                <button class="delete-cat-btn" data-id="{{ cat.id }}" aria-label="מחק קטגוריה">✕</button>
-                {% else %}
-                <span class="cat-system-badge">מובנה</span>
-                {% endif %}
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-
-    <!-- Income categories -->
-    <div class="settings-card">
-        <p class="settings-card-title">הכנסות</p>
-        <ul class="categories-list" id="incomeCatList">
-            {% for cat in categories if cat.type == 'income' %}
-            <li class="category-row" data-id="{{ cat.id }}" data-custom="{{ cat.is_custom | lower }}">
-                <span class="cat-row-icon">{{ cat.icon }}</span>
-                <span class="cat-row-name">{{ cat.name }}</span>
-                {% if cat.is_custom %}
-                <button class="delete-cat-btn" data-id="{{ cat.id }}" aria-label="מחק קטגוריה">✕</button>
-                {% else %}
-                <span class="cat-system-badge">מובנה</span>
-                {% endif %}
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-
-    <!-- Savings categories -->
-    <div class="settings-card">
-        <p class="settings-card-title">חיסכון</p>
-        <ul class="categories-list" id="savingsCatList">
-            {% for cat in categories if cat.type == 'savings' %}
-            <li class="category-row" data-id="{{ cat.id }}" data-custom="{{ cat.is_custom | lower }}">
-                <span class="cat-row-icon">{{ cat.icon }}</span>
-                <span class="cat-row-name">{{ cat.name }}</span>
-                {% if cat.is_custom %}
-                <button class="delete-cat-btn" data-id="{{ cat.id }}" aria-label="מחק קטגוריה">✕</button>
-                {% else %}
-                <span class="cat-system-badge">מובנה</span>
-                {% endif %}
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-
-    <!-- Add category form -->
-    <div class="settings-card add-cat-card">
-        <p class="settings-card-title">הוסף קטגוריה מותאמת</p>
-        <form class="add-cat-form" id="addCatForm" novalidate>
-            <div class="add-cat-row">
-                <input class="form-input emoji-input" type="text" id="newCatIcon"
-                       placeholder="🏷" maxlength="2" value="🏷">
-                <input class="form-input" type="text" id="newCatName"
-                       placeholder="שם הקטגוריה" maxlength="30" required>
+                <button class="icon-btn" id="editFamilyNameBtn" aria-label="ערוך שם משפחה">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                    </svg>
+                </button>
             </div>
-            <select class="form-input" id="newCatType">
-                <option value="expense">הוצאה</option>
-                <option value="income">הכנסה</option>
-                <option value="savings">חיסכון</option>
-            </select>
-            <p class="form-error" id="addCatError"></p>
-            <button type="submit" class="submit-btn">+ הוסף קטגוריה</button>
-        </form>
-    </div>
-</section>
 
-<!-- ── Account Section ── -->
-<section class="settings-section">
-    <h2 class="settings-section-title">חשבון</h2>
-    <div class="settings-card">
-        <div class="account-row">
-            <div class="member-avatar-lg">{{ user.avatar_initial }}</div>
-            <div>
-                <p class="account-name">{{ user.name }}</p>
+            <div class="family-name-edit" id="familyNameEdit">
+                <input class="form-input" type="text" id="familyNameInput"
+                       value="{{ family.get('name', 'המשפחה שלי') }}" maxlength="50">
+                <div class="edit-actions">
+                    <button class="btn-sm btn-primary" id="saveFamilyNameBtn">שמור</button>
+                    <button class="btn-sm btn-ghost"   id="cancelFamilyNameBtn">ביטול</button>
+                </div>
+            </div>
+
+            <!-- חברי המשפחה -->
+            {% if members %}
+            <div class="group-divider"></div>
+            <ul class="members-settings-list">
+                {% for m in members %}
+                <li class="member-settings-row {% if m.id == user.id %}is-me{% endif %}">
+                    <div class="member-avatar-sm">{{ m.avatar_initial or m.name[0] }}</div>
+                    <div class="member-settings-info">
+                        <p class="member-settings-name">
+                            {% if m.id == user.id %}<span id="accountNameDisplay">{{ m.full_name }}</span> <span class="me-badge">אני</span>
+                            {% else %}{{ m.full_name }}{% endif %}
+                        </p>
+                        <p class="member-settings-meta">{{ m.email }}</p>
+                        {% if m.id == user.id %}
+                        <p class="member-settings-meta" id="accountPhoneDisplay" {% if not m.phone %}style="display:none;"{% endif %}>📞 {{ m.phone or '' }}</p>
+                        <p class="member-settings-meta" id="accountWorkplaceDisplay" {% if not m.workplace %}style="display:none;"{% endif %}>💼 {{ m.workplace or '' }}</p>
+                        {% else %}
+                        {% if m.phone %}<p class="member-settings-meta">📞 {{ m.phone }}</p>{% endif %}
+                        {% if m.workplace %}<p class="member-settings-meta">💼 {{ m.workplace }}</p>{% endif %}
+                        {% endif %}
+                    </div>
+                    {% if m.id == user.id %}
+                    <button class="icon-btn" id="editProfileBtn" aria-label="ערוך את הפרטים שלי">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                        </svg>
+                    </button>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+
+            <!-- עריכת הפרטים שלי -->
+            <div class="account-edit" id="profileEdit">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="editFirstName">שם פרטי</label>
+                        <input class="form-input" type="text" id="editFirstName" value="{{ account.first_name }}" maxlength="40">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="editLastName">שם משפחה</label>
+                        <input class="form-input" type="text" id="editLastName" value="{{ account.last_name }}" maxlength="40">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="editPhone">טלפון</label>
+                    <input class="form-input" type="tel" id="editPhone" value="{{ account.phone }}"
+                           placeholder="050-1234567" dir="ltr" style="text-align:right;" autocomplete="tel">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="editWorkplace">מיקום עבודה</label>
+                    <input class="form-input" type="text" id="editWorkplace" value="{{ account.workplace }}"
+                           placeholder="לדוגמה: אינטל, עצמאי…" maxlength="60" autocomplete="organization">
+                </div>
+                <p class="form-error" id="profileError"></p>
+                <div class="edit-actions">
+                    <button class="btn-sm btn-primary" id="saveProfileBtn">שמור</button>
+                    <button class="btn-sm btn-ghost" id="cancelProfileBtn">ביטול</button>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- הזמנת בן משפחה -->
+            {% if family.get('id') %}
+            <div class="group-divider"></div>
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">הזמנת בן משפחה</p>
+                    <p class="group-row-hint">מי שנרשם עם הקוד מצטרף אוטומטית למשפחה</p>
+                </div>
+                <span id="inviteCode" hidden>{{ family['id'] }}</span>
+                <button class="btn-sm btn-ghost" id="copyCodeBtn">העתק קוד</button>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- ═══ קבוצה 2: קטגוריות ═══ -->
+    <section class="settings-group">
+        <button type="button" class="settings-group-header">
+            <span class="group-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>
+                </svg>
+            </span>
+            <span class="group-text">
+                <span class="group-title">קטגוריות</span>
+                <span class="group-sub">{{ categories | length }} קטגוריות בשלושה סוגים</span>
+            </span>
+            <span class="group-chevron">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+        </button>
+
+        <div class="settings-group-body">
+            <div class="cat-manage-bar">
+                <div class="type-toggle type-toggle-3 cat-type-tabs">
+                    <button type="button" class="toggle-btn active" data-cat-tab="expense">הוצאות</button>
+                    <button type="button" class="toggle-btn" data-cat-tab="income">הכנסות</button>
+                    <button type="button" class="toggle-btn" data-cat-tab="savings">חיסכון</button>
+                </div>
+                <button type="button" class="btn-sm btn-ghost" id="manageCatsBtn">ניהול</button>
+            </div>
+
+            <div id="categoriesArea">
+                {% for type_key, list_id in [('expense', 'expenseCatList'), ('income', 'incomeCatList'), ('savings', 'savingsCatList')] %}
+                <ul class="categories-list cat-tab-panel" id="{{ list_id }}" data-tab-panel="{{ type_key }}"
+                    {% if not loop.first %}style="display:none;"{% endif %}>
+                    {% for cat in categories if cat.type == type_key %}
+                    <li class="category-row" data-id="{{ cat.id }}" data-custom="{{ cat.is_custom | lower }}">
+                        <span class="cat-row-icon">{{ cat.icon }}</span>
+                        <span class="cat-row-name">{{ cat.name }}</span>
+                        {% if cat.is_custom %}
+                        <button class="edit-cat-btn" data-id="{{ cat.id }}" aria-label="ערוך קטגוריה">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                            </svg>
+                        </button>
+                        <button class="delete-cat-btn" data-id="{{ cat.id }}" aria-label="מחק קטגוריה">✕</button>
+                        {% else %}
+                        <span class="cat-system-badge">מובנה</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endfor %}
+
+                <!-- הוספת קטגוריה — מוצג במצב ניהול, לפי הטאב הפעיל -->
+                <form class="add-cat-form" id="addCatForm" novalidate>
+                    <input type="hidden" id="newCatType" value="expense">
+                    <div class="add-cat-row">
+                        <input class="form-input emoji-input" type="text" id="newCatIcon"
+                               placeholder="🏷" maxlength="2" value="🏷">
+                        <input class="form-input" type="text" id="newCatName"
+                               placeholder="שם קטגוריה חדשה" maxlength="30" required>
+                        <button type="submit" class="btn-sm btn-primary">הוסף</button>
+                    </div>
+                    <p class="form-error" id="addCatError"></p>
+                </form>
             </div>
         </div>
-        <a href="{{ url_for('logout') }}" class="logout-btn">התנתק</a>
-    </div>
-</section>
+    </section>
+
+    <!-- ═══ קבוצה 3: עסקאות קבועות ═══ -->
+    <section class="settings-group">
+        <button type="button" class="settings-group-header">
+            <span class="group-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                    <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                </svg>
+            </span>
+            <span class="group-text">
+                <span class="group-title">עסקאות קבועות</span>
+                <span class="group-sub">{{ recurring | length }} עסקאות חוזרות פעילות</span>
+            </span>
+            <span class="group-chevron">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+        </button>
+
+        <div class="settings-group-body">
+            {% if recurring %}
+            <ul class="recurring-list" id="recurringList">
+                {% set freq_labels = {
+                    'monthly_1':  'כל 1 לחודש',
+                    'monthly_15': 'כל 15 לחודש',
+                    'weekly':     'כל שבוע',
+                    'biweekly':   'כל שבועיים'
+                } %}
+                {% for tx in recurring %}
+                <li class="recurring-row" data-id="{{ tx.id }}">
+                    <div class="recurring-icon">{{ tx.category_icon }}</div>
+                    <div class="recurring-details">
+                        <p class="recurring-name">{{ tx.description or tx.category_name }}</p>
+                        <p class="recurring-freq">
+                            {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}
+                            {% if tx.workplace %} · {{ tx.workplace }}{% elif tx.user_name %} · {{ tx.user_name }}{% endif %}
+                        </p>
+                    </div>
+                    <p class="recurring-amount {{ tx.type }}">
+                        {% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ "{:,.0f}".format(tx.amount) }}
+                    </p>
+                    <button class="delete-recurring-btn" data-id="{{ tx.id }}" aria-label="הסר עסקה קבועה">✕</button>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="recurring-empty">
+                אין עסקאות קבועות עדיין.<br>
+                סמן "עסקה חוזרת" בהוספת עסקה כדי שתופיע כאן (משכורת, שכירות, מנויים…)
+            </p>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- ═══ קבוצה 4: אבטחה וחשבון ═══ -->
+    <section class="settings-group">
+        <button type="button" class="settings-group-header">
+            <span class="group-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+            </span>
+            <span class="group-text">
+                <span class="group-title">אבטחה וחשבון</span>
+                <span class="group-sub">{{ account.email }}</span>
+            </span>
+            <span class="group-chevron">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+        </button>
+
+        <div class="settings-group-body">
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">סיסמה</p>
+                    <p class="group-row-hint">שינוי סיסמת ההתחברות שלך</p>
+                </div>
+                <button class="btn-sm btn-ghost" id="togglePasswordBtn">שינוי סיסמה</button>
+            </div>
+
+            <div class="password-form" id="passwordForm">
+                <div class="form-group">
+                    <label class="form-label" for="currentPassword">סיסמה נוכחית</label>
+                    <input class="form-input" type="password" id="currentPassword" placeholder="••••••••" autocomplete="current-password">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="newPassword">סיסמה חדשה</label>
+                    <input class="form-input" type="password" id="newPassword" placeholder="••••••••" minlength="6" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="newPasswordConfirm">אימות סיסמה חדשה</label>
+                    <input class="form-input" type="password" id="newPasswordConfirm" placeholder="••••••••" minlength="6" autocomplete="new-password">
+                </div>
+                <p class="form-error" id="passwordError"></p>
+                <p class="form-success" id="passwordSuccess"></p>
+                <div class="edit-actions">
+                    <button class="btn-sm btn-primary" id="changePasswordBtn">עדכן סיסמה</button>
+                    <button class="btn-sm btn-ghost" id="cancelPasswordBtn">ביטול</button>
+                </div>
+            </div>
+
+            <div class="group-divider"></div>
+            <a href="{{ url_for('logout') }}" class="logout-btn">התנתק</a>
+        </div>
+    </section>
+
+</div>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
 (function () {
+
+    // ── אקורדיון: פתיחה/סגירה של קבוצות ──
+    document.querySelectorAll('.settings-group-header').forEach(function (header) {
+        header.addEventListener('click', function () {
+            header.closest('.settings-group').classList.toggle('open');
+        });
+    });
+
+    // ── טאבים של סוגי קטגוריות ──
+    const catTabs   = document.querySelectorAll('.cat-type-tabs .toggle-btn');
+    const catPanels = document.querySelectorAll('.cat-tab-panel');
+    const newCatType = document.getElementById('newCatType');
+
+    catTabs.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            catTabs.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const tab = btn.dataset.catTab;
+            catPanels.forEach(p => { p.style.display = (p.dataset.tabPanel === tab) ? '' : 'none'; });
+            newCatType.value = tab;
+        });
+    });
+
+    // ── מצב ניהול קטגוריות: חושף עריכה/מחיקה/הוספה ──
+    const manageBtn = document.getElementById('manageCatsBtn');
+    const catsArea  = document.getElementById('categoriesArea');
+
+    manageBtn.addEventListener('click', function () {
+        const managing = catsArea.classList.toggle('managing');
+        manageBtn.textContent = managing ? 'סיום' : 'ניהול';
+        manageBtn.classList.toggle('btn-primary', managing);
+        manageBtn.classList.toggle('btn-ghost', !managing);
+    });
 
     // ── Family name edit ──
     const nameDisplay   = document.getElementById('familyNameDisplay');
@@ -221,13 +400,103 @@
     if (copyBtn && inviteCode) {
         copyBtn.addEventListener('click', function () {
             navigator.clipboard.writeText(inviteCode.textContent.trim()).then(function () {
-                copyBtn.textContent = '✓';
-                setTimeout(function () {
-                    copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
-                }, 2000);
+                copyBtn.textContent = '✓ הועתק';
+                setTimeout(function () { copyBtn.textContent = 'העתק קוד'; }, 2000);
             });
         });
     }
+
+    // ── Delete recurring transaction ──
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.delete-recurring-btn');
+        if (!btn) return;
+        const id  = btn.dataset.id;
+        const row = btn.closest('.recurring-row');
+        if (!id || !row) return;
+
+        window.appConfirm({
+            title: 'להסיר את העסקה הקבועה?',
+            message: 'מופעים חדשים יפסיקו להיווצר. מופעים שכבר נוצרו יישארו.',
+            confirmText: 'הסר',
+        }).then(function (ok) {
+            if (!ok) return;
+            fetch('/api/transactions/' + id, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(function (d) {
+                if (d.status === 'ok') {
+                    row.style.transition = 'opacity 0.25s';
+                    row.style.opacity = '0';
+                    setTimeout(() => row.remove(), 260);
+                    window.showToast('העסקה הקבועה הוסרה');
+                }
+            });
+        });
+    });
+
+    // ── Edit category (inline) ──
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.edit-cat-btn');
+        if (!btn) return;
+        const row = btn.closest('.category-row');
+        if (!row || row.classList.contains('editing')) return;
+
+        const id       = btn.dataset.id;
+        const iconEl   = row.querySelector('.cat-row-icon');
+        const nameEl   = row.querySelector('.cat-row-name');
+        const origIcon = iconEl.textContent.trim();
+        const origName = nameEl.textContent.trim();
+
+        row.classList.add('editing');
+        row.dataset.origHtml = row.innerHTML;
+        row.innerHTML = `
+            <input class="form-input emoji-input cat-edit-icon" type="text" maxlength="2" value="${origIcon}">
+            <input class="form-input cat-edit-name" type="text" maxlength="30" value="${origName}">
+            <button class="btn-sm btn-primary cat-edit-save" data-id="${id}">שמור</button>
+            <button class="btn-sm btn-ghost cat-edit-cancel">ביטול</button>
+        `;
+        row.querySelector('.cat-edit-name').focus();
+    });
+
+    document.addEventListener('click', function (e) {
+        const cancelEditBtn = e.target.closest('.cat-edit-cancel');
+        if (cancelEditBtn) {
+            const row = cancelEditBtn.closest('.category-row');
+            row.innerHTML = row.dataset.origHtml;
+            row.classList.remove('editing');
+            return;
+        }
+
+        const saveEditBtn = e.target.closest('.cat-edit-save');
+        if (!saveEditBtn) return;
+        const row  = saveEditBtn.closest('.category-row');
+        const id   = saveEditBtn.dataset.id;
+        const icon = row.querySelector('.cat-edit-icon').value.trim() || '📦';
+        const name = row.querySelector('.cat-edit-name').value.trim();
+        if (!name) { row.querySelector('.cat-edit-name').focus(); return; }
+
+        saveEditBtn.disabled = true;
+        fetch('/api/categories/' + id, {
+            method:  'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ name, icon }),
+        })
+        .then(r => r.json())
+        .then(function (d) {
+            if (d.error) { window.showToast(d.error, 'error'); saveEditBtn.disabled = false; return; }
+            row.classList.remove('editing');
+            row.innerHTML = `
+                <span class="cat-row-icon">${icon}</span>
+                <span class="cat-row-name">${name}</span>
+                <button class="edit-cat-btn" data-id="${id}" aria-label="ערוך קטגוריה">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                    </svg>
+                </button>
+                <button class="delete-cat-btn" data-id="${id}" aria-label="מחק קטגוריה">✕</button>
+            `;
+        })
+        .catch(function () { window.showToast('שגיאת רשת', 'error'); saveEditBtn.disabled = false; });
+    });
 
     // ── Delete category ──
     document.addEventListener('click', function (e) {
@@ -237,22 +506,29 @@
         const row = btn.closest('.category-row');
         if (!id || !row) return;
 
-        if (!confirm('למחוק קטגוריה זו?')) return;
-
-        fetch('/api/categories/' + id, { method: 'DELETE' })
-        .then(r => r.json())
-        .then(function (d) {
-            if (d.status === 'ok') {
-                row.style.opacity = '0';
-                row.style.height  = '0';
-                row.style.overflow = 'hidden';
-                row.style.transition = 'all 0.25s';
-                setTimeout(() => row.remove(), 260);
-            }
+        const catName = (row.querySelector('.cat-row-name') || {}).textContent || '';
+        window.appConfirm({
+            title: 'למחוק את "' + catName.trim() + '"?',
+            message: 'עסקאות קיימות בקטגוריה יוצגו כ"אחר".',
+            confirmText: 'מחק קטגוריה',
+        }).then(function (ok) {
+            if (!ok) return;
+            fetch('/api/categories/' + id, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(function (d) {
+                if (d.status === 'ok') {
+                    row.style.opacity = '0';
+                    row.style.height  = '0';
+                    row.style.overflow = 'hidden';
+                    row.style.transition = 'all 0.25s';
+                    setTimeout(() => row.remove(), 260);
+                    window.showToast('הקטגוריה נמחקה');
+                }
+            });
         });
     });
 
-    // ── Add category ──
+    // ── Add category (הסוג נקבע לפי הטאב הפעיל) ──
     const addForm  = document.getElementById('addCatForm');
     const addError = document.getElementById('addCatError');
 
@@ -263,7 +539,7 @@
 
             const icon = document.getElementById('newCatIcon').value.trim() || '🏷';
             const name = document.getElementById('newCatName').value.trim();
-            const type = document.getElementById('newCatType').value;
+            const type = newCatType.value;
 
             if (!name) {
                 addError.textContent = 'נא להזין שם קטגוריה';
@@ -279,7 +555,6 @@
             .then(function (cat) {
                 if (cat.error) { addError.textContent = cat.error; return; }
 
-                // Append to the right list
                 const listMap = { expense: 'expenseCatList', income: 'incomeCatList', savings: 'savingsCatList' };
                 const list    = document.getElementById(listMap[type]);
                 if (list) {
@@ -290,17 +565,163 @@
                     li.innerHTML = `
                         <span class="cat-row-icon">${cat.icon}</span>
                         <span class="cat-row-name">${cat.name}</span>
+                        <button class="edit-cat-btn" data-id="${cat.id}" aria-label="ערוך קטגוריה">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                            </svg>
+                        </button>
                         <button class="delete-cat-btn" data-id="${cat.id}" aria-label="מחק קטגוריה">✕</button>
                     `;
                     list.appendChild(li);
                 }
 
-                // Reset form
                 document.getElementById('newCatName').value = '';
                 document.getElementById('newCatIcon').value = '🏷';
             })
             .catch(function () {
                 addError.textContent = 'שגיאת רשת';
+            });
+        });
+    }
+
+    // ── Edit account profile ──
+    const editProfileBtn  = document.getElementById('editProfileBtn');
+    const profileEdit     = document.getElementById('profileEdit');
+    const saveProfileBtn  = document.getElementById('saveProfileBtn');
+    const cancelProfileBtn = document.getElementById('cancelProfileBtn');
+    const profileError    = document.getElementById('profileError');
+    const accountNameDisplay = document.getElementById('accountNameDisplay');
+
+    if (editProfileBtn) {
+        editProfileBtn.addEventListener('click', function () {
+            profileEdit.classList.add('visible');
+        });
+    }
+
+    if (cancelProfileBtn) {
+        cancelProfileBtn.addEventListener('click', function () {
+            profileEdit.classList.remove('visible');
+            profileError.textContent = '';
+        });
+    }
+
+    if (saveProfileBtn) {
+        saveProfileBtn.addEventListener('click', function () {
+            const firstName = document.getElementById('editFirstName').value.trim();
+            const lastName  = document.getElementById('editLastName').value.trim();
+            const phone     = document.getElementById('editPhone').value.trim();
+            const workplace = document.getElementById('editWorkplace').value.trim();
+            profileError.textContent = '';
+
+            if (!firstName || !lastName) {
+                profileError.textContent = 'נא למלא שם פרטי ושם משפחה';
+                return;
+            }
+
+            saveProfileBtn.disabled = true;
+            fetch('/api/profile', {
+                method:  'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ first_name: firstName, last_name: lastName, phone: phone, workplace: workplace }),
+            })
+            .then(r => r.json())
+            .then(function (d) {
+                saveProfileBtn.disabled = false;
+                if (d.error) { profileError.textContent = d.error; return; }
+                accountNameDisplay.textContent = d.full_name;
+
+                const phoneDisplay = document.getElementById('accountPhoneDisplay');
+                phoneDisplay.textContent = d.phone ? '📞 ' + d.phone : '';
+                phoneDisplay.style.display = d.phone ? '' : 'none';
+
+                const workplaceDisplay = document.getElementById('accountWorkplaceDisplay');
+                workplaceDisplay.textContent = d.workplace ? '💼 ' + d.workplace : '';
+                workplaceDisplay.style.display = d.workplace ? '' : 'none';
+
+                profileEdit.classList.remove('visible');
+            })
+            .catch(function () {
+                saveProfileBtn.disabled = false;
+                profileError.textContent = 'שגיאת רשת';
+            });
+        });
+    }
+
+    // ── Toggle password form ──
+    const togglePasswordBtn = document.getElementById('togglePasswordBtn');
+    const passwordForm      = document.getElementById('passwordForm');
+    const cancelPasswordBtn = document.getElementById('cancelPasswordBtn');
+
+    function resetPasswordForm() {
+        document.getElementById('currentPassword').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('newPasswordConfirm').value = '';
+        document.getElementById('passwordError').textContent = '';
+        document.getElementById('passwordSuccess').textContent = '';
+    }
+
+    if (togglePasswordBtn) {
+        togglePasswordBtn.addEventListener('click', function () {
+            passwordForm.classList.toggle('visible');
+        });
+    }
+
+    if (cancelPasswordBtn) {
+        cancelPasswordBtn.addEventListener('click', function () {
+            passwordForm.classList.remove('visible');
+            resetPasswordForm();
+        });
+    }
+
+    // ── Change password ──
+    const changePasswordBtn = document.getElementById('changePasswordBtn');
+    if (changePasswordBtn) {
+        changePasswordBtn.addEventListener('click', function () {
+            const currentPassword = document.getElementById('currentPassword').value;
+            const password        = document.getElementById('newPassword').value;
+            const passwordConfirm = document.getElementById('newPasswordConfirm').value;
+            const pwError   = document.getElementById('passwordError');
+            const pwSuccess = document.getElementById('passwordSuccess');
+            pwError.textContent = '';
+            pwSuccess.textContent = '';
+
+            if (!currentPassword) {
+                pwError.textContent = 'נא להזין את הסיסמה הנוכחית';
+                return;
+            }
+            if (password.length < 6) {
+                pwError.textContent = 'הסיסמה החדשה חייבת להכיל לפחות 6 תווים';
+                return;
+            }
+            if (password !== passwordConfirm) {
+                pwError.textContent = 'הסיסמאות החדשות אינן תואמות';
+                return;
+            }
+
+            changePasswordBtn.disabled = true;
+            changePasswordBtn.textContent = 'מעדכן…';
+            fetch('/api/profile/password', {
+                method:  'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({
+                    current_password: currentPassword,
+                    password: password,
+                    password_confirm: passwordConfirm,
+                }),
+            })
+            .then(r => r.json())
+            .then(function (d) {
+                changePasswordBtn.disabled = false;
+                changePasswordBtn.textContent = 'עדכן סיסמה';
+                if (d.error) { pwError.textContent = d.error; return; }
+                pwSuccess.textContent = 'הסיסמה עודכנה בהצלחה';
+                resetPasswordForm();
+                pwSuccess.textContent = 'הסיסמה עודכנה בהצלחה';
+            })
+            .catch(function () {
+                changePasswordBtn.disabled = false;
+                changePasswordBtn.textContent = 'עדכן סיסמה';
+                pwError.textContent = 'שגיאת רשת';
             });
         });
     }

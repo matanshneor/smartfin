@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#141007">
+    <title>SmartFin – בואו נתחיל</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="auth-body">
+
+    <div class="auth-container onboarding-container">
+        <div class="auth-hero">
+            <div class="auth-logo-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+                    <path d="M5 21L12.5 13.5L17.5 18.5L27 9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M20 9H27V16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <h1 class="auth-app-name">SmartFin</h1>
+            <p class="auth-tagline">בואו נגדיר את המשפחה שלכם</p>
+        </div>
+
+        <div class="auth-form-card onboarding-card">
+
+            <div class="onboarding-steps" aria-hidden="true">
+                <span class="step-dot active" id="dotStep1">1</span>
+                <span class="step-line"></span>
+                <span class="step-dot" id="dotStep2">2</span>
+                <span class="step-line"></span>
+                <span class="step-dot" id="dotStep3">3</span>
+            </div>
+
+            <div class="form-error" id="onboardingError" role="alert"></div>
+
+            <!-- Step 1: שם המשפחה -->
+            <section class="onboarding-step" id="step1">
+                <h2 class="auth-form-title">איך קוראים למשפחה שלכם?</h2>
+                <p class="onboarding-sub">השם הזה יופיע בראש דף ההגדרות ובכל האתר</p>
+
+                <div class="form-group">
+                    <label class="form-label" for="familyName">שם המשפחה</label>
+                    <input class="form-input" type="text" id="familyName" maxlength="50"
+                           value="{{ family.get('name', 'המשפחה שלי') }}" placeholder="לדוגמה: משפחת כהן">
+                </div>
+
+                <button type="button" class="submit-btn" id="toStep2Btn">המשך</button>
+            </section>
+
+            <!-- Step 2: קוד הזמנה -->
+            <section class="onboarding-step" id="step2" style="display:none;">
+                <h2 class="auth-form-title">הזמינו בני משפחה</h2>
+                <p class="onboarding-sub">
+                    כל בן משפחה שנרשם עם הקוד הזה יצטרף אוטומטית למשפחה שלכם ויוכל להזין ולראות את אותם הנתונים.
+                    אפשר גם לדלג ולשתף את הקוד מאוחר יותר דרך ההגדרות.
+                </p>
+
+                <div class="settings-card invite-code-card">
+                    <p class="invite-code-label">קוד ההזמנה שלכם</p>
+                    <p class="invite-code-value" id="onboardingInviteCode">{{ family.get('id', '') }}</p>
+                    <button type="button" class="btn-sm btn-ghost" id="copyInviteBtn">העתק קוד</button>
+                </div>
+
+                <div class="onboarding-actions">
+                    <button type="button" class="btn-sm btn-ghost" id="backTo1Btn">חזרה</button>
+                    <button type="button" class="submit-btn" id="toStep3Btn">המשך</button>
+                </div>
+            </section>
+
+            <!-- Step 3: קטגוריות -->
+            <section class="onboarding-step" id="step3" style="display:none;">
+                <h2 class="auth-form-title">בחרו את הקטגוריות שלכם</h2>
+                <p class="onboarding-sub">
+                    הצענו סט בסיסי לפי סוג — אפשר להסיר מה שלא רלוונטי, לשנות שם או אייקון, ולהוסיף קטגוריות משלכם.
+                </p>
+
+                <div class="type-toggle type-toggle-3 onboarding-type-tabs" role="group" aria-label="סוג קטגוריה">
+                    <button type="button" class="toggle-btn active" data-cat-type="expense">הוצאות</button>
+                    <button type="button" class="toggle-btn" data-cat-type="income">הכנסות</button>
+                    <button type="button" class="toggle-btn" data-cat-type="savings">חיסכון</button>
+                </div>
+
+                {% for type_key in ['expense', 'income', 'savings'] %}
+                <div class="onboarding-cat-panel" data-panel-type="{{ type_key }}" {% if not loop.first %}style="display:none;"{% endif %}>
+                    <div class="onboarding-cat-grid" data-grid-type="{{ type_key }}">
+                        {% for cat in default_categories if cat.type == type_key %}
+                        <button type="button" class="cat-btn onboarding-cat-btn active"
+                                data-name="{{ cat.name }}" data-icon="{{ cat.icon }}" data-type="{{ cat.type }}">
+                            <span class="cat-emoji">{{ cat.icon }}</span>
+                            <span>{{ cat.name }}</span>
+                        </button>
+                        {% endfor %}
+                    </div>
+
+                    <div class="onboarding-add-row">
+                        <input class="form-input emoji-input onboarding-new-icon" type="text" maxlength="2" placeholder="🏷" value="🏷">
+                        <input class="form-input onboarding-new-name" type="text" placeholder="קטגוריה חדשה">
+                        <button type="button" class="btn-sm btn-primary onboarding-add-btn" data-add-type="{{ type_key }}">הוסף</button>
+                    </div>
+                </div>
+                {% endfor %}
+
+                <div class="onboarding-actions">
+                    <button type="button" class="btn-sm btn-ghost" id="backTo2Btn">חזרה</button>
+                    <button type="button" class="submit-btn" id="finishBtn">סיום והתחלה</button>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        const errorBox = document.getElementById('onboardingError');
+        const steps    = { 1: document.getElementById('step1'), 2: document.getElementById('step2'), 3: document.getElementById('step3') };
+        const dots     = { 1: document.getElementById('dotStep1'), 2: document.getElementById('dotStep2'), 3: document.getElementById('dotStep3') };
+
+        function goToStep(n) {
+            errorBox.textContent = '';
+            [1, 2, 3].forEach(function (i) {
+                steps[i].style.display = i === n ? 'block' : 'none';
+                dots[i].classList.toggle('active', i <= n);
+            });
+        }
+
+        document.getElementById('toStep2Btn').addEventListener('click', function () {
+            if (!document.getElementById('familyName').value.trim()) {
+                errorBox.textContent = 'נא להזין שם למשפחה';
+                return;
+            }
+            goToStep(2);
+        });
+        document.getElementById('backTo1Btn').addEventListener('click', () => goToStep(1));
+        document.getElementById('toStep3Btn').addEventListener('click', () => goToStep(3));
+        document.getElementById('backTo2Btn').addEventListener('click', () => goToStep(2));
+
+        // Copy invite code
+        document.getElementById('copyInviteBtn').addEventListener('click', function () {
+            const code = document.getElementById('onboardingInviteCode').textContent.trim();
+            navigator.clipboard.writeText(code).then(() => {
+                this.textContent = '✓ הועתק';
+                setTimeout(() => { this.textContent = 'העתק קוד'; }, 1800);
+            });
+        });
+
+        // Category type tabs
+        const typeTabs = document.querySelectorAll('.onboarding-type-tabs .toggle-btn');
+        const panels   = document.querySelectorAll('.onboarding-cat-panel');
+        typeTabs.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                typeTabs.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const type = btn.dataset.catType;
+                panels.forEach(p => { p.style.display = (p.dataset.panelType === type) ? 'block' : 'none'; });
+            });
+        });
+
+        // Toggle category chips on/off (multi-select, not radio)
+        document.querySelectorAll('.onboarding-cat-grid').forEach(function (grid) {
+            grid.addEventListener('click', function (e) {
+                const btn = e.target.closest('.onboarding-cat-btn');
+                if (!btn) return;
+                btn.classList.toggle('active');
+            });
+        });
+
+        // Add a custom category chip per type
+        document.querySelectorAll('.onboarding-add-btn').forEach(function (addBtn) {
+            addBtn.addEventListener('click', function () {
+                const type  = addBtn.dataset.addType;
+                const panel = document.querySelector(`.onboarding-cat-panel[data-panel-type="${type}"]`);
+                const icon  = panel.querySelector('.onboarding-new-icon');
+                const name  = panel.querySelector('.onboarding-new-name');
+                const nameVal = name.value.trim();
+                if (!nameVal) { name.focus(); return; }
+
+                const grid = panel.querySelector('.onboarding-cat-grid');
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'cat-btn onboarding-cat-btn active';
+                chip.dataset.name = nameVal;
+                chip.dataset.icon = icon.value.trim() || '🏷';
+                chip.dataset.type = type;
+                chip.innerHTML = `<span class="cat-emoji">${chip.dataset.icon}</span><span>${nameVal}</span>`;
+                grid.appendChild(chip);
+
+                name.value = '';
+                icon.value = '🏷';
+                name.focus();
+            });
+        });
+
+        // Finish: collect all active chips across all 3 types, submit
+        document.getElementById('finishBtn').addEventListener('click', function () {
+            const categories = Array.from(document.querySelectorAll('.onboarding-cat-btn.active')).map(btn => ({
+                name: btn.dataset.name, icon: btn.dataset.icon, type: btn.dataset.type,
+            }));
+
+            if (categories.length === 0) {
+                errorBox.textContent = 'נא לבחור לפחות קטגוריה אחת';
+                return;
+            }
+
+            const btn = this;
+            btn.disabled = true;
+            btn.textContent = 'שומר…';
+
+            fetch('/api/onboarding/complete', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({
+                    family_name: document.getElementById('familyName').value.trim(),
+                    categories:  categories,
+                }),
+            })
+            .then(r => r.json())
+            .then(function (data) {
+                if (data.error) {
+                    errorBox.textContent = data.error;
+                    btn.disabled = false;
+                    btn.textContent = 'סיום והתחלה';
+                    return;
+                }
+                window.location.href = '/';
+            })
+            .catch(function () {
+                errorBox.textContent = 'שגיאת רשת – נסה שוב';
+                btn.disabled = false;
+                btn.textContent = 'סיום והתחלה';
+            });
+        });
+    })();
+    </script>
+
+</body>
+</html>

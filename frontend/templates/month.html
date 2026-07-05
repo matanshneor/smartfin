@@ -1,0 +1,523 @@
+{% extends "base.html" %}
+
+{% block title %}SmartFin – {{ month_label }}{% endblock %}
+
+{% block hero %}
+{% set prev_month = month - 1 if month > 1 else 12 %}
+{% set prev_year  = year if month > 1 else year - 1 %}
+{% set next_month = month + 1 if month < 12 else 1 %}
+{% set next_year  = year if month < 12 else year + 1 %}
+
+<div class="hero-top">
+    <div>
+        <h1 class="hero-title">{{ month_label }}</h1>
+        <p class="hero-subtitle">{% if is_current %}החודש הנוכחי{% else %}נתוני חודש{% endif %}</p>
+    </div>
+    <div class="stats-month-nav">
+        <a href="{{ url_for('month_view', year=prev_year, month=prev_month) }}" class="stats-nav-btn" aria-label="חודש קודם">‹</a>
+        <a href="{{ url_for('month_view', year=next_year, month=next_month) }}" class="stats-nav-btn" aria-label="חודש הבא">›</a>
+    </div>
+</div>
+
+<div class="kpi-chips">
+    <div class="kpi-chip">
+        <p class="kpi-label">הכנסות</p>
+        <p class="kpi-value income" data-countup="{{ summary.income | round | int }}">₪{{ "{:,.0f}".format(summary.income) }}</p>
+    </div>
+    <div class="kpi-chip">
+        <p class="kpi-label">הוצאות</p>
+        <p class="kpi-value expense" data-countup="{{ summary.expense | round | int }}">₪{{ "{:,.0f}".format(summary.expense) }}</p>
+    </div>
+    <div class="kpi-chip">
+        <p class="kpi-label">חיסכון</p>
+        <p class="kpi-value savings" data-countup="{{ summary.savings | round | int }}">₪{{ "{:,.0f}".format(summary.savings) }}</p>
+    </div>
+    <div class="kpi-chip">
+        <p class="kpi-label">נשאר בעו״ש</p>
+        <p class="kpi-value {% if summary.remaining >= 0 %}surplus{% else %}deficit{% endif %}"
+           data-countup="{{ summary.remaining | abs | round | int }}"
+           {% if summary.remaining < 0 %}data-prefix="-"{% endif %}>
+            ₪{{ "{:,.0f}".format(summary.remaining) }}
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- Alerts: חריגות -->
+{% if anomalies %}
+<section class="alerts-section" aria-label="התראות">
+    {% for alert in anomalies %}
+    <div class="alert-card {{ alert.severity }}">
+        <span class="alert-text">{{ alert.text }}</span>
+    </div>
+    {% endfor %}
+</section>
+{% endif %}
+
+<!-- Chart 1: לאן הלך הכסף (חלוקת ההכנסות) -->
+<section class="chart-card">
+    <h2 class="chart-title">לאן הלך הכסף החודש</h2>
+    {% if summary.income > 0 %}
+    <div class="doughnut-wrap">
+        <canvas id="overviewChart" aria-label="חלוקת ההכנסות: הוצאות, חיסכון ויתרה"></canvas>
+        <div class="doughnut-center">
+            <p class="doughnut-total">₪{{ "{:,.0f}".format(summary.income) }}</p>
+            <p class="doughnut-label">הכנסות</p>
+        </div>
+    </div>
+    <ul class="legend-list" id="overviewLegend"></ul>
+    {% else %}
+    <div class="chart-empty"><p>💸</p><p>אין הכנסות רשומות החודש</p></div>
+    {% endif %}
+</section>
+
+<!-- Chart 2: הוצאות לפי קטגוריה -->
+{% set expense_active = expense_breakdown | selectattr('total', 'gt', 0) | list %}
+{% set expense_zero   = expense_breakdown | rejectattr('total', 'gt', 0) | list %}
+<section class="chart-card">
+    <h2 class="chart-title">הוצאות לפי קטגוריה</h2>
+    {% if expense_active %}
+    <div class="doughnut-wrap">
+        <canvas id="expenseChart" aria-label="גרף הוצאות לפי קטגוריה"></canvas>
+        <div class="doughnut-center">
+            <p class="doughnut-total">₪{{ "{:,.0f}".format(summary.expense) }}</p>
+            <p class="doughnut-label">הוצאות</p>
+        </div>
+    </div>
+    {% else %}
+    <div class="chart-empty"><p>📊</p><p>אין הוצאות רשומות החודש</p></div>
+    {% endif %}
+    <ul class="legend-list">
+        {% for item in expense_active %}
+        {% set cat_txs = month_transactions | selectattr('type', 'equalto', 'expense')
+                                            | selectattr('category_name', 'equalto', item.name) | list %}
+        <li class="legend-item-wrap">
+            <div class="legend-item {% if cat_txs %}clickable{% endif %}" {% if cat_txs %}role="button" tabindex="0" aria-expanded="false"{% endif %}>
+                <span class="legend-dot" style="background: var(--chart-color-{{ loop.index0 % 8 }});"></span>
+                <span class="legend-icon">{{ item.icon }}</span>
+                <span class="legend-name">{{ item.name }}</span>
+                <span class="legend-pct">{{ item.pct }}%</span>
+                <span class="legend-amount">₪{{ "{:,.0f}".format(item.total) }}</span>
+                {% if cat_txs %}
+                <span class="expand-chevron" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+                {% endif %}
+            </div>
+            {% if cat_txs %}
+            <ul class="cat-tx-list">
+                {% for tx in cat_txs %}
+                <li class="cat-tx-row" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                    data-category-id="{{ tx.category_id or '' }}" data-description="{{ tx.description }}"
+                    data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
+                    data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
+                    data-recurring-end-date="{{ tx.recurring_end_date or '' }}">
+                    <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
+                    <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}</span>
+                    {% set color = member_colors.get(tx.user_id) %}
+                    <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
+                    <span class="cat-tx-amount expense">₪{{ "{:,.0f}".format(tx.amount) }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </li>
+        {% endfor %}
+
+        {% if expense_zero %}
+        <li class="zero-toggle" role="button" tabindex="0">
+            <span>עוד {{ expense_zero | length }} קטגוריות ללא פעילות</span>
+            <span class="expand-chevron" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+        </li>
+        {% for item in expense_zero %}
+        <li class="legend-item-wrap zero-cat-row">
+            <div class="legend-item">
+                <span class="legend-dot legend-dot-zero"></span>
+                <span class="legend-icon">{{ item.icon }}</span>
+                <span class="legend-name">{{ item.name }}</span>
+                <span class="legend-pct">0%</span>
+                <span class="legend-amount">₪0</span>
+            </div>
+        </li>
+        {% endfor %}
+        {% endif %}
+    </ul>
+</section>
+
+<!-- Chart 3: חיסכון לפי יעד -->
+<section class="chart-card">
+    <h2 class="chart-title">חיסכון — לאן הופרש</h2>
+    {% set savings_active = savings_breakdown | selectattr('total', 'gt', 0) | list %}
+    {% set savings_zero   = savings_breakdown | rejectattr('total', 'gt', 0) | list %}
+    <ul class="breakdown-bars">
+        {% for item in savings_active %}
+        {% set cat_txs = month_transactions | selectattr('type', 'equalto', 'savings')
+                                            | selectattr('category_name', 'equalto', item.name) | list %}
+        <li class="breakdown-bar-row">
+            <div class="breakdown-main {% if cat_txs %}clickable{% endif %}" {% if cat_txs %}role="button" tabindex="0" aria-expanded="false"{% endif %}>
+                <span class="breakdown-icon">{{ item.icon }}</span>
+                <div class="breakdown-info">
+                    <div class="breakdown-name-row">
+                        <span class="breakdown-name">{{ item.name }}</span>
+                        <span class="breakdown-amount savings">₪{{ "{:,.0f}".format(item.total) }}
+                            {% if cat_txs %}
+                            <span class="expand-chevron" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                            </span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="breakdown-track">
+                        <div class="breakdown-fill savings" style="width: {{ item.pct }}%;"></div>
+                    </div>
+                </div>
+            </div>
+            {% if cat_txs %}
+            <ul class="cat-tx-list">
+                {% for tx in cat_txs %}
+                <li class="cat-tx-row" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                    data-category-id="{{ tx.category_id or '' }}" data-description="{{ tx.description }}"
+                    data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
+                    data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
+                    data-recurring-end-date="{{ tx.recurring_end_date or '' }}">
+                    <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
+                    <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}</span>
+                    <span class="cat-tx-amount savings">₪{{ "{:,.0f}".format(tx.amount) }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </li>
+        {% endfor %}
+        {% if not savings_active %}
+        <div class="chart-empty"><p>💰</p><p>אין הפרשות לחיסכון החודש</p></div>
+        {% endif %}
+        {% if savings_zero %}
+        <li class="zero-toggle" role="button" tabindex="0">
+            <span>עוד {{ savings_zero | length }} קטגוריות ללא פעילות</span>
+            <span class="expand-chevron" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+        </li>
+        {% for item in savings_zero %}
+        <li class="breakdown-bar-row zero-cat-row">
+            <div class="breakdown-main">
+                <span class="breakdown-icon">{{ item.icon }}</span>
+                <div class="breakdown-info">
+                    <div class="breakdown-name-row">
+                        <span class="breakdown-name">{{ item.name }}</span>
+                        <span class="breakdown-amount">₪0</span>
+                    </div>
+                    <div class="breakdown-track"><div class="breakdown-fill" style="width:0;"></div></div>
+                </div>
+            </div>
+        </li>
+        {% endfor %}
+        {% endif %}
+    </ul>
+</section>
+
+<!-- Chart 4: הכנסות לפי מקור -->
+<section class="chart-card">
+    <h2 class="chart-title">הכנסות — מאיפה הגיעו</h2>
+    {% set income_active = income_breakdown | selectattr('total', 'gt', 0) | list %}
+    {% set income_zero   = income_breakdown | rejectattr('total', 'gt', 0) | list %}
+    <ul class="breakdown-bars">
+        {% for item in income_active %}
+        {% set cat_txs = month_transactions | selectattr('type', 'equalto', 'income')
+                                            | selectattr('category_name', 'equalto', item.name) | list %}
+        <li class="breakdown-bar-row">
+            <div class="breakdown-main {% if cat_txs %}clickable{% endif %}" {% if cat_txs %}role="button" tabindex="0" aria-expanded="false"{% endif %}>
+                <span class="breakdown-icon">{{ item.icon }}</span>
+                <div class="breakdown-info">
+                    <div class="breakdown-name-row">
+                        <span class="breakdown-name">{{ item.name }}</span>
+                        <span class="breakdown-amount income">₪{{ "{:,.0f}".format(item.total) }}
+                            {% if cat_txs %}
+                            <span class="expand-chevron" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                            </span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="breakdown-track">
+                        <div class="breakdown-fill income" style="width: {{ item.pct }}%;"></div>
+                    </div>
+                </div>
+            </div>
+            {% if cat_txs %}
+            <ul class="cat-tx-list">
+                {% for tx in cat_txs %}
+                <li class="cat-tx-row" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                    data-category-id="{{ tx.category_id or '' }}" data-description="{{ tx.description }}"
+                    data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
+                    data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
+                    data-recurring-end-date="{{ tx.recurring_end_date or '' }}">
+                    <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
+                    <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}</span>
+                    {% set color = member_colors.get(tx.user_id) %}
+                    <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
+                    <span class="cat-tx-amount income">₪{{ "{:,.0f}".format(tx.amount) }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </li>
+        {% endfor %}
+        {% if not income_active %}
+        <div class="chart-empty"><p>💼</p><p>אין הכנסות רשומות החודש</p></div>
+        {% endif %}
+        {% if income_zero %}
+        <li class="zero-toggle" role="button" tabindex="0">
+            <span>עוד {{ income_zero | length }} קטגוריות ללא פעילות</span>
+            <span class="expand-chevron" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+        </li>
+        {% for item in income_zero %}
+        <li class="breakdown-bar-row zero-cat-row">
+            <div class="breakdown-main">
+                <span class="breakdown-icon">{{ item.icon }}</span>
+                <div class="breakdown-info">
+                    <div class="breakdown-name-row">
+                        <span class="breakdown-name">{{ item.name }}</span>
+                        <span class="breakdown-amount">₪0</span>
+                    </div>
+                    <div class="breakdown-track"><div class="breakdown-fill" style="width:0;"></div></div>
+                </div>
+            </div>
+        </li>
+        {% endfor %}
+        {% endif %}
+    </ul>
+</section>
+
+<!-- Chart 5: הוצאות לפי בן משפחה -->
+{% if member_breakdown %}
+<section class="chart-card">
+    <h2 class="chart-title">הוצאות לפי בן משפחה</h2>
+    <div class="line-chart-wrap">
+        <canvas id="membersChart" aria-label="הוצאות לפי בן משפחה"></canvas>
+    </div>
+</section>
+{% endif %}
+
+<!-- כל העסקאות של החודש -->
+{% if month_transactions %}
+<section class="chart-card">
+    <ul class="legend-list">
+        <li class="legend-item-wrap">
+            <div class="legend-item clickable all-tx-header" role="button" tabindex="0" aria-expanded="false">
+                <span class="legend-name all-tx-title">כל העסקאות</span>
+                <span class="all-tx-count">{{ month_transactions | length }}</span>
+                <span class="expand-chevron" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+            </div>
+            <ul class="cat-tx-list">
+                {% for tx in month_transactions %}
+                <li class="cat-tx-row" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                    data-category-id="{{ tx.category_id or '' }}" data-description="{{ tx.description }}"
+                    data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
+                    data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
+                    data-recurring-end-date="{{ tx.recurring_end_date or '' }}">
+                    <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
+                    <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}</span>
+                    {% if tx.type != 'savings' %}
+                    {% set color = member_colors.get(tx.user_id) %}
+                    <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
+                    {% endif %}
+                    <span class="cat-tx-amount {{ tx.type }}">{% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ "{:,.0f}".format(tx.amount) }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </li>
+    </ul>
+</section>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+<script>
+(function () {
+    const COLORS = [
+        '#A67C00','#3D6B54','#A04545','#44609B',
+        '#75588F','#3E7373','#9C6A3C','#8F5470'
+    ];
+    const TEXT_MUTED = '#78716C';
+    const GRID_LINE  = 'rgba(28,25,23,0.07)';
+
+    Chart.defaults.font.family = "'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    Chart.defaults.color = TEXT_MUTED;
+    Chart.defaults.animation.duration = 900;
+    Chart.defaults.animation.easing = 'easeOutQuart';
+    Chart.defaults.plugins.legend.display = false;
+    Chart.defaults.plugins.tooltip.backgroundColor = '#1C1917';
+    Chart.defaults.plugins.tooltip.titleColor = '#FAF7F0';
+    Chart.defaults.plugins.tooltip.bodyColor = '#E7E0D2';
+
+    COLORS.forEach((c, i) =>
+        document.documentElement.style.setProperty('--chart-color-' + i, c));
+
+    // ── הרחבת קטגוריה: הצגת כל העסקאות שלה בחודש ──
+    function toggleExpand(trigger) {
+        const wrap = trigger.classList.contains('breakdown-main')
+            ? trigger.closest('.breakdown-bar-row')
+            : trigger.closest('.legend-item-wrap');
+        if (!wrap) return;
+        const isOpen = wrap.classList.toggle('open');
+        trigger.setAttribute('aria-expanded', isOpen);
+    }
+
+    document.addEventListener('click', function (e) {
+        const trigger = e.target.closest('.legend-item.clickable, .breakdown-main.clickable');
+        if (trigger) toggleExpand(trigger);
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const trigger = e.target.closest('.legend-item.clickable, .breakdown-main.clickable');
+        if (trigger) { e.preventDefault(); toggleExpand(trigger); }
+    });
+
+    // ── הצגת/הסתרת קטגוריות ללא פעילות ──
+    document.addEventListener('click', function (e) {
+        const toggle = e.target.closest('.zero-toggle');
+        if (!toggle) return;
+        const shown = toggle.parentElement.classList.toggle('show-zeros');
+        toggle.classList.toggle('open', shown);
+    });
+
+    const summary = {{ summary_json | safe }};
+
+    // ── 1. לאן הלך הכסף: הוצאות / חיסכון / נשאר ──
+    if (summary.income > 0) {
+        const ctx = document.getElementById('overviewChart');
+        const parts = [
+            { label: 'הוצאות',    value: summary.expense,               color: '#A04545' },
+            { label: 'חיסכון',    value: summary.savings,               color: '#A67C00' },
+            { label: 'נשאר בעו״ש', value: Math.max(summary.remaining, 0), color: '#3D6B54' },
+        ].filter(p => p.value > 0);
+
+        if (ctx && parts.length) {
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: parts.map(p => p.label),
+                    datasets: [{
+                        data:            parts.map(p => p.value),
+                        backgroundColor: parts.map(p => p.color),
+                        borderColor:     '#FFFFFF',
+                        borderWidth:     2,
+                        borderRadius:    4,
+                        spacing:         2,
+                        hoverOffset:     6,
+                    }]
+                },
+                options: {
+                    cutout: '70%',
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: c => ` ${c.label}: ₪${c.parsed.toLocaleString()} (${Math.round(c.parsed / summary.income * 100)}%)`
+                            }
+                        }
+                    }
+                }
+            });
+
+            const legend = document.getElementById('overviewLegend');
+            parts.forEach(p => {
+                const li = document.createElement('li');
+                li.className = 'legend-item';
+                li.innerHTML = `
+                    <span class="legend-dot" style="background:${p.color}"></span>
+                    <span class="legend-name">${p.label}</span>
+                    <span class="legend-pct">${Math.round(p.value / summary.income * 100)}%</span>
+                    <span class="legend-amount">₪${p.value.toLocaleString()}</span>`;
+                legend.appendChild(li);
+            });
+        }
+    }
+
+    // ── 2. הוצאות לפי קטגוריה ──
+    const expenseData = {{ expense_json | safe }};
+    if (expenseData.length > 0) {
+        const ctx = document.getElementById('expenseChart');
+        if (ctx) {
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: expenseData.map(d => d.name),
+                    datasets: [{
+                        data:            expenseData.map(d => d.total),
+                        backgroundColor: COLORS.slice(0, expenseData.length),
+                        borderColor:     '#FFFFFF',
+                        borderWidth:     2,
+                        borderRadius:    4,
+                        spacing:         2,
+                        hoverOffset:     6,
+                    }]
+                },
+                options: {
+                    cutout: '70%',
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: c => ` ₪${c.parsed.toLocaleString()} (${expenseData[c.dataIndex].pct}%)`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // ── 5. הוצאות לפי בן משפחה (הכנסות וחיסכון הם משפחתיים — לא משויכים) ──
+    const membersData = {{ members_json | safe }};
+    if (membersData.length > 0) {
+        const ctx = document.getElementById('membersChart');
+        if (ctx) {
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: membersData.map(m => m.name),
+                    datasets: [{
+                        label:           'הוצאות',
+                        data:            membersData.map(m => m.expense),
+                        backgroundColor: 'rgba(160,69,69,0.9)',
+                        borderRadius:    6,
+                        maxBarThickness: 64,
+                    }]
+                },
+                options: {
+                    responsive:          true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: c => ` הוצאות: ₪${c.parsed.y.toLocaleString()}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 12 } } },
+                        y: {
+                            grid: { color: GRID_LINE },
+                            ticks: { font: { size: 11 }, callback: v => '₪' + v.toLocaleString() }
+                        }
+                    }
+                }
+            });
+        }
+    }
+})();
+</script>
+{% endblock %}

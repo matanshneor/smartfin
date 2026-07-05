@@ -1,4 +1,5 @@
 import os
+import uuid
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -51,7 +52,7 @@ def sign_in(email: str, password: str):
         return None, str(e)
 
 
-def sign_up(email: str, password: str, name: str):
+def sign_up(email: str, password: str, name: str, phone: str = None):
     """Returns (user_data, error_message)."""
     client = get_client()
     if not client:
@@ -60,8 +61,20 @@ def sign_up(email: str, password: str, name: str):
         response = client.auth.sign_up({
             "email": email,
             "password": password,
-            "options": {"data": {"name": name}}
+            "options": {"data": {"name": name, "phone": phone}}
         })
+        return response, None
+    except Exception as e:
+        return None, str(e)
+
+
+def refresh_session(refresh_token: str):
+    """Exchanges a refresh token for a fresh access token. Returns (response, error)."""
+    client = get_client()
+    if not client:
+        return None, "Database not configured"
+    try:
+        response = client.auth.refresh_session(refresh_token)
         return response, None
     except Exception as e:
         return None, str(e)
@@ -90,8 +103,84 @@ def get_profile(user_id: str):
         return None
 
 
+def update_profile(user_id: str, name: str, phone: str = None, workplace: str = None):
+    """Updates the current user's display name, phone and workplace."""
+    client = get_client()
+    if not client:
+        return False
+    try:
+        client.table("profiles").update(
+            {"name": name, "phone": phone, "workplace": workplace}
+        ).eq("id", user_id).execute()
+        return True
+    except Exception as e:
+        print(f"[ERROR] update_profile: {e}")
+        return False
+
+
+def update_password(access_token: str, new_password: str):
+    """Updates the currently authenticated user's password.
+
+    Calls the GoTrue REST API directly with the user's own access token
+    rather than relying on the shared module-level client's implicit
+    "current session" (which isn't safe to use for password changes in a
+    multi-user server process — see set_auth_token for the same reasoning).
+    """
+    import httpx
+
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    if not url or not key:
+        return False, "Database not configured"
+    try:
+        response = httpx.put(
+            f"{url}/auth/v1/user",
+            headers={
+                "apikey": key,
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+            },
+            json={"password": new_password},
+            timeout=10,
+        )
+        if response.status_code >= 400:
+            return False, response.json().get("msg", "עדכון הסיסמה נכשל")
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+
+def send_reset_email(email: str, redirect_to: str):
+    """שולח מייל איפוס סיסמה עם קישור שחוזר לעמוד reset-password שלנו."""
+    import httpx
+
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    if not url or not key:
+        return False, "Database not configured"
+    try:
+        response = httpx.post(
+            f"{url}/auth/v1/recover",
+            params={"redirect_to": redirect_to},
+            headers={"apikey": key, "Content-Type": "application/json"},
+            json={"email": email},
+            timeout=10,
+        )
+        if response.status_code >= 400:
+            return False, response.json().get("msg", "שליחת המייל נכשלה")
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+
 def ensure_family(user_id: str, family_name: str = "המשפחה שלי"):
-    """Creates a family and links the user to it if they don't have one."""
+    """Creates a family and links the user to it if they don't have one.
+
+    The families SELECT policy only allows reading a family once the user's
+    profile already points to it — a chicken-and-egg problem for a brand-new
+    family. We generate the id client-side and insert with returning="minimal"
+    so Postgres never re-checks the SELECT policy on the just-inserted row.
+    """
     client = get_client()
     if not client:
         return None
@@ -100,8 +189,10 @@ def ensure_family(user_id: str, family_name: str = "המשפחה שלי"):
         if profile and profile.get("family_id"):
             return profile["family_id"]
 
-        family = client.table("families").insert({"name": family_name}).execute()
-        family_id = family.data[0]["id"]
+        family_id = str(uuid.uuid4())
+        client.table("families").insert(
+            {"id": family_id, "name": family_name}, returning="minimal"
+        ).execute()
 
         client.table("profiles").update({"family_id": family_id}).eq("id", user_id).execute()
         return family_id
@@ -131,7 +222,9 @@ def get_monthly_summary(family_id: str, year: int, month: int) -> dict:
             if t in summary:
                 summary[t] += float(row["amount"])
 
-        summary["balance"] = summary["income"] - summary["expense"]
+        summary["balance"]   = summary["income"] - summary["expense"]
+        # יתרת עו"ש: מה שנשאר בחשבון אחרי הוצאות והפרשות לחיסכון
+        summary["remaining"] = summary["income"] - summary["expense"] - summary["savings"]
         total = summary["income"] or 1
         summary["expense_pct"] = round((summary["expense"] / total) * 100)
         return summary
@@ -147,7 +240,7 @@ def get_recent_transactions(family_id: str, limit: int = 5) -> list:
         return []
     try:
         result = client.table("transactions") \
-            .select("*, categories(name, icon), profiles(name)") \
+            .select("*, categories(name, icon), profiles(name, workplace)") \
             .eq("family_id", family_id) \
             .order("date", desc=True) \
             .order("created_at", desc=True) \
@@ -166,7 +259,7 @@ def get_month_transactions(family_id: str, year: int, month: int) -> list:
         return []
     try:
         result = client.table("transactions") \
-            .select("*, categories(name, icon), profiles(name)") \
+            .select("*, categories(name, icon), profiles(name, workplace)") \
             .eq("family_id", family_id) \
             .gte("date", f"{year}-{month:02d}-01") \
             .lt("date", _next_month(year, month)) \
@@ -190,6 +283,129 @@ def add_transaction(data: dict):
         return None, str(e)
 
 
+def get_recurring_transactions(family_id: str) -> list:
+    """Returns all recurring transactions for the family."""
+    client = get_client()
+    if not client:
+        return []
+    try:
+        result = client.table("transactions") \
+            .select("*, categories(name, icon), profiles(name, workplace)") \
+            .eq("family_id", family_id) \
+            .eq("is_recurring", True) \
+            .order("amount", desc=True) \
+            .execute()
+        return _format_transactions(result.data)
+    except Exception as e:
+        print(f"[ERROR] get_recurring_transactions: {e}")
+        return []
+
+
+def materialize_recurring(family_id: str) -> int:
+    """משלים מופעים חסרים של עסקאות קבועות עד היום (כולל רטרואקטיבית).
+
+    כל עסקה שסומנה כקבועה משמשת "תבנית": המופע הראשון הוא העסקה עצמה,
+    ומכאן נוצרים מופעים רגילים (is_recurring=False) לפי התדירות, עד היום
+    או עד תאריך הסיום. הפונקציה אידמפוטנטית — מופע שכבר קיים לא ייווצר שוב.
+    Returns the number of newly created instances."""
+    from datetime import date
+
+    client = get_client()
+    if not client or not family_id:
+        return 0
+    try:
+        templates = client.table("transactions").select("*") \
+            .eq("family_id", family_id).eq("is_recurring", True).execute().data
+        if not templates:
+            return 0
+
+        existing = client.table("transactions") \
+            .select("recurring_parent_id, date") \
+            .eq("family_id", family_id) \
+            .not_.is_("recurring_parent_id", "null") \
+            .execute().data
+        have = {(r["recurring_parent_id"], str(r["date"])) for r in existing}
+
+        today = date.today()
+        new_rows = []
+        for t in templates:
+            for d in _recurring_occurrences(t, today):
+                if (t["id"], d.isoformat()) in have:
+                    continue
+                new_rows.append({
+                    "amount":              t["amount"],
+                    "type":                t["type"],
+                    "date":                d.isoformat(),
+                    "description":         t.get("description") or "",
+                    "category_id":         t.get("category_id"),
+                    "user_id":             t.get("user_id"),
+                    "family_id":           family_id,
+                    "is_recurring":        False,
+                    "recurring_parent_id": t["id"],
+                })
+
+        if new_rows:
+            try:
+                client.table("transactions").insert(new_rows, returning="minimal").execute()
+            except Exception as e:
+                # כשל ייחודיות = בקשה מקבילה כבר יצרה את המופעים — תקין
+                if "uq_tx_recurring_occurrence" in str(e) or "23505" in str(e):
+                    return 0
+                raise
+        return len(new_rows)
+    except Exception as e:
+        print(f"[ERROR] materialize_recurring: {e}")
+        return 0
+
+
+def _recurring_occurrences(template: dict, until) -> list:
+    """תאריכי המופעים של תבנית קבועה — אחרי תאריך המקור, עד 'until' (כולל)."""
+    from datetime import date, timedelta
+
+    start = date.fromisoformat(str(template["date"]))
+    end_raw = template.get("recurring_end_date")
+    end = date.fromisoformat(str(end_raw)) if end_raw else None
+    freq = template.get("recurring_frequency") or "monthly_1"
+
+    out = []
+    if freq in ("monthly_1", "monthly_15"):
+        day = 1 if freq == "monthly_1" else 15
+        # מתחילים מחודש ההתחלה עצמו — מופע באותו חודש אחרי תאריך ההתחלה נחשב
+        y, m = start.year, start.month
+        while len(out) < 500:
+            d = date(y, m, day)
+            if d > until or (end and d > end):
+                break
+            if d > start:
+                out.append(d)
+            m += 1
+            if m > 12:
+                m, y = 1, y + 1
+    else:
+        step = timedelta(days=7 if freq == "weekly" else 14)
+        d = start + step
+        while d <= until and (not end or d <= end) and len(out) < 500:
+            out.append(d)
+            d += step
+    return out
+
+
+def update_transaction(transaction_id: str, family_id: str, data: dict):
+    """Updates a transaction. Returns (updated_row, error)."""
+    client = get_client()
+    if not client:
+        return None, "Database not configured"
+    try:
+        result = client.table("transactions") \
+            .update(data) \
+            .eq("id", transaction_id) \
+            .eq("family_id", family_id) \
+            .execute()
+        return (result.data[0] if result.data else None), None
+    except Exception as e:
+        return None, str(e)
+
+
 def delete_transaction(transaction_id: str, family_id: str):
     client = get_client()
     if not client:
@@ -207,6 +423,41 @@ def delete_transaction(transaction_id: str, family_id: str):
 
 # ─── Categories ───────────────────────────────────────────────────────────────
 
+def family_needs_onboarding(family_id: str) -> bool:
+    """A family with zero categories hasn't finished onboarding yet
+    (brand-new families start with none — see /onboarding)."""
+    client = get_client()
+    if not client or not family_id:
+        return False
+    try:
+        result = client.table("categories").select("id", count="exact") \
+            .eq("family_id", family_id).limit(1).execute()
+        return (result.count or 0) == 0
+    except Exception as e:
+        print(f"[ERROR] family_needs_onboarding: {e}")
+        return False
+
+
+def bulk_add_categories(family_id: str, categories: list) -> tuple:
+    """Inserts multiple categories at once for a family's onboarding.
+    `categories` is a list of {name, icon, type} dicts. Returns (count, error)."""
+    client = get_client()
+    if not client:
+        return 0, "Database not configured"
+    rows = [
+        {"name": c["name"], "icon": c.get("icon", "📦"), "type": c["type"],
+         "family_id": family_id, "is_custom": True}
+        for c in categories if c.get("name") and c.get("type") in ("income", "expense", "savings")
+    ]
+    if not rows:
+        return 0, "No valid categories provided"
+    try:
+        result = client.table("categories").insert(rows).execute()
+        return len(result.data or []), None
+    except Exception as e:
+        return 0, str(e)
+
+
 def get_categories(family_id: str = None) -> list:
     client = get_client()
     if not client:
@@ -220,6 +471,23 @@ def get_categories(family_id: str = None) -> list:
         return query.order("name").execute().data
     except Exception:
         return []
+
+
+def update_category(cat_id: str, family_id: str, name: str, icon: str):
+    """Updates a family category's name and icon."""
+    client = get_client()
+    if not client:
+        return False
+    try:
+        client.table("categories") \
+            .update({"name": name, "icon": icon}) \
+            .eq("id", cat_id) \
+            .eq("family_id", family_id) \
+            .execute()
+        return True
+    except Exception as e:
+        print(f"[ERROR] update_category: {e}")
+        return False
 
 
 def add_custom_category(family_id: str, name: str, icon: str, type_: str):
@@ -238,28 +506,35 @@ def add_custom_category(family_id: str, name: str, icon: str, type_: str):
 
 # ─── Analytics ───────────────────────────────────────────────────────────────
 
-def get_category_breakdown(family_id: str, year: int, month: int) -> list:
-    """Returns expense totals grouped by category for a given month."""
+def get_category_breakdown(family_id: str, year: int, month: int, type_: str = "expense") -> list:
+    """Returns totals grouped by category for a given month and transaction type
+    (expense / income / savings). Every category of the type is always included —
+    months without data for a category show 0."""
     client = get_client()
     if not client:
         return []
     try:
+        # All categories of this type appear every month, even with no data
+        totals: dict = {}
+        icons: dict  = {}
+        for cat in get_categories(family_id):
+            if cat.get("type") == type_:
+                totals[cat["name"]] = 0.0
+                icons[cat["name"]]  = cat.get("icon", "📦")
+
         result = client.table("transactions") \
             .select("amount, categories(name, icon)") \
             .eq("family_id", family_id) \
-            .eq("type", "expense") \
+            .eq("type", type_) \
             .gte("date", f"{year}-{month:02d}-01") \
             .lt("date", _next_month(year, month)) \
             .execute()
 
-        totals: dict = {}
-        icons: dict  = {}
         for row in result.data:
             cat  = row.get("categories") or {}
             name = cat.get("name", "אחר")
-            icon = cat.get("icon", "📦")
             totals[name] = totals.get(name, 0) + float(row["amount"])
-            icons[name]  = icon
+            icons.setdefault(name, cat.get("icon", "📦"))
 
         grand_total = sum(totals.values()) or 1
         breakdown = [
@@ -269,7 +544,8 @@ def get_category_breakdown(family_id: str, year: int, month: int) -> list:
                 "total": round(total, 2),
                 "pct":  round((total / grand_total) * 100),
             }
-            for name, total in sorted(totals.items(), key=lambda x: x[1], reverse=True)
+            # פעילות קודם (לפי גובה), אפסים בסוף לפי א"ב
+            for name, total in sorted(totals.items(), key=lambda x: (-x[1], x[0]))
         ]
         return breakdown
     except Exception as e:
@@ -330,27 +606,98 @@ def get_monthly_trend(family_id: str, num_months: int = 6) -> list:
         return []
 
 
+def get_anomalies(family_id: str, year: int, month: int, summary: dict) -> list:
+    """Flags unusual data for the month:
+    - expense categories running 50%+ above their 3-previous-months average (min ₪300 gap)
+    - expenses exceeding income
+    - negative checking-account balance (עו"ש)
+    Returns a list of {"severity": "warning"|"danger", "text": str}."""
+    alerts = []
+
+    if summary.get("income", 0) > 0 and summary.get("expense", 0) > summary["income"]:
+        alerts.append({
+            "severity": "danger",
+            "text": f'ההוצאות החודש (₪{summary["expense"]:,.0f}) גבוהות מההכנסות (₪{summary["income"]:,.0f})',
+        })
+    elif summary.get("remaining", 0) < 0:
+        alerts.append({
+            "severity": "danger",
+            "text": "יתרת העו\"ש החודש שלילית — ההוצאות והחיסכון עברו את ההכנסות",
+        })
+
+    client = get_client()
+    if not client:
+        return alerts
+    try:
+        # Current + previous 3 months of expenses, grouped by category
+        start_month, start_year = month - 3, year
+        while start_month <= 0:
+            start_month += 12
+            start_year  -= 1
+
+        result = client.table("transactions") \
+            .select("amount, date, categories(name, icon)") \
+            .eq("family_id", family_id) \
+            .eq("type", "expense") \
+            .gte("date", f"{start_year}-{start_month:02d}-01") \
+            .lt("date", _next_month(year, month)) \
+            .execute()
+
+        current_key = f"{year}-{month:02d}"
+        current: dict = {}
+        history: dict = {}   # category -> {month_key -> total}
+        icons: dict = {}
+
+        for row in result.data:
+            cat  = row.get("categories") or {}
+            name = cat.get("name", "אחר")
+            icons[name] = cat.get("icon", "📦")
+            key  = row["date"][:7]
+            if key == current_key:
+                current[name] = current.get(name, 0) + float(row["amount"])
+            else:
+                history.setdefault(name, {})
+                history[name][key] = history[name].get(key, 0) + float(row["amount"])
+
+        for name, total in current.items():
+            past = history.get(name)
+            if not past:
+                continue
+            avg = sum(past.values()) / len(past)
+            if avg > 0 and total > avg * 1.5 and total - avg >= 300:
+                pct = round((total / avg - 1) * 100)
+                alerts.append({
+                    "severity": "warning",
+                    "text": f'{icons[name]} ההוצאה על {name} (₪{total:,.0f}) גבוהה ב-{pct}% מהממוצע (₪{avg:,.0f})',
+                })
+    except Exception as e:
+        print(f"[ERROR] get_anomalies: {e}")
+
+    return alerts
+
+
 def get_member_breakdown(family_id: str, year: int, month: int) -> list:
-    """Returns expense/income totals per family member for a given month."""
+    """Returns expense totals per family member for a given month.
+    רק הוצאות משויכות לבני משפחה — הכנסות וחיסכון הם משפחתיים."""
     client = get_client()
     if not client:
         return []
     try:
         result = client.table("transactions") \
-            .select("type, amount, profiles(name)") \
+            .select("amount, profiles(name, workplace)") \
             .eq("family_id", family_id) \
+            .eq("type", "expense") \
             .gte("date", f"{year}-{month:02d}-01") \
             .lt("date", _next_month(year, month)) \
             .execute()
 
         members: dict = {}
         for row in result.data:
-            name = (row.get("profiles") or {}).get("name", "לא ידוע")
+            profile = row.get("profiles")
+            name = first_name(profile["name"]) if profile and profile.get("name") else "משותף"
             if name not in members:
-                members[name] = {"name": name, "expense": 0.0, "income": 0.0, "savings": 0.0}
-            t = row["type"]
-            if t in members[name]:
-                members[name][t] += float(row["amount"])
+                members[name] = {"name": name, "expense": 0.0}
+            members[name]["expense"] += float(row["amount"])
 
         return sorted(members.values(), key=lambda x: x["expense"], reverse=True)
     except Exception as e:
@@ -366,7 +713,11 @@ def get_family_members(family_id: str) -> list:
         return []
     try:
         result = client.rpc("get_family_members", {"p_family_id": family_id}).execute()
-        return result.data or []
+        members = result.data or []
+        for m in members:
+            m["full_name"] = m.get("name", "")
+            m["name"] = first_name(m.get("name", ""))
+        return members
     except Exception as e:
         print(f"[ERROR] get_family_members: {e}")
         return []
@@ -429,8 +780,14 @@ def get_months_archive(family_id: str) -> list:
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
+def first_name(full_name: str) -> str:
+    """Family members share a surname, so the UI shows first names only."""
+    return (full_name or "").strip().split(" ")[0]
+
+
 def _empty_summary():
-    return {"income": 0.0, "expense": 0.0, "savings": 0.0, "balance": 0.0, "expense_pct": 0}
+    return {"income": 0.0, "expense": 0.0, "savings": 0.0, "balance": 0.0,
+            "remaining": 0.0, "expense_pct": 0}
 
 
 def _next_month(year: int, month: int) -> str:
@@ -445,14 +802,22 @@ def _format_transactions(rows: list) -> list:
         cat = row.get("categories") or {}
         user = row.get("profiles") or {}
         out.append({
-            "id":            row["id"],
-            "type":          row["type"],
-            "amount":        float(row["amount"]),
-            "description":   row.get("description") or "",
-            "date":          str(row["date"]),
-            "category_name": cat.get("name", "אחר"),
-            "category_icon": cat.get("icon", "📦"),
-            "user_name":     user.get("name", ""),
-            "is_recurring":  row.get("is_recurring", False),
+            "id":                   row["id"],
+            "type":                 row["type"],
+            "amount":               float(row["amount"]),
+            "description":          row.get("description") or "",
+            "date":                 str(row["date"]),
+            "category_id":          row.get("category_id"),
+            "category_name":        cat.get("name", "אחר"),
+            "category_icon":        cat.get("icon", "📦"),
+            "user_id":              row.get("user_id"),
+            "user_name":            first_name(user.get("name", "")) if row.get("user_id") else "משותף",
+            # מיקום העבודה מוצג רק על הכנסות משכורת
+            "workplace":            (user.get("workplace")
+                                     if row["type"] == "income" and "משכורת" in cat.get("name", "")
+                                     else None),
+            "is_recurring":         row.get("is_recurring", False),
+            "recurring_frequency":  row.get("recurring_frequency"),
+            "recurring_end_date":   str(row["recurring_end_date"]) if row.get("recurring_end_date") else None,
         })
     return out

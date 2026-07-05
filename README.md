@@ -1,88 +1,69 @@
 # SmartFin – ניהול תקציב משפחתי
 
-אפליקציית ניהול תקציב משפחתי Mobile-First בנויה על Flask + Supabase.
+אפליקציית ווב (Mobile-First PWA) לניהול תקציב משפחתי משותף. עברית, RTL.
+עיצוב "Gold Fintech": Hero כהה, כרטיסים לבנים צפים, מבטא זהב.
 
-## סטאק טכנולוגי
-- **Frontend:** HTML5, Custom CSS3 (Mobile-First)
-- **Backend:** Python + Flask
-- **Database & Auth:** Supabase (PostgreSQL + Auth)
-- **Deployment:** Railway
+## סטאק
+
+- **Backend:** Python + Flask (תבניות Jinja2)
+- **Database & Auth:** Supabase (PostgreSQL + GoTrue, RLS מלא)
+- **Frontend:** HTML + CSS מותאם + Vanilla JS + Chart.js
+- **Deployment:** Railway (מוכן, טרם נפרס)
 
 ## מבנה הפרויקט
 
 ```
 SmartFin/
-├── backend/              # Python – Flask + Supabase
-│   ├── app.py            # Routes + auth
-│   ├── supabase_config.py
-│   ├── schema.sql
-│   ├── schema_functions.sql
-│   └── supabase/migrations/
-├── frontend/             # HTML + CSS + JS
-│   ├── templates/        # Jinja2 templates
-│   └── static/           # CSS, icons, PWA assets
-├── Procfile
-├── requirements.txt
-└── runtime.txt
+├── backend/
+│   ├── app.py                  # כל ה-routes וה-API
+│   ├── supabase_config.py      # שכבת ה-DB: שאילתות, אימות, מנוע עסקאות קבועות
+│   └── supabase/migrations/    # מקור האמת של סכמת מסד הנתונים
+├── frontend/
+│   ├── templates/              # base, index, month, months, settings,
+│   │                           # login, onboarding, reset_password, error
+│   └── static/                 # style.css, sw.js, manifest.json, icons
+├── docs/SPEC.md                # מסמך האפיון המלא
+├── Procfile / runtime.txt      # הגדרות Railway
+└── requirements.txt
 ```
+
+## פיצ'רים
+
+- **4 עמודים:** בית (יתרת עו"ש + הוספה מהירה) · החודש (גרפים, פירוטים והתראות חריגה) · השוואה בין חודשים · הגדרות (אקורדיון)
+- **עסקאות:** הוצאה / הכנסה / חיסכון, עם עריכה ומחיקה מכל מקום
+- **שיוך לבן משפחה:** הוצאות והכנסות משויכות (מתן/אור/משותפת) עם תגים צבעוניים; חיסכון תמיד משפחתי
+- **עסקאות קבועות:** מנוע שמשלים מופעים אוטומטית — רטרואקטיבית וקדימה
+- **התראות חריגה:** קטגוריה שחורגת 50%+ מממוצע 3 חודשים
+- **משפחות:** קוד הזמנה, אונבורדינג לקביעת קטגוריות למשפחה חדשה
+- **חשבון:** עריכת פרטים (שם, טלפון, מיקום עבודה), שינוי סיסמה, שכחתי סיסמה במייל
+- **זכור אותי:** סשן 90 יום עם רענון טוקן אוטומטי
 
 ## הרצה מקומית
 
 ```bash
-# 1. התקנת dependencies
 pip install -r requirements.txt
-
-# 2. הגדרת .env
-cp .env.example .env
-# ערוך את .env עם ה-credentials שלך
-
-# 3. הרצת האפליקציה
-FLASK_APP=backend.app flask run
+cp .env.example .env        # ומלא את מפתחות Supabase
+flask --app backend.app run --port 8080
 ```
 
-## הגדרת Supabase
-
-ה-schema כבר דחוף לפרויקט `smartfin-family-budget`.
-
-לפרויקט חדש:
-```bash
-supabase link --project-ref <REF>
-supabase db push
-```
-
-### משתני סביבה נדרשים
+### משתני סביבה
 
 | משתנה | תיאור |
 |-------|-------|
 | `SUPABASE_URL` | `https://<ref>.supabase.co` |
-| `SUPABASE_KEY` | anon public key מ-Supabase Dashboard |
-| `SECRET_KEY` | מחרוזת אקראית לסשן Flask |
-| `FLASK_ENV` | `development` / `production` |
+| `SUPABASE_KEY` | anon public key |
+| `SECRET_KEY`   | מחרוזת אקראית לסשן Flask |
+
+## מסד נתונים
+
+הסכמה מנוהלת במלואה ב-`backend/supabase/migrations/`. לפרויקט Supabase חדש:
+
+```bash
+cd backend && supabase link --project-ref <REF> && supabase db push
+```
 
 ## פריסה ל-Railway
 
-1. Push קוד ל-GitHub
-2. צור פרויקט ב-Railway ← **Deploy from GitHub repo**
-3. הוסף משתני סביבה:
-   - `SUPABASE_URL`, `SUPABASE_KEY`, `SECRET_KEY`
-   - `FLASK_ENV=production`
-4. Railway מזהה את `Procfile` אוטומטית ומריץ:
-   ```
-   gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
-   ```
-
-
-## פיצ'רים
-
-- ✅ Auth (הרשמה / התחברות) עם Supabase
-- ✅ ניהול משפחות + קוד הזמנה
-- ✅ הוספת עסקאות (הוצאה / הכנסה / חיסכון)
-- ✅ עסקאות חוזרות (חודשי, שבועי)
-- ✅ סריקת קבלה מדומה עם אנימציה
-- ✅ דשבורד חודשי עם סיכומים
-- ✅ ניווט בין חודשים
-- ✅ ארכיון חודשים היסטורי
-- ✅ גרפים: עוגה (קטגוריות) + עמודות (מגמה) + פירוט לפי חבר
-- ✅ ניהול קטגוריות מותאמות
-- ✅ PWA (Add to Home Screen)
-- ✅ Railway-ready
+1. Push ל-GitHub → Railway → Deploy from GitHub repo
+2. משתני סביבה: `SUPABASE_URL`, `SUPABASE_KEY`, `SECRET_KEY`
+3. **חשוב:** לעדכן ב-Supabase Auth את `SITE_URL` ו-`URI_ALLOW_LIST` לדומיין החדש (בשביל קישורי איפוס סיסמה)

@@ -1,10 +1,6 @@
--- =============================================
--- SmartFin – SQL Functions
--- Run this AFTER schema.sql in Supabase SQL Editor
--- =============================================
-
--- Returns a monthly archive summary for a given family,
--- sorted from newest month to oldest.
+-- הועבר מ-schema_functions.sql (שנמחק) — כדי שכל הגדרות מסד הנתונים
+-- יחיו במקום אחד: תיקיית המיגרציות.
+-- מחזירה סיכום חודשי (הכנסות/הוצאות/חיסכון/יתרה) לכל חודשי הפעילות של משפחה.
 CREATE OR REPLACE FUNCTION get_months_archive(p_family_id UUID)
 RETURNS TABLE (
     year     INT,
