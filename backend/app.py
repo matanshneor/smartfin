@@ -1,9 +1,10 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from dotenv import load_dotenv
 from functools import wraps
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import os
+import time
 from . import supabase_config as db
 
 load_dotenv()
@@ -16,6 +17,8 @@ app = Flask(
     static_url_path='/static',
 )
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-production")
+# "זכור אותי": the session cookie survives browser restarts until the user logs out
+app.permanent_session_lifetime = timedelta(days=90)
 
 
 # ─── Auth helpers ─────────────────────────────────────────────────────────────
@@ -23,8 +26,25 @@ app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-production")
 @app.before_request
 def inject_auth():
     token = session.get("access_token")
-    if token:
-        db.set_auth_token(token)
+    if not token:
+        return
+
+    # Supabase JWTs expire after ~1 hour; refresh ahead of expiry so a
+    # long-lived Flask session keeps working without re-login.
+    expires_at = session.get("token_expires_at") or 0
+    if session.get("refresh_token") and time.time() > expires_at - 120:
+        response, err = db.refresh_session(session["refresh_token"])
+        if not err and response and response.session:
+            token = response.session.access_token
+            session["access_token"]     = token
+            session["refresh_token"]    = response.session.refresh_token
+            session["token_expires_at"] = response.session.expires_at
+        elif err:
+            # Refresh token revoked/expired — force a clean re-login
+            session.clear()
+            return
+
+    db.set_auth_token(token)
 
 
 def login_required(f):
@@ -43,6 +63,15 @@ def get_current_user():
         "family_id":      session.get("family_id"),
         "avatar_initial": session.get("avatar_initial", "מ"),
     }
+
+
+def _member_colors(family_id):
+    """צבע קבוע לכל בן משפחה לפי סדר ההצטרפות (0=זהב, 1=ירקרק, 2=סגול, 3=כחול).
+    משמש לתגי השם הצבעוניים על עסקאות."""
+    if not family_id:
+        return {}
+    members = db.get_family_members(family_id)
+    return {m["id"]: i % 4 for i, m in enumerate(members)}
 
 
 # ─── Auth routes ──────────────────────────────────────────────────────────────
@@ -66,10 +95,13 @@ def login():
             db.set_auth_token(response.session.access_token)
             profile = db.get_profile(user.id)
 
-            session["user_id"]        = user.id
-            session["user_email"]     = user.email
-            session["access_token"]   = response.session.access_token
-            session["user_name"]      = profile.get("name", "משתמש") if profile else "משתמש"
+            session.permanent = True  # stay signed in until explicit logout
+            session["user_id"]          = user.id
+            session["user_email"]       = user.email
+            session["access_token"]     = response.session.access_token
+            session["refresh_token"]    = response.session.refresh_token
+            session["token_expires_at"] = response.session.expires_at
+            session["user_name"]      = db.first_name(profile.get("name", "משתמש")) if profile else "משתמש"
             session["avatar_initial"] = (profile.get("avatar_initial") or "מ") if profile else "מ"
             session["family_id"]      = profile.get("family_id") if profile else None
 
@@ -80,7 +112,7 @@ def login():
 
             return redirect(url_for("dashboard"))
 
-    return render_template("login.html", error=error)
+    return render_template("login.html", error=error, active_tab="login")
 
 
 @app.route("/signup", methods=["GET", "POST"])
@@ -90,28 +122,33 @@ def signup():
 
     error = None
     if request.method == "POST":
-        name     = request.form.get("name", "").strip()
-        email    = request.form.get("email", "").strip()
-        password = request.form.get("password", "")
+        first_name       = request.form.get("first_name", "").strip()
+        last_name        = request.form.get("last_name", "").strip()
+        email            = request.form.get("email", "").strip()
+        phone            = request.form.get("phone", "").strip()
+        password         = request.form.get("password", "")
+        password_confirm = request.form.get("password_confirm", "")
+        invite_code      = request.form.get("invite_code", "").strip()
 
-        invite_code = request.form.get("invite_code", "").strip()
-
-        if not name or not email or not password:
+        if not first_name or not last_name or not email or not password:
             error = "נא למלא את כל השדות"
         elif len(password) < 6:
             error = "הסיסמה חייבת להכיל לפחות 6 תווים"
+        elif password != password_confirm:
+            error = "הסיסמאות אינן תואמות"
         else:
-            response, err = db.sign_up(email, password, name)
+            name = f"{first_name} {last_name}"
+            response, err = db.sign_up(email, password, name, phone or None)
             if err:
                 error = "הרשמה נכשלה – האימייל כבר קיים"
             else:
                 # If invite code provided, join that family after signup
                 if invite_code and response and response.user:
                     db.join_family_by_code(response.user.id, invite_code)
-                return render_template("login.html",
+                return render_template("login.html", active_tab="login",
                     success="נרשמת בהצלחה! כעת ניתן להתחבר.")
 
-    return render_template("signup.html", error=error)
+    return render_template("login.html", error=error, active_tab="signup")
 
 
 @app.route("/logout")
@@ -120,22 +157,133 @@ def logout():
     return redirect(url_for("login"))
 
 
-# ─── Main pages ───────────────────────────────────────────────────────────────
+@app.route("/api/auth/forgot", methods=["POST"])
+def forgot_password():
+    body  = request.get_json(silent=True) or {}
+    email = (body.get("email") or "").strip()
+    if not email:
+        return jsonify({"error": "נא להזין אימייל"}), 422
+
+    redirect_to = request.host_url.rstrip("/") + url_for("reset_password")
+    db.send_reset_email(email, redirect_to)
+    # תמיד מחזירים הצלחה — לא חושפים אילו אימיילים רשומים
+    return jsonify({"status": "ok"})
+
+
+@app.route("/reset-password")
+def reset_password():
+    """עמוד קביעת סיסמה חדשה — הטוקן מגיע ב-fragment של הקישור מהמייל."""
+    return render_template("reset_password.html")
+
+
+@app.route("/api/auth/reset", methods=["POST"])
+def reset_password_submit():
+    body             = request.get_json(silent=True) or {}
+    access_token     = body.get("access_token", "")
+    password         = body.get("password", "")
+    password_confirm = body.get("password_confirm", "")
+
+    if not access_token:
+        return jsonify({"error": "קישור האיפוס לא תקין או שפג תוקפו"}), 400
+    if len(password) < 6:
+        return jsonify({"error": "הסיסמה חייבת להכיל לפחות 6 תווים"}), 422
+    if password != password_confirm:
+        return jsonify({"error": "הסיסמאות אינן תואמות"}), 422
+
+    ok, err = db.update_password(access_token, password)
+    if not ok:
+        return jsonify({"error": err or "האיפוס נכשל — נסה לבקש קישור חדש"}), 400
+    return jsonify({"status": "ok"})
+
+
+# ─── Onboarding (משפחה חדשה בלבד) ──────────────────────────────────────────────
+
+# סט התחלתי גנרי — כל משפחה חדשה יכולה לערוך, למחוק או להוסיף עליו.
+# (לא כולל שמות ספציפיים כמו "קופת גמל אנליסט" שרלוונטיים רק למשפחה מסוימת)
+_DEFAULT_CATEGORIES = [
+    {"name": "משכורת",          "icon": "💼", "type": "income"},
+    {"name": "הכנסה נוספת",     "icon": "💵", "type": "income"},
+    {"name": "דיור ושכירות",    "icon": "🏠", "type": "expense"},
+    {"name": "חשבונות",         "icon": "💡", "type": "expense"},
+    {"name": "סופר ומזון",      "icon": "🛒", "type": "expense"},
+    {"name": "רכב ותחבורה",     "icon": "🚗", "type": "expense"},
+    {"name": "ביגוד וטיפוח",    "icon": "👗", "type": "expense"},
+    {"name": "בריאות",          "icon": "🏥", "type": "expense"},
+    {"name": "מסעדות ובילויים", "icon": "🍽️", "type": "expense"},
+    {"name": "חופשות",          "icon": "✈️", "type": "expense"},
+    {"name": "שופינג",          "icon": "🛍️", "type": "expense"},
+    {"name": "מנויים",          "icon": "📺", "type": "expense"},
+    {"name": "אחר",             "icon": "📦", "type": "expense"},
+    {"name": "חיסכון כללי",     "icon": "💰", "type": "savings"},
+    {"name": "קרן השתלמות",     "icon": "🏦", "type": "savings"},
+    {"name": "פיקדון בנקאי",    "icon": "📈", "type": "savings"},
+]
+
+
+@app.route("/onboarding")
+@login_required
+def onboarding():
+    user = get_current_user()
+    if not user["family_id"] or not db.family_needs_onboarding(user["family_id"]):
+        return redirect(url_for("dashboard"))
+
+    family = db.get_family(user["family_id"])
+    return render_template(
+        "onboarding.html",
+        user=user,
+        family=family,
+        default_categories=_DEFAULT_CATEGORIES,
+    )
+
+
+@app.route("/api/onboarding/complete", methods=["POST"])
+@login_required
+def onboarding_complete():
+    user = get_current_user()
+    if not user["family_id"]:
+        return jsonify({"error": "No family linked to account"}), 400
+    if not db.family_needs_onboarding(user["family_id"]):
+        return jsonify({"error": "Onboarding already completed"}), 400
+
+    body = request.get_json(silent=True) or {}
+    family_name = (body.get("family_name") or "").strip()
+    categories  = body.get("categories") or []
+
+    if not categories:
+        return jsonify({"error": "נא לבחור לפחות קטגוריה אחת"}), 422
+
+    if family_name:
+        db.update_family_name(user["family_id"], family_name)
+
+    count, err = db.bulk_add_categories(user["family_id"], categories)
+    if err:
+        return jsonify({"error": err}), 500
+
+    return jsonify({"status": "ok", "categories_created": count})
+
+
+# ─── Main pages (4 עמודים: בית · החודש · השוואה · הגדרות) ────────────────────
 
 @app.route("/")
 @login_required
 def dashboard():
+    """דף הבית: מבט מהיר על החודש הנוכחי + הוספת עסקה."""
     user      = get_current_user()
     now       = datetime.now()
-    year      = request.args.get("year",  now.year,  type=int)
-    month     = request.args.get("month", now.month, type=int)
     family_id = user["family_id"]
 
-    summary      = db.get_monthly_summary(family_id, year, month) if family_id else db._empty_summary()
+    if family_id and db.family_needs_onboarding(family_id):
+        return redirect(url_for("onboarding"))
+
+    # השלמת מופעים של עסקאות קבועות — פעם ביום לכל משתמש
+    today_str = now.strftime("%Y-%m-%d")
+    if family_id and session.get("recurring_synced") != today_str:
+        db.materialize_recurring(family_id)
+        session["recurring_synced"] = today_str
+
+    summary      = db.get_monthly_summary(family_id, now.year, now.month) if family_id else db._empty_summary()
     transactions = db.get_recent_transactions(family_id) if family_id else []
     categories   = db.get_categories(family_id)
-
-    month_label = _month_label(year, month)
 
     return render_template(
         "index.html",
@@ -144,52 +292,74 @@ def dashboard():
         summary=summary,
         transactions=transactions,
         categories=categories,
-        month_label=month_label,
-        year=year,
-        month=month,
-        now_year=now.year,
-        now_month=now.month,
+        member_colors=_member_colors(family_id),
+        month_label=_month_label(now.year, now.month),
+        year=now.year,
+        month=now.month,
     )
 
 
-@app.route("/months")
+@app.route("/month")
 @login_required
-def months():
-    user      = get_current_user()
-    archive   = db.get_months_archive(user["family_id"]) if user["family_id"] else []
-    return render_template("months.html", active_page="months", user=user,
-                           archive=archive, _HEBREW_MONTHS=_HEBREW_MONTHS)
-
-
-@app.route("/stats")
-@login_required
-def stats():
+def month_view():
+    """עמוד החודש: כל הנתונים והגרפים של חודש נתון (ברירת מחדל: הנוכחי)."""
     user      = get_current_user()
     now       = datetime.now()
     year      = request.args.get("year",  now.year,  type=int)
     month     = request.args.get("month", now.month, type=int)
     family_id = user["family_id"]
 
-    category_breakdown = db.get_category_breakdown(family_id, year, month) if family_id else []
-    monthly_trend      = db.get_monthly_trend(family_id, num_months=6)     if family_id else []
-    member_breakdown   = db.get_member_breakdown(family_id, year, month)   if family_id else []
-    summary            = db.get_monthly_summary(family_id, year, month)    if family_id else db._empty_summary()
+    summary = db.get_monthly_summary(family_id, year, month) if family_id else db._empty_summary()
+
+    expense_breakdown = db.get_category_breakdown(family_id, year, month, "expense") if family_id else []
+    income_breakdown  = db.get_category_breakdown(family_id, year, month, "income")  if family_id else []
+    savings_breakdown = db.get_category_breakdown(family_id, year, month, "savings") if family_id else []
+    member_breakdown  = db.get_member_breakdown(family_id, year, month)              if family_id else []
+    anomalies         = db.get_anomalies(family_id, year, month, summary)            if family_id else []
+    month_transactions = db.get_month_transactions(family_id, year, month)           if family_id else []
 
     return render_template(
-        "stats.html",
-        active_page="stats",
+        "month.html",
+        active_page="month",
         user=user,
         summary=summary,
-        category_breakdown=category_breakdown,
-        monthly_trend=monthly_trend,
+        expense_breakdown=expense_breakdown,
+        income_breakdown=income_breakdown,
+        savings_breakdown=savings_breakdown,
         member_breakdown=member_breakdown,
+        anomalies=anomalies,
+        month_transactions=month_transactions,
+        member_colors=_member_colors(family_id),
         month_label=_month_label(year, month),
         year=year,
         month=month,
-        # JSON for Chart.js
-        trend_json=json.dumps(monthly_trend),
-        breakdown_json=json.dumps(category_breakdown),
+        is_current=(year == now.year and month == now.month),
+        summary_json=json.dumps(summary),
+        expense_json=json.dumps(expense_breakdown),
+        income_json=json.dumps(income_breakdown),
+        savings_json=json.dumps(savings_breakdown),
+        members_json=json.dumps(member_breakdown),
     )
+
+
+@app.route("/months")
+@login_required
+def months():
+    """עמוד השוואה: החודש הנוכחי מול חודשים קודמים + כניסה לכל חודש."""
+    user      = get_current_user()
+    family_id = user["family_id"]
+    archive   = db.get_months_archive(family_id)              if family_id else []
+    trend     = db.get_monthly_trend(family_id, num_months=12) if family_id else []
+    return render_template("months.html", active_page="months", user=user,
+                           archive=archive, trend_json=json.dumps(trend),
+                           _HEBREW_MONTHS=_HEBREW_MONTHS)
+
+
+@app.route("/stats")
+@login_required
+def stats():
+    """כתובת ישנה — מפנה לעמוד החודש."""
+    return redirect(url_for("month_view"))
 
 
 @app.route("/settings")
@@ -198,8 +368,20 @@ def settings():
     user       = get_current_user()
     family_id  = user["family_id"]
     categories = db.get_categories(family_id)
-    members    = db.get_family_members(family_id) if family_id else []
-    family     = db.get_family(family_id)         if family_id else {}
+    members    = db.get_family_members(family_id)       if family_id else []
+    family     = db.get_family(family_id)               if family_id else {}
+    recurring  = db.get_recurring_transactions(family_id) if family_id else []
+    profile   = db.get_profile(user["id"]) or {}
+    full_name = profile.get("name", user["name"])
+    name_parts = full_name.split(" ", 1)
+    account = {
+        "full_name":  full_name,
+        "first_name": name_parts[0] if name_parts else "",
+        "last_name":  name_parts[1] if len(name_parts) > 1 else "",
+        "email":      session.get("user_email", ""),
+        "phone":      profile.get("phone") or "",
+        "workplace":  profile.get("workplace") or "",
+    }
     return render_template(
         "settings.html",
         active_page="settings",
@@ -207,10 +389,83 @@ def settings():
         categories=categories,
         members=members,
         family=family,
+        recurring=recurring,
+        account=account,
     )
 
 
+@app.route("/api/profile", methods=["PUT"])
+@login_required
+def update_profile():
+    user = get_current_user()
+    body = request.get_json(silent=True) or {}
+    first_name = (body.get("first_name") or "").strip()
+    last_name  = (body.get("last_name") or "").strip()
+    phone      = (body.get("phone") or "").strip()
+    workplace  = (body.get("workplace") or "").strip()
+
+    if not first_name or not last_name:
+        return jsonify({"error": "נא למלא שם פרטי ושם משפחה"}), 422
+
+    full_name = f"{first_name} {last_name}"
+    ok = db.update_profile(user["id"], full_name, phone or None, workplace or None)
+    if not ok:
+        return jsonify({"error": "עדכון הפרטים נכשל"}), 500
+
+    # השם הפרטי מוצג בכל האתר (ברכות, עסקאות וכו') — לעדכן גם בסשן
+    session["user_name"] = db.first_name(full_name)
+    return jsonify({"status": "ok", "full_name": full_name, "first_name": first_name,
+                    "last_name": last_name, "phone": phone, "workplace": workplace})
+
+
+@app.route("/api/profile/password", methods=["PUT"])
+@login_required
+def update_password():
+    body             = request.get_json(silent=True) or {}
+    current_password = body.get("current_password", "")
+    password         = body.get("password", "")
+    password_confirm = body.get("password_confirm", "")
+
+    if not current_password:
+        return jsonify({"error": "נא להזין את הסיסמה הנוכחית"}), 422
+    if len(password) < 6:
+        return jsonify({"error": "הסיסמה החדשה חייבת להכיל לפחות 6 תווים"}), 422
+    if password != password_confirm:
+        return jsonify({"error": "הסיסמאות החדשות אינן תואמות"}), 422
+
+    # מוודאים שהסיסמה הנוכחית נכונה לפני שמאפשרים להחליף אותה
+    _, err = db.sign_in(session.get("user_email", ""), current_password)
+    if err:
+        return jsonify({"error": "הסיסמה הנוכחית שגויה"}), 403
+
+    ok, err = db.update_password(session.get("access_token"), password)
+    if not ok:
+        return jsonify({"error": err or "עדכון הסיסמה נכשל"}), 500
+    return jsonify({"status": "ok"})
+
+
+def _resolve_owner(body: dict, user: dict, tx_type: str):
+    """מי הבעלים של העסקה. הוצאות והכנסות ניתנות לשיוך לבן משפחה;
+    חיסכון הוא תמיד משפחתי (NULL) — חוסכים ביחד.
+    ערכים: uuid של בן משפחה, "shared" = משותפת (NULL), ובלי owner — המחובר."""
+    if tx_type == "savings":
+        return None
+    owner = body.get("owner")
+    if owner == "shared":
+        return None
+    if owner:
+        return owner
+    return user["id"]
+
+
 # ─── API: Transactions ────────────────────────────────────────────────────────
+
+@app.route("/api/family/members", methods=["GET"])
+@login_required
+def family_members():
+    user = get_current_user()
+    members = db.get_family_members(user["family_id"]) if user["family_id"] else []
+    return jsonify([{"id": m["id"], "name": m["name"]} for m in members])
 
 @app.route("/api/transactions", methods=["POST"])
 @login_required
@@ -235,7 +490,7 @@ def add_transaction():
         "date":        body["date"],
         "description": body.get("description", ""),
         "category_id": body.get("category_id"),
-        "user_id":     user["id"],
+        "user_id":     _resolve_owner(body, user, tx_type),
         "family_id":   user["family_id"],
         "is_recurring":         bool(body.get("is_recurring", False)),
         "recurring_frequency":  body.get("recurring_frequency"),
@@ -246,7 +501,50 @@ def add_transaction():
     if err:
         return jsonify({"error": err}), 500
 
+    # עסקה קבועה חדשה (גם רטרואקטיבית) — משלימים מיד את כל המופעים עד היום
+    if payload["is_recurring"]:
+        db.materialize_recurring(user["family_id"])
+
     return jsonify({"status": "ok", "transaction": result}), 201
+
+
+@app.route("/api/transactions/<tx_id>", methods=["PUT"])
+@login_required
+def update_transaction(tx_id):
+    user = get_current_user()
+    if not user["family_id"]:
+        return jsonify({"error": "No family linked to account"}), 400
+
+    body = request.get_json(silent=True) or {}
+
+    required = ("amount", "type", "date")
+    if not all(body.get(k) for k in required):
+        return jsonify({"error": "Missing required fields: amount, type, date"}), 422
+
+    tx_type = body["type"]
+    if tx_type not in ("expense", "income", "savings"):
+        return jsonify({"error": "type must be expense, income, or savings"}), 422
+
+    payload = {
+        "amount":      float(body["amount"]),
+        "type":        tx_type,
+        "date":        body["date"],
+        "description": body.get("description", ""),
+        "category_id": body.get("category_id"),
+        "user_id":     _resolve_owner(body, user, tx_type),
+        "is_recurring":         bool(body.get("is_recurring", False)),
+        "recurring_frequency":  body.get("recurring_frequency"),
+        "recurring_end_date":   body.get("recurring_end_date") or None,
+    }
+
+    result, err = db.update_transaction(tx_id, user["family_id"], payload)
+    if err:
+        return jsonify({"error": err}), 500
+
+    if payload["is_recurring"]:
+        db.materialize_recurring(user["family_id"])
+
+    return jsonify({"status": "ok", "transaction": result})
 
 
 @app.route("/api/transactions/<tx_id>", methods=["DELETE"])
@@ -281,6 +579,21 @@ def add_category():
     if err:
         return jsonify({"error": err}), 500
     return jsonify(cat), 201
+
+
+@app.route("/api/categories/<cat_id>", methods=["PUT"])
+@login_required
+def update_category(cat_id):
+    user = get_current_user()
+    body = request.get_json(silent=True) or {}
+    name = (body.get("name") or "").strip()
+    icon = (body.get("icon") or "").strip() or "📦"
+    if not name:
+        return jsonify({"error": "נא להזין שם קטגוריה"}), 422
+    ok = db.update_category(cat_id, user["family_id"], name, icon)
+    if not ok:
+        return jsonify({"error": "עדכון נכשל"}), 500
+    return jsonify({"status": "ok", "name": name, "icon": icon})
 
 
 # ─── API: Categories delete ───────────────────────────────────────────────────
@@ -318,6 +631,13 @@ def update_family():
     return jsonify({"status": "ok" if ok else "error"})
 
 
+@app.route("/sw.js")
+def service_worker():
+    """מגיש את ה-Service Worker מהשורש כדי שה-scope שלו יכסה את כל האתר
+    (רישום מ-/static/ נחסם על ידי הדפדפן)."""
+    return app.send_static_file("sw.js")
+
+
 # ─── Health check (Railway) ───────────────────────────────────────────────────
 
 @app.route("/health")
@@ -352,4 +672,5 @@ def _month_label(year: int, month: int) -> str:
 
 if __name__ == "__main__":
     debug = os.environ.get("FLASK_ENV") == "development"
-    app.run(debug=debug)
+    port  = int(os.environ.get("PORT", 8080))
+    app.run(debug=debug, port=port)

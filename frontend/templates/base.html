@@ -3,18 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#4648d4">
+    <meta name="theme-color" content="#141007">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>{% block title %}SmartFin{% endblock %}</title>
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <link rel="icon" href="{{ url_for('static', filename='icons/icon-192.svg') }}" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.svg') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-180.png') }}">
+    <meta name="description" content="SmartFin – ניהול תקציב משפחתי חכם: מעקב הוצאות, הכנסות וחיסכון">
     <meta name="apple-mobile-web-app-title" content="SmartFin">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+
+    <div class="page-hero">
+        <div class="hero-inner">
+            {% block hero %}{% endblock %}
+        </div>
+    </div>
 
     <main class="main-content">
         {% block content %}{% endblock %}
@@ -23,32 +33,31 @@
     <nav class="bottom-nav" role="navigation" aria-label="ניווט ראשי">
         <a href="{{ url_for('dashboard') }}"
            class="nav-item {% if active_page == 'dashboard' %}active{% endif %}"
-           aria-label="דשבורד">
+           aria-label="דף הבית">
             <span class="nav-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-                    <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
                 </svg>
             </span>
             <span class="nav-label">בית</span>
         </a>
 
-        <a href="{{ url_for('months') }}"
-           class="nav-item {% if active_page == 'months' %}active{% endif %}"
-           aria-label="ארכיון חודשים">
+        <a href="{{ url_for('month_view') }}"
+           class="nav-item {% if active_page == 'month' %}active{% endif %}"
+           aria-label="נתוני החודש">
             <span class="nav-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                    <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-                    <line x1="3" y1="10" x2="21" y2="10"/>
+                    <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+                    <path d="M22 12A10 10 0 0 0 12 2v10z"/>
                 </svg>
             </span>
-            <span class="nav-label">חודשים</span>
+            <span class="nav-label">החודש</span>
         </a>
 
-        <a href="{{ url_for('stats') }}"
-           class="nav-item {% if active_page == 'stats' %}active{% endif %}"
-           aria-label="גרפים ואנליטיקה">
+        <a href="{{ url_for('months') }}"
+           class="nav-item {% if active_page == 'months' %}active{% endif %}"
+           aria-label="השוואה בין חודשים">
             <span class="nav-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="18" y1="20" x2="18" y2="10"/>
@@ -56,7 +65,7 @@
                     <line x1="6" y1="20" x2="6" y2="14"/>
                 </svg>
             </span>
-            <span class="nav-label">גרפים</span>
+            <span class="nav-label">השוואה</span>
         </a>
 
         <a href="{{ url_for('settings') }}"
@@ -72,15 +81,592 @@
         </a>
     </nav>
 
+    <!-- FAB Button — global, appears on every page -->
+    <button class="fab" id="fabBtn" aria-label="הוסף עסקה חדשה" title="הוסף עסקה">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+    </button>
+
+    <!-- ===== Transaction Modal (add + edit) — global ===== -->
+    <div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-sheet">
+
+            <div class="modal-handle"></div>
+
+            <!-- Scan Receipt Button -->
+            <button class="scan-btn" id="scanBtn" type="button">
+                <span class="scan-btn-icon">📷</span>
+                <span class="scan-btn-text">סרוק קבלה</span>
+            </button>
+
+            <!-- Scanner Animation -->
+            <div class="scanner-wrapper" id="scannerWrapper" aria-hidden="true">
+                <div class="scanner-frame">
+                    <div class="scanner-line"></div>
+                    <div class="scanner-corner tl"></div>
+                    <div class="scanner-corner tr"></div>
+                    <div class="scanner-corner bl"></div>
+                    <div class="scanner-corner br"></div>
+                </div>
+                <p class="scanner-label">סורק קבלה…</p>
+            </div>
+
+            <!-- Header: title + toggle -->
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">הוספת עסקה</h2>
+                <div class="type-toggle type-toggle-3" role="group" aria-label="סוג עסקה">
+                    <button class="toggle-btn active" id="toggleExpense" data-type="expense">הוצאה</button>
+                    <button class="toggle-btn" id="toggleIncome" data-type="income">הכנסה</button>
+                    <button class="toggle-btn" id="toggleSavings" data-type="savings">חיסכון</button>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <form class="tx-form" id="txForm" novalidate>
+
+                <div class="form-group">
+                    <label class="form-label" for="txAmount">סכום (₪)</label>
+                    <div class="amount-input-wrap">
+                        <span class="amount-currency">₪</span>
+                        <input class="form-input amount-input" type="number" id="txAmount"
+                               placeholder="0.00" min="0" step="0.01" inputmode="decimal" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">קטגוריה</label>
+                    <div class="category-grid" id="categoryGrid" role="radiogroup" aria-label="בחר קטגוריה"></div>
+                    <input type="hidden" id="txCategory" name="category_id">
+                </div>
+
+                <div class="form-group" id="ownerGroup">
+                    <label class="form-label" id="ownerLabel">של מי ההוצאה?</label>
+                    <div class="owner-toggle" id="ownerToggle" role="radiogroup" aria-label="בחר בן משפחה"></div>
+                    <input type="hidden" id="txOwner" name="owner">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="txDescription">תיאור קצר</label>
+                    <input class="form-input" type="text" id="txDescription"
+                           placeholder="למשל: שופרסל, משכורת…" maxlength="80">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="txDate">תאריך</label>
+                    <input class="form-input" type="date" id="txDate" required>
+                </div>
+
+                <div class="form-group recurring-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="txRecurring" class="checkbox-input">
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">עסקה חוזרת (קבועה)</span>
+                    </label>
+
+                    <div class="recurring-fields" id="recurringFields">
+                        <div class="form-group">
+                            <label class="form-label" for="txFrequency">תדירות</label>
+                            <select class="form-input" id="txFrequency">
+                                <option value="monthly_1">כל 1 לחודש</option>
+                                <option value="monthly_15">כל 15 לחודש</option>
+                                <option value="weekly">כל שבוע</option>
+                                <option value="biweekly">כל שבועיים</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="txEndDate">תאריך סיום (אופציונלי)</label>
+                            <input class="form-input" type="date" id="txEndDate">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-error" id="formError" role="alert"></div>
+
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    <span id="submitLabel">הוסף הוצאה</span>
+                </button>
+
+                <button type="button" class="delete-tx-btn" id="deleteTxBtn">מחק עסקה</button>
+
+            </form>
+
+            <button class="modal-close" id="modalClose" aria-label="סגור">✕</button>
+        </div>
+    </div>
+
+    <!-- Toast: הודעת משוב קטנה -->
+    <div class="toast" id="appToast" role="status" aria-live="polite"></div>
+
+    <!-- דיאלוג אישור מעוצב (מחליף את confirm של הדפדפן) -->
+    <div class="confirm-overlay" id="confirmOverlay" role="alertdialog" aria-modal="true">
+        <div class="confirm-card">
+            <p class="confirm-title" id="confirmTitle"></p>
+            <p class="confirm-message" id="confirmMessage"></p>
+            <div class="confirm-actions">
+                <button type="button" class="btn-sm confirm-yes" id="confirmYes">מחק</button>
+                <button type="button" class="btn-sm btn-ghost" id="confirmNo">ביטול</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ── מערכת משוב גלובלית: toast + דיאלוג אישור ──
+    (function () {
+        const toast = document.getElementById('appToast');
+        let toastTimer = null;
+
+        window.showToast = function (msg, type) {
+            toast.textContent = msg;
+            toast.classList.toggle('error', type === 'error');
+            toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 2600);
+        };
+
+        // הודעה שנשמרה לפני רענון דף — מוצגת עכשיו
+        const pending = sessionStorage.getItem('sf_toast');
+        if (pending) {
+            sessionStorage.removeItem('sf_toast');
+            setTimeout(function () { window.showToast(pending); }, 350);
+        }
+
+        const overlay = document.getElementById('confirmOverlay');
+        const titleEl = document.getElementById('confirmTitle');
+        const msgEl   = document.getElementById('confirmMessage');
+        const yesBtn  = document.getElementById('confirmYes');
+        const noBtn   = document.getElementById('confirmNo');
+        let resolver  = null;
+
+        function closeConfirm(result) {
+            overlay.classList.remove('open');
+            if (resolver) { resolver(result); resolver = null; }
+        }
+
+        window.appConfirm = function (opts) {
+            titleEl.textContent  = opts.title || 'לאשר את הפעולה?';
+            msgEl.textContent    = opts.message || '';
+            yesBtn.textContent   = opts.confirmText || 'מחק';
+            overlay.classList.add('open');
+            return new Promise(function (resolve) { resolver = resolve; });
+        };
+
+        yesBtn.addEventListener('click', function () { closeConfirm(true); });
+        noBtn.addEventListener('click', function () { closeConfirm(false); });
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) closeConfirm(false);
+        });
+    })();
+    </script>
+
     {% block scripts %}{% endblock %}
 
     <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
-            navigator.serviceWorker.register('/static/sw.js', { scope: '/' })
+            navigator.serviceWorker.register('/sw.js')
                 .catch(function () {});
         });
     }
+    </script>
+
+    <!-- ── אנימציות גלובליות: count-up, כניסה מדורגת, פסי התקדמות ── -->
+    <script>
+    (function () {
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        // 1. Count-up: אלמנטים עם data-countup נספרים מ-0 לערך הסופי
+        function runCountUps() {
+            document.querySelectorAll('[data-countup]').forEach(function (el) {
+                const target = parseFloat(el.dataset.countup);
+                if (isNaN(target)) return;
+                const prefix = el.dataset.prefix || '';
+                const format = v => prefix + '₪' + Math.round(v).toLocaleString();
+
+                if (reduceMotion || target === 0) {
+                    el.textContent = format(target);
+                    return;
+                }
+
+                const duration = 1000;
+                const start = performance.now();
+                function tick(now) {
+                    const p = Math.min((now - start) / duration, 1);
+                    const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+                    el.textContent = format(target * eased);
+                    if (p < 1) requestAnimationFrame(tick);
+                }
+                requestAnimationFrame(tick);
+            });
+        }
+
+        // 2. Stagger: כרטיסים נכנסים בהדרגה
+        function runStagger() {
+            if (reduceMotion) return;
+            const items = document.querySelectorAll(
+                '.summary-card, .chart-card, .transaction-item, .settings-card, ' +
+                '.month-item, .alert-card, .kpi-card, .empty-state'
+            );
+            items.forEach(function (el, i) {
+                el.style.animationDelay = Math.min(i * 55, 600) + 'ms';
+                el.classList.add('anim-rise');
+            });
+        }
+
+        // 3. פסי התקדמות נמתחים מ-0 לרוחב הסופי
+        function runBars() {
+            if (reduceMotion) return;
+            document.querySelectorAll('.balance-bar-fill, .breakdown-fill, .month-bar-fill')
+                .forEach(function (bar) {
+                    const finalWidth = bar.style.width;
+                    if (!finalWidth) return;
+                    bar.style.width = '0%';
+                    requestAnimationFrame(function () {
+                        requestAnimationFrame(function () {
+                            bar.style.width = finalWidth;
+                        });
+                    });
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            runCountUps();
+            runStagger();
+            runBars();
+        });
+    })();
+    </script>
+
+    <script>
+    (function () {
+        const overlay      = document.getElementById('modalOverlay');
+        const fabBtn       = document.getElementById('fabBtn');
+        const closeBtn     = document.getElementById('modalClose');
+        const scanBtn      = document.getElementById('scanBtn');
+        const scanWrapper  = document.getElementById('scannerWrapper');
+        const toggleExp    = document.getElementById('toggleExpense');
+        const toggleInc    = document.getElementById('toggleIncome');
+        const toggleSav    = document.getElementById('toggleSavings');
+        const submitLabel  = document.getElementById('submitLabel');
+        const submitBtn    = document.getElementById('submitBtn');
+        const deleteBtn    = document.getElementById('deleteTxBtn');
+        const categoryGrid = document.getElementById('categoryGrid');
+        const ownerGroup   = document.getElementById('ownerGroup');
+        const ownerToggle  = document.getElementById('ownerToggle');
+        const txOwner      = document.getElementById('txOwner');
+        const recurringCb  = document.getElementById('txRecurring');
+        const recurFields  = document.getElementById('recurringFields');
+        const txDate       = document.getElementById('txDate');
+        const txEndDate    = document.getElementById('txEndDate');
+        const txFrequency  = document.getElementById('txFrequency');
+        const txForm       = document.getElementById('txForm');
+        const txCategory   = document.getElementById('txCategory');
+        const txAmount     = document.getElementById('txAmount');
+        const txDescription = document.getElementById('txDescription');
+        const modalTitle   = document.getElementById('modalTitle');
+
+        const TYPE_LABELS = { expense: 'הוסף הוצאה', income: 'הוסף הכנסה', savings: 'הוסף חיסכון' };
+
+        let currentType   = 'expense';
+        let editId        = null;   // null = adding a new transaction, otherwise editing this id
+        let categoriesCache = null;
+        let membersCache  = null;
+
+        function todayStr() { return new Date().toISOString().split('T')[0]; }
+
+        function loadCategories() {
+            if (categoriesCache) return Promise.resolve(categoriesCache);
+            return fetch('/api/categories')
+                .then(r => r.json())
+                .then(function (cats) { categoriesCache = cats; return cats; });
+        }
+
+        function loadMembers() {
+            if (membersCache) return Promise.resolve(membersCache);
+            return fetch('/api/family/members')
+                .then(r => r.json())
+                .then(function (members) { membersCache = members; return members; });
+        }
+
+        function buildCategoryGrid(type, selectedId) {
+            const cats = (categoriesCache || []).filter(c => c.type === type);
+            categoryGrid.innerHTML = '';
+            cats.forEach(function (cat) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'cat-btn';
+                btn.dataset.value = cat.id;
+                btn.dataset.type = cat.type;
+                btn.innerHTML = `<span class="cat-emoji">${cat.icon}</span><span>${cat.name}</span>`;
+                categoryGrid.appendChild(btn);
+            });
+            const toSelect = (selectedId && categoryGrid.querySelector(`[data-value="${selectedId}"]`))
+                || categoryGrid.querySelector('.cat-btn');
+            if (toSelect) {
+                toSelect.classList.add('active');
+                txCategory.value = toSelect.dataset.value;
+            }
+        }
+
+        function buildOwnerToggle(selectedOwner) {
+            const options = (membersCache || []).map(m => ({ value: m.id, label: m.name }));
+            options.push({ value: 'shared', label: 'משותפת' });
+            ownerToggle.innerHTML = '';
+            options.forEach(function (opt) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'owner-btn';
+                btn.dataset.value = opt.value;
+                btn.textContent = opt.label;
+                ownerToggle.appendChild(btn);
+            });
+            const toSelect = (selectedOwner && ownerToggle.querySelector(`[data-value="${selectedOwner}"]`))
+                || ownerToggle.querySelector('.owner-btn');
+            if (toSelect) {
+                toSelect.classList.add('active');
+                txOwner.value = toSelect.dataset.value;
+            }
+        }
+
+        function openModal() {
+            overlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+            txAmount.focus();
+        }
+
+        function closeModal() {
+            overlay.classList.remove('open');
+            document.body.style.overflow = '';
+            scanWrapper.classList.remove('active');
+            scanBtn.disabled = false;
+            scanBtn.querySelector('.scan-btn-text').textContent = 'סרוק קבלה';
+            formError.textContent = '';
+        }
+
+        function resetForm() {
+            txForm.reset();
+            txDate.value = todayStr();
+            formError.textContent = '';
+            recurFields.classList.remove('visible');
+        }
+
+        function updateSubmitLabel() {
+            if (editId) { submitLabel.textContent = 'עדכן עסקה'; return; }
+            submitLabel.textContent = TYPE_LABELS[currentType];
+        }
+
+        function setType(type, selectedCategoryId, selectedOwner) {
+            currentType = type;
+            toggleExp.classList.toggle('active', type === 'expense');
+            toggleInc.classList.toggle('active', type === 'income');
+            toggleSav.classList.toggle('active', type === 'savings');
+            document.querySelector('.modal-sheet').classList.toggle('income-mode', type === 'income');
+            buildCategoryGrid(type, selectedCategoryId);
+            // בחירת בן משפחה — בהוצאות ובהכנסות; חיסכון הוא תמיד משפחתי
+            const hasOwner = type !== 'savings';
+            ownerGroup.style.display = hasOwner ? '' : 'none';
+            if (hasOwner) {
+                document.getElementById('ownerLabel').textContent =
+                    type === 'income' ? 'של מי ההכנסה?' : 'של מי ההוצאה?';
+                buildOwnerToggle(selectedOwner);
+            }
+            updateSubmitLabel();
+        }
+
+        function openAddModal() {
+            editId = null;
+            modalTitle.textContent = 'הוספת עסקה';
+            deleteBtn.style.display = 'none';
+            scanBtn.style.display = '';
+            resetForm();
+            Promise.all([loadCategories(), loadMembers()]).then(function () {
+                setType('expense');
+                openModal();
+            });
+        }
+
+        function openEditModal(tx) {
+            editId = tx.id;
+            modalTitle.textContent = 'עריכת עסקה';
+            deleteBtn.style.display = 'block';
+            scanBtn.style.display = 'none';
+            formError.textContent = '';
+
+            Promise.all([loadCategories(), loadMembers()]).then(function () {
+                setType(tx.type, tx.categoryId, tx.userId || 'shared');
+
+                txAmount.value       = tx.amount;
+                txDescription.value  = tx.description || '';
+                txDate.value         = tx.date;
+                recurringCb.checked  = tx.isRecurring;
+                recurFields.classList.toggle('visible', tx.isRecurring);
+                if (tx.isRecurring) {
+                    txFrequency.value = tx.recurringFrequency || 'monthly_1';
+                    txEndDate.value   = tx.recurringEndDate || '';
+                }
+                updateSubmitLabel();
+                openModal();
+            });
+        }
+
+        fabBtn.addEventListener('click', openAddModal);
+        closeBtn.addEventListener('click', closeModal);
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) closeModal();
+        });
+
+        toggleExp.addEventListener('click', () => setType('expense'));
+        toggleInc.addEventListener('click', () => setType('income'));
+        toggleSav.addEventListener('click', () => setType('savings'));
+
+        // Owner toggle
+        ownerToggle.addEventListener('click', function (e) {
+            const btn = e.target.closest('.owner-btn');
+            if (!btn) return;
+            ownerToggle.querySelectorAll('.owner-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            txOwner.value = btn.dataset.value;
+        });
+
+        // Category grid
+        categoryGrid.addEventListener('click', function (e) {
+            const btn = e.target.closest('.cat-btn');
+            if (!btn) return;
+            categoryGrid.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            txCategory.value = btn.dataset.value;
+        });
+
+        // Recurring
+        recurringCb.addEventListener('change', function () {
+            recurFields.classList.toggle('visible', this.checked);
+        });
+
+        // Scan simulation (add mode only)
+        scanBtn.addEventListener('click', function () {
+            scanWrapper.classList.add('active');
+            scanBtn.disabled = true;
+            scanBtn.querySelector('.scan-btn-text').textContent = 'סורק…';
+
+            setTimeout(function () {
+                txAmount.value = '184.90';
+                txDescription.value = 'מגה בעיר';
+
+                const foodBtn = categoryGrid.querySelector('[data-type="expense"]');
+                if (foodBtn) {
+                    categoryGrid.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+                    foodBtn.classList.add('active');
+                    txCategory.value = foodBtn.dataset.value;
+                }
+                setType('expense');
+
+                scanWrapper.classList.remove('active');
+                scanBtn.disabled = false;
+                scanBtn.querySelector('.scan-btn-text').textContent = '✓ סריקה הושלמה';
+            }, 2200);
+        });
+
+        // Submit → POST (add) or PUT (edit)
+        txForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            formError.textContent = '';
+
+            const amount = parseFloat(txAmount.value);
+            if (!amount || amount <= 0) {
+                formError.textContent = 'נא להזין סכום תקין';
+                txAmount.focus();
+                return;
+            }
+
+            const payload = {
+                amount:              amount,
+                type:                currentType,
+                category_id:         txCategory.value || null,
+                description:         txDescription.value.trim(),
+                date:                txDate.value,
+                owner:               currentType !== 'savings' ? (txOwner.value || null) : null,
+                is_recurring:        recurringCb.checked,
+                recurring_frequency: recurringCb.checked ? txFrequency.value : null,
+                recurring_end_date:  recurringCb.checked ? (txEndDate.value || null) : null,
+            };
+
+            submitBtn.disabled = true;
+            submitLabel.textContent = 'שומר…';
+
+            const url    = editId ? ('/api/transactions/' + editId) : '/api/transactions';
+            const method = editId ? 'PUT' : 'POST';
+
+            fetch(url, {
+                method:  method,
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(payload),
+            })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (data.error) {
+                    formError.textContent = data.error;
+                    submitBtn.disabled = false;
+                    updateSubmitLabel();
+                } else {
+                    sessionStorage.setItem('sf_toast', editId ? 'העסקה עודכנה ✓' : 'העסקה נוספה ✓');
+                    closeModal();
+                    window.location.reload();
+                }
+            })
+            .catch(function () {
+                formError.textContent = 'שגיאת רשת – נסה שוב';
+                submitBtn.disabled = false;
+                updateSubmitLabel();
+            });
+        });
+
+        // Delete (edit mode only)
+        deleteBtn.addEventListener('click', function () {
+            if (!editId) return;
+            window.appConfirm({
+                title: 'למחוק את העסקה?',
+                message: 'הפעולה תסיר את העסקה מכל הדוחות והגרפים.',
+                confirmText: 'מחק עסקה',
+            }).then(function (ok) {
+                if (!ok) return;
+                deleteBtn.disabled = true;
+                fetch('/api/transactions/' + editId, { method: 'DELETE' })
+                    .then(r => r.json())
+                    .then(function (d) {
+                        if (d.status === 'ok') {
+                            sessionStorage.setItem('sf_toast', 'העסקה נמחקה');
+                            window.location.reload();
+                        } else {
+                            deleteBtn.disabled = false;
+                            formError.textContent = 'מחיקה נכשלה';
+                        }
+                    })
+                    .catch(function () {
+                        deleteBtn.disabled = false;
+                        formError.textContent = 'שגיאת רשת – נסה שוב';
+                    });
+            });
+        });
+
+        // ── פתיחת עריכה בלחיצה על עסקה קיימת (עמוד הבית + עמוד החודש) ──
+        document.addEventListener('click', function (e) {
+            const row = e.target.closest('.transaction-item, .cat-tx-row');
+            if (!row || !row.dataset.id) return;
+
+            openEditModal({
+                id:                  row.dataset.id,
+                amount:              row.dataset.amount,
+                type:                row.dataset.type,
+                categoryId:          row.dataset.categoryId,
+                description:         row.dataset.description,
+                date:                row.dataset.date,
+                userId:              row.dataset.userId || '',
+                isRecurring:         row.dataset.isRecurring === 'true',
+                recurringFrequency:  row.dataset.recurringFrequency,
+                recurringEndDate:    row.dataset.recurringEndDate,
+            });
+        });
+    })();
     </script>
 </body>
 </html>

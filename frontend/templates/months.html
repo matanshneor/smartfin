@@ -1,17 +1,54 @@
 {% extends "base.html" %}
 
-{% block title %}SmartFin – ארכיון חודשים{% endblock %}
+{% block title %}SmartFin – השוואה בין חודשים{% endblock %}
+
+{% block hero %}
+<div class="hero-top">
+    <div>
+        <h1 class="hero-title">השוואה בין חודשים</h1>
+        <p class="hero-subtitle">החודש הנוכחי מול החודשים הקודמים</p>
+    </div>
+</div>
+
+{% if archive %}
+<div class="hero-totals">
+    <div class="kpi-chip">
+        <p class="kpi-label">סה"כ הכנסות</p>
+        <p class="kpi-value income" data-countup="{{ (archive | sum(attribute='income') | float) | round | int }}">₪{{ "{:,.0f}".format(archive | sum(attribute='income') | float) }}</p>
+    </div>
+    <div class="kpi-chip">
+        <p class="kpi-label">סה"כ הוצאות</p>
+        <p class="kpi-value expense" data-countup="{{ (archive | sum(attribute='expense') | float) | round | int }}">₪{{ "{:,.0f}".format(archive | sum(attribute='expense') | float) }}</p>
+    </div>
+    <div class="kpi-chip">
+        <p class="kpi-label">סה"כ חיסכון</p>
+        <p class="kpi-value savings" data-countup="{{ (archive | sum(attribute='savings') | float) | round | int }}">₪{{ "{:,.0f}".format(archive | sum(attribute='savings') | float) }}</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
 
 {% block content %}
 
-<header class="page-header months-header">
-    <h1>ארכיון חודשים</h1>
-    <p class="page-subtitle">היסטוריית תקציב המשפחה</p>
-</header>
-
 {% if archive %}
 
-<!-- Year groups -->
+<!-- Comparison chart -->
+<section class="chart-card">
+    <h2 class="chart-title">הכנסות · הוצאות · חיסכון</h2>
+    <div class="line-chart-wrap">
+        <canvas id="compareChart" aria-label="השוואת הכנסות, הוצאות וחיסכון בין חודשים"></canvas>
+    </div>
+</section>
+
+<!-- Cumulative savings -->
+<section class="chart-card">
+    <h2 class="chart-title">חיסכון מצטבר</h2>
+    <div class="line-chart-wrap">
+        <canvas id="savingsChart" aria-label="גרף חיסכון מצטבר"></canvas>
+    </div>
+</section>
+
+<!-- Month list: כניסה לכל חודש -->
 {% set current_year = namespace(val=None) %}
 {% for entry in archive %}
 
@@ -28,8 +65,8 @@
     {% set is_surplus = balance >= 0 %}
 
     <li class="month-item">
-        <a href="{{ url_for('dashboard', year=entry.year, month=entry.month) }}"
-           class="month-link" aria-label="{{ entry.month }}/{{ entry.year }}">
+        <a href="{{ url_for('month_view', year=entry.year, month=entry.month) }}"
+           class="month-link" aria-label="נתוני {{ _HEBREW_MONTHS[entry.month] }} {{ entry.year }}">
 
             <!-- Status dot -->
             <div class="month-dot {% if is_surplus %}surplus{% else %}deficit{% endif %}">
@@ -53,7 +90,6 @@
                     </span>
                 </div>
 
-                <!-- Mini progress bar -->
                 {% set total = entry.income | float %}
                 {% set expense_pct = ((entry.expense | float / total * 100) | round | int) if total > 0 else 0 %}
                 <div class="month-bar-track">
@@ -64,7 +100,7 @@
                 <div class="month-stats">
                     <span class="stat income">↑ ₪{{ "{:,.0f}".format(entry.income | float) }}</span>
                     <span class="stat expense">↓ ₪{{ "{:,.0f}".format(entry.expense | float) }}</span>
-                    <span class="stat savings">💰 ₪{{ "{:,.0f}".format(entry.savings | float) }}</span>
+                    <span class="stat savings">◆ ₪{{ "{:,.0f}".format(entry.savings | float) }}</span>
                 </div>
             </div>
 
@@ -80,25 +116,6 @@
 {% endfor %}
 </ul>
 
-<!-- Summary totals -->
-<div class="archive-summary">
-    <h2 class="archive-summary-title">סיכום כולל</h2>
-    <div class="archive-totals">
-        <div class="archive-total-item income">
-            <p class="total-label">סה"כ הכנסות</p>
-            <p class="total-amount">₪{{ "{:,.0f}".format(archive | sum(attribute='income') | float) }}</p>
-        </div>
-        <div class="archive-total-item expense">
-            <p class="total-label">סה"כ הוצאות</p>
-            <p class="total-amount">₪{{ "{:,.0f}".format(archive | sum(attribute='expense') | float) }}</p>
-        </div>
-        <div class="archive-total-item savings">
-            <p class="total-label">סה"כ חיסכון</p>
-            <p class="total-amount">₪{{ "{:,.0f}".format(archive | sum(attribute='savings') | float) }}</p>
-        </div>
-    </div>
-</div>
-
 {% else %}
 
 <div class="empty-state" style="margin: 24px 16px;">
@@ -109,4 +126,140 @@
 
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+{% if archive %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+<script>
+(function () {
+    const TEXT_MUTED = '#78716C';
+    const GRID_LINE  = 'rgba(28,25,23,0.07)';
+
+    Chart.defaults.font.family = "'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    Chart.defaults.color = TEXT_MUTED;
+    Chart.defaults.animation.duration = 900;
+    Chart.defaults.animation.easing = 'easeOutQuart';
+    Chart.defaults.plugins.legend.display = false;
+    Chart.defaults.plugins.tooltip.backgroundColor = '#1C1917';
+    Chart.defaults.plugins.tooltip.titleColor = '#FAF7F0';
+    Chart.defaults.plugins.tooltip.bodyColor = '#E7E0D2';
+
+    const trendData = {{ trend_json | safe }};
+
+    // ── השוואת חודשים ──
+    if (trendData.length > 0) {
+        const last6 = trendData.slice(-6);
+        const ctx = document.getElementById('compareChart');
+        if (ctx) {
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: last6.map(d => d.month_name),
+                    datasets: [
+                        {
+                            label:           'הכנסות',
+                            data:            last6.map(d => d.income),
+                            backgroundColor: 'rgba(61,107,84,0.9)',
+                            borderRadius:    5,
+                        },
+                        {
+                            label:           'הוצאות',
+                            data:            last6.map(d => d.expense),
+                            backgroundColor: 'rgba(160,69,69,0.9)',
+                            borderRadius:    5,
+                        },
+                        {
+                            label:           'חיסכון',
+                            data:            last6.map(d => d.savings),
+                            backgroundColor: 'rgba(166,124,0,0.9)',
+                            borderRadius:    5,
+                        }
+                    ]
+                },
+                options: {
+                    responsive:          true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display:  true,
+                            position: 'bottom',
+                            labels: { boxWidth: 12, padding: 16, font: { size: 12 }, color: TEXT_MUTED }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: c => ` ${c.dataset.label}: ₪${c.parsed.y.toLocaleString()}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                        y: {
+                            grid: { color: GRID_LINE },
+                            ticks: { font: { size: 11 }, callback: v => '₪' + v.toLocaleString() }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ── חיסכון מצטבר ──
+        const ctx2 = document.getElementById('savingsChart');
+        if (ctx2) {
+            let running = 0;
+            const cumulative = trendData.map(d => {
+                running += d.savings;
+                return Math.round(running);
+            });
+
+            new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: trendData.map(d => d.month_name),
+                    datasets: [{
+                        label:            'חיסכון מצטבר',
+                        data:             cumulative,
+                        borderColor:      '#A67C00',
+                        backgroundColor:  (context) => {
+                            const { ctx, chartArea } = context.chart;
+                            if (!chartArea) return 'rgba(166,124,0,0.1)';
+                            const g = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                            g.addColorStop(0, 'rgba(166,124,0,0.22)');
+                            g.addColorStop(1, 'rgba(166,124,0,0)');
+                            return g;
+                        },
+                        fill:             true,
+                        tension:          0.35,
+                        borderWidth:      2.5,
+                        pointBackgroundColor: '#D4AF37',
+                        pointBorderColor: '#FFFFFF',
+                        pointRadius:      4,
+                        pointHoverRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive:          true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: c => ` סה"כ נחסך: ₪${c.parsed.y.toLocaleString()}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } },
+                        y: {
+                            grid: { color: GRID_LINE },
+                            ticks: { font: { size: 11 }, callback: v => '₪' + v.toLocaleString() }
+                        }
+                    }
+                }
+            });
+        }
+    }
+})();
+</script>
+{% endif %}
 {% endblock %}

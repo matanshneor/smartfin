@@ -2,46 +2,49 @@
 
 {% block title %}SmartFin – דשבורד{% endblock %}
 
-{% block content %}
+{% block hero %}
+{% set used_pct = (((summary.expense + summary.savings) / summary.income * 100) | round | int) if summary.income > 0 else 0 %}
 
-<!-- Header -->
-<header class="dashboard-header">
-    <div class="header-top">
-        <div>
-            <p class="greeting">שלום, {{ user.name }} 👋</p>
-            <h1 class="month-title">{{ month_label }}</h1>
-        </div>
-        <a href="{{ url_for('logout') }}" class="avatar-circle" title="התנתק">
-            {{ user.avatar_initial }}
-        </a>
+<div class="hero-top">
+    <div>
+        <p class="greeting">שלום, {{ user.name }}</p>
+        <h1 class="month-title">{{ month_label }}</h1>
     </div>
+    <a href="{{ url_for('logout') }}" class="avatar-circle" title="התנתק">
+        {{ user.avatar_initial }}
+    </a>
+</div>
 
-    <!-- Month navigation -->
-    {% set prev_month = month - 1 if month > 1 else 12 %}
-    {% set prev_year  = year if month > 1 else year - 1 %}
-    {% set next_month = month + 1 if month < 12 else 1 %}
-    {% set next_year  = year if month < 12 else year + 1 %}
-    {% set now_year   = now_year %}
-    {% set now_month  = now_month %}
+<section class="hero-balance" aria-label="יתרת עו&quot;ש חודשית">
+    <p class="hero-label">נשאר בעו״ש החודש</p>
+    <p class="hero-amount {% if summary.remaining < 0 %}deficit{% endif %}"
+       data-countup="{{ summary.remaining | abs | round | int }}"
+       {% if summary.remaining < 0 %}data-prefix="-"{% endif %}>
+        {% if summary.remaining < 0 %}-{% endif %}₪{{ "{:,.0f}".format(summary.remaining | abs) }}
+    </p>
+    <p class="hero-sub">מתוך ₪{{ "{:,.0f}".format(summary.income) }} הכנסות החודש</p>
 
-    <nav class="month-nav" aria-label="ניווט בין חודשים">
-        <a href="{{ url_for('dashboard', year=prev_year, month=prev_month) }}"
-           class="month-nav-btn" aria-label="חודש קודם">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="9 18 15 12 9 6"/>
-            </svg>
-        </a>
+    <div class="hero-bar">
+        <div class="balance-bar-track" role="progressbar"
+             aria-valuenow="{{ used_pct }}" aria-valuemin="0" aria-valuemax="100">
+            <div class="balance-bar-fill {% if used_pct > 90 %}danger{% endif %}"
+                 style="width: {{ [used_pct, 100] | min }}%;"></div>
+        </div>
+        <div class="balance-bar-legend">
+            <span>נוצלו {{ used_pct }}% מההכנסות</span>
+            <span>
+                {% if summary.income > 0 %}
+                    חיסכון {{ ((summary.savings / summary.income) * 100) | round | int }}%
+                {% else %}
+                    חיסכון 0%
+                {% endif %}
+            </span>
+        </div>
+    </div>
+</section>
+{% endblock %}
 
-        <span class="month-nav-label">{{ month }}/{{ year }}</span>
-
-        <a href="{{ url_for('dashboard', year=next_year, month=next_month) }}"
-           class="month-nav-btn" aria-label="חודש הבא">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="15 18 9 12 15 6"/>
-            </svg>
-        </a>
-    </nav>
-</header>
+{% block content %}
 
 <!-- Summary Cards -->
 <section class="summary-cards" aria-label="סיכום חודשי">
@@ -76,52 +79,43 @@
     </article>
 </section>
 
-<!-- Balance Bar -->
-<section class="balance-bar-section">
-    <div class="balance-bar-header">
-        <span class="balance-label">יתרה חודשית</span>
-        <span class="balance-amount {% if summary.balance >= 0 %}surplus{% else %}deficit{% endif %}">
-            {% if summary.balance >= 0 %}+{% endif %}₪{{ "{:,.0f}".format(summary.balance) }}
-        </span>
-    </div>
-    <div class="balance-bar-track" role="progressbar"
-         aria-valuenow="{{ summary.expense_pct }}" aria-valuemin="0" aria-valuemax="100">
-        <div class="balance-bar-fill {% if summary.expense_pct > 90 %}danger{% endif %}"
-             style="width: {{ [summary.expense_pct, 100] | min }}%;"></div>
-    </div>
-    <div class="balance-bar-legend">
-        <span>הוצאות {{ summary.expense_pct }}%</span>
-        <span>
-            {% if summary.income > 0 %}
-                חיסכון {{ ((summary.savings / summary.income) * 100) | round | int }}%
-            {% else %}
-                חיסכון 0%
-            {% endif %}
-        </span>
-    </div>
-</section>
-
 <!-- Recent Transactions -->
 <section class="transactions-section">
     <div class="section-header">
         <h2>עסקאות אחרונות</h2>
-        <a href="{{ url_for('months') }}" class="see-all-link">הכל</a>
+        <a href="{{ url_for('month_view') }}" class="see-all-link">הכל</a>
     </div>
 
     {% if transactions %}
     <ul class="transactions-list" aria-label="רשימת עסקאות אחרונות">
         {% for tx in transactions %}
-        <li class="transaction-item" data-id="{{ tx.id }}">
+        <li class="transaction-item" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+            data-category-id="{{ tx.category_id or '' }}" data-description="{{ tx.description }}"
+            data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}"
+            data-is-recurring="{{ tx.is_recurring | lower }}"
+            data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
+            data-recurring-end-date="{{ tx.recurring_end_date or '' }}">
             <div class="tx-icon {{ tx.type }}">
                 <span class="tx-emoji">{{ tx.category_icon }}</span>
             </div>
             <div class="tx-details">
-                <p class="tx-name">{{ tx.description or tx.category_name }}</p>
-                <p class="tx-meta">{{ tx.category_name }}{% if tx.user_name %} · {{ tx.user_name }}{% endif %}</p>
+                <p class="tx-name">{{ tx.category_name }}</p>
+                <p class="tx-meta">
+                    {%- if tx.workplace or tx.description %}{{ tx.workplace or tx.description }} · {% endif -%}
+                    {{ tx.date[8:10] }}.{{ tx.date[5:7] }}
+                </p>
             </div>
-            <p class="tx-amount {{ tx.type }}">
-                {% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ "{:,.0f}".format(tx.amount) }}
-            </p>
+            <div class="tx-side">
+                <p class="tx-amount {{ tx.type }}">
+                    {% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ "{:,.0f}".format(tx.amount) }}
+                </p>
+                {% if tx.type != 'savings' %}
+                {% set color = member_colors.get(tx.user_id) %}
+                <span class="owner-pill owner-{{ color if color is not none else 'shared' }}">
+                    {{ tx.user_name if tx.user_id else 'משותפת' }}
+                </span>
+                {% endif %}
+            </div>
         </li>
         {% endfor %}
     </ul>
@@ -134,295 +128,4 @@
     {% endif %}
 </section>
 
-<!-- FAB Button -->
-<button class="fab" id="fabBtn" aria-label="הוסף עסקה חדשה" title="הוסף עסקה">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-    </svg>
-</button>
-
-<!-- ===== Transaction Modal ===== -->
-<div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="modal-sheet">
-
-        <div class="modal-handle"></div>
-
-        <!-- Scan Receipt Button -->
-        <button class="scan-btn" id="scanBtn" type="button">
-            <span class="scan-btn-icon">📷</span>
-            <span class="scan-btn-text">סרוק קבלה</span>
-        </button>
-
-        <!-- Scanner Animation -->
-        <div class="scanner-wrapper" id="scannerWrapper" aria-hidden="true">
-            <div class="scanner-frame">
-                <div class="scanner-line"></div>
-                <div class="scanner-corner tl"></div>
-                <div class="scanner-corner tr"></div>
-                <div class="scanner-corner bl"></div>
-                <div class="scanner-corner br"></div>
-            </div>
-            <p class="scanner-label">סורק קבלה…</p>
-        </div>
-
-        <!-- Header: title + toggle -->
-        <div class="modal-header">
-            <h2 class="modal-title" id="modalTitle">הוספת עסקה</h2>
-            <div class="type-toggle" role="group" aria-label="סוג עסקה">
-                <button class="toggle-btn active" id="toggleExpense" data-type="expense">הוצאה</button>
-                <button class="toggle-btn" id="toggleIncome" data-type="income">הכנסה</button>
-            </div>
-        </div>
-
-        <!-- Form -->
-        <form class="tx-form" id="txForm" novalidate>
-
-            <div class="form-group">
-                <label class="form-label" for="txAmount">סכום (₪)</label>
-                <div class="amount-input-wrap">
-                    <span class="amount-currency">₪</span>
-                    <input class="form-input amount-input" type="number" id="txAmount"
-                           placeholder="0.00" min="0" step="0.01" inputmode="decimal" required>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">קטגוריה</label>
-                <div class="category-grid" id="categoryGrid" role="radiogroup" aria-label="בחר קטגוריה">
-                    {% for cat in categories %}
-                    <button type="button" class="cat-btn {% if loop.first %}active{% endif %}"
-                            data-value="{{ cat.id }}" data-type="{{ cat.type }}">
-                        <span class="cat-emoji">{{ cat.icon }}</span>
-                        <span>{{ cat.name }}</span>
-                    </button>
-                    {% else %}
-                    <!-- fallback if no categories loaded -->
-                    <button type="button" class="cat-btn active" data-value="" data-type="expense">
-                        <span class="cat-emoji">📦</span><span>כללי</span>
-                    </button>
-                    {% endfor %}
-                </div>
-                <input type="hidden" id="txCategory" name="category_id"
-                       value="{{ categories[0].id if categories else '' }}">
-            </div>
-
-            <div class="form-group">
-                <label class="form-label" for="txDescription">תיאור קצר</label>
-                <input class="form-input" type="text" id="txDescription"
-                       placeholder="למשל: שופרסל, משכורת…" maxlength="80">
-            </div>
-
-            <div class="form-group">
-                <label class="form-label" for="txDate">תאריך</label>
-                <input class="form-input" type="date" id="txDate" required>
-            </div>
-
-            <div class="form-group recurring-group">
-                <label class="checkbox-label">
-                    <input type="checkbox" id="txRecurring" class="checkbox-input">
-                    <span class="checkbox-custom"></span>
-                    <span class="checkbox-text">עסקה חוזרת (קבועה)</span>
-                </label>
-
-                <div class="recurring-fields" id="recurringFields">
-                    <div class="form-group">
-                        <label class="form-label" for="txFrequency">תדירות</label>
-                        <select class="form-input" id="txFrequency">
-                            <option value="monthly_1">כל 1 לחודש</option>
-                            <option value="monthly_15">כל 15 לחודש</option>
-                            <option value="weekly">כל שבוע</option>
-                            <option value="biweekly">כל שבועיים</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="txEndDate">תאריך סיום (אופציונלי)</label>
-                        <input class="form-input" type="date" id="txEndDate">
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-error" id="formError" role="alert"></div>
-
-            <button type="submit" class="submit-btn" id="submitBtn">
-                <span id="submitLabel">הוסף הוצאה</span>
-            </button>
-
-        </form>
-
-        <button class="modal-close" id="modalClose" aria-label="סגור">✕</button>
-    </div>
-</div>
-
-{% endblock %}
-
-{% block scripts %}
-<script>
-(function () {
-    const overlay      = document.getElementById('modalOverlay');
-    const fabBtn       = document.getElementById('fabBtn');
-    const closeBtn     = document.getElementById('modalClose');
-    const scanBtn      = document.getElementById('scanBtn');
-    const scanWrapper  = document.getElementById('scannerWrapper');
-    const toggleExp    = document.getElementById('toggleExpense');
-    const toggleInc    = document.getElementById('toggleIncome');
-    const submitLabel  = document.getElementById('submitLabel');
-    const categoryGrid = document.getElementById('categoryGrid');
-    const recurringCb  = document.getElementById('txRecurring');
-    const recurFields  = document.getElementById('recurringFields');
-    const txDate       = document.getElementById('txDate');
-    const txForm       = document.getElementById('txForm');
-    const txCategory   = document.getElementById('txCategory');
-    const formError    = document.getElementById('formError');
-
-    let currentType = 'expense';
-
-    txDate.value = new Date().toISOString().split('T')[0];
-
-    function openModal() {
-        overlay.classList.add('open');
-        document.body.style.overflow = 'hidden';
-        document.getElementById('txAmount').focus();
-    }
-
-    function closeModal() {
-        overlay.classList.remove('open');
-        document.body.style.overflow = '';
-        scanWrapper.classList.remove('active');
-        scanBtn.disabled = false;
-        scanBtn.querySelector('.scan-btn-text').textContent = 'סרוק קבלה';
-        formError.textContent = '';
-    }
-
-    function resetForm() {
-        txForm.reset();
-        txDate.value = new Date().toISOString().split('T')[0];
-        formError.textContent = '';
-        recurFields.classList.remove('visible');
-    }
-
-    fabBtn.addEventListener('click', function () { resetForm(); openModal(); });
-    closeBtn.addEventListener('click', closeModal);
-    overlay.addEventListener('click', function (e) {
-        if (e.target === overlay) closeModal();
-    });
-
-    // Type toggle
-    function setType(type) {
-        currentType = type;
-        const isExpense = type === 'expense';
-        toggleExp.classList.toggle('active', isExpense);
-        toggleInc.classList.toggle('active', !isExpense);
-        submitLabel.textContent = isExpense ? 'הוסף הוצאה' : 'הוסף הכנסה';
-        document.querySelector('.modal-sheet').classList.toggle('income-mode', !isExpense);
-
-        // Filter category grid by type (show matching + savings always)
-        categoryGrid.querySelectorAll('.cat-btn').forEach(function (btn) {
-            const catType = btn.dataset.type;
-            btn.style.display = (catType === type || catType === 'savings') ? '' : 'none';
-        });
-
-        // Auto-select first visible category
-        const firstVisible = categoryGrid.querySelector('.cat-btn:not([style*="none"])');
-        if (firstVisible) {
-            categoryGrid.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-            firstVisible.classList.add('active');
-            txCategory.value = firstVisible.dataset.value;
-        }
-    }
-
-    toggleExp.addEventListener('click', () => setType('expense'));
-    toggleInc.addEventListener('click', () => setType('income'));
-
-    // Category grid
-    categoryGrid.addEventListener('click', function (e) {
-        const btn = e.target.closest('.cat-btn');
-        if (!btn) return;
-        categoryGrid.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        txCategory.value = btn.dataset.value;
-    });
-
-    // Recurring
-    recurringCb.addEventListener('change', function () {
-        recurFields.classList.toggle('visible', this.checked);
-    });
-
-    // Scan simulation
-    scanBtn.addEventListener('click', function () {
-        scanWrapper.classList.add('active');
-        scanBtn.disabled = true;
-        scanBtn.querySelector('.scan-btn-text').textContent = 'סורק…';
-
-        setTimeout(function () {
-            document.getElementById('txAmount').value = '184.90';
-            document.getElementById('txDescription').value = 'מגה בעיר';
-
-            const foodBtn = categoryGrid.querySelector('[data-type="expense"]');
-            if (foodBtn) {
-                categoryGrid.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-                foodBtn.classList.add('active');
-                txCategory.value = foodBtn.dataset.value;
-            }
-            setType('expense');
-
-            scanWrapper.classList.remove('active');
-            scanBtn.disabled = false;
-            scanBtn.querySelector('.scan-btn-text').textContent = '✓ סריקה הושלמה';
-        }, 2200);
-    });
-
-    // Submit → POST to API
-    txForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        formError.textContent = '';
-
-        const amount = parseFloat(document.getElementById('txAmount').value);
-        if (!amount || amount <= 0) {
-            formError.textContent = 'נא להזין סכום תקין';
-            document.getElementById('txAmount').focus();
-            return;
-        }
-
-        const payload = {
-            amount:              amount,
-            type:                currentType,
-            category_id:         txCategory.value || null,
-            description:         document.getElementById('txDescription').value.trim(),
-            date:                txDate.value,
-            is_recurring:        recurringCb.checked,
-            recurring_frequency: recurringCb.checked ? document.getElementById('txFrequency').value : null,
-            recurring_end_date:  recurringCb.checked ? (document.getElementById('txEndDate').value || null) : null,
-        };
-
-        const submitBtn = document.getElementById('submitBtn');
-        submitBtn.disabled = true;
-        submitLabel.textContent = 'שומר…';
-
-        fetch('/api/transactions', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify(payload),
-        })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-            if (data.error) {
-                formError.textContent = data.error;
-                submitBtn.disabled = false;
-                submitLabel.textContent = currentType === 'expense' ? 'הוסף הוצאה' : 'הוסף הכנסה';
-            } else {
-                closeModal();
-                window.location.reload();
-            }
-        })
-        .catch(function () {
-            formError.textContent = 'שגיאת רשת – נסה שוב';
-            submitBtn.disabled = false;
-            submitLabel.textContent = currentType === 'expense' ? 'הוסף הוצאה' : 'הוסף הכנסה';
-        });
-    });
-
-    // Init
-    setType('expense');
-})();
-</script>
 {% endblock %}

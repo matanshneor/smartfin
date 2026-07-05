@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>SmartFin – שגיאה {{ code }}</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body class="auth-body">
@@ -11,9 +14,9 @@
         <div style="font-size: 4rem; margin-bottom: 16px;">
             {% if code == 404 %}🔍{% else %}⚠️{% endif %}
         </div>
-        <h1 style="font-size: 3rem; color: var(--color-primary); margin-bottom: 8px;">{{ code }}</h1>
-        <p style="color: var(--color-text); font-size: 1.1rem; margin-bottom: 24px;">{{ message }}</p>
-        <a href="/" class="submit-btn" style="display: inline-block; text-decoration: none;">חזור לדף הראשי</a>
+        <h1 style="font-size: 3rem; color: var(--color-gold-bright); margin-bottom: 8px;">{{ code }}</h1>
+        <p style="color: var(--hero-text); font-size: 1.1rem; margin-bottom: 24px;">{{ message }}</p>
+        <a href="/" class="submit-btn" style="display: inline-block; text-decoration: none; width: auto; padding: 14px 32px;">חזור לדף הראשי</a>
     </div>
 </body>
 </html>

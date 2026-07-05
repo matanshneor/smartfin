@@ -14,5 +14,6 @@ build/
 .idea/
 .vscode/
 *.log
-supabase/.branches/
-supabase/.temp/
+**/supabase/.branches/
+**/supabase/.temp/
+.ruff_cache/
