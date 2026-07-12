@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+
+{% block title %}SmartFin – {{ project.name }}{% endblock %}
+
+{% block hero %}
+<div class="hero-top">
+    <div>
+        <a href="{{ url_for('projects') }}" class="stats-nav-btn" aria-label="חזרה לפרויקטים" style="margin-inline-end:10px;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </a>
+        <h1 class="hero-title">
+            {{ project.name }}
+            {% if project.is_personal %}<span class="hero-badge">אישי</span>{% endif %}
+        </h1>
+        <p class="hero-subtitle">כל העסקאות של הפרויקט, מכל החודשים</p>
+    </div>
+</div>
+
+<div class="hero-totals">
+    {% if project.track_expense %}
+    <div class="kpi-chip">
+        <p class="kpi-label">סה"כ הוצאות</p>
+        <p class="kpi-value expense" data-countup="{{ project.spent | round | int }}">₪{{ "{:,.0f}".format(project.spent) }}</p>
+    </div>
+    {% endif %}
+    {% if project.track_income %}
+    <div class="kpi-chip">
+        <p class="kpi-label">סה"כ הכנסות</p>
+        <p class="kpi-value income" data-countup="{{ project.income | round | int }}">₪{{ "{:,.0f}".format(project.income) }}</p>
+    </div>
+    {% endif %}
+    {% if project.track_savings %}
+    <div class="kpi-chip">
+        <p class="kpi-label">סה"כ חיסכון</p>
+        <p class="kpi-value savings" data-countup="{{ project.savings | round | int }}">₪{{ "{:,.0f}".format(project.savings) }}</p>
+    </div>
+    {% endif %}
+    {% if project.budget_target %}
+    <div class="kpi-chip">
+        <p class="kpi-label">יעד תקציב</p>
+        <p class="kpi-value">₪{{ "{:,.0f}".format(project.budget_target) }}</p>
+    </div>
+    <div class="kpi-chip">
+        <p class="kpi-label">{% if project.remaining >= 0 %}נשאר{% else %}חריגה{% endif %}</p>
+        <p class="kpi-value {% if project.remaining >= 0 %}surplus{% else %}deficit{% endif %}">₪{{ "{:,.0f}".format(project.remaining | abs) }}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+
+{% if project.budget_target %}
+<section class="chart-card">
+    <h2 class="chart-title">התקדמות מול היעד</h2>
+    <div class="balance-bar-track">
+        <div class="balance-bar-fill {% if project.spent > project.budget_target %}danger{% endif %}"
+             style="width: {{ [((project.spent / project.budget_target) * 100) | round | int, 100] | min }}%;"></div>
+    </div>
+    <p class="wealth-bucket-hint" style="margin-top:8px;">
+        {{ ((project.spent / project.budget_target) * 100) | round | int }}% מהיעד נוצל
+    </p>
+</section>
+{% endif %}
+
+<!-- הגדרות הפרויקט: שם, יעד תקציב, סוגי מעקב -->
+<section class="chart-card">
+    <div class="cat-manage-bar">
+        <h2 class="chart-title">הגדרות הפרויקט</h2>
+        <button type="button" class="btn-sm btn-ghost" id="editProjectBtn">ערוך</button>
+    </div>
+
+    <div class="group-row" style="margin-top:14px;">
+        <div class="group-row-info">
+            <p class="group-row-label">{{ '🔒 פרויקט אישי' if project.is_personal else 'פרויקט משותף' }}</p>
+            <p class="group-row-hint">
+                {% if project.is_personal %}
+                רק אתה רואה את הפרויקט הזה. הפיכתו למשותף תפתח אותו לכל בני המשפחה, וההוצאות/הכנסות שכבר נרשמו בו יהפכו לשיוך משותף.
+                {% elif project.created_by == user.id %}
+                כל בני המשפחה רואים ועורכים את הפרויקט הזה. בתור מי שיצר אותו, אתה היחיד שיכול להחזיר אותו להיות אישי.
+                {% else %}
+                כל בני המשפחה רואים ועורכים את הפרויקט הזה.
+                {% endif %}
+            </p>
+        </div>
+        {% if project.is_personal %}
+        <button type="button" class="btn-sm btn-ghost" id="shareProjectBtn">הפוך למשותף</button>
+        {% elif project.created_by == user.id %}
+        <button type="button" class="btn-sm btn-ghost" id="unshareProjectBtn">החזר להיות אישי</button>
+        {% endif %}
+    </div>
+
+    <form class="add-cat-form" id="editProjectForm" novalidate style="display:none; margin-top:14px;">
+        <div class="form-group">
+            <label class="form-label" for="editProjectName">שם הפרויקט</label>
+            <input class="form-input" type="text" id="editProjectName" maxlength="50" value="{{ project.name }}" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="editProjectBudget">יעד תקציב (אופציונלי)</label>
+            <div class="amount-input-wrap">
+                <span class="amount-currency">₪</span>
+                <input class="form-input amount-input" type="number" id="editProjectBudget" min="0" step="1"
+                       value="{{ project.budget_target if project.budget_target is not none else '' }}">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">אילו סוגי עסקאות לעקוב?</label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="editProjectTrackExpense" class="checkbox-input" {% if project.track_expense %}checked{% endif %}>
+                <span class="checkbox-custom"></span>
+                <span class="checkbox-text">הוצאות</span>
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="editProjectTrackIncome" class="checkbox-input" {% if project.track_income %}checked{% endif %}>
+                <span class="checkbox-custom"></span>
+                <span class="checkbox-text">הכנסות</span>
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="editProjectTrackSavings" class="checkbox-input" {% if project.track_savings %}checked{% endif %}>
+                <span class="checkbox-custom"></span>
+                <span class="checkbox-text">חיסכון</span>
+            </label>
+        </div>
+        <p class="form-error" id="editProjectError" role="alert"></p>
+        <div class="edit-actions">
+            <button type="submit" class="btn-sm btn-primary">שמור שינויים</button>
+            <button type="button" class="btn-sm btn-ghost" id="cancelEditProjectBtn">ביטול</button>
+        </div>
+    </form>
+</section>
+
+<!-- קטגוריות ייעודיות לפרויקט -->
+<section class="chart-card">
+    <div class="cat-manage-bar">
+        <h2 class="chart-title">קטגוריות הפרויקט</h2>
+        <button type="button" class="btn-sm btn-ghost" id="manageProjectCatsBtn">ניהול</button>
+    </div>
+
+        {% set type_labels = {'expense': 'הוצאות', 'income': 'הכנסות', 'savings': 'חיסכון'} %}
+        {% set tracked_types = [] %}
+        {% if project.track_expense %}{% set _ = tracked_types.append('expense') %}{% endif %}
+        {% if project.track_income %}{% set _ = tracked_types.append('income') %}{% endif %}
+        {% if project.track_savings %}{% set _ = tracked_types.append('savings') %}{% endif %}
+    <div class="type-toggle project-cat-tabs" id="projectCatTabs" role="tablist" aria-label="סוג קטגוריה"
+         style="margin-top:14px; grid-template-columns: repeat({{ tracked_types | length }}, 1fr);">
+        {% for t in tracked_types %}
+        <button type="button" class="toggle-btn {% if loop.first %}active{% endif %}" data-cat-tab="{{ t }}"
+                role="tab" aria-selected="{{ 'true' if loop.first else 'false' }}">{{ type_labels[t] }}</button>
+        {% endfor %}
+    </div>
+
+    <div id="projectCategoriesArea" data-project-id="{{ project.id }}">
+        <ul class="categories-list" id="projectCatList"></ul>
+
+        <form class="add-cat-form" id="addProjectCatForm" novalidate>
+            <div class="add-cat-row">
+                <input class="form-input emoji-input" type="text" id="newProjectCatIcon" placeholder="🏷" maxlength="2" value="🏷">
+                <input class="form-input" type="text" id="newProjectCatName" placeholder="שם קטגוריה חדשה" maxlength="30" required>
+                <button type="submit" class="btn-sm btn-primary">הוסף</button>
+            </div>
+            <p class="form-error" id="addProjectCatError" role="alert"></p>
+        </form>
+    </div>
+</section>
+
+<section class="chart-card">
+    <h2 class="chart-title">כל העסקאות ({{ project.transactions | length }})</h2>
+    {% if project.transactions %}
+    <ul class="cat-tx-list cat-tx-list-standalone">
+        {% for tx in project.transactions %}
+        <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+            data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
+            data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
+            data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
+            data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
+            data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
+            <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
+            <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}</span>
+            {% if family_settings.owner_attribution[tx.type] %}
+            {% set color = member_colors.get(tx.user_id) %}
+            <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
+            {% endif %}
+            {% if tx.has_receipt %}
+            <button type="button" class="receipt-badge" data-receipt-id="{{ tx.id }}" title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</button>
+            {% endif %}
+            <span class="cat-tx-amount {{ tx.type }}">₪{{ "{:,.0f}".format(tx.amount) }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <div class="empty-state">
+        <p class="empty-icon">🎯</p>
+        <p class="empty-text">עדיין אין עסקאות בפרויקט הזה</p>
+        <p class="empty-sub">בהוספת עסקה, בחר "שייך לפרויקט" → {{ project.name }}</p>
+    </div>
+    {% endif %}
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const projectId = document.getElementById('projectCategoriesArea').dataset.projectId;
+
+    // ── עריכת הגדרות הפרויקט ──
+    const editBtn    = document.getElementById('editProjectBtn');
+    const editForm   = document.getElementById('editProjectForm');
+    const cancelEdit = document.getElementById('cancelEditProjectBtn');
+    const editError  = document.getElementById('editProjectError');
+
+    editBtn.addEventListener('click', function () {
+        editForm.style.display = editForm.style.display === 'none' ? '' : 'none';
+    });
+    cancelEdit.addEventListener('click', function () {
+        editForm.style.display = 'none';
+        editError.textContent = '';
+    });
+
+    editForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        editError.textContent = '';
+        const name = document.getElementById('editProjectName').value.trim();
+        const budgetVal = document.getElementById('editProjectBudget').value;
+        const trackExpense = document.getElementById('editProjectTrackExpense').checked;
+        const trackIncome  = document.getElementById('editProjectTrackIncome').checked;
+        const trackSavings = document.getElementById('editProjectTrackSavings').checked;
+        if (!name) { editError.textContent = 'נא להזין שם לפרויקט'; return; }
+        if (!trackExpense && !trackIncome && !trackSavings) {
+            editError.textContent = 'יש לבחור לפחות סוג עסקה אחד למעקב';
+            return;
+        }
+
+        const editSubmitBtn = editForm.querySelector('button[type="submit"]');
+        editSubmitBtn.disabled = true;
+        fetch('/api/projects/' + projectId, {
+            method:  'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                name: name,
+                budget_target: budgetVal ? parseFloat(budgetVal) : null,
+                track_expense: trackExpense,
+                track_income: trackIncome,
+                track_savings: trackSavings,
+            }),
+        })
+        .then(r => r.json())
+        .then(function (data) {
+            if (data.error) { editSubmitBtn.disabled = false; editError.textContent = data.error; return; }
+            window.location.reload();
+        })
+        .catch(function () { editSubmitBtn.disabled = false; editError.textContent = 'שגיאת רשת — נסה שוב'; });
+    });
+
+    // ── הפיכת פרויקט אישי למשותף / החזרתו להיות אישי ──
+    const shareBtn   = document.getElementById('shareProjectBtn');
+    const unshareBtn = document.getElementById('unshareProjectBtn');
+
+    if (shareBtn) {
+        shareBtn.addEventListener('click', function () {
+            window.appConfirm({
+                title: 'להפוך את הפרויקט למשותף?',
+                message: 'כל בני המשפחה יראו את הפרויקט, וההוצאות/הכנסות שכבר נרשמו בו יהפכו לשיוך משותף. תמיד תוכל להחזיר אותו להיות אישי בעצמך בעתיד.',
+                confirmText: 'הפוך למשותף',
+                danger: false,
+            }).then(function (ok) {
+                if (!ok) return;
+                fetch('/api/projects/' + projectId + '/share', { method: 'PUT' })
+                .then(r => r.json())
+                .then(function (d) {
+                    if (d.error) { window.showToast(d.error, 'error'); return; }
+                    window.location.reload();
+                })
+                .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
+            });
+        });
+    }
+
+    if (unshareBtn) {
+        unshareBtn.addEventListener('click', function () {
+            window.appConfirm({
+                title: 'להחזיר את הפרויקט להיות אישי?',
+                message: 'רק אתה תראה את הפרויקט מעכשיו. עסקאות שכבר נרשמו כמשותפות יישארו כך.',
+                confirmText: 'החזר להיות אישי',
+                danger: false,
+            }).then(function (ok) {
+                if (!ok) return;
+                fetch('/api/projects/' + projectId + '/unshare', { method: 'PUT' })
+                .then(r => r.json())
+                .then(function (d) {
+                    if (d.error) { window.showToast(d.error, 'error'); return; }
+                    window.location.reload();
+                })
+                .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
+            });
+        });
+    }
+
+    // ── קטגוריות הפרויקט ──
+    const catTabs   = document.querySelectorAll('.project-cat-tabs .toggle-btn');
+    const catList   = document.getElementById('projectCatList');
+    const catsArea  = document.getElementById('projectCategoriesArea');
+    const addForm   = document.getElementById('addProjectCatForm');
+    const addError  = document.getElementById('addProjectCatError');
+    const manageBtn = document.getElementById('manageProjectCatsBtn');
+    let currentTab  = catTabs.length ? catTabs[0].dataset.catTab : null;
+
+    function renderCatRow(cat) {
+        const li = document.createElement('li');
+        li.className = 'category-row';
+        li.dataset.id = cat.id;
+        li.innerHTML = `
+            <span class="cat-row-icon">${cat.icon}</span>
+            <span class="cat-row-name">${cat.name}</span>
+            <button class="delete-cat-btn" data-id="${cat.id}" aria-label="מחק קטגוריה">✕</button>
+        `;
+        return li;
+    }
+
+    function loadCats(type) {
+        catList.innerHTML = '<li class="category-row"><span class="cat-row-name">טוען…</span></li>';
+        fetch('/api/projects/' + projectId + '/categories?type=' + type)
+            .then(r => r.json())
+            .then(function (cats) {
+                catList.innerHTML = '';
+                cats.forEach(cat => catList.appendChild(renderCatRow(cat)));
+            })
+            .catch(function () {
+                catList.innerHTML = '';
+                window.showToast('שגיאת רשת — נסה שוב', 'error');
+            });
+    }
+
+    catTabs.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            catTabs.forEach(function (b) {
+                b.classList.remove('active');
+                b.setAttribute('aria-selected', 'false');
+            });
+            btn.classList.add('active');
+            btn.setAttribute('aria-selected', 'true');
+            currentTab = btn.dataset.catTab;
+            loadCats(currentTab);
+        });
+    });
+
+    if (manageBtn) {
+        manageBtn.addEventListener('click', function () {
+            const managing = catsArea.classList.toggle('managing');
+            manageBtn.textContent = managing ? 'סיום' : 'ניהול';
+            manageBtn.classList.toggle('btn-primary', managing);
+            manageBtn.classList.toggle('btn-ghost', !managing);
+        });
+    }
+
+    if (currentTab) loadCats(currentTab);
+
+    if (addForm) {
+        addForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            addError.textContent = '';
+            const icon = document.getElementById('newProjectCatIcon').value.trim() || '🏷';
+            const name = document.getElementById('newProjectCatName').value.trim();
+            if (!name) { addError.textContent = 'נא להזין שם קטגוריה'; return; }
+
+            const addCatBtn = addForm.querySelector('button[type="submit"]');
+            addCatBtn.disabled = true;
+            fetch('/api/projects/' + projectId + '/categories', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ name, icon, type: currentTab }),
+            })
+            .then(r => r.json())
+            .then(function (cat) {
+                addCatBtn.disabled = false;
+                if (cat.error) { addError.textContent = cat.error; return; }
+                catList.appendChild(renderCatRow(cat));
+                document.getElementById('newProjectCatName').value = '';
+                document.getElementById('newProjectCatIcon').value = '🏷';
+            })
+            .catch(function () { addCatBtn.disabled = false; addError.textContent = 'שגיאת רשת — נסה שוב'; });
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.delete-cat-btn');
+        if (!btn) return;
+        const id  = btn.dataset.id;
+        const row = btn.closest('.category-row');
+        const name = (row.querySelector('.cat-row-name') || {}).textContent || '';
+
+        window.appConfirm({
+            title: 'למחוק את "' + name.trim() + '"?',
+            message: 'עסקאות קיימות בקטגוריה יישארו, אך יוצגו ללא קטגוריה.',
+            confirmText: 'מחק קטגוריה',
+        }).then(function (ok) {
+            if (!ok) return;
+            fetch('/api/projects/' + projectId + '/categories/' + id, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(function (d) {
+                if (d.status === 'ok') {
+                    row.style.transition = 'opacity 0.25s';
+                    row.style.opacity = '0';
+                    setTimeout(() => row.remove(), 260);
+                    window.showToast('הקטגוריה נמחקה');
+                } else {
+                    window.showToast('המחיקה נכשלה', 'error');
+                }
+            });
+        });
+    });
+})();
+</script>
+{% endblock %}
