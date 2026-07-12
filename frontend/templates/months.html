@@ -40,31 +40,30 @@
     </div>
 </section>
 
-<!-- Cumulative savings -->
-<section class="chart-card">
-    <h2 class="chart-title">חיסכון מצטבר</h2>
-    <div class="line-chart-wrap">
-        <canvas id="savingsChart" aria-label="גרף חיסכון מצטבר"></canvas>
-    </div>
-</section>
-
-<!-- Month list: כניסה לכל חודש -->
+<!-- Month list — מציג 6 חודשים אחרונים; השאר מאחורי "הצג עוד" -->
+<div id="monthsArchive">
 {% set current_year = namespace(val=None) %}
+{% set mcount = namespace(i=0) %}
 {% for entry in archive %}
+
+    {# חודשים מעבר ל-6 הראשונים (וכל שנה שכולה מעבר לכך) מוסתרים כברירת מחדל #}
+    {% set is_extra = mcount.i >= 6 %}
 
     {% if entry.year != current_year.val %}
         {% if current_year.val is not none %}</ul>{% endif %}
         {% set current_year.val = entry.year %}
-        <div class="year-divider">
+        <div class="year-divider {% if is_extra %}month-extra{% endif %}">
             <span class="year-label">{{ entry.year }}</span>
         </div>
-        <ul class="months-list">
+        <ul class="months-list {% if is_extra %}month-extra{% endif %}">
     {% endif %}
 
-    {% set balance = entry.balance | float %}
+    {# היתרה הנטו של החודש = "נשאר בעו״ש": הכנסות פחות הוצאות פחות חיסכון
+       (חיסכון גם יוצא מהעו״ש), עקבי עם חישוב ה-remaining בדשבורד. #}
+    {% set balance = (entry.income | float) - (entry.expense | float) - (entry.savings | float) %}
     {% set is_surplus = balance >= 0 %}
 
-    <li class="month-item">
+    <li class="month-item {% if is_extra %}month-extra{% endif %}">
         <a href="{{ url_for('month_view', year=entry.year, month=entry.month) }}"
            class="month-link" aria-label="נתוני {{ _HEBREW_MONTHS[entry.month] }} {{ entry.year }}">
 
@@ -81,28 +80,32 @@
                 {% endif %}
             </div>
 
-            <!-- Month name + bar -->
+            <!-- Month name + breakdown -->
             <div class="month-info">
                 <div class="month-name-row">
-                    <span class="month-name">{{ _HEBREW_MONTHS[entry.month] }}</span>
-                    <span class="month-balance {% if is_surplus %}surplus{% else %}deficit{% endif %}">
-                        {% if is_surplus %}+{% endif %}₪{{ "{:,.0f}".format(balance | abs) }}
-                    </span>
-                </div>
-
-                {% set total = entry.income | float %}
-                {% set expense_pct = ((entry.expense | float / total * 100) | round | int) if total > 0 else 0 %}
-                <div class="month-bar-track">
-                    <div class="month-bar-fill {% if expense_pct > 90 %}danger{% endif %}"
-                         style="width: {{ [expense_pct, 100] | min }}%;"></div>
+                    <span class="month-name">{{ _HEBREW_MONTHS[entry.month] }}{% if entry.year == today_year and entry.month == today_month %}<span class="current-month-badge">החודש</span>{% endif %}</span>
                 </div>
 
                 <div class="month-stats">
-                    <span class="stat income">↑ ₪{{ "{:,.0f}".format(entry.income | float) }}</span>
-                    <span class="stat expense">↓ ₪{{ "{:,.0f}".format(entry.expense | float) }}</span>
-                    <span class="stat savings">◆ ₪{{ "{:,.0f}".format(entry.savings | float) }}</span>
+                    <span class="stat income">
+                        <span class="stat-label">הכנסות</span>
+                        ₪{{ "{:,.0f}".format(entry.income | float) }}
+                    </span>
+                    <span class="stat expense">
+                        <span class="stat-label">הוצאות</span>
+                        ₪{{ "{:,.0f}".format(entry.expense | float) }}
+                    </span>
+                    <span class="stat savings">
+                        <span class="stat-label">חיסכון</span>
+                        ₪{{ "{:,.0f}".format(entry.savings | float) }}
+                    </span>
                 </div>
             </div>
+
+            <!-- Net balance — ממורכז אנכית בצד שמאל -->
+            <span class="month-balance {% if is_surplus %}surplus{% else %}deficit{% endif %}">
+                {% if is_surplus %}+{% else %}-{% endif %}₪{{ "{:,.0f}".format(balance | abs) }}
+            </span>
 
             <!-- Chevron -->
             <div class="month-chevron">
@@ -112,9 +115,16 @@
             </div>
         </a>
     </li>
+    {% set mcount.i = mcount.i + 1 %}
 
 {% endfor %}
 </ul>
+
+{% if archive | length > 6 %}
+<button type="button" class="show-more-months" id="showMoreMonths"
+        aria-expanded="false" data-more="הצג עוד" data-less="הצג פחות">הצג עוד</button>
+{% endif %}
+</div>
 
 {% else %}
 
@@ -189,7 +199,7 @@
                         },
                         tooltip: {
                             callbacks: {
-                                label: c => ` ${c.dataset.label}: ₪${c.parsed.y.toLocaleString()}`
+                                label: c => ` ${c.dataset.label}: ₪${c.parsed.y.toLocaleString('en-US')}`
                             }
                         }
                     },
@@ -197,67 +207,23 @@
                         x: { grid: { display: false }, ticks: { font: { size: 11 } } },
                         y: {
                             grid: { color: GRID_LINE },
-                            ticks: { font: { size: 11 }, callback: v => '₪' + v.toLocaleString() }
+                            ticks: { font: { size: 11 }, callback: v => '₪' + v.toLocaleString('en-US') }
                         }
                     }
                 }
             });
         }
+    }
 
-        // ── חיסכון מצטבר ──
-        const ctx2 = document.getElementById('savingsChart');
-        if (ctx2) {
-            let running = 0;
-            const cumulative = trendData.map(d => {
-                running += d.savings;
-                return Math.round(running);
-            });
-
-            new Chart(ctx2, {
-                type: 'line',
-                data: {
-                    labels: trendData.map(d => d.month_name),
-                    datasets: [{
-                        label:            'חיסכון מצטבר',
-                        data:             cumulative,
-                        borderColor:      '#A67C00',
-                        backgroundColor:  (context) => {
-                            const { ctx, chartArea } = context.chart;
-                            if (!chartArea) return 'rgba(166,124,0,0.1)';
-                            const g = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-                            g.addColorStop(0, 'rgba(166,124,0,0.22)');
-                            g.addColorStop(1, 'rgba(166,124,0,0)');
-                            return g;
-                        },
-                        fill:             true,
-                        tension:          0.35,
-                        borderWidth:      2.5,
-                        pointBackgroundColor: '#D4AF37',
-                        pointBorderColor: '#FFFFFF',
-                        pointRadius:      4,
-                        pointHoverRadius: 6,
-                    }]
-                },
-                options: {
-                    responsive:          true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: c => ` סה"כ נחסך: ₪${c.parsed.y.toLocaleString()}`
-                            }
-                        }
-                    },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } },
-                        y: {
-                            grid: { color: GRID_LINE },
-                            ticks: { font: { size: 11 }, callback: v => '₪' + v.toLocaleString() }
-                        }
-                    }
-                }
-            });
-        }
+    // "הצג עוד" — חושף את כל החודשים שמעבר ל-6 הראשונים (או מכווץ בחזרה)
+    const moreBtn = document.getElementById('showMoreMonths');
+    if (moreBtn) {
+        const archive = document.getElementById('monthsArchive');
+        moreBtn.addEventListener('click', function () {
+            const open = archive.classList.toggle('show-all');
+            moreBtn.textContent = open ? moreBtn.dataset.less : moreBtn.dataset.more;
+            moreBtn.setAttribute('aria-expanded', open);
+        });
     }
 })();
 </script>

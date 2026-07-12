@@ -38,7 +38,40 @@ def set_auth_token(access_token: str):
             print(f"[WARNING] set_auth_token: {e}")
 
 
+def _request_cache(key: str, loader):
+    """מטמון-לבקשה על flask.g: נתונים יציבים בתוך בקשה אחת (קטגוריות, חברי
+    משפחה, משפחה) נשלפים פעם אחת במקום 3-4 פעמים. מחוץ ל-Flask context
+    (בדיקות/סקריפטים) — פשוט קורא ל-loader ישירות, בלי מטמון."""
+    try:
+        from flask import g, has_app_context
+        if not has_app_context():
+            return loader()
+    except ImportError:
+        return loader()
+    cache = getattr(g, "_sf_cache", None)
+    if cache is None:
+        cache = g._sf_cache = {}
+    if key not in cache:
+        cache[key] = loader()
+    return cache[key]
+
+
 # ─── Auth ─────────────────────────────────────────────────────────────────────
+
+def get_email_by_phone(normalized_phone: str):
+    """מוצא את המייל המשויך למספר טלפון מנורמל (ספרות בלבד), עוד לפני
+    שהמשתמש מחובר — דרך פונקציית ה-DB email_for_phone (SECURITY DEFINER,
+    זמינה ל-anon). מחזיר None אם לא נמצא."""
+    client = get_client()
+    if not client or not normalized_phone:
+        return None
+    try:
+        result = client.rpc("email_for_phone", {"p_phone": normalized_phone}).execute()
+        return result.data or None
+    except Exception as e:
+        print(f"[ERROR] get_email_by_phone: {e}")
+        return None
+
 
 def sign_in(email: str, password: str):
     """Returns (user_data, error_message)."""
@@ -50,6 +83,50 @@ def sign_in(email: str, password: str):
         return response, None
     except Exception as e:
         return None, str(e)
+
+
+def log_login_event(event: str = "login"):
+    """מתעד כניסה לאתר בטבלה הפנימית login_events (לבעל האתר בלבד).
+    לא-חוסם — כישלון בתיעוד לא מפריע להתחברות עצמה."""
+    client = get_client()
+    if not client:
+        return
+    try:
+        client.rpc("log_login_event", {"p_event": event}).execute()
+    except Exception as e:
+        print(f"[WARN] log_login_event: {e}")
+
+
+def reset_transactions(family_id: str, only_user_id: str = None):
+    """איפוס עסקאות: מוחק את כל עסקאות המשפחה (כולל תבניות קבועות), או —
+    אם only_user_id סופק — רק את העסקאות המשויכות לאותו משתמש. כל שורה
+    שנמחקת מארוכבת אוטומטית ב-owner_archive דרך הטריגר. Returns (ok, err)."""
+    client = get_client()
+    if not client:
+        return False, "Database not configured"
+    try:
+        query = client.table("transactions").delete().eq("family_id", family_id)
+        if only_user_id:
+            query = query.eq("user_id", only_user_id)
+        query.execute()
+        return True, None
+    except Exception as e:
+        print(f"[ERROR] reset_transactions: {e}")
+        return False, str(e)
+
+
+def delete_my_account():
+    """מחיקת החשבון של המשתמש המחובר לצמיתות (דרך פונקציית DB עם ארכוב פנימי).
+    Returns (ok, error_message)."""
+    client = get_client()
+    if not client:
+        return False, "Database not configured"
+    try:
+        client.rpc("delete_my_account", {}).execute()
+        return True, None
+    except Exception as e:
+        print(f"[ERROR] delete_my_account: {e}")
+        return False, str(e)
 
 
 def sign_up(email: str, password: str, name: str, phone: str = None):
@@ -80,16 +157,6 @@ def refresh_session(refresh_token: str):
         return None, str(e)
 
 
-def sign_out(access_token: str):
-    client = get_client()
-    if not client:
-        return
-    try:
-        client.auth.sign_out()
-    except Exception:
-        pass
-
-
 # ─── Profile ──────────────────────────────────────────────────────────────────
 
 def get_profile(user_id: str):
@@ -104,18 +171,63 @@ def get_profile(user_id: str):
 
 
 def update_profile(user_id: str, name: str, phone: str = None, workplace: str = None):
-    """Updates the current user's display name, phone and workplace."""
+    """Updates the current user's display name, phone and workplace.
+    Returns (ok, error_message)."""
     client = get_client()
     if not client:
-        return False
+        return False, "Database not configured"
     try:
         client.table("profiles").update(
             {"name": name, "phone": phone, "workplace": workplace}
         ).eq("id", user_id).execute()
-        return True
+        return True, None
     except Exception as e:
         print(f"[ERROR] update_profile: {e}")
-        return False
+        if "duplicate" in str(e).lower() and "phone" in str(e).lower():
+            return False, "מספר הטלפון כבר רשום למשתמש אחר"
+        return False, None
+
+
+def update_workplace_history(user_id: str, family_id: str, new_workplace: str,
+                             old_workplace: str, apply_to_all: bool):
+    """מיישם שינוי מקום עבודה על עסקאות משכורת (הכנסה) קיימות של המשתמש —
+    כדי ששינוי עתידי לא ישנה בשקט את מה שכבר מוצג על היסטוריה.
+
+    apply_to_all=True: כל עסקאות המשכורת (עבר ועתיד) מקבלות את הערך החדש.
+    apply_to_all=False: רק עסקאות מהחודש הנוכחי ואילך (לפי תאריך העסקה) מקבלות
+    את הערך החדש; ישנות יותר שעוד אין להן תיעוד קפוא (workplace is null)
+    מוקפאות לערך הישן, כדי שימשיכו להציג את מה שהציגו עד עכשיו."""
+    client = get_client()
+    if not client:
+        return
+    try:
+        salary_cat_ids = [
+            c["id"] for c in get_categories(family_id)
+            if c.get("type") == "income" and "משכורת" in c.get("name", "")
+        ]
+        if not salary_cat_ids:
+            return
+
+        if apply_to_all:
+            client.table("transactions").update({"workplace": new_workplace}) \
+                .eq("user_id", user_id).eq("type", "income") \
+                .in_("category_id", salary_cat_ids).execute()
+            return
+
+        from datetime import date
+        month_start = date.today().replace(day=1).isoformat()
+
+        client.table("transactions").update({"workplace": old_workplace}) \
+            .eq("user_id", user_id).eq("type", "income") \
+            .in_("category_id", salary_cat_ids) \
+            .is_("workplace", "null").lt("date", month_start).execute()
+
+        client.table("transactions").update({"workplace": new_workplace}) \
+            .eq("user_id", user_id).eq("type", "income") \
+            .in_("category_id", salary_cat_ids) \
+            .gte("date", month_start).execute()
+    except Exception as e:
+        print(f"[ERROR] update_workplace_history: {e}")
 
 
 def update_password(access_token: str, new_password: str):
@@ -488,39 +600,59 @@ def get_monthly_summary(family_id: str, year: int, month: int) -> dict:
         return _empty_summary()
 
 
-def get_recent_transactions(family_id: str, limit: int = 5, settings: dict = None) -> list:
+def _filter_hidden_personal_projects(rows: list, viewer_user_id: str) -> list:
+    """מסנן שורות עסקה ששייכות לפרויקט אישי של בן משפחה אחר — פרטיות:
+    רק בעל הפרויקט האישי רואה את העסקאות הבודדות שבו (ראה get_category_breakdown
+    לאיך הן עדיין נכללות באגרגט הכללי של החודש עבור שאר בני המשפחה)."""
+    if not viewer_user_id:
+        return rows
+    return [
+        row for row in rows
+        if not row.get("projects") or not row["projects"].get("owner_id")
+           or row["projects"]["owner_id"] == viewer_user_id
+    ]
+
+
+def get_recent_transactions(family_id: str, limit: int = 5, settings: dict = None,
+                            viewer_user_id: str = None) -> list:
     """Returns the most recent transactions with category and user info."""
     client = get_client()
     if not client:
         return []
     try:
+        # מרווח ביטחון: אם יסוננו שורות פרטיות, עדיין נרצה להגיע ל-limit שורות גלויות
+        fetch_limit = limit * 3 if viewer_user_id else limit
         result = client.table("transactions") \
-            .select("*, categories(name, icon), profiles(name, workplace)") \
+            .select("*, categories(name, icon), project_categories(name, icon), profiles(name, workplace), projects(owner_id)") \
             .eq("family_id", family_id) \
             .order("date", desc=True) \
             .order("created_at", desc=True) \
-            .limit(limit) \
+            .limit(fetch_limit) \
             .execute()
-        return _format_transactions(result.data, settings)
+        rows = _filter_hidden_personal_projects(result.data, viewer_user_id)[:limit]
+        return _format_transactions(rows, settings)
     except Exception as e:
         print(f"[ERROR] get_recent_transactions: {e}")
         return []
 
 
-def get_month_transactions(family_id: str, year: int, month: int, settings: dict = None) -> list:
-    """Returns all transactions for a given month."""
+def get_month_transactions(family_id: str, year: int, month: int, settings: dict = None,
+                           viewer_user_id: str = None) -> list:
+    """Returns all transactions for a given month (לא כולל עסקאות בפרויקט
+    אישי של בן משפחה אחר — פרטיות)."""
     client = get_client()
     if not client:
         return []
     try:
         result = client.table("transactions") \
-            .select("*, categories(name, icon), profiles(name, workplace)") \
+            .select("*, categories(name, icon), project_categories(name, icon), profiles(name, workplace), projects(owner_id)") \
             .eq("family_id", family_id) \
             .gte("date", f"{year}-{month:02d}-01") \
             .lt("date", _next_month(year, month)) \
             .order("date", desc=True) \
             .execute()
-        return _format_transactions(result.data, settings)
+        rows = _filter_hidden_personal_projects(result.data, viewer_user_id)
+        return _format_transactions(rows, settings)
     except Exception as e:
         print(f"[ERROR] get_month_transactions: {e}")
         return []
@@ -545,7 +677,7 @@ def get_recurring_transactions(family_id: str, settings: dict = None) -> list:
         return []
     try:
         result = client.table("transactions") \
-            .select("*, categories(name, icon), profiles(name, workplace)") \
+            .select("*, categories(name, icon), project_categories(name, icon), profiles(name, workplace)") \
             .eq("family_id", family_id) \
             .eq("is_recurring", True) \
             .order("amount", desc=True) \
@@ -581,9 +713,25 @@ def materialize_recurring(family_id: str) -> int:
             .execute().data
         have = {(r["recurring_parent_id"], str(r["date"])) for r in existing}
 
+        # מטמון קטגוריות-משכורת ומקום-עבודה נוכחי לכל בעלים — נמנע שליפה
+        # חוזרת לכל מופע, ומאפשר להקפיא workplace על מופעי משכורת קבועה
+        # בדיוק כמו בהוספה ידנית (add_transaction)
+        salary_cat_ids = {
+            c["id"] for c in get_categories(family_id)
+            if c.get("type") == "income" and "משכורת" in c.get("name", "")
+        }
+        workplace_by_user: dict = {}
+
+        def _owner_workplace(uid):
+            if uid not in workplace_by_user:
+                profile = get_profile(uid) if uid else None
+                workplace_by_user[uid] = (profile or {}).get("workplace")
+            return workplace_by_user[uid]
+
         today = date.today()
         new_rows = []
         for t in templates:
+            is_salary = t.get("type") == "income" and t.get("category_id") in salary_cat_ids
             for d in _recurring_occurrences(t, today):
                 if (t["id"], d.isoformat()) in have:
                     continue
@@ -597,6 +745,10 @@ def materialize_recurring(family_id: str) -> int:
                     "family_id":           family_id,
                     "is_recurring":        False,
                     "recurring_parent_id": t["id"],
+                    # נשמר גם על המופע (לא רק על התבנית) כדי שהתצוגה תוכל
+                    # לציין "עסקה קבועה — כל X" בלי לשלוף את התבנית בנפרד
+                    "recurring_frequency": t.get("recurring_frequency"),
+                    "workplace":           _owner_workplace(t.get("user_id")) if is_salary else None,
                 })
 
         if new_rows:
@@ -661,6 +813,37 @@ def update_transaction(transaction_id: str, family_id: str, data: dict):
         return None, str(e)
 
 
+def update_recurring_template(template_id: str, family_id: str, amount: float = None,
+                              category_id: str = None, description: str = None):
+    """סנכרון חכם: מעדכן רק את התבנית הקבועה עצמה (לא נוגע ב-date/type/תדירות),
+    כדי שרק מופעים עתידיים שעוד לא נוצרו ישתמשו בערך החדש — היסטוריה לא נכתבת מחדש.
+    Returns (updated_row, error)."""
+    client = get_client()
+    if not client:
+        return None, "Database not configured"
+
+    patch = {}
+    if amount is not None:
+        patch["amount"] = amount
+    if category_id is not None:
+        patch["category_id"] = category_id
+    if description is not None:
+        patch["description"] = description
+    if not patch:
+        return None, "אין שדות לעדכון"
+
+    try:
+        result = client.table("transactions") \
+            .update(patch) \
+            .eq("id", template_id) \
+            .eq("family_id", family_id) \
+            .eq("is_recurring", True) \
+            .execute()
+        return (result.data[0] if result.data else None), None
+    except Exception as e:
+        return None, str(e)
+
+
 def delete_transaction(transaction_id: str, family_id: str):
     client = get_client()
     if not client:
@@ -693,17 +876,40 @@ def family_needs_onboarding(family_id: str) -> bool:
         return False
 
 
+def family_has_no_transactions(family_id: str) -> bool:
+    """True אם המשפחה מעולם לא הוסיפה עסקה — משמש להצגת הודעת פתיחה ידידותית
+    בדשבורד במקום קיר של ₪0, ולא נבדק לפי החודש הנוכחי (משפחה ותיקה שעוד
+    לא הזינה כלום החודש לא אמורה להיחשב 'חדשה')."""
+    client = get_client()
+    if not client or not family_id:
+        return False
+    try:
+        result = client.table("transactions").select("id", count="exact") \
+            .eq("family_id", family_id).limit(1).execute()
+        return (result.count or 0) == 0
+    except Exception as e:
+        print(f"[ERROR] family_has_no_transactions: {e}")
+        return False
+
+
 def bulk_add_categories(family_id: str, categories: list) -> tuple:
     """Inserts multiple categories at once for a family's onboarding.
-    `categories` is a list of {name, icon, type} dicts. Returns (count, error)."""
+    `categories` is a list of {name, icon, type} dicts. Returns (count, error).
+    sort_order נקבע לפי הסדר ברשימת הקלט (בתוך כל סוג בנפרד) — כך שהסדר
+    ההתחלתי תואם למה שהוגדר ב-_DEFAULT_CATEGORIES."""
     client = get_client()
     if not client:
         return 0, "Database not configured"
-    rows = [
-        {"name": c["name"], "icon": c.get("icon", "📦"), "type": c["type"],
-         "family_id": family_id, "is_custom": True}
-        for c in categories if c.get("name") and c.get("type") in ("income", "expense", "savings")
-    ]
+    counters = {"income": 0, "expense": 0, "savings": 0}
+    rows = []
+    for c in categories:
+        if not c.get("name") or c.get("type") not in counters:
+            continue
+        counters[c["type"]] += 1
+        rows.append({
+            "name": c["name"], "icon": c.get("icon", "📦"), "type": c["type"],
+            "family_id": family_id, "is_custom": True, "sort_order": counters[c["type"]],
+        })
     if not rows:
         return 0, "No valid categories provided"
     try:
@@ -713,7 +919,7 @@ def bulk_add_categories(family_id: str, categories: list) -> tuple:
         return 0, str(e)
 
 
-def get_categories(family_id: str = None) -> list:
+def _fetch_categories(family_id: str = None) -> list:
     client = get_client()
     if not client:
         return []
@@ -723,9 +929,15 @@ def get_categories(family_id: str = None) -> list:
             query = query.or_(f"family_id.is.null,family_id.eq.{family_id}")
         else:
             query = query.is_("family_id", "null")
-        return query.order("name").execute().data
+        return query.order("sort_order", nullsfirst=False).order("name").execute().data
     except Exception:
         return []
+
+
+def get_categories(family_id: str = None) -> list:
+    """ממוטב-לבקשה: נקרא 3-4 פעמים בעמודים כבדים (פירוט לפי קטגוריה ×3),
+    אז השליפה נשמרת ב-flask.g לאורך הבקשה."""
+    return _request_cache(f"categories:{family_id}", lambda: _fetch_categories(family_id))
 
 
 def update_category(cat_id: str, family_id: str, name: str, icon: str):
@@ -750,21 +962,367 @@ def add_custom_category(family_id: str, name: str, icon: str, type_: str):
     if not client:
         return None, "Database not configured"
     try:
+        existing = client.table("categories").select("sort_order") \
+            .eq("family_id", family_id).eq("type", type_).execute().data or []
+        next_order = max([c.get("sort_order") or 0 for c in existing], default=0) + 1
         result = client.table("categories").insert({
             "name": name, "icon": icon, "type": type_,
-            "family_id": family_id, "is_custom": True
+            "family_id": family_id, "is_custom": True, "sort_order": next_order,
         }).execute()
         return result.data[0] if result.data else None, None
     except Exception as e:
         return None, str(e)
 
 
+def reorder_categories(family_id: str, type_: str, ordered_ids: list) -> bool:
+    """מעדכן את sort_order של קטגוריות מסוג נתון לפי הסדר שהתקבל."""
+    client = get_client()
+    if not client:
+        return False
+    try:
+        for i, cat_id in enumerate(ordered_ids, start=1):
+            client.table("categories").update({"sort_order": i}) \
+                .eq("id", cat_id).eq("family_id", family_id).eq("type", type_).execute()
+        return True
+    except Exception as e:
+        print(f"[ERROR] reorder_categories: {e}")
+        return False
+
+
+# ─── Projects (תקציבי פרויקטים — משותפים או אישיים לבן משפחה אחד) ─────────────
+
+def get_projects(family_id: str, viewer_user_id: str) -> list:
+    """פרויקטים גלויים לצופה הנוכחי: כל הפרויקטים המשותפים + הפרויקטים
+    האישיים ששייכים לו עצמו. פרויקט אישי של בן משפחה אחר לא נכלל כאן בכלל —
+    זו הפרטיות המבוקשת (לא רק מוסתר בתצוגה, אלא לא נשלף כלל)."""
+    client = get_client()
+    if not client or not family_id:
+        return []
+    try:
+        projects = client.table("projects").select("*") \
+            .eq("family_id", family_id).eq("archived", False) \
+            .order("created_at", desc=True).execute().data
+        visible = [p for p in projects if not p.get("owner_id") or p["owner_id"] == viewer_user_id]
+
+        totals = _project_totals(family_id)
+        out = []
+        for p in visible:
+            t = totals.get(p["id"], {"expense": 0.0, "income": 0.0, "savings": 0.0})
+            # "הסכום הנוכחי" המוצג ברשימה: נטו — הכנסות+חיסכון פחות הוצאות
+            net = t["income"] + t["savings"] - t["expense"]
+            budget = p.get("budget_target")
+            out.append({
+                "id": p["id"], "name": p["name"],
+                "is_personal": bool(p.get("owner_id")),
+                "owner_id": p.get("owner_id"),
+                "budget_target": float(budget) if budget is not None else None,
+                "amount": round(net, 2),
+                "track_expense": p.get("track_expense", True),
+                "track_income": p.get("track_income", False),
+                "track_savings": p.get("track_savings", False),
+            })
+        return out
+    except Exception as e:
+        print(f"[ERROR] get_projects: {e}")
+        return []
+
+
+def _project_totals(family_id: str) -> dict:
+    """סכום כל הזמן לכל פרויקט, מפורק לפי סוג עסקה (expense/income/savings)."""
+    client = get_client()
+    if not client:
+        return {}
+    result = client.table("transactions").select("amount, type, project_id") \
+        .eq("family_id", family_id).not_.is_("project_id", "null").execute()
+    totals: dict = {}
+    for row in result.data:
+        pid = row["project_id"]
+        totals.setdefault(pid, {"expense": 0.0, "income": 0.0, "savings": 0.0})
+        t = row["type"]
+        if t in totals[pid]:
+            totals[pid][t] += float(row["amount"])
+    return totals
+
+
+def add_project(family_id: str, name: str, created_by: str, budget_target: float = None,
+                owner_id: str = None,
+                track_expense: bool = True, track_income: bool = False, track_savings: bool = False):
+    client = get_client()
+    if not client:
+        return None, "Database not configured"
+    try:
+        result = client.table("projects").insert({
+            "family_id": family_id, "name": name, "budget_target": budget_target,
+            "owner_id": owner_id, "created_by": created_by, "track_expense": track_expense,
+            "track_income": track_income, "track_savings": track_savings,
+        }).execute()
+        project = result.data[0] if result.data else None
+        if project:
+            types = [t for t, on in (("expense", track_expense), ("income", track_income),
+                                     ("savings", track_savings)) if on]
+            _seed_project_categories(project["id"], family_id, types)
+        return project, None
+    except Exception as e:
+        return None, str(e)
+
+
+def update_project(project_id: str, family_id: str, name: str, budget_target: float = None,
+                   track_expense: bool = True,
+                   track_income: bool = False, track_savings: bool = False):
+    """מעדכן שם/יעד/סוגי מעקב בלבד. שינוי בעלות (אישי/משותף) נעשה רק דרך
+    share_project/unshare_project הייעודיות — לא כאן."""
+    client = get_client()
+    if not client:
+        return False
+    try:
+        existing = client.table("projects") \
+            .select("track_expense, track_income, track_savings") \
+            .eq("id", project_id).eq("family_id", family_id).single().execute().data or {}
+        # סוגים שהופעלו כרגע לראשונה — נזרע להם קטגוריות התחלתיות
+        newly_enabled = [
+            t for t, before, after in (
+                ("expense", existing.get("track_expense"), track_expense),
+                ("income", existing.get("track_income"), track_income),
+                ("savings", existing.get("track_savings"), track_savings),
+            ) if after and not before
+        ]
+
+        client.table("projects").update({
+            "name": name, "budget_target": budget_target,
+            "track_expense": track_expense, "track_income": track_income,
+            "track_savings": track_savings,
+        }).eq("id", project_id).eq("family_id", family_id).execute()
+
+        if newly_enabled:
+            _seed_project_categories(project_id, family_id, newly_enabled)
+        return True
+    except Exception as e:
+        print(f"[ERROR] update_project: {e}")
+        return False
+
+
+def share_project(project_id: str, family_id: str, user_id: str):
+    """הופך פרויקט אישי למשותף: נפתח לכל בני המשפחה, וכל העסקאות שכבר
+    שויכו אליו הופכות לשיוך משותף (user_id=NULL) — תואם לבקשת מתן שהמעבר
+    למשותף גורר גם את ההוצאות/הכנסות עצמן. רק הבעלים הנוכחי רשאי לבצע זאת."""
+    client = get_client()
+    if not client:
+        return False, "Database not configured"
+    try:
+        proj = client.table("projects").select("owner_id") \
+            .eq("id", project_id).eq("family_id", family_id).single().execute().data
+        if not proj:
+            return False, "הפרויקט לא נמצא"
+        if proj.get("owner_id") != user_id:
+            return False, "רק הבעלים של הפרויקט יכול להפוך אותו למשותף"
+        client.table("projects").update({"owner_id": None}) \
+            .eq("id", project_id).eq("family_id", family_id).execute()
+        client.table("transactions").update({"user_id": None}) \
+            .eq("project_id", project_id).eq("family_id", family_id).execute()
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+
+def unshare_project(project_id: str, family_id: str, user_id: str):
+    """מחזיר פרויקט משותף להיות אישי — רק מי שיצר את הפרויקט במקור (created_by)
+    רשאי לבצע זאת, גם אם הפרויקט משותף כרגע ולכולם יש אליו גישה."""
+    client = get_client()
+    if not client:
+        return False, "Database not configured"
+    try:
+        proj = client.table("projects").select("owner_id, created_by") \
+            .eq("id", project_id).eq("family_id", family_id).single().execute().data
+        if not proj:
+            return False, "הפרויקט לא נמצא"
+        if proj.get("owner_id"):
+            return False, "הפרויקט כבר אישי"
+        if proj.get("created_by") != user_id:
+            return False, "רק מי שיצר את הפרויקט יכול להחזיר אותו להיות אישי"
+        client.table("projects").update({"owner_id": user_id}) \
+            .eq("id", project_id).eq("family_id", family_id).execute()
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+
+def delete_project(project_id: str, family_id: str, delete_transactions: bool = False) -> bool:
+    """מוחק את הפרויקט (וקטגוריותיו הייעודיות, ON DELETE CASCADE).
+
+    delete_transactions=False (ברירת מחדל): העסקאות ששויכו אליו לא נמחקות —
+    הן חוזרות להיספר תחת הקטגוריה הרגילה שלהן (ON DELETE SET NULL).
+    delete_transactions=True: מוחקים גם את כל העסקאות ששויכו לפרויקט, לפני
+    מחיקת הפרויקט עצמו."""
+    client = get_client()
+    if not client:
+        return False
+    try:
+        if delete_transactions:
+            client.table("transactions").delete() \
+                .eq("project_id", project_id).eq("family_id", family_id).execute()
+        client.table("projects").delete() \
+            .eq("id", project_id).eq("family_id", family_id).execute()
+        return True
+    except Exception as e:
+        print(f"[ERROR] delete_project: {e}")
+        return False
+
+
+def get_project_for_transaction(project_id: str, family_id: str):
+    """שדות מינימליים הנחוצים לאימות ואכיפה בהוספת/עדכון עסקה משויכת
+    לפרויקט: owner_id (לאכיפת שיוך אוטומטי) ודגלי המעקב (לוודא שהסוג נתמך)."""
+    client = get_client()
+    if not client:
+        return None
+    try:
+        return client.table("projects") \
+            .select("owner_id, track_expense, track_income, track_savings") \
+            .eq("id", project_id).eq("family_id", family_id).single().execute().data
+    except Exception:
+        return None
+
+
+def get_project_detail(project_id: str, family_id: str, viewer_user_id: str) -> dict:
+    """פרטי פרויקט + כל העסקאות שלו, מכל החודשים ביחד. אם זה פרויקט אישי
+    ששייך לבן משפחה אחר — מחזיר None (חסימת גישה מלאה, לא רק הסתרה)."""
+    client = get_client()
+    if not client or not family_id:
+        return None
+    try:
+        proj = client.table("projects").select("*") \
+            .eq("id", project_id).eq("family_id", family_id).single().execute().data
+        if not proj:
+            return None
+        if proj.get("owner_id") and proj["owner_id"] != viewer_user_id:
+            return None
+
+        result = client.table("transactions") \
+            .select("*, categories(name, icon), project_categories(name, icon), profiles(name, workplace)") \
+            .eq("family_id", family_id).eq("project_id", project_id) \
+            .order("date", desc=True).execute()
+        transactions = _format_transactions(result.data)
+
+        totals = {"expense": 0.0, "income": 0.0, "savings": 0.0}
+        for t in transactions:
+            if t["type"] in totals:
+                totals[t["type"]] += t["amount"]
+
+        budget = proj.get("budget_target")
+        spent = totals["expense"]
+        return {
+            "id": proj["id"], "name": proj["name"],
+            "is_personal": bool(proj.get("owner_id")),
+            "owner_id": proj.get("owner_id"),
+            "created_by": proj.get("created_by"),
+            "track_expense": proj["track_expense"], "track_income": proj["track_income"],
+            "track_savings": proj["track_savings"],
+            "budget_target": float(budget) if budget is not None else None,
+            "spent": round(spent, 2),
+            "income": round(totals["income"], 2),
+            "savings": round(totals["savings"], 2),
+            "remaining": round(float(budget) - spent, 2) if budget is not None else None,
+            "transactions": transactions,
+        }
+    except Exception as e:
+        print(f"[ERROR] get_project_detail: {e}")
+        return None
+
+
+# ─── Project categories (ייעודיות לכל פרויקט, נפרדות מקטגוריות המשפחה) ────────
+
+def _seed_project_categories(project_id: str, family_id: str, types: list):
+    """זריעת קטגוריות התחלתיות לפרויקט — עותק מקטגוריות המשפחה הרגילות
+    מאותם סוגים, כברירת מחדל שניתן לערוך/למחוק/להוסיף עליה בלי להשפיע
+    על קטגוריות המשפחה המקוריות."""
+    if not types:
+        return
+    client = get_client()
+    if not client:
+        return
+    try:
+        family_cats = [c for c in get_categories(family_id) if c.get("type") in types]
+        if not family_cats:
+            return
+        rows = [{
+            "project_id": project_id, "family_id": family_id,
+            "name": c["name"], "icon": c.get("icon", "📦"), "type": c["type"],
+        } for c in family_cats]
+        client.table("project_categories").insert(rows).execute()
+    except Exception as e:
+        print(f"[ERROR] _seed_project_categories: {e}")
+
+
+def get_project_categories(project_id: str, family_id: str, type_: str = None) -> list:
+    client = get_client()
+    if not client:
+        return []
+    try:
+        query = client.table("project_categories").select("*") \
+            .eq("project_id", project_id).eq("family_id", family_id)
+        if type_:
+            query = query.eq("type", type_)
+        return query.order("name").execute().data
+    except Exception as e:
+        print(f"[ERROR] get_project_categories: {e}")
+        return []
+
+
+def add_project_category(project_id: str, family_id: str, name: str, icon: str, type_: str):
+    client = get_client()
+    if not client:
+        return None, "Database not configured"
+    try:
+        result = client.table("project_categories").insert({
+            "project_id": project_id, "family_id": family_id,
+            "name": name, "icon": icon, "type": type_,
+        }).execute()
+        return (result.data[0] if result.data else None), None
+    except Exception as e:
+        return None, str(e)
+
+
+def update_project_category(cat_id: str, project_id: str, family_id: str, name: str, icon: str):
+    client = get_client()
+    if not client:
+        return False
+    try:
+        client.table("project_categories").update({"name": name, "icon": icon}) \
+            .eq("id", cat_id).eq("project_id", project_id).eq("family_id", family_id).execute()
+        return True
+    except Exception as e:
+        print(f"[ERROR] update_project_category: {e}")
+        return False
+
+
+def delete_project_category(cat_id: str, project_id: str, family_id: str) -> bool:
+    client = get_client()
+    if not client:
+        return False
+    try:
+        client.table("project_categories").delete() \
+            .eq("id", cat_id).eq("project_id", project_id).eq("family_id", family_id).execute()
+        return True
+    except Exception as e:
+        print(f"[ERROR] delete_project_category: {e}")
+        return False
+
+
 # ─── Analytics ───────────────────────────────────────────────────────────────
 
-def get_category_breakdown(family_id: str, year: int, month: int, type_: str = "expense") -> list:
+def get_category_breakdown(family_id: str, year: int, month: int, type_: str = "expense",
+                           viewer_user_id: str = None) -> list:
     """Returns totals grouped by category for a given month and transaction type
     (expense / income / savings). Every category of the type is always included —
-    months without data for a category show 0."""
+    months without data for a category show 0.
+
+    עסקאות המשויכות לפרויקט מוחרגות מסכום הקטגוריה הרגילה שלהן, ומרוכזות
+    בשורה נפרדת — כדי לא לנפח את הקטגוריה הרגילה בהוצאה/הכנסה/חיסכון
+    חד-פעמיים וגדולים. שורת פרויקט מופיעה רק בחודשים עם פעילות בפועל (לא
+    zero-fill כמו קטגוריות).
+
+    פרטיות פרויקט אישי: אם viewer_user_id אינו הבעלים, השורה מוצגת עם תווית
+    גנרית ("פרויקט <שם פרטי>" במקום שם הפרויקט האמיתי) ובלי project_id —
+    כדי שבצד הלקוח היא לא תהיה קישור לחיצה לעמוד הפרויקט."""
     client = get_client()
     if not client:
         return []
@@ -778,20 +1336,48 @@ def get_category_breakdown(family_id: str, year: int, month: int, type_: str = "
                 icons[cat["name"]]  = cat.get("icon", "📦")
 
         result = client.table("transactions") \
-            .select("amount, categories(name, icon)") \
+            .select("amount, categories(name, icon), project_id") \
             .eq("family_id", family_id) \
             .eq("type", type_) \
             .gte("date", f"{year}-{month:02d}-01") \
             .lt("date", _next_month(year, month)) \
             .execute()
 
+        project_totals: dict = {}
         for row in result.data:
+            pid = row.get("project_id")
+            if pid:
+                project_totals[pid] = project_totals.get(pid, 0.0) + float(row["amount"])
+                continue
             cat  = row.get("categories") or {}
             name = cat.get("name", "אחר")
             totals[name] = totals.get(name, 0) + float(row["amount"])
             icons.setdefault(name, cat.get("icon", "📦"))
 
-        grand_total = sum(totals.values()) or 1
+        project_rows = []
+        if project_totals:
+            projects = client.table("projects").select("id, name, owner_id") \
+                .in_("id", list(project_totals.keys())).execute().data
+            member_names = {m["id"]: m["name"] for m in get_family_members(family_id)}
+            for p in projects:
+                pid = p["id"]
+                amt = project_totals.get(pid)
+                if not amt:
+                    continue
+                is_owner = (not p.get("owner_id")) or (p["owner_id"] == viewer_user_id)
+                if is_owner:
+                    label, exposed_id = f"פרויקט: {p['name']}", pid
+                else:
+                    owner_name = first_name(member_names.get(p["owner_id"], "משפחה"))
+                    label, exposed_id = f"פרויקט {owner_name}", None
+                project_rows.append({
+                    "name": label, "icon": "🎯", "total": amt,
+                    "is_project": True, "project_id": exposed_id,
+                })
+
+        grand_total = sum(totals.values()) + sum(project_totals.values())
+        grand_total = grand_total or 1
+
         breakdown = [
             {
                 "name": name,
@@ -799,9 +1385,13 @@ def get_category_breakdown(family_id: str, year: int, month: int, type_: str = "
                 "total": round(total, 2),
                 "pct":  round((total / grand_total) * 100),
             }
-            # פעילות קודם (לפי גובה), אפסים בסוף לפי א"ב
-            for name, total in sorted(totals.items(), key=lambda x: (-x[1], x[0]))
+            for name, total in totals.items()
+        ] + [
+            dict(pr, pct=round((pr["total"] / grand_total) * 100), total=round(pr["total"], 2))
+            for pr in project_rows
         ]
+        # פעילות קודם (לפי גובה — כולל שורות פרויקט), אפסים בסוף לפי א"ב
+        breakdown.sort(key=lambda x: (-x["total"], x["name"]))
         return breakdown
     except Exception as e:
         print(f"[ERROR] get_category_breakdown: {e}")
@@ -861,6 +1451,53 @@ def get_monthly_trend(family_id: str, num_months: int = 6) -> list:
         return []
 
 
+def _category_history_averages(family_id: str, year: int, month: int):
+    """שאילתה משותפת ל-get_anomalies ול-get_run_rate_forecasts: מחזירה
+    (current, history, icons) — סכום החודש הנוכחי לכל קטגוריית הוצאה,
+    וההיסטוריה החודשית שלה בשלושת החודשים הקודמים (לחישוב ממוצע).
+    ממוטב-לבקשה: שני הקוראים רצים באותו עמוד — השאילתה רצה פעם אחת."""
+    return _request_cache(
+        f"cat_history:{family_id}:{year}:{month}",
+        lambda: _fetch_category_history_averages(family_id, year, month))
+
+
+def _fetch_category_history_averages(family_id: str, year: int, month: int):
+    client = get_client()
+    if not client:
+        return {}, {}, {}
+
+    start_month, start_year = month - 3, year
+    while start_month <= 0:
+        start_month += 12
+        start_year  -= 1
+
+    result = client.table("transactions") \
+        .select("amount, date, categories(name, icon)") \
+        .eq("family_id", family_id) \
+        .eq("type", "expense") \
+        .gte("date", f"{start_year}-{start_month:02d}-01") \
+        .lt("date", _next_month(year, month)) \
+        .execute()
+
+    current_key = f"{year}-{month:02d}"
+    current: dict = {}
+    history: dict = {}   # category -> {month_key -> total}
+    icons: dict = {}
+
+    for row in result.data:
+        cat  = row.get("categories") or {}
+        name = cat.get("name", "אחר")
+        icons[name] = cat.get("icon", "📦")
+        key  = row["date"][:7]
+        if key == current_key:
+            current[name] = current.get(name, 0) + float(row["amount"])
+        else:
+            history.setdefault(name, {})
+            history[name][key] = history[name].get(key, 0) + float(row["amount"])
+
+    return current, history, icons
+
+
 def get_anomalies(family_id: str, year: int, month: int, summary: dict,
                   settings: dict = None) -> list:
     """Flags unusual data for the month:
@@ -888,40 +1525,8 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
             "text": "יתרת העו\"ש החודש שלילית — ההוצאות והחיסכון עברו את ההכנסות",
         })
 
-    client = get_client()
-    if not client:
-        return alerts
     try:
-        # Current + previous 3 months of expenses, grouped by category
-        start_month, start_year = month - 3, year
-        while start_month <= 0:
-            start_month += 12
-            start_year  -= 1
-
-        result = client.table("transactions") \
-            .select("amount, date, categories(name, icon)") \
-            .eq("family_id", family_id) \
-            .eq("type", "expense") \
-            .gte("date", f"{start_year}-{start_month:02d}-01") \
-            .lt("date", _next_month(year, month)) \
-            .execute()
-
-        current_key = f"{year}-{month:02d}"
-        current: dict = {}
-        history: dict = {}   # category -> {month_key -> total}
-        icons: dict = {}
-
-        for row in result.data:
-            cat  = row.get("categories") or {}
-            name = cat.get("name", "אחר")
-            icons[name] = cat.get("icon", "📦")
-            key  = row["date"][:7]
-            if key == current_key:
-                current[name] = current.get(name, 0) + float(row["amount"])
-            else:
-                history.setdefault(name, {})
-                history[name][key] = history[name].get(key, 0) + float(row["amount"])
-
+        current, history, icons = _category_history_averages(family_id, year, month)
         for name, total in current.items():
             past = history.get(name)
             if not past:
@@ -939,6 +1544,55 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
     return alerts
 
 
+def get_run_rate_forecasts(family_id: str, year: int, month: int, settings: dict = None) -> list:
+    """תחזית 'קצב ריצה': משליכה את קצב ההוצאה היומי של החודש-עד-כה לסוף
+    החודש, ומתריעה מראש (לפני שהחריגה קרתה בפועל) אם ההשלכה חוצה את אותו
+    סף שכבר מוגדר בהעדפות המשפחה (get_anomalies). רלוונטי רק לחודש הנוכחי
+    שעדיין באמצעו — לא לחודשים שהסתיימו, ולא בימים הראשונים (קצב לא יציב).
+    Returns a list of {"severity": "forecast", "text": str}."""
+    import calendar
+    from datetime import date
+
+    cfg = (settings or DEFAULT_FAMILY_SETTINGS).get("anomaly", {})
+    if not cfg.get("enabled", True):
+        return []
+
+    today = date.today()
+    if (year, month) != (today.year, today.month):
+        return []
+    days_elapsed = today.day
+    if days_elapsed < 3:
+        return []  # קצב מתחילת חודש רועש מדי להשליך ממנו
+    days_in_month = calendar.monthrange(year, month)[1]
+
+    ratio   = float(cfg.get("percent", 150)) / 100.0
+    min_gap = float(cfg.get("min_gap", 300))
+
+    forecasts = []
+    try:
+        current, history, icons = _category_history_averages(family_id, year, month)
+        for name, total in current.items():
+            past = history.get(name)
+            if not past:
+                continue
+            avg = sum(past.values()) / len(past)
+            if avg <= 0:
+                continue
+            # כבר חרגה בפועל — get_anomalies כבר מתריע, אין צורך בכפילות
+            if total > avg * ratio and total - avg >= min_gap:
+                continue
+            projected = (total / days_elapsed) * days_in_month
+            if projected > avg * ratio and projected - avg >= min_gap:
+                forecasts.append({
+                    "severity": "forecast",
+                    "text": f'🔮 בקצב הנוכחי, קטגוריית {icons[name]} {name} צפויה לחרוג ב-₪{(projected - avg):,.0f} מהממוצע (₪{avg:,.0f}) עד סוף החודש',
+                })
+    except Exception as e:
+        print(f"[ERROR] get_run_rate_forecasts: {e}")
+
+    return forecasts
+
+
 def get_member_breakdown(family_id: str, year: int, month: int, type_: str = "expense") -> list:
     """Returns totals per family member for a given month and transaction type.
     נקרא רק עבור סוגים שהמשפחה הפעילה בהם שיוך (ראה get_family_settings)."""
@@ -947,20 +1601,24 @@ def get_member_breakdown(family_id: str, year: int, month: int, type_: str = "ex
         return []
     try:
         result = client.table("transactions") \
-            .select("amount, profiles(name, workplace)") \
+            .select("amount, user_id, profiles(name)") \
             .eq("family_id", family_id) \
             .eq("type", type_) \
             .gte("date", f"{year}-{month:02d}-01") \
             .lt("date", _next_month(year, month)) \
             .execute()
 
+        # מקבצים לפי user_id (ולא לפי שם) כדי לשמור על הצבע הקבוע לכל בן
+        # משפחה — עסקאות משותפות (user_id=NULL) מקובצות יחד תחת "משותפת".
         members: dict = {}
         for row in result.data:
+            uid = row.get("user_id")
             profile = row.get("profiles")
-            name = first_name(profile["name"]) if profile and profile.get("name") else "משותף"
-            if name not in members:
-                members[name] = {"name": name, "expense": 0.0}
-            members[name]["expense"] += float(row["amount"])
+            name = first_name(profile["name"]) if profile and profile.get("name") else "משותפת"
+            key = uid or "__shared__"
+            if key not in members:
+                members[key] = {"user_id": uid, "name": name, "expense": 0.0}
+            members[key]["expense"] += float(row["amount"])
 
         return sorted(members.values(), key=lambda x: x["expense"], reverse=True)
     except Exception as e:
@@ -970,7 +1628,7 @@ def get_member_breakdown(family_id: str, year: int, month: int, type_: str = "ex
 
 # ─── Family members ───────────────────────────────────────────────────────────
 
-def get_family_members(family_id: str) -> list:
+def _fetch_family_members(family_id: str) -> list:
     client = get_client()
     if not client:
         return []
@@ -986,6 +1644,11 @@ def get_family_members(family_id: str) -> list:
         return []
 
 
+def get_family_members(family_id: str) -> list:
+    """ממוטב-לבקשה (ראה _request_cache) — נקרא כמה פעמים בעמוד אחד."""
+    return _request_cache(f"members:{family_id}", lambda: _fetch_family_members(family_id))
+
+
 def update_family_name(family_id: str, name: str):
     client = get_client()
     if not client:
@@ -998,7 +1661,7 @@ def update_family_name(family_id: str, name: str):
         return False
 
 
-def get_family(family_id: str) -> dict:
+def _fetch_family(family_id: str) -> dict:
     client = get_client()
     if not client:
         return {}
@@ -1007,6 +1670,11 @@ def get_family(family_id: str) -> dict:
         return result.data or {}
     except Exception:
         return {}
+
+
+def get_family(family_id: str) -> dict:
+    """ממוטב-לבקשה (ראה _request_cache) — נקרא גם ישירות וגם דרך ההעדפות."""
+    return _request_cache(f"family:{family_id}", lambda: _fetch_family(family_id))
 
 
 def join_family_by_code(user_id: str, family_id: str) -> bool:
@@ -1066,7 +1734,12 @@ def _format_transactions(rows: list, settings: dict = None) -> list:
                       and cfg.get("owner_attribution", {}).get("income", True))
     out = []
     for row in rows:
-        cat = row.get("categories") or {}
+        # עסקה המשויכת לפרויקט משתמשת בקטגוריה הייעודית שלו (project_categories),
+        # לא בקטגוריות הרגילות של המשפחה
+        if row.get("project_category_id"):
+            cat = row.get("project_categories") or {}
+        else:
+            cat = row.get("categories") or {}
         user = row.get("profiles") or {}
         out.append({
             "id":                   row["id"],
@@ -1075,18 +1748,27 @@ def _format_transactions(rows: list, settings: dict = None) -> list:
             "description":          row.get("description") or "",
             "date":                 str(row["date"]),
             "category_id":          row.get("category_id"),
+            "project_category_id":  row.get("project_category_id"),
             "category_name":        cat.get("name", "אחר"),
             "category_icon":        cat.get("icon", "📦"),
             "user_id":              row.get("user_id"),
             "user_name":            first_name(user.get("name", "")) if row.get("user_id") else "משותף",
-            # מיקום העבודה מוצג רק על הכנסות משכורת, ורק אם המשפחה בחרה בכך
-            "workplace":            (user.get("workplace")
+            # מיקום העבודה מוצג רק על הכנסות משכורת, ורק אם המשפחה בחרה בכך.
+            # מעדיפים תיעוד קפוא על העסקה עצמה (row.workplace) — כדי ששינוי
+            # מקום עבודה עתידי לא ישנה בטעות היסטוריה; NULL (עסקאות ישנות
+            # מלפני התכונה) נופל חזרה לחיפוש חי מהפרופיל כמו קודם.
+            "workplace":            ((row.get("workplace") or user.get("workplace"))
                                      if show_workplace and row["type"] == "income"
                                         and "משכורת" in cat.get("name", "")
                                      else None),
             "is_recurring":         row.get("is_recurring", False),
             "recurring_frequency":  row.get("recurring_frequency"),
             "recurring_end_date":   str(row["recurring_end_date"]) if row.get("recurring_end_date") else None,
+            # מזהה התבנית הקבועה שיצרה את המופע הזה (None אם זו עסקה רגילה
+            # או תבנית בעצמה) — משמש לסנכרון חכם: הצעה לעדכן גם את התבנית
+            # כשמשנים סכום במופע.
+            "recurring_parent_id":  row.get("recurring_parent_id"),
+            "project_id":           row.get("project_id"),
             "has_receipt":          bool(row.get("receipt_path")),
         })
     return out

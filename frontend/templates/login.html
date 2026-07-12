@@ -55,9 +55,10 @@
             <form class="auth-form auth-panel" id="loginPanel" method="POST" action="{{ url_for('login') }}" novalidate
                   {% if active_tab == 'signup' %}style="display:none;"{% endif %}>
                 <div class="form-group">
-                    <label class="form-label" for="email">אימייל</label>
-                    <input class="form-input" type="email" id="email" name="email"
-                           placeholder="your@email.com" required autocomplete="email" inputmode="email">
+                    <label class="form-label" for="identifier">אימייל או טלפון</label>
+                    <input class="form-input" type="text" id="identifier" name="identifier"
+                           placeholder="your@email.com / 050-1234567" required autocomplete="username"
+                           dir="ltr" style="text-align:right;">
                 </div>
 
                 <div class="form-group">
@@ -83,7 +84,7 @@
                     <input class="form-input" type="email" id="forgotEmail"
                            placeholder="your@email.com" autocomplete="email" inputmode="email">
                 </div>
-                <p class="form-error" id="forgotError"></p>
+                <p class="form-error" id="forgotError" role="alert"></p>
                 <p class="form-success" id="forgotSuccess"></p>
                 <button type="button" class="submit-btn" id="forgotBtn">שלח קישור איפוס</button>
                 <p class="auth-forgot">
@@ -114,9 +115,10 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="phone">טלפון (אופציונלי)</label>
-                    <input class="form-input" type="tel" id="phone" name="phone"
+                    <label class="form-label" for="phone">טלפון</label>
+                    <input class="form-input" type="tel" id="phone" name="phone" required
                            placeholder="050-1234567" autocomplete="tel" dir="ltr" style="text-align:right;">
+                    <p class="field-hint">ישמש גם ככניסה חלופית להתחברות, לצד המייל</p>
                 </div>
 
                 <div class="form-group">
@@ -214,7 +216,7 @@
                 btn.textContent = 'שלח קישור איפוס';
             })
             .catch(function () {
-                forgotError.textContent = 'שגיאת רשת – נסה שוב';
+                forgotError.textContent = 'שגיאת רשת — נסה שוב';
                 btn.disabled = false;
                 btn.textContent = 'שלח קישור איפוס';
             });

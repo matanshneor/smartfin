@@ -25,7 +25,7 @@
 
     <!-- ═══ קבוצה 1: המשפחה ═══ -->
     <section class="settings-group">
-        <button type="button" class="settings-group-header">
+        <button type="button" class="settings-group-header" aria-expanded="false">
             <span class="group-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
@@ -77,11 +77,11 @@
                         </p>
                         <p class="member-settings-meta">{{ m.email }}</p>
                         {% if m.id == user.id %}
-                        <p class="member-settings-meta" id="accountPhoneDisplay" {% if not m.phone %}style="display:none;"{% endif %}>📞 {{ m.phone or '' }}</p>
-                        <p class="member-settings-meta" id="accountWorkplaceDisplay" {% if not m.workplace %}style="display:none;"{% endif %}>💼 {{ m.workplace or '' }}</p>
+                        <p class="member-settings-meta" id="accountPhoneDisplay" {% if not m.phone %}style="display:none;"{% endif %}>{{ m.phone or '' }}</p>
+                        <p class="member-settings-meta" id="accountWorkplaceDisplay" {% if not m.workplace %}style="display:none;"{% endif %}>{{ m.workplace or '' }}</p>
                         {% else %}
-                        {% if m.phone %}<p class="member-settings-meta">📞 {{ m.phone }}</p>{% endif %}
-                        {% if m.workplace %}<p class="member-settings-meta">💼 {{ m.workplace }}</p>{% endif %}
+                        {% if m.phone %}<p class="member-settings-meta">{{ m.phone }}</p>{% endif %}
+                        {% if m.workplace %}<p class="member-settings-meta">{{ m.workplace }}</p>{% endif %}
                         {% endif %}
                     </div>
                     {% if m.id == user.id %}
@@ -117,7 +117,7 @@
                     <input class="form-input" type="text" id="editWorkplace" value="{{ account.workplace }}"
                            placeholder="לדוגמה: אינטל, עצמאי…" maxlength="60" autocomplete="organization">
                 </div>
-                <p class="form-error" id="profileError"></p>
+                <p class="form-error" id="profileError" role="alert"></p>
                 <div class="edit-actions">
                     <button class="btn-sm btn-primary" id="saveProfileBtn">שמור</button>
                     <button class="btn-sm btn-ghost" id="cancelProfileBtn">ביטול</button>
@@ -142,7 +142,7 @@
 
     <!-- ═══ קבוצה 2: קטגוריות ═══ -->
     <section class="settings-group">
-        <button type="button" class="settings-group-header">
+        <button type="button" class="settings-group-header" aria-expanded="false">
             <span class="group-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>
@@ -159,10 +159,10 @@
 
         <div class="settings-group-body">
             <div class="cat-manage-bar">
-                <div class="type-toggle type-toggle-3 cat-type-tabs">
-                    <button type="button" class="toggle-btn active" data-cat-tab="expense">הוצאות</button>
-                    <button type="button" class="toggle-btn" data-cat-tab="income">הכנסות</button>
-                    <button type="button" class="toggle-btn" data-cat-tab="savings">חיסכון</button>
+                <div class="type-toggle type-toggle-3 cat-type-tabs" role="tablist" aria-label="סוג קטגוריה">
+                    <button type="button" class="toggle-btn active" data-cat-tab="expense" role="tab" aria-selected="true">הוצאות</button>
+                    <button type="button" class="toggle-btn" data-cat-tab="income" role="tab" aria-selected="false">הכנסות</button>
+                    <button type="button" class="toggle-btn" data-cat-tab="savings" role="tab" aria-selected="false">חיסכון</button>
                 </div>
                 <button type="button" class="btn-sm btn-ghost" id="manageCatsBtn">ניהול</button>
             </div>
@@ -172,7 +172,8 @@
                 <ul class="categories-list cat-tab-panel" id="{{ list_id }}" data-tab-panel="{{ type_key }}"
                     {% if not loop.first %}style="display:none;"{% endif %}>
                     {% for cat in categories if cat.type == type_key %}
-                    <li class="category-row" data-id="{{ cat.id }}" data-custom="{{ cat.is_custom | lower }}">
+                    <li class="category-row" data-id="{{ cat.id }}" data-custom="{{ cat.is_custom | lower }}"
+                        data-name="{{ cat.name }}" data-icon="{{ cat.icon }}">
                         <span class="cat-row-icon">{{ cat.icon }}</span>
                         <span class="cat-row-name">{{ cat.name }}</span>
                         {% if cat.is_custom %}
@@ -185,6 +186,14 @@
                         {% else %}
                         <span class="cat-system-badge">מובנה</span>
                         {% endif %}
+                        <div class="cat-reorder-btns">
+                            <button type="button" class="cat-move-btn cat-move-up" data-id="{{ cat.id }}" aria-label="הזז למעלה">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                            </button>
+                            <button type="button" class="cat-move-btn cat-move-down" data-id="{{ cat.id }}" aria-label="הזז למטה">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                        </div>
                     </li>
                     {% endfor %}
                 </ul>
@@ -200,15 +209,114 @@
                                placeholder="שם קטגוריה חדשה" maxlength="30" required>
                         <button type="submit" class="btn-sm btn-primary">הוסף</button>
                     </div>
-                    <p class="form-error" id="addCatError"></p>
+                    <p class="form-error" id="addCatError" role="alert"></p>
                 </form>
             </div>
         </div>
     </section>
 
+    <!-- ═══ קבוצה: פרויקטים ═══ -->
+    <section class="settings-group">
+        <button type="button" class="settings-group-header" aria-expanded="false">
+            <span class="group-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>
+                </svg>
+            </span>
+            <span class="group-text">
+                <span class="group-title">פרויקטים</span>
+                <span class="group-sub">{{ projects | length }} פרויקטים פעילים</span>
+            </span>
+            <span class="group-chevron">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+        </button>
+
+        <div class="settings-group-body">
+            <div class="cat-manage-bar">
+                <span></span>
+                <button type="button" class="btn-sm btn-ghost" id="newProjectSettingsBtn">פרויקט חדש</button>
+            </div>
+
+            <form class="add-cat-form" id="newProjectSettingsForm" novalidate style="display:none; margin-top:14px;">
+                <div class="form-group">
+                    <label class="form-label" for="newProjSettingsName">שם הפרויקט</label>
+                    <input class="form-input" type="text" id="newProjSettingsName" placeholder="לדוגמה: טיול ליפן" maxlength="50" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="newProjSettingsBudget">יעד תקציב (אופציונלי)</label>
+                    <div class="amount-input-wrap">
+                        <span class="amount-currency">₪</span>
+                        <input class="form-input amount-input" type="number" id="newProjSettingsBudget" placeholder="0" min="0" step="1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">בעלות</label>
+                    <div class="type-toggle" style="grid-template-columns: 1fr 1fr;">
+                        <button type="button" class="toggle-btn active" id="newProjSettingsOwnerShared" data-personal="false">משותף — כל המשפחה</button>
+                        <button type="button" class="toggle-btn" id="newProjSettingsOwnerPersonal" data-personal="true">אישי — רק אני</button>
+                    </div>
+                    <p class="field-hint">תמיד אפשר להפוך פרויקט אישי למשותף מאוחר יותר (מעמוד הפרויקט)</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">אילו סוגי עסקאות לעקוב?</label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="newProjSettingsTrackExpense" class="checkbox-input" checked>
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">הוצאות</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="newProjSettingsTrackIncome" class="checkbox-input">
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">הכנסות</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="newProjSettingsTrackSavings" class="checkbox-input">
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">חיסכון</span>
+                    </label>
+                </div>
+                <p class="form-error" id="newProjSettingsError" role="alert"></p>
+                <div class="edit-actions">
+                    <button type="submit" class="btn-sm btn-primary">צור פרויקט</button>
+                    <button type="button" class="btn-sm btn-ghost" id="cancelNewProjSettingsBtn">ביטול</button>
+                </div>
+            </form>
+
+            {% if projects %}
+            <ul class="categories-list" id="projectsSettingsList" style="margin-top:14px;">
+                {% for p in projects %}
+                <li class="category-row project-settings-row" data-id="{{ p.id }}"
+                    data-name="{{ p.name }}"
+                    data-budget-target="{{ p.budget_target if p.budget_target is not none else '' }}"
+                    data-track-expense="{{ p.track_expense | lower }}"
+                    data-track-income="{{ p.track_income | lower }}"
+                    data-track-savings="{{ p.track_savings | lower }}">
+                    <span class="cat-row-icon">{{ '🔒' if p.is_personal else '🎯' }}</span>
+                    <span class="cat-row-name">{{ p.name }}</span>
+                    <a class="btn-sm btn-ghost" href="{{ url_for('project_detail', project_id=p.id) }}">ניהול מלא</a>
+                    <button class="edit-project-settings-btn" data-id="{{ p.id }}" aria-label="ערוך פרויקט">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                        </svg>
+                    </button>
+                    <button class="delete-project-btn" data-id="{{ p.id }}" aria-label="מחק פרויקט">✕</button>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="empty-state">
+                <p class="empty-icon">🎯</p>
+                <p class="empty-text">אין פרויקטים עדיין</p>
+                <p class="empty-sub">צור פרויקט כדי לעקוב אחרי הוצאות טיול, שיפוץ או אירוע לאורך זמן</p>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
     <!-- ═══ קבוצה: העדפות משפחה ═══ -->
     <section class="settings-group">
-        <button type="button" class="settings-group-header">
+        <button type="button" class="settings-group-header" aria-expanded="false">
             <span class="group-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
@@ -317,7 +425,7 @@
 
     <!-- ═══ קבוצה 3: עסקאות קבועות ═══ -->
     <section class="settings-group">
-        <button type="button" class="settings-group-header">
+        <button type="button" class="settings-group-header" aria-expanded="false">
             <span class="group-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
@@ -343,7 +451,12 @@
                     'biweekly':   'כל שבועיים'
                 } %}
                 {% for tx in recurring %}
-                <li class="recurring-row" data-id="{{ tx.id }}">
+                <li class="recurring-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                    data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
+                    data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
+                    data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
+                    data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
+                    data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
                     <div class="recurring-icon">{{ tx.category_icon }}</div>
                     <div class="recurring-details">
                         <p class="recurring-name">{{ tx.description or tx.category_name }}</p>
@@ -360,17 +473,18 @@
                 {% endfor %}
             </ul>
             {% else %}
-            <p class="recurring-empty">
-                אין עסקאות קבועות עדיין.<br>
-                סמן "עסקה חוזרת" בהוספת עסקה כדי שתופיע כאן (משכורת, שכירות, מנויים…)
-            </p>
+            <div class="empty-state">
+                <p class="empty-icon">🔁</p>
+                <p class="empty-text">אין עסקאות קבועות עדיין</p>
+                <p class="empty-sub">סמן "עסקה חוזרת" בהוספת עסקה כדי שתופיע כאן (משכורת, שכירות, מנויים…)</p>
+            </div>
             {% endif %}
         </div>
     </section>
 
     <!-- ═══ קבוצה 4: אבטחה וחשבון ═══ -->
     <section class="settings-group">
-        <button type="button" class="settings-group-header">
+        <button type="button" class="settings-group-header" aria-expanded="false">
             <span class="group-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -407,7 +521,7 @@
                     <label class="form-label" for="newPasswordConfirm">אימות סיסמה חדשה</label>
                     <input class="form-input" type="password" id="newPasswordConfirm" placeholder="••••••••" minlength="6" autocomplete="new-password">
                 </div>
-                <p class="form-error" id="passwordError"></p>
+                <p class="form-error" id="passwordError" role="alert"></p>
                 <p class="form-success" id="passwordSuccess"></p>
                 <div class="edit-actions">
                     <button class="btn-sm btn-primary" id="changePasswordBtn">עדכן סיסמה</button>
@@ -417,6 +531,69 @@
 
             <div class="group-divider"></div>
             <a href="{{ url_for('logout') }}" class="logout-btn">התנתק</a>
+
+            <div class="group-divider"></div>
+
+            <!-- איפוס חשבון: מחיקת כל העסקאות, החשבון נשמר -->
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">איפוס חשבון</p>
+                    <p class="group-row-hint">מחיקת כל העסקאות — החשבון, הקטגוריות וההגדרות נשמרים</p>
+                </div>
+                <button class="btn-sm btn-ghost btn-danger-ghost" id="toggleResetAccountBtn">אפס חשבון</button>
+            </div>
+
+            <div class="password-form" id="resetAccountForm">
+                <p class="delete-account-warning">
+                    האיפוס מוחק לצמיתות את כל העסקאות — הכנסות, הוצאות וחיסכון,
+                    כולל עסקאות קבועות. הקטגוריות, הפרויקטים וההגדרות נשמרים.
+                </p>
+                <div class="form-group">
+                    <label class="form-label">מה לאפס?</label>
+                    <div class="type-toggle" style="grid-template-columns: 1fr 1fr;">
+                        <button type="button" class="toggle-btn active" id="resetScopeFamily" data-scope="family">כל עסקאות המשפחה</button>
+                        <button type="button" class="toggle-btn" id="resetScopeMine" data-scope="mine">רק העסקאות שלי</button>
+                    </div>
+                    <p class="field-hint">"רק העסקאות שלי" מוחק עסקאות שמשויכות אליך אישית — עסקאות משותפות ושל בני משפחה אחרים נשארות</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="resetAccountPassword">אישור עם הסיסמה הנוכחית</label>
+                    <input class="form-input" type="password" id="resetAccountPassword" placeholder="••••••••" autocomplete="current-password">
+                </div>
+                <p class="form-error" id="resetAccountError" role="alert"></p>
+                <div class="edit-actions">
+                    <button class="btn-sm btn-danger" id="confirmResetAccountBtn">אפס עסקאות</button>
+                    <button class="btn-sm btn-ghost" id="cancelResetAccountBtn">ביטול</button>
+                </div>
+            </div>
+
+            <div class="group-divider"></div>
+
+            <!-- מחיקת חשבון לצמיתות -->
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">מחיקת חשבון</p>
+                    <p class="group-row-hint">מחיקה לצמיתות של החשבון וכל הנתונים שלו</p>
+                </div>
+                <button class="btn-sm btn-ghost btn-danger-ghost" id="toggleDeleteAccountBtn">מחק חשבון</button>
+            </div>
+
+            <div class="password-form" id="deleteAccountForm">
+                <p class="delete-account-warning">
+                    המחיקה סופית ולא ניתנת לביטול. החשבון וכל הנתונים שלו יימחקו לצמיתות.
+                    אם יש בני משפחה נוספים — הנתונים המשפחתיים יישארו אצלם, והעסקאות שלך
+                    יסומנו כמשותפות. אם אין — כל נתוני המשפחה יימחקו גם הם.
+                </p>
+                <div class="form-group">
+                    <label class="form-label" for="deleteAccountPassword">אישור עם הסיסמה הנוכחית</label>
+                    <input class="form-input" type="password" id="deleteAccountPassword" placeholder="••••••••" autocomplete="current-password">
+                </div>
+                <p class="form-error" id="deleteAccountError" role="alert"></p>
+                <div class="edit-actions">
+                    <button class="btn-sm btn-danger" id="confirmDeleteAccountBtn">מחק לצמיתות</button>
+                    <button class="btn-sm btn-ghost" id="cancelDeleteAccountBtn">ביטול</button>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -431,7 +608,8 @@
     // ── אקורדיון: פתיחה/סגירה של קבוצות ──
     document.querySelectorAll('.settings-group-header').forEach(function (header) {
         header.addEventListener('click', function () {
-            header.closest('.settings-group').classList.toggle('open');
+            const isOpen = header.closest('.settings-group').classList.toggle('open');
+            header.setAttribute('aria-expanded', isOpen);
         });
     });
 
@@ -442,8 +620,12 @@
 
     catTabs.forEach(function (btn) {
         btn.addEventListener('click', function () {
-            catTabs.forEach(b => b.classList.remove('active'));
+            catTabs.forEach(function (b) {
+                b.classList.remove('active');
+                b.setAttribute('aria-selected', 'false');
+            });
             btn.classList.add('active');
+            btn.setAttribute('aria-selected', 'true');
             const tab = btn.dataset.catTab;
             catPanels.forEach(p => { p.style.display = (p.dataset.tabPanel === tab) ? '' : 'none'; });
             newCatType.value = tab;
@@ -487,6 +669,7 @@
         saveBtn.addEventListener('click', function () {
             const newName = nameInput.value.trim();
             if (!newName) return;
+            saveBtn.disabled = true;
             fetch('/api/family', {
                 method:  'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -494,10 +677,17 @@
             })
             .then(r => r.json())
             .then(function (d) {
+                saveBtn.disabled = false;
                 if (d.status === 'ok') {
                     nameDisplay.textContent = newName;
                     nameEdit.classList.remove('visible');
+                } else {
+                    window.showToast('השמירה נכשלה', 'error');
                 }
+            })
+            .catch(function () {
+                saveBtn.disabled = false;
+                window.showToast('שגיאת רשת — נסה שוב', 'error');
             });
         });
     }
@@ -537,9 +727,79 @@
                     row.style.opacity = '0';
                     setTimeout(() => row.remove(), 260);
                     window.showToast('העסקה הקבועה הוסרה');
+                } else {
+                    window.showToast('ההסרה נכשלה', 'error');
                 }
-            });
+            })
+            .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
         });
+    });
+
+    // ── סדר קטגוריות (▲▼) ──
+    function catRowInnerHTML(id, icon, name, isCustom) {
+        return `
+            <span class="cat-row-icon">${icon}</span>
+            <span class="cat-row-name">${name}</span>
+            ${isCustom ? `
+            <button class="edit-cat-btn" data-id="${id}" aria-label="ערוך קטגוריה">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                </svg>
+            </button>
+            <button class="delete-cat-btn" data-id="${id}" aria-label="מחק קטגוריה">✕</button>
+            ` : `<span class="cat-system-badge">מובנה</span>`}
+            <div class="cat-reorder-btns">
+                <button type="button" class="cat-move-btn cat-move-up" data-id="${id}" aria-label="הזז למעלה">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                </button>
+                <button type="button" class="cat-move-btn cat-move-down" data-id="${id}" aria-label="הזז למטה">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+            </div>
+        `;
+    }
+
+    function updatePanelReorderState(panel) {
+        if (!panel) return;
+        const rows = Array.from(panel.querySelectorAll(':scope > .category-row'));
+        rows.forEach(function (row, i) {
+            const up   = row.querySelector('.cat-move-up');
+            const down = row.querySelector('.cat-move-down');
+            if (up)   up.disabled   = (i === 0);
+            if (down) down.disabled = (i === rows.length - 1);
+        });
+    }
+
+    function persistCategoryOrder(panel) {
+        const type  = panel.dataset.tabPanel;
+        const order = Array.from(panel.querySelectorAll(':scope > .category-row')).map(r => r.dataset.id);
+        fetch('/api/categories/reorder', {
+            method:  'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ type, order }),
+        })
+        .then(r => r.json())
+        .then(function (d) { if (d.error) window.showToast('שמירת הסדר נכשלה', 'error'); })
+        .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
+    }
+
+    document.querySelectorAll('.cat-tab-panel').forEach(updatePanelReorderState);
+
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.cat-move-up, .cat-move-down');
+        if (!btn) return;
+        const row   = btn.closest('.category-row');
+        const panel = btn.closest('.cat-tab-panel');
+        if (!row || !panel) return;
+        const sibling = btn.classList.contains('cat-move-up') ? row.previousElementSibling : row.nextElementSibling;
+        if (!sibling || !sibling.classList.contains('category-row')) return;
+        if (btn.classList.contains('cat-move-up')) {
+            panel.insertBefore(row, sibling);
+        } else {
+            panel.insertBefore(sibling, row);
+        }
+        updatePanelReorderState(panel);
+        persistCategoryOrder(panel);
     });
 
     // ── Edit category (inline) ──
@@ -549,19 +809,23 @@
         const row = btn.closest('.category-row');
         if (!row || row.classList.contains('editing')) return;
 
-        const id       = btn.dataset.id;
-        const iconEl   = row.querySelector('.cat-row-icon');
-        const nameEl   = row.querySelector('.cat-row-name');
-        const origIcon = iconEl.textContent.trim();
-        const origName = nameEl.textContent.trim();
+        const id        = btn.dataset.id;
+        const origIcon  = row.dataset.icon || '📦';
+        const origName  = row.dataset.name || '';
 
         row.classList.add('editing');
         row.dataset.origHtml = row.innerHTML;
         row.innerHTML = `
-            <input class="form-input emoji-input cat-edit-icon" type="text" maxlength="2" value="${origIcon}">
-            <input class="form-input cat-edit-name" type="text" maxlength="30" value="${origName}">
-            <button class="btn-sm btn-primary cat-edit-save" data-id="${id}">שמור</button>
-            <button class="btn-sm btn-ghost cat-edit-cancel">ביטול</button>
+            <div class="cat-edit-form">
+                <div class="add-cat-row">
+                    <input class="form-input emoji-input cat-edit-icon" type="text" maxlength="2" value="${origIcon}">
+                    <input class="form-input cat-edit-name" type="text" maxlength="30" value="${origName}">
+                </div>
+                <div class="edit-actions">
+                    <button class="btn-sm btn-primary cat-edit-save" data-id="${id}">שמור</button>
+                    <button class="btn-sm btn-ghost cat-edit-cancel">ביטול</button>
+                </div>
+            </div>
         `;
         row.querySelector('.cat-edit-name').focus();
     });
@@ -593,18 +857,13 @@
         .then(function (d) {
             if (d.error) { window.showToast(d.error, 'error'); saveEditBtn.disabled = false; return; }
             row.classList.remove('editing');
-            row.innerHTML = `
-                <span class="cat-row-icon">${icon}</span>
-                <span class="cat-row-name">${name}</span>
-                <button class="edit-cat-btn" data-id="${id}" aria-label="ערוך קטגוריה">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                    </svg>
-                </button>
-                <button class="delete-cat-btn" data-id="${id}" aria-label="מחק קטגוריה">✕</button>
-            `;
+            row.dataset.name = name;
+            row.dataset.icon = icon;
+            row.innerHTML = catRowInnerHTML(id, icon, name, true);
+            updatePanelReorderState(row.closest('.cat-tab-panel'));
+            window.showToast('הקטגוריה עודכנה');
         })
-        .catch(function () { window.showToast('שגיאת רשת', 'error'); saveEditBtn.disabled = false; });
+        .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); saveEditBtn.disabled = false; });
     });
 
     // ── Delete category ──
@@ -614,6 +873,7 @@
         const id  = btn.dataset.id;
         const row = btn.closest('.category-row');
         if (!id || !row) return;
+        const panel = row.closest('.cat-tab-panel');
 
         const catName = (row.querySelector('.cat-row-name') || {}).textContent || '';
         window.appConfirm({
@@ -630,10 +890,13 @@
                     row.style.height  = '0';
                     row.style.overflow = 'hidden';
                     row.style.transition = 'all 0.25s';
-                    setTimeout(() => row.remove(), 260);
+                    setTimeout(function () { row.remove(); updatePanelReorderState(panel); }, 260);
                     window.showToast('הקטגוריה נמחקה');
+                } else {
+                    window.showToast('המחיקה נכשלה', 'error');
                 }
-            });
+            })
+            .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
         });
     });
 
@@ -655,6 +918,8 @@
                 return;
             }
 
+            const addBtn = addForm.querySelector('button[type="submit"]');
+            addBtn.disabled = true;
             fetch('/api/categories', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -662,6 +927,7 @@
             })
             .then(r => r.json())
             .then(function (cat) {
+                addBtn.disabled = false;
                 if (cat.error) { addError.textContent = cat.error; return; }
 
                 const listMap = { expense: 'expenseCatList', income: 'incomeCatList', savings: 'savingsCatList' };
@@ -671,24 +937,19 @@
                     li.className   = 'category-row';
                     li.dataset.id  = cat.id;
                     li.dataset.custom = 'true';
-                    li.innerHTML = `
-                        <span class="cat-row-icon">${cat.icon}</span>
-                        <span class="cat-row-name">${cat.name}</span>
-                        <button class="edit-cat-btn" data-id="${cat.id}" aria-label="ערוך קטגוריה">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                            </svg>
-                        </button>
-                        <button class="delete-cat-btn" data-id="${cat.id}" aria-label="מחק קטגוריה">✕</button>
-                    `;
+                    li.dataset.name = cat.name;
+                    li.dataset.icon = cat.icon;
+                    li.innerHTML = catRowInnerHTML(cat.id, cat.icon, cat.name, true);
                     list.appendChild(li);
+                    updatePanelReorderState(list);
                 }
 
                 document.getElementById('newCatName').value = '';
                 document.getElementById('newCatIcon').value = '🏷';
             })
             .catch(function () {
-                addError.textContent = 'שגיאת רשת';
+                addBtn.disabled = false;
+                addError.textContent = 'שגיאת רשת — נסה שוב';
             });
         });
     }
@@ -714,12 +975,49 @@
         });
     }
 
+    function submitProfile(workplaceScope) {
+        const firstName = document.getElementById('editFirstName').value.trim();
+        const lastName  = document.getElementById('editLastName').value.trim();
+        const phone     = document.getElementById('editPhone').value.trim();
+        const workplace = document.getElementById('editWorkplace').value.trim();
+
+        saveProfileBtn.disabled = true;
+        fetch('/api/profile', {
+            method:  'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                first_name: firstName, last_name: lastName, phone: phone, workplace: workplace,
+                workplace_scope: workplaceScope || undefined,
+            }),
+        })
+        .then(r => r.json())
+        .then(function (d) {
+            saveProfileBtn.disabled = false;
+            if (d.error) { profileError.textContent = d.error; return; }
+            accountNameDisplay.textContent = d.full_name;
+
+            const phoneDisplay = document.getElementById('accountPhoneDisplay');
+            phoneDisplay.textContent = d.phone ? '📞 ' + d.phone : '';
+            phoneDisplay.style.display = d.phone ? '' : 'none';
+
+            const workplaceDisplay = document.getElementById('accountWorkplaceDisplay');
+            workplaceDisplay.textContent = d.workplace ? '💼 ' + d.workplace : '';
+            workplaceDisplay.style.display = d.workplace ? '' : 'none';
+
+            profileEdit.classList.remove('visible');
+        })
+        .catch(function () {
+            saveProfileBtn.disabled = false;
+            profileError.textContent = 'שגיאת רשת — נסה שוב';
+        });
+    }
+
     if (saveProfileBtn) {
         saveProfileBtn.addEventListener('click', function () {
             const firstName = document.getElementById('editFirstName').value.trim();
             const lastName  = document.getElementById('editLastName').value.trim();
-            const phone     = document.getElementById('editPhone').value.trim();
-            const workplace = document.getElementById('editWorkplace').value.trim();
+            const workplaceInput = document.getElementById('editWorkplace');
+            const workplace = workplaceInput.value.trim();
             profileError.textContent = '';
 
             if (!firstName || !lastName) {
@@ -727,32 +1025,22 @@
                 return;
             }
 
-            saveProfileBtn.disabled = true;
-            fetch('/api/profile', {
-                method:  'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ first_name: firstName, last_name: lastName, phone: phone, workplace: workplace }),
-            })
-            .then(r => r.json())
-            .then(function (d) {
-                saveProfileBtn.disabled = false;
-                if (d.error) { profileError.textContent = d.error; return; }
-                accountNameDisplay.textContent = d.full_name;
-
-                const phoneDisplay = document.getElementById('accountPhoneDisplay');
-                phoneDisplay.textContent = d.phone ? '📞 ' + d.phone : '';
-                phoneDisplay.style.display = d.phone ? '' : 'none';
-
-                const workplaceDisplay = document.getElementById('accountWorkplaceDisplay');
-                workplaceDisplay.textContent = d.workplace ? '💼 ' + d.workplace : '';
-                workplaceDisplay.style.display = d.workplace ? '' : 'none';
-
-                profileEdit.classList.remove('visible');
-            })
-            .catch(function () {
-                saveProfileBtn.disabled = false;
-                profileError.textContent = 'שגיאת רשת';
-            });
+            // מקום עבודה השתנה — שואלים אם להחיל גם על היסטוריית משכורות
+            // או רק מהחודש הנוכחי ואילך (ראה update_workplace_history בשרת)
+            const workplaceChanged = workplace !== workplaceInput.defaultValue.trim();
+            if (workplaceChanged) {
+                window.appConfirm({
+                    title: 'לעדכן גם עסקאות משכורת קודמות?',
+                    message: 'שינית את מקום העבודה. אפשר לעדכן אותו על כל היסטוריית המשכורות, או רק מהחודש הנוכחי ואילך (עסקאות ישנות יותר ישמרו את מקום העבודה הקודם).',
+                    confirmText: 'כל ההיסטוריה',
+                    cancelText: 'רק מהחודש הזה',
+                    danger: false,
+                }).then(function (updateAll) {
+                    submitProfile(updateAll ? 'all' : 'future');
+                });
+            } else {
+                submitProfile(null);
+            }
         });
     }
 
@@ -823,14 +1111,139 @@
                 changePasswordBtn.disabled = false;
                 changePasswordBtn.textContent = 'עדכן סיסמה';
                 if (d.error) { pwError.textContent = d.error; return; }
-                pwSuccess.textContent = 'הסיסמה עודכנה בהצלחה';
                 resetPasswordForm();
                 pwSuccess.textContent = 'הסיסמה עודכנה בהצלחה';
             })
             .catch(function () {
                 changePasswordBtn.disabled = false;
                 changePasswordBtn.textContent = 'עדכן סיסמה';
-                pwError.textContent = 'שגיאת רשת';
+                pwError.textContent = 'שגיאת רשת — נסה שוב';
+            });
+        });
+    }
+
+    // ── איפוס חשבון: מחיקת כל העסקאות (החשבון נשמר) ──
+    const toggleResetBtn  = document.getElementById('toggleResetAccountBtn');
+    const resetForm       = document.getElementById('resetAccountForm');
+    const cancelResetBtn  = document.getElementById('cancelResetAccountBtn');
+    const confirmResetBtn = document.getElementById('confirmResetAccountBtn');
+    const resetPwInput    = document.getElementById('resetAccountPassword');
+    const resetError      = document.getElementById('resetAccountError');
+    const scopeFamilyBtn  = document.getElementById('resetScopeFamily');
+    const scopeMineBtn    = document.getElementById('resetScopeMine');
+    let resetScope = 'family';
+
+    if (toggleResetBtn) {
+        [scopeFamilyBtn, scopeMineBtn].forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                scopeFamilyBtn.classList.toggle('active', btn === scopeFamilyBtn);
+                scopeMineBtn.classList.toggle('active', btn === scopeMineBtn);
+                resetScope = btn.dataset.scope;
+            });
+        });
+
+        toggleResetBtn.addEventListener('click', function () {
+            resetForm.classList.toggle('visible');
+        });
+        cancelResetBtn.addEventListener('click', function () {
+            resetForm.classList.remove('visible');
+            resetPwInput.value = '';
+            resetError.textContent = '';
+        });
+
+        confirmResetBtn.addEventListener('click', function () {
+            resetError.textContent = '';
+            if (!resetPwInput.value) {
+                resetError.textContent = 'נא להזין את הסיסמה הנוכחית';
+                return;
+            }
+            window.appConfirm({
+                title: resetScope === 'family'
+                    ? 'לאפס את כל עסקאות המשפחה?'
+                    : 'למחוק את כל העסקאות שלך?',
+                message: 'פעולה זו סופית ולא ניתנת לביטול.',
+                confirmText: 'אפס עסקאות',
+            }).then(function (ok) {
+                if (!ok) return;
+                confirmResetBtn.disabled = true;
+                confirmResetBtn.textContent = 'מאפס…';
+                fetch('/api/account/reset', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ password: resetPwInput.value, scope: resetScope }),
+                })
+                .then(r => r.json())
+                .then(function (d) {
+                    if (d.error) {
+                        confirmResetBtn.disabled = false;
+                        confirmResetBtn.textContent = 'אפס עסקאות';
+                        resetError.textContent = d.error;
+                        return;
+                    }
+                    sessionStorage.setItem('sf_toast', 'כל העסקאות נמחקו');
+                    window.location.href = '/';
+                })
+                .catch(function () {
+                    confirmResetBtn.disabled = false;
+                    confirmResetBtn.textContent = 'אפס עסקאות';
+                    resetError.textContent = 'שגיאת רשת — נסה שוב';
+                });
+            });
+        });
+    }
+
+    // ── מחיקת חשבון לצמיתות ──
+    const toggleDeleteBtn  = document.getElementById('toggleDeleteAccountBtn');
+    const deleteForm       = document.getElementById('deleteAccountForm');
+    const cancelDeleteBtn  = document.getElementById('cancelDeleteAccountBtn');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteAccountBtn');
+    const deletePwInput    = document.getElementById('deleteAccountPassword');
+    const deleteError      = document.getElementById('deleteAccountError');
+
+    if (toggleDeleteBtn) {
+        toggleDeleteBtn.addEventListener('click', function () {
+            deleteForm.classList.toggle('visible');
+        });
+        cancelDeleteBtn.addEventListener('click', function () {
+            deleteForm.classList.remove('visible');
+            deletePwInput.value = '';
+            deleteError.textContent = '';
+        });
+
+        confirmDeleteBtn.addEventListener('click', function () {
+            deleteError.textContent = '';
+            if (!deletePwInput.value) {
+                deleteError.textContent = 'נא להזין את הסיסמה הנוכחית';
+                return;
+            }
+            window.appConfirm({
+                title: 'למחוק את החשבון לצמיתות?',
+                message: 'פעולה זו סופית ולא ניתנת לביטול — כל הנתונים שלך יימחקו.',
+                confirmText: 'מחק לצמיתות',
+            }).then(function (ok) {
+                if (!ok) return;
+                confirmDeleteBtn.disabled = true;
+                confirmDeleteBtn.textContent = 'מוחק…';
+                fetch('/api/account', {
+                    method:  'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ password: deletePwInput.value }),
+                })
+                .then(r => r.json())
+                .then(function (d) {
+                    if (d.error) {
+                        confirmDeleteBtn.disabled = false;
+                        confirmDeleteBtn.textContent = 'מחק לצמיתות';
+                        deleteError.textContent = d.error;
+                        return;
+                    }
+                    window.location.href = '/login';
+                })
+                .catch(function () {
+                    confirmDeleteBtn.disabled = false;
+                    confirmDeleteBtn.textContent = 'מחק לצמיתות';
+                    deleteError.textContent = 'שגיאת רשת — נסה שוב';
+                });
             });
         });
     }
@@ -861,9 +1274,9 @@
             if (data.error) { window.showToast(data.error, 'error'); return; }
             // המודאל הגלובלי קורא מכאן — בורר "של מי?" מתעדכן בלי רענון
             window.SF_ATTRIBUTION = data.settings.owner_attribution;
-            window.showToast('ההעדפות נשמרו ✓');
+            window.showToast('ההעדפות נשמרו');
         })
-        .catch(function () { window.showToast('שגיאת רשת – נסה שוב', 'error'); });
+        .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
     }
 
     // דוגמה קונקרטית עם קטגוריה היפותטית של ₪1,000 בחודש — הופכת את שני
@@ -874,8 +1287,8 @@
         const EXAMPLE_AVG = 1000;
         const threshold = Math.max(EXAMPLE_AVG * (pct / 100), EXAMPLE_AVG + gap);
         anomalySentence.textContent =
-            `לדוגמה: קטגוריה שבדרך כלל עולה כ-₪${EXAMPLE_AVG.toLocaleString()} בחודש תסומן כחריגה ` +
-            `רק אם ההוצאה החודש עברה ₪${Math.round(threshold).toLocaleString()}`;
+            `לדוגמה: קטגוריה שבדרך כלל עולה כ-₪${EXAMPLE_AVG.toLocaleString('en-US')} בחודש תסומן כחריגה ` +
+            `רק אם ההוצאה החודש עברה ₪${Math.round(threshold).toLocaleString('en-US')}`;
     }
 
     // מקום עבודה נשען על שיוך הכנסות — בלי שיוך אין את מי להציג
@@ -917,6 +1330,213 @@
 
     updateSentence();
     updateWorkplaceState();
+})();
+
+// ── פרויקטים (הגדרות): יצירה, עריכה במקום, מחיקה ──
+(function () {
+    const newBtn    = document.getElementById('newProjectSettingsBtn');
+    if (!newBtn) return;
+    const newForm   = document.getElementById('newProjectSettingsForm');
+    const cancelNew = document.getElementById('cancelNewProjSettingsBtn');
+    const newError  = document.getElementById('newProjSettingsError');
+
+    newBtn.addEventListener('click', function () {
+        newForm.style.display = newForm.style.display === 'none' ? '' : 'none';
+    });
+    cancelNew.addEventListener('click', function () {
+        newForm.style.display = 'none';
+        newForm.reset();
+        newError.textContent = '';
+        newIsPersonal = false;
+        newOwnerSharedBtn.classList.add('active');
+        newOwnerPersonalBtn.classList.remove('active');
+    });
+
+    const newOwnerSharedBtn   = document.getElementById('newProjSettingsOwnerShared');
+    const newOwnerPersonalBtn = document.getElementById('newProjSettingsOwnerPersonal');
+    let newIsPersonal = false;
+
+    [newOwnerSharedBtn, newOwnerPersonalBtn].forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            newOwnerSharedBtn.classList.toggle('active', btn === newOwnerSharedBtn);
+            newOwnerPersonalBtn.classList.toggle('active', btn === newOwnerPersonalBtn);
+            newIsPersonal = btn.dataset.personal === 'true';
+        });
+    });
+
+    newForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        newError.textContent = '';
+        const name = document.getElementById('newProjSettingsName').value.trim();
+        const budgetVal = document.getElementById('newProjSettingsBudget').value;
+        const trackExpense = document.getElementById('newProjSettingsTrackExpense').checked;
+        const trackIncome  = document.getElementById('newProjSettingsTrackIncome').checked;
+        const trackSavings = document.getElementById('newProjSettingsTrackSavings').checked;
+        if (!name) { newError.textContent = 'נא להזין שם לפרויקט'; return; }
+        if (!trackExpense && !trackIncome && !trackSavings) {
+            newError.textContent = 'יש לבחור לפחות סוג עסקה אחד למעקב';
+            return;
+        }
+        const newSubmitBtn = newForm.querySelector('button[type="submit"]');
+        newSubmitBtn.disabled = true;
+        fetch('/api/projects', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                name: name, budget_target: budgetVal ? parseFloat(budgetVal) : null,
+                is_personal: newIsPersonal,
+                track_expense: trackExpense, track_income: trackIncome, track_savings: trackSavings,
+            }),
+        })
+        .then(r => r.json())
+        .then(function (data) {
+            if (data.error) { newSubmitBtn.disabled = false; newError.textContent = data.error; return; }
+            window.location.reload();
+        })
+        .catch(function () { newSubmitBtn.disabled = false; newError.textContent = 'שגיאת רשת — נסה שוב'; });
+    });
+
+    // ── מחיקת פרויקט ──
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.delete-project-btn');
+        if (!btn) return;
+        const id  = btn.dataset.id;
+        const row = btn.closest('.project-settings-row');
+        if (!row) return;
+        const name = row.dataset.name;
+
+        window.appConfirm({
+            title: 'למחוק את "' + name + '"?',
+            message: 'ההוצאות ששויכו לפרויקט לא יימחקו — הן פשוט יחזרו להיספר תחת הקטגוריה הרגילה שלהן.',
+            confirmText: 'מחק פרויקט',
+        }).then(function (ok) {
+            if (!ok) return;
+            // שאלה שנייה ונפרדת: מה לעשות עם העסקאות עצמן. ברירת מחדל
+            // בטוחה (גם ב-Escape/לחיצה בחוץ) — להשאיר אותן כרגילות.
+            return window.appConfirm({
+                title: 'מה לעשות עם העסקאות של הפרויקט?',
+                message: 'אפשר למחוק גם את כל ההוצאות/הכנסות/חיסכון ששויכו לפרויקט, או להשאיר אותן — הן פשוט יחזרו להיספר תחת הקטגוריה הרגילה שלהן.',
+                confirmText: 'מחק גם עסקאות',
+                cancelText: 'השאר כרגילות',
+                danger: false,
+            }).then(function (deleteTransactions) {
+                fetch('/api/projects/' + id, {
+                    method:  'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ delete_transactions: deleteTransactions }),
+                })
+                .then(r => r.json())
+                .then(function (d) {
+                    if (d.status === 'ok') {
+                        row.style.transition = 'opacity 0.25s';
+                        row.style.opacity = '0';
+                        setTimeout(() => row.remove(), 260);
+                        window.showToast('הפרויקט נמחק');
+                    } else {
+                        window.showToast('המחיקה נכשלה', 'error');
+                    }
+                })
+                .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
+            });
+        });
+    });
+
+    // ── עריכת פרויקט במקום (שם/יעד/סוגי מעקב — בעלות מנוהלת רק מעמוד הפרויקט) ──
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.edit-project-settings-btn');
+        if (!btn) return;
+        const row = btn.closest('.project-settings-row');
+        if (!row || row.classList.contains('editing')) return;
+
+        const id = btn.dataset.id;
+        const name = row.dataset.name;
+        const budget = row.dataset.budgetTarget;
+        const trackExpense = row.dataset.trackExpense === 'true';
+        const trackIncome  = row.dataset.trackIncome === 'true';
+        const trackSavings = row.dataset.trackSavings === 'true';
+
+        row.classList.add('editing');
+        row.dataset.origHtml = row.innerHTML;
+        row.innerHTML = `
+            <div class="cat-edit-form" style="width:100%;">
+                <div class="add-cat-row">
+                    <input class="form-input proj-edit-name" type="text" maxlength="50" value="${name}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">יעד תקציב (אופציונלי)</label>
+                    <div class="amount-input-wrap">
+                        <span class="amount-currency">₪</span>
+                        <input class="form-input amount-input proj-edit-budget" type="number" min="0" step="1" value="${budget}">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="checkbox-input proj-edit-track-expense" ${trackExpense ? 'checked' : ''}>
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">הוצאות</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="checkbox-input proj-edit-track-income" ${trackIncome ? 'checked' : ''}>
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">הכנסות</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="checkbox-input proj-edit-track-savings" ${trackSavings ? 'checked' : ''}>
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">חיסכון</span>
+                    </label>
+                </div>
+                <p class="form-error proj-edit-error" role="alert"></p>
+                <div class="edit-actions">
+                    <button class="btn-sm btn-primary proj-edit-save" data-id="${id}">שמור</button>
+                    <button class="btn-sm btn-ghost proj-edit-cancel">ביטול</button>
+                </div>
+            </div>
+        `;
+        row.querySelector('.proj-edit-name').focus();
+    });
+
+    document.addEventListener('click', function (e) {
+        const cancelBtn = e.target.closest('.proj-edit-cancel');
+        if (cancelBtn) {
+            const row = cancelBtn.closest('.project-settings-row');
+            row.innerHTML = row.dataset.origHtml;
+            row.classList.remove('editing');
+            return;
+        }
+
+        const saveBtn = e.target.closest('.proj-edit-save');
+        if (!saveBtn) return;
+        const row = saveBtn.closest('.project-settings-row');
+        const id  = saveBtn.dataset.id;
+        const errorEl = row.querySelector('.proj-edit-error');
+        const name = row.querySelector('.proj-edit-name').value.trim();
+        const budgetVal = row.querySelector('.proj-edit-budget').value;
+        const trackExpense = row.querySelector('.proj-edit-track-expense').checked;
+        const trackIncome  = row.querySelector('.proj-edit-track-income').checked;
+        const trackSavings = row.querySelector('.proj-edit-track-savings').checked;
+        if (!name) { errorEl.textContent = 'נא להזין שם לפרויקט'; return; }
+        if (!trackExpense && !trackIncome && !trackSavings) {
+            errorEl.textContent = 'יש לבחור לפחות סוג עסקה אחד למעקב';
+            return;
+        }
+
+        saveBtn.disabled = true;
+        fetch('/api/projects/' + id, {
+            method:  'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                name, budget_target: budgetVal ? parseFloat(budgetVal) : null,
+                track_expense: trackExpense, track_income: trackIncome, track_savings: trackSavings,
+            }),
+        })
+        .then(r => r.json())
+        .then(function (d) {
+            if (d.error) { errorEl.textContent = d.error; saveBtn.disabled = false; return; }
+            window.location.reload();
+        })
+        .catch(function () { errorEl.textContent = 'שגיאת רשת — נסה שוב'; saveBtn.disabled = false; });
+    });
 })();
 </script>
 {% endblock %}
