@@ -10,11 +10,18 @@
         <p class="greeting">שלום, {{ user.name }}</p>
         <h1 class="month-title">{{ month_label }}</h1>
     </div>
-    <a href="{{ url_for('logout') }}" class="avatar-circle" title="התנתק">
+    <a href="{{ url_for('settings') }}" class="avatar-circle" title="הגדרות וחשבון">
         {{ user.avatar_initial }}
     </a>
 </div>
 
+{% if is_new_family %}
+<section class="hero-balance" aria-label="ברוכים הבאים">
+    <p class="hero-label">עדיין אין נתונים החודש</p>
+    <p class="hero-empty-message">בואו נתחיל</p>
+    <p class="hero-sub">לחצו על + כדי להוסיף את העסקה הראשונה שלכם ולראות כאן את היתרה שלכם</p>
+</section>
+{% else %}
 <section class="hero-balance" aria-label="יתרת עו&quot;ש חודשית">
     <p class="hero-label">נשאר בעו״ש החודש</p>
     <p class="hero-amount {% if summary.remaining < 0 %}deficit{% endif %}"
@@ -42,6 +49,7 @@
         </div>
     </div>
 </section>
+{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -89,12 +97,13 @@
     {% if transactions %}
     <ul class="transactions-list" aria-label="רשימת עסקאות אחרונות">
         {% for tx in transactions %}
-        <li class="transaction-item" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
-            data-category-id="{{ tx.category_id or '' }}" data-description="{{ tx.description }}"
+        <li class="transaction-item" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+            data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
             data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}"
             data-is-recurring="{{ tx.is_recurring | lower }}"
             data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
-            data-recurring-end-date="{{ tx.recurring_end_date or '' }}">
+            data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
+                    data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
             <div class="tx-icon {{ tx.type }}">
                 <span class="tx-emoji">{{ tx.category_icon }}</span>
             </div>

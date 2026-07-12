@@ -27,6 +27,11 @@
     </div>
 
     <main class="main-content">
+        <div class="alert-card warning install-banner" id="installBanner" style="display:none;" role="status">
+            <span class="alert-text" id="installBannerText"></span>
+            <button type="button" class="btn-sm btn-primary" id="installBannerAction" style="display:none;">התקן</button>
+            <button type="button" class="install-banner-close" id="installBannerClose" aria-label="סגור הודעה">✕</button>
+        </div>
         {% block content %}{% endblock %}
     </main>
 
@@ -68,6 +73,19 @@
             <span class="nav-label">השוואה</span>
         </a>
 
+        <a href="{{ url_for('projects') }}"
+           class="nav-item {% if active_page == 'projects' %}active{% endif %}"
+           aria-label="פרויקטים">
+            <span class="nav-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="9"/>
+                    <circle cx="12" cy="12" r="5"/>
+                    <circle cx="12" cy="12" r="1"/>
+                </svg>
+            </span>
+            <span class="nav-label">פרויקטים</span>
+        </a>
+
         <a href="{{ url_for('settings') }}"
            class="nav-item {% if active_page == 'settings' %}active{% endif %}"
            aria-label="הגדרות">
@@ -104,6 +122,7 @@
             <!-- Scanner Animation -->
             <div class="scanner-wrapper" id="scannerWrapper" aria-hidden="true">
                 <div class="scanner-frame">
+                    <img class="scanner-thumbnail" id="scannerThumbnail" alt="">
                     <div class="scanner-line"></div>
                     <div class="scanner-corner tl"></div>
                     <div class="scanner-corner tr"></div>
@@ -117,9 +136,9 @@
             <div class="modal-header">
                 <h2 class="modal-title" id="modalTitle">הוספת עסקה</h2>
                 <div class="type-toggle type-toggle-3" role="group" aria-label="סוג עסקה">
-                    <button class="toggle-btn active" id="toggleExpense" data-type="expense">הוצאה</button>
-                    <button class="toggle-btn" id="toggleIncome" data-type="income">הכנסה</button>
-                    <button class="toggle-btn" id="toggleSavings" data-type="savings">חיסכון</button>
+                    <button class="toggle-btn active" id="toggleExpense" data-type="expense" aria-pressed="true">הוצאה</button>
+                    <button class="toggle-btn" id="toggleIncome" data-type="income" aria-pressed="false">הכנסה</button>
+                    <button class="toggle-btn" id="toggleSavings" data-type="savings" aria-pressed="false">חיסכון</button>
                 </div>
             </div>
 
@@ -135,10 +154,18 @@
                     </div>
                 </div>
 
+                <div class="form-group" id="projectGroup" style="display:none;">
+                    <label class="form-label" for="txProject">שייך לפרויקט (אופציונלי)</label>
+                    <select class="form-input" id="txProject">
+                        <option value="">ללא</option>
+                    </select>
+                </div>
+
                 <div class="form-group">
-                    <label class="form-label">קטגוריה</label>
+                    <label class="form-label" id="categoryLabel">קטגוריה</label>
                     <div class="category-grid" id="categoryGrid" role="radiogroup" aria-label="בחר קטגוריה"></div>
                     <input type="hidden" id="txCategory" name="category_id">
+                    <input type="hidden" id="txProjectCategory" name="project_category_id">
                     <input type="hidden" id="txReceiptPath" name="receipt_path">
                 </div>
 
@@ -239,17 +266,25 @@
         const yesBtn  = document.getElementById('confirmYes');
         const noBtn   = document.getElementById('confirmNo');
         let resolver  = null;
+        let confirmLastFocused = null;
 
         function closeConfirm(result) {
             overlay.classList.remove('open');
             if (resolver) { resolver(result); resolver = null; }
+            if (confirmLastFocused) { confirmLastFocused.focus(); confirmLastFocused = null; }
         }
 
         window.appConfirm = function (opts) {
             titleEl.textContent  = opts.title || 'לאשר את הפעולה?';
             msgEl.textContent    = opts.message || '';
             yesBtn.textContent   = opts.confirmText || 'מחק';
+            noBtn.textContent    = opts.cancelText || 'ביטול';
+            // ברירת מחדל: פעולה הרסנית (אדום) — מתאים ל-99% מהשימושים הקיימים
+            // (מחיקה). opts.danger === false מציג כפתור ניטרלי לפעולות רגילות.
+            yesBtn.classList.toggle('confirm-yes-neutral', opts.danger === false);
+            confirmLastFocused = document.activeElement;
             overlay.classList.add('open');
+            noBtn.focus(); // ברירת מחדל בטוחה — לא הכפתור ההרסני
             return new Promise(function (resolve) { resolver = resolve; });
         };
 
@@ -257,6 +292,19 @@
         noBtn.addEventListener('click', function () { closeConfirm(false); });
         overlay.addEventListener('click', function (e) {
             if (e.target === overlay) closeConfirm(false);
+        });
+
+        // Escape סוגר, Tab/Shift+Tab נשארים בתוך הדיאלוג (שני כפתורים בלבד)
+        overlay.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { closeConfirm(false); return; }
+            if (e.key !== 'Tab') return;
+            const focusables = [yesBtn, noBtn];
+            const idx = focusables.indexOf(document.activeElement);
+            e.preventDefault();
+            const next = e.shiftKey
+                ? focusables[(idx <= 0 ? focusables.length : idx) - 1]
+                : focusables[(idx + 1) % focusables.length];
+            next.focus();
         });
     })();
     </script>
@@ -272,6 +320,54 @@
     }
     </script>
 
+    <!-- ── הצעת התקנה ל-PWA (מסך הבית) ── -->
+    <script>
+    (function () {
+        const DISMISS_KEY = 'sf_install_dismissed';
+        if (localStorage.getItem(DISMISS_KEY)) return;
+
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+            || window.navigator.standalone === true;
+        if (isStandalone) return;
+
+        const banner  = document.getElementById('installBanner');
+        const text    = document.getElementById('installBannerText');
+        const actionBtn = document.getElementById('installBannerAction');
+        const closeBtn  = document.getElementById('installBannerClose');
+        let deferredPrompt = null;
+
+        function dismiss() {
+            banner.style.display = 'none';
+            localStorage.setItem(DISMISS_KEY, '1');
+        }
+        closeBtn.addEventListener('click', dismiss);
+
+        const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+
+        window.addEventListener('beforeinstallprompt', function (e) {
+            e.preventDefault();
+            deferredPrompt = e;
+            text.textContent = 'התקינו את SmartFin למסך הבית לגישה מהירה יותר';
+            actionBtn.style.display = '';
+            banner.style.display = '';
+        });
+
+        actionBtn.addEventListener('click', function () {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.finally(dismiss);
+        });
+
+        window.addEventListener('appinstalled', dismiss);
+
+        // ל-iOS אין beforeinstallprompt בכלל — מציגים הנחיה סטטית בלבד
+        if (isIOS) {
+            text.textContent = 'להתקנת SmartFin: הקש על שיתוף ← הוסף למסך הבית';
+            banner.style.display = '';
+        }
+    })();
+    </script>
+
     <!-- ── אנימציות גלובליות: count-up, כניסה מדורגת, פסי התקדמות ── -->
     <script>
     (function () {
@@ -283,7 +379,7 @@
                 const target = parseFloat(el.dataset.countup);
                 if (isNaN(target)) return;
                 const prefix = el.dataset.prefix || '';
-                const format = v => prefix + '₪' + Math.round(v).toLocaleString();
+                const format = v => prefix + '₪' + Math.round(v).toLocaleString('en-US');
 
                 if (reduceMotion || target === 0) {
                     el.textContent = format(target);
@@ -318,7 +414,7 @@
         // 3. פסי התקדמות נמתחים מ-0 לרוחב הסופי
         function runBars() {
             if (reduceMotion) return;
-            document.querySelectorAll('.balance-bar-fill, .breakdown-fill, .month-bar-fill')
+            document.querySelectorAll('.balance-bar-fill, .breakdown-fill')
                 .forEach(function (bar) {
                     const finalWidth = bar.style.width;
                     if (!finalWidth) return;
@@ -348,6 +444,9 @@
         const scanWrapper  = document.getElementById('scannerWrapper');
         const receiptInput = document.getElementById('receiptInput');
         const txReceiptPath = document.getElementById('txReceiptPath');
+        const scannerThumbnail = document.getElementById('scannerThumbnail');
+        const AMOUNT_PLACEHOLDER_DEFAULT = '0.00';
+        const DESCRIPTION_PLACEHOLDER_DEFAULT = 'למשל: שופרסל, משכורת…';
         const toggleExp    = document.getElementById('toggleExpense');
         const toggleInc    = document.getElementById('toggleIncome');
         const toggleSav    = document.getElementById('toggleSavings');
@@ -355,6 +454,8 @@
         const submitBtn    = document.getElementById('submitBtn');
         const deleteBtn    = document.getElementById('deleteTxBtn');
         const categoryGrid = document.getElementById('categoryGrid');
+        const projectGroup = document.getElementById('projectGroup');
+        const txProject    = document.getElementById('txProject');
         const ownerGroup   = document.getElementById('ownerGroup');
         const ownerToggle  = document.getElementById('ownerToggle');
         const txOwner      = document.getElementById('txOwner');
@@ -365,6 +466,7 @@
         const txFrequency  = document.getElementById('txFrequency');
         const txForm       = document.getElementById('txForm');
         const txCategory   = document.getElementById('txCategory');
+        const txProjectCategory = document.getElementById('txProjectCategory');
         const txAmount     = document.getElementById('txAmount');
         const txDescription = document.getElementById('txDescription');
         const modalTitle   = document.getElementById('modalTitle');
@@ -377,8 +479,13 @@
 
         let currentType   = 'expense';
         let editId        = null;   // null = adding a new transaction, otherwise editing this id
+        let editingRecurringParentId = null; // אם עורכים מופע שנוצר מתבנית קבועה — מזהה התבנית
+        let originalAmount = null;  // הסכום שנטען לעריכה, להשוואה לזיהוי "שינית את הסכום"
         let categoriesCache = null;
         let membersCache  = null;
+        let projectsCache = null;
+        let projectCategoriesCache = {}; // מפתח: "<projectId>:<type>"
+        let categoryGridIsProject = false; // האם רשת הקטגוריות הנוכחית מציגה קטגוריות פרויקט או משפחה
 
         function todayStr() { return new Date().toISOString().split('T')[0]; }
 
@@ -396,9 +503,39 @@
                 .then(function (members) { membersCache = members; return members; });
         }
 
-        function buildCategoryGrid(type, selectedId) {
-            const cats = (categoriesCache || []).filter(c => c.type === type);
+        function loadProjects() {
+            if (projectsCache) return Promise.resolve(projectsCache);
+            return fetch('/api/projects')
+                .then(r => r.json())
+                .then(function (projects) { projectsCache = projects; return projects; });
+        }
+
+        function loadProjectCategories(projectId, type) {
+            const key = projectId + ':' + type;
+            if (projectCategoriesCache[key]) return Promise.resolve(projectCategoriesCache[key]);
+            return fetch('/api/projects/' + projectId + '/categories?type=' + type)
+                .then(r => r.json())
+                .then(function (cats) { projectCategoriesCache[key] = cats; return cats; });
+        }
+
+        // מקור הקטגוריות תלוי בבחירת פרויקט: אם נבחר פרויקט — הקטגוריות הייעודיות
+        // שלו; אחרת — קטגוריות המשפחה הרגילות לפי סוג העסקה הנוכחי.
+        function refreshCategoryGrid(selectedId) {
+            const projectId = txProject.value;
+            if (projectId) {
+                loadProjectCategories(projectId, currentType).then(function (cats) {
+                    renderCategoryGrid(cats, selectedId, true);
+                });
+            } else {
+                const cats = (categoriesCache || []).filter(c => c.type === currentType);
+                renderCategoryGrid(cats, selectedId, false);
+            }
+        }
+
+        function renderCategoryGrid(cats, selectedId, isProject) {
+            categoryGridIsProject = isProject;
             categoryGrid.innerHTML = '';
+            // הסדר נקבע בשרת (sort_order) — כולל מיקום "אחר", שניתן להזזה בהגדרות
             cats.forEach(function (cat) {
                 const btn = document.createElement('button');
                 btn.type = 'button';
@@ -406,19 +543,34 @@
                 btn.dataset.value = cat.id;
                 btn.dataset.type = cat.type;
                 btn.innerHTML = `<span class="cat-emoji">${cat.icon}</span><span>${cat.name}</span>`;
+                btn.setAttribute('role', 'radio');
+                btn.setAttribute('aria-checked', 'false');
                 categoryGrid.appendChild(btn);
             });
+            // ברירת מחדל: בהכנסה נבחרת "משכורת" אם קיימת (בלי תלות בסדר
+            // התצוגה); בכל שאר המצבים — הקטגוריה הראשונה.
+            let fallbackBtn = categoryGrid.querySelector('.cat-btn');
+            if (!selectedId && currentType === 'income') {
+                const salary = cats.find(c => c.name && c.name.indexOf('משכורת') !== -1);
+                const salaryBtn = salary && categoryGrid.querySelector(`[data-value="${salary.id}"]`);
+                if (salaryBtn) fallbackBtn = salaryBtn;
+            }
             const toSelect = (selectedId && categoryGrid.querySelector(`[data-value="${selectedId}"]`))
-                || categoryGrid.querySelector('.cat-btn');
+                || fallbackBtn;
+            txCategory.value = '';
+            txProjectCategory.value = '';
             if (toSelect) {
                 toSelect.classList.add('active');
-                txCategory.value = toSelect.dataset.value;
+                toSelect.setAttribute('aria-checked', 'true');
+                if (isProject) txProjectCategory.value = toSelect.dataset.value;
+                else txCategory.value = toSelect.dataset.value;
             }
         }
 
         function buildOwnerToggle(selectedOwner) {
-            const options = (membersCache || []).map(m => ({ value: m.id, label: m.name }));
-            options.push({ value: 'shared', label: 'משותפת' });
+            // "משותפת" ראשונה ברשימה כדי שתופיע מימין (RTL: הפריט הראשון ב-DOM מוצג בצד ימין)
+            const options = [{ value: 'shared', label: 'משותפת' }]
+                .concat((membersCache || []).map(m => ({ value: m.id, label: m.name })));
             ownerToggle.innerHTML = '';
             options.forEach(function (opt) {
                 const btn = document.createElement('button');
@@ -426,20 +578,45 @@
                 btn.className = 'owner-btn';
                 btn.dataset.value = opt.value;
                 btn.textContent = opt.label;
+                btn.setAttribute('role', 'radio');
+                btn.setAttribute('aria-checked', 'false');
                 ownerToggle.appendChild(btn);
             });
+            // ברירת מחדל: "משותפת" (רלוונטי כשמוסיפים עסקה חדשה ואין עדיין
+            // שיוך קיים לשמר) — לא בן המשפחה הראשון ברשימה
             const toSelect = (selectedOwner && ownerToggle.querySelector(`[data-value="${selectedOwner}"]`))
+                || ownerToggle.querySelector('[data-value="shared"]')
                 || ownerToggle.querySelector('.owner-btn');
             if (toSelect) {
                 toSelect.classList.add('active');
+                toSelect.setAttribute('aria-checked', 'true');
                 txOwner.value = toSelect.dataset.value;
             }
         }
 
+        function buildProjectSelect(selectedProjectId) {
+            const trackKey = { expense: 'track_expense', income: 'track_income', savings: 'track_savings' }[currentType];
+            const projects = (projectsCache || []).filter(p => p[trackKey]);
+            txProject.innerHTML = '<option value="">ללא</option>' +
+                projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            txProject.value = projects.some(p => p.id === selectedProjectId) ? selectedProjectId : '';
+        }
+
+        let modalLastFocused = null;
+
         function openModal() {
+            modalLastFocused = document.activeElement;
             overlay.classList.add('open');
             document.body.style.overflow = 'hidden';
             txAmount.focus();
+        }
+
+        // כל האלמנטים הניתנים למיקוד בתוך המודאל הפתוח כרגע — מחושב כל פעם
+        // מחדש כי התוכן (שדות, כפתור מחיקה) משתנה בין הוספה לעריכה
+        function getModalFocusables() {
+            return Array.prototype.slice.call(
+                overlay.querySelectorAll('button, input, select, textarea, a[href]')
+            ).filter(function (el) { return el.offsetParent !== null && !el.disabled; });
         }
 
         function resetScanUI() {
@@ -447,6 +624,12 @@
             scanBtn.disabled = false;
             scanBtn.querySelector('.scan-btn-text').textContent = 'סרוק קבלה';
             receiptInput.value = '';
+            if (scannerThumbnail.src) {
+                URL.revokeObjectURL(scannerThumbnail.src);
+                scannerThumbnail.removeAttribute('src');
+            }
+            txAmount.placeholder = AMOUNT_PLACEHOLDER_DEFAULT;
+            txDescription.placeholder = DESCRIPTION_PLACEHOLDER_DEFAULT;
         }
 
         function closeModal() {
@@ -454,6 +637,7 @@
             document.body.style.overflow = '';
             resetScanUI();
             formError.textContent = '';
+            if (modalLastFocused) { modalLastFocused.focus(); modalLastFocused = null; }
         }
 
         function resetForm() {
@@ -470,13 +654,21 @@
             submitLabel.textContent = TYPE_LABELS[currentType];
         }
 
-        function setType(type, selectedCategoryId, selectedOwner) {
+        function setType(type, selectedCategoryId, selectedOwner, selectedProjectId) {
             currentType = type;
             toggleExp.classList.toggle('active', type === 'expense');
             toggleInc.classList.toggle('active', type === 'income');
             toggleSav.classList.toggle('active', type === 'savings');
-            document.querySelector('.modal-sheet').classList.toggle('income-mode', type === 'income');
-            buildCategoryGrid(type, selectedCategoryId);
+            toggleExp.setAttribute('aria-pressed', type === 'expense');
+            toggleInc.setAttribute('aria-pressed', type === 'income');
+            toggleSav.setAttribute('aria-pressed', type === 'savings');
+            const modalSheet = document.querySelector('.modal-sheet');
+            modalSheet.classList.toggle('income-mode', type === 'income');
+            modalSheet.classList.toggle('expense-mode', type === 'expense');
+            modalSheet.classList.toggle('savings-mode', type === 'savings');
+            projectGroup.style.display = '';
+            buildProjectSelect(selectedProjectId);
+            refreshCategoryGrid(selectedCategoryId);
             // בורר "של מי?" מופיע רק בסוגים שהמשפחה הפעילה בהם שיוך (העדפות משפחה)
             const hasOwner = !!window.SF_ATTRIBUTION[type];
             ownerGroup.style.display = hasOwner ? '' : 'none';
@@ -489,44 +681,79 @@
             updateSubmitLabel();
         }
 
-        function openAddModal() {
-            editId = null;
-            modalTitle.textContent = 'הוספת עסקה';
-            deleteBtn.style.display = 'none';
-            resetForm();
-            Promise.all([loadCategories(), loadMembers()]).then(function () {
-                setType('expense');
-                openModal();
+        // מציג משוב טעינה עדין על האלמנט שפתח את המודאל (FAB/שורת עסקה) —
+        // בלי זה, בחיבור איטי נראה כאילו הלחיצה לא הגיבה עד שהמודאל נפתח
+        function withLoadingTrigger(el, promise) {
+            if (el) el.classList.add('is-loading-trigger');
+            return promise.finally(function () {
+                if (el) el.classList.remove('is-loading-trigger');
             });
         }
 
-        function openEditModal(tx) {
+        function openAddModal() {
+            editId = null;
+            editingRecurringParentId = null;
+            originalAmount = null;
+            modalTitle.textContent = 'הוספת עסקה';
+            deleteBtn.style.display = 'none';
+            resetForm();
+            withLoadingTrigger(fabBtn, Promise.all([loadCategories(), loadMembers(), loadProjects()]))
+                .then(function () {
+                    setType('expense');
+                    openModal();
+                })
+                .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
+        }
+
+        function openEditModal(tx, triggerEl) {
             editId = tx.id;
+            editingRecurringParentId = tx.recurringParentId || null;
+            originalAmount = parseFloat(tx.amount);
             modalTitle.textContent = 'עריכת עסקה';
             deleteBtn.style.display = 'block';
             formError.textContent = '';
 
-            Promise.all([loadCategories(), loadMembers()]).then(function () {
-                setType(tx.type, tx.categoryId, tx.userId || 'shared');
+            withLoadingTrigger(triggerEl, Promise.all([loadCategories(), loadMembers(), loadProjects()]))
+                .then(function () {
+                    const selectedCategoryId = tx.projectId ? tx.projectCategoryId : tx.categoryId;
+                    setType(tx.type, selectedCategoryId, tx.userId || 'shared', tx.projectId);
 
-                txAmount.value       = tx.amount;
-                txDescription.value  = tx.description || '';
-                txDate.value         = tx.date;
-                recurringCb.checked  = tx.isRecurring;
-                recurFields.classList.toggle('visible', tx.isRecurring);
-                if (tx.isRecurring) {
-                    txFrequency.value = tx.recurringFrequency || 'monthly_1';
-                    txEndDate.value   = tx.recurringEndDate || '';
-                }
-                updateSubmitLabel();
-                openModal();
-            });
+                    txAmount.value       = tx.amount;
+                    txDescription.value  = tx.description || '';
+                    txDate.value         = tx.date;
+                    recurringCb.checked  = tx.isRecurring;
+                    recurFields.classList.toggle('visible', tx.isRecurring);
+                    if (tx.isRecurring) {
+                        txFrequency.value = tx.recurringFrequency || 'monthly_1';
+                        txEndDate.value   = tx.recurringEndDate || '';
+                    }
+                    updateSubmitLabel();
+                    openModal();
+                })
+                .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
         }
 
         fabBtn.addEventListener('click', openAddModal);
         closeBtn.addEventListener('click', closeModal);
         overlay.addEventListener('click', function (e) {
             if (e.target === overlay) closeModal();
+        });
+
+        // Escape סוגר את המודאל, Tab/Shift+Tab נשארים בתוכו (focus trap)
+        overlay.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { closeModal(); return; }
+            if (e.key !== 'Tab') return;
+            const focusables = getModalFocusables();
+            if (!focusables.length) return;
+            const first = focusables[0];
+            const last  = focusables[focusables.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
         });
 
         toggleExp.addEventListener('click', () => setType('expense'));
@@ -537,8 +764,12 @@
         ownerToggle.addEventListener('click', function (e) {
             const btn = e.target.closest('.owner-btn');
             if (!btn) return;
-            ownerToggle.querySelectorAll('.owner-btn').forEach(b => b.classList.remove('active'));
+            ownerToggle.querySelectorAll('.owner-btn').forEach(function (b) {
+                b.classList.remove('active');
+                b.setAttribute('aria-checked', 'false');
+            });
             btn.classList.add('active');
+            btn.setAttribute('aria-checked', 'true');
             txOwner.value = btn.dataset.value;
         });
 
@@ -546,9 +777,24 @@
         categoryGrid.addEventListener('click', function (e) {
             const btn = e.target.closest('.cat-btn');
             if (!btn) return;
-            categoryGrid.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            categoryGrid.querySelectorAll('.cat-btn').forEach(function (b) {
+                b.classList.remove('active');
+                b.setAttribute('aria-checked', 'false');
+            });
             btn.classList.add('active');
-            txCategory.value = btn.dataset.value;
+            btn.setAttribute('aria-checked', 'true');
+            if (categoryGridIsProject) {
+                txProjectCategory.value = btn.dataset.value;
+                txCategory.value = '';
+            } else {
+                txCategory.value = btn.dataset.value;
+                txProjectCategory.value = '';
+            }
+        });
+
+        // שינוי בחירת הפרויקט מרענן את מקור הקטגוריות (קטגוריות הפרויקט או המשפחה)
+        txProject.addEventListener('change', function () {
+            refreshCategoryGrid();
         });
 
         // Recurring
@@ -561,14 +807,17 @@
             receiptInput.click();
         });
 
-        // דוחסים בצד הלקוח לפני ההעלאה — קובץ קטן יותר, זול יותר, מהיר יותר
+        // דוחסים בצד הלקוח לפני ההעלאה — קובץ קטן יותר, זול יותר, מהיר יותר.
+        // WebP באיכות 80% נותן קובץ הרבה יותר קטן מ-JPEG; דפדפנים ישנים
+        // שאינם תומכים ב-toBlob('image/webp') מחזירים blob ריק — נופלים
+        // אז חזרה ל-JPEG באותה איכות.
         function compressImage(file) {
             return new Promise(function (resolve) {
                 const img = new Image();
                 const reader = new FileReader();
                 reader.onload = function () { img.src = reader.result; };
                 img.onload = function () {
-                    const MAX = 1600;
+                    const MAX = 1200;
                     let w = img.width, h = img.height;
                     if (w > MAX || h > MAX) {
                         const scale = MAX / Math.max(w, h);
@@ -579,11 +828,17 @@
                     canvas.width = w;
                     canvas.height = h;
                     canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                    canvas.toBlob(function (blob) {
-                        resolve(blob || file);
-                    }, 'image/jpeg', 0.75);
+                    canvas.toBlob(function (webpBlob) {
+                        if (webpBlob && webpBlob.size > 0) {
+                            resolve({ blob: webpBlob, ext: 'webp' });
+                        } else {
+                            canvas.toBlob(function (jpegBlob) {
+                                resolve({ blob: jpegBlob || file, ext: 'jpg' });
+                            }, 'image/jpeg', 0.8);
+                        }
+                    }, 'image/webp', 0.8);
                 };
-                img.onerror = function () { resolve(file); };
+                img.onerror = function () { resolve({ blob: file, ext: 'jpg' }); };
                 reader.readAsDataURL(file);
             });
         }
@@ -592,14 +847,19 @@
             const file = this.files[0];
             if (!file) return;
 
+            // מציגים תצוגה מקדימה מיידית ו"מפענח נתונים…" בשדות — בלי לחסום
+            // את הטופס: המשתמש יכול להמשיך להקליד ידנית תוך כדי שהשרת עובד
+            scannerThumbnail.src = URL.createObjectURL(file);
             scanWrapper.classList.add('active');
             scanBtn.disabled = true;
             scanBtn.querySelector('.scan-btn-text').textContent = 'סורק…';
+            txAmount.placeholder = 'מפענח נתונים…';
+            txDescription.placeholder = 'מפענח נתונים…';
             formError.textContent = '';
 
-            compressImage(file).then(function (blob) {
+            compressImage(file).then(function (result) {
                 const formData = new FormData();
-                formData.append('image', blob, 'receipt.jpg');
+                formData.append('image', result.blob, 'receipt.' + result.ext);
                 return fetch('/api/receipts/scan', { method: 'POST', body: formData });
             })
             .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
@@ -623,15 +883,49 @@
                     }
                 }
                 scanBtn.querySelector('.scan-btn-text').textContent = '✓ סריקה הושלמה';
-                window.showToast('הקבלה נסרקה — בדוק ואשר את הפרטים');
+                window.showToast('הנתונים פוענחו, נא לוודא לפני שמירה');
             })
             .catch(function () {
                 resetScanUI();
-                formError.textContent = 'שגיאת רשת – נסה שוב או הזן ידנית';
+                formError.textContent = 'שגיאת רשת — נסה שוב או הזן ידנית';
             });
         });
 
         // Submit → POST (add) or PUT (edit)
+        // בונה שורת "עסקה אחרונה" זמנית לדף הבית — לפני שהשרת בכלל ענה. משפרת
+        // תחושת מהירות בהוספה בלבד (לא בעריכה): הפרטים המדויקים (שיוך צבעוני
+        // וכו') יגיעו עם הרענון המלא שקורה בהצלחה בכל מקרה, אז לא מדובר בעדכון
+        // state אמיתי — רק תצוגה מקדימה חלקית ומהירה.
+        function buildPlaceholderTxRow(amount) {
+            const li = document.createElement('li');
+            // בלי data-id: משאיר את השורה הזמנית לא-אינטרקטיבית (לא ניתנת
+            // ללחיצה/swipe) כל עוד היא לא הפכה לעסקה אמיתית עם id מהשרת —
+            // מונע ניסיון עריכה/מחיקה על "pending" שלא קיים ב-DB
+            li.className = 'transaction-item tx-pending';
+
+            const activeCatBtn = categoryGrid.querySelector('.cat-btn.active');
+            const icon = activeCatBtn ? (activeCatBtn.querySelector('.cat-emoji') || {}).textContent : '';
+            const nameSpan = activeCatBtn ? activeCatBtn.querySelectorAll('span')[1] : null;
+            const name = nameSpan ? nameSpan.textContent : 'אחר';
+
+            const sign = currentType === 'expense' ? '-' : (currentType === 'income' ? '+' : '');
+            const dateParts = (txDate.value || '').split('-'); // YYYY-MM-DD
+            const dateLabel = dateParts.length === 3 ? (dateParts[2] + '.' + dateParts[1]) : '';
+            const desc = txDescription.value.trim();
+
+            li.innerHTML =
+                '<div class="tx-icon ' + currentType + '"><span class="tx-emoji">' + (icon || '📦') + '</span></div>' +
+                '<div class="tx-details">' +
+                    '<p class="tx-name"></p>' +
+                    '<p class="tx-meta"></p>' +
+                '</div>' +
+                '<div class="tx-side"><p class="tx-amount ' + currentType + '"></p></div>';
+            li.querySelector('.tx-name').textContent = name;
+            li.querySelector('.tx-meta').textContent = (desc ? desc + ' · ' : '') + dateLabel;
+            li.querySelector('.tx-amount').textContent = sign + '₪' + Math.round(amount).toLocaleString('en-US');
+            return li;
+        }
+
         txForm.addEventListener('submit', function (e) {
             e.preventDefault();
             formError.textContent = '';
@@ -647,6 +941,7 @@
                 amount:              amount,
                 type:                currentType,
                 category_id:         txCategory.value || null,
+                project_category_id: txProjectCategory.value || null,
                 description:         txDescription.value.trim(),
                 date:                txDate.value,
                 owner:               window.SF_ATTRIBUTION[currentType] ? (txOwner.value || null) : null,
@@ -654,10 +949,27 @@
                 recurring_frequency: recurringCb.checked ? txFrequency.value : null,
                 recurring_end_date:  recurringCb.checked ? (txEndDate.value || null) : null,
                 receipt_path:        currentType === 'expense' ? (txReceiptPath.value || null) : null,
+                project_id:          txProject.value || null,
             };
 
             submitBtn.disabled = true;
             submitLabel.textContent = 'שומר…';
+
+            // UI אופטימי: רק בהוספה חדשה (לא עריכה) ורק בדף הבית — שם יש רשימת
+            // "עסקאות אחרונות" מוכרת שאפשר להוסיף לה שורה זמנית מיד, לפני
+            // שהשרת בכלל ענה. שאר הדף (כרטיסי סיכום, גרפים) ממשיך להתעדכן
+            // רק ברענון המלא שקורה בהצלחה ממילא.
+            let placeholderRow = null;
+            if (!editId && window.location.pathname === '/') {
+                const list = document.querySelector('.transactions-list');
+                if (list) {
+                    placeholderRow = buildPlaceholderTxRow(amount);
+                    list.insertBefore(placeholderRow, list.firstChild);
+                }
+                closeModal();
+                submitBtn.disabled = false;
+                updateSubmitLabel();
+            }
 
             const url    = editId ? ('/api/transactions/' + editId) : '/api/transactions';
             const method = editId ? 'PUT' : 'POST';
@@ -670,21 +982,82 @@
             .then(function (res) { return res.json(); })
             .then(function (data) {
                 if (data.error) {
+                    if (placeholderRow) {
+                        placeholderRow.remove();
+                        window.showToast(data.error, 'error');
+                        return;
+                    }
                     formError.textContent = data.error;
                     submitBtn.disabled = false;
                     updateSubmitLabel();
-                } else {
-                    sessionStorage.setItem('sf_toast', editId ? 'העסקה עודכנה ✓' : 'העסקה נוספה ✓');
+                    return;
+                }
+
+                function finish() {
+                    sessionStorage.setItem('sf_toast', editId ? 'העסקה עודכנה' : 'העסקה נוספה');
                     closeModal();
                     window.location.reload();
                 }
+
+                const sideEffects = [];
+
+                // סנכרון חכם: אם עורכים מופע שנוצר מעסקה קבועה ושינו את הסכום —
+                // מציעים לעדכן גם את התבנית, כדי שמופעים עתידיים ישתמשו בו
+                if (editingRecurringParentId && amount !== originalAmount) {
+                    sideEffects.push(function () {
+                        return window.appConfirm({
+                            title: 'לעדכן גם את העסקה הקבועה?',
+                            message: 'שמנו לב ששינית את הסכום. האם לעדכן גם את התבנית הקבועה כדי שהחודשים הבאים ישתמשו בסכום החדש?',
+                            confirmText: 'עדכן להבא',
+                            danger: false,
+                        }).then(function (ok) {
+                            if (!ok) return;
+                            return fetch('/api/recurring/' + editingRecurringParentId + '/sync', {
+                                method:  'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body:    JSON.stringify({
+                                    amount:      amount,
+                                    category_id: payload.category_id,
+                                    description: payload.description,
+                                }),
+                            }).catch(function () {});
+                        });
+                    });
+                }
+
+                sideEffects
+                    .reduce(function (chain, fn) { return chain.then(fn); }, Promise.resolve())
+                    .then(finish);
             })
             .catch(function () {
-                formError.textContent = 'שגיאת רשת – נסה שוב';
+                if (placeholderRow) {
+                    placeholderRow.remove();
+                    window.showToast('שגיאת רשת — נסה שוב', 'error');
+                    return;
+                }
+                formError.textContent = 'שגיאת רשת — נסה שוב';
                 submitBtn.disabled = false;
                 updateSubmitLabel();
             });
         });
+
+        // מוחק עסקה בפועל (אחרי אישור) — משמש גם את כפתור המחיקה במודאל וגם
+        // את פעולת ה-swipe על שורת עסקה, כדי לא לשכפל את אותה לוגיקה
+        function deleteTransaction(id, onFail) {
+            fetch('/api/transactions/' + id, { method: 'DELETE' })
+                .then(r => r.json())
+                .then(function (d) {
+                    if (d.status === 'ok') {
+                        sessionStorage.setItem('sf_toast', 'העסקה נמחקה');
+                        window.location.reload();
+                    } else if (onFail) {
+                        onFail('מחיקה נכשלה');
+                    }
+                })
+                .catch(function () {
+                    if (onFail) onFail('שגיאת רשת — נסה שוב');
+                });
+        }
 
         // Delete (edit mode only)
         deleteBtn.addEventListener('click', function () {
@@ -696,21 +1069,10 @@
             }).then(function (ok) {
                 if (!ok) return;
                 deleteBtn.disabled = true;
-                fetch('/api/transactions/' + editId, { method: 'DELETE' })
-                    .then(r => r.json())
-                    .then(function (d) {
-                        if (d.status === 'ok') {
-                            sessionStorage.setItem('sf_toast', 'העסקה נמחקה');
-                            window.location.reload();
-                        } else {
-                            deleteBtn.disabled = false;
-                            formError.textContent = 'מחיקה נכשלה';
-                        }
-                    })
-                    .catch(function () {
-                        deleteBtn.disabled = false;
-                        formError.textContent = 'שגיאת רשת – נסה שוב';
-                    });
+                deleteTransaction(editId, function (msg) {
+                    deleteBtn.disabled = false;
+                    formError.textContent = msg;
+                });
             });
         });
 
@@ -725,28 +1087,196 @@
                     if (data.url) window.open(data.url, '_blank');
                     else window.showToast(data.error || 'לא ניתן להציג את הקבלה', 'error');
                 })
-                .catch(function () { window.showToast('שגיאת רשת', 'error'); });
+                .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
         });
 
-        // ── פתיחת עריכה בלחיצה על עסקה קיימת (עמוד הבית + עמוד החודש) ──
-        document.addEventListener('click', function (e) {
-            if (e.target.closest('.receipt-badge')) return;
-            const row = e.target.closest('.transaction-item, .cat-tx-row');
-            if (!row || !row.dataset.id) return;
+        // דגל שמונע פתיחת עריכה מה"קליק" הסינתטי שהדפדפן יורה אחרי מחוות
+        // מגע — בלי זה, swipe שגורר את השורה גם פותח בטעות את מודאל העריכה
+        // (touchend שלא קרא ל-preventDefault עדיין מייצר click עוקב)
+        let justSwiped = false;
 
-            openEditModal({
+        // בונה את אובייקט ה-tx למודאל העריכה מתוך ה-data attributes של השורה —
+        // משמש גם בלחיצה רגילה וגם בפעולת עריכה מ-swipe
+        function buildTxFromRow(row) {
+            return {
                 id:                  row.dataset.id,
                 amount:              row.dataset.amount,
                 type:                row.dataset.type,
                 categoryId:          row.dataset.categoryId,
+                projectCategoryId:   row.dataset.projectCategoryId || null,
                 description:         row.dataset.description,
                 date:                row.dataset.date,
                 userId:              row.dataset.userId || '',
                 isRecurring:         row.dataset.isRecurring === 'true',
                 recurringFrequency:  row.dataset.recurringFrequency,
                 recurringEndDate:    row.dataset.recurringEndDate,
-            });
+                recurringParentId:   row.dataset.recurringParentId || null,
+                projectId:           row.dataset.projectId || null,
+            };
+        }
+
+        // ── פתיחת עריכה בלחיצה על עסקה קיימת (עמוד הבית + עמוד החודש + עסקאות קבועות בהגדרות) ──
+        document.addEventListener('click', function (e) {
+            if (justSwiped) { justSwiped = false; return; }
+            if (e.target.closest('.receipt-badge, .delete-recurring-btn, .swipe-action')) return;
+            const row = e.target.closest('.transaction-item, .cat-tx-row, .recurring-row');
+            if (!row || !row.dataset.id) return;
+            openEditModal(buildTxFromRow(row), row);
         });
+
+        // ── אותה פתיחת עריכה במקלדת (Enter/Space) — השורות מסומנות
+        // role="button" tabindex="0" בתבניות, בדיוק כמו .legend-item[role=button] הקיים ב-month.html ──
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            if (e.target.closest('.receipt-badge, .delete-recurring-btn, .swipe-action')) return;
+            const row = e.target.closest('.transaction-item, .cat-tx-row, .recurring-row');
+            if (!row || !row.dataset.id) return;
+            e.preventDefault();
+            openEditModal(buildTxFromRow(row), row);
+        });
+
+        // ── Swipe על שורת עסקה: ימינה חושף "עריכה", שמאלה חושף "מחיקה" ──
+        // נוסף על הלחיצה הרגילה, לא מחליף אותה. עובד בכל מקום שיש בו שורת
+        // עסקה (דף הבית, עמוד החודש, עסקאות קבועות בהגדרות, עמוד פרויקט).
+        (function () {
+            const ROW_SELECTOR = '.transaction-item, .cat-tx-row, .recurring-row';
+            const OPEN_X = 76;    // מרחק הנעילה הפתוחה, תואם לרוחב .swipe-action
+            const THRESHOLD = 42; // גרירה מעבר לזה תינעל פתוחה בשחרור
+            let drag = null;
+            let openRow = null; // השורה שכרגע פתוחה (אם יש), כדי לסגור אותה בלחיצה במקום אחר
+
+            function ensureSwipeStructure(row) {
+                if (row.classList.contains('swipe-ready')) return;
+                row.classList.add('swipe-ready');
+
+                const content = document.createElement('div');
+                content.className = 'swipe-content';
+                while (row.firstChild) content.appendChild(row.firstChild);
+
+                const editAction = document.createElement('div');
+                editAction.className = 'swipe-action swipe-action-edit';
+                editAction.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> עריכה';
+
+                const deleteAction = document.createElement('div');
+                deleteAction.className = 'swipe-action swipe-action-delete';
+                deleteAction.textContent = '✕ מחיקה';
+
+                row.appendChild(editAction);
+                row.appendChild(deleteAction);
+                row.appendChild(content);
+            }
+
+            function closeRow(row) {
+                const content = row.querySelector('.swipe-content');
+                if (content) content.style.transform = '';
+                row.classList.remove('swipe-open');
+                if (openRow === row) openRow = null;
+            }
+
+            document.querySelectorAll(ROW_SELECTOR).forEach(function (row) {
+                if (row.dataset.id) ensureSwipeStructure(row);
+            });
+
+            document.addEventListener('touchstart', function (e) {
+                if (e.target.closest('.receipt-badge, .delete-recurring-btn, .swipe-action')) return;
+                const row = e.target.closest(ROW_SELECTOR);
+                if (!row || !row.dataset.id) return;
+                ensureSwipeStructure(row);
+
+                if (drag && drag.row !== row) closeRow(drag.row);
+
+                // נגיעה בשורה שכבר פתוחה רק סוגרת אותה (כמו ברוב האפליקציות) —
+                // מונע חשבון מסובך של גרירה מתוך מצב פתוח, ומונע גם פתיחת
+                // עריכה בטעות מה-click הסינתטי שיגיע אחרי הנגיעה הזו
+                if (row.classList.contains('swipe-open')) {
+                    closeRow(row);
+                    justSwiped = true;
+                    setTimeout(function () { justSwiped = false; }, 400);
+                    drag = null;
+                    return;
+                }
+
+                const touch = e.touches[0];
+                drag = {
+                    row: row,
+                    content: row.querySelector('.swipe-content'),
+                    startX: touch.clientX,
+                    startY: touch.clientY,
+                    deltaX: 0,
+                    dragging: false,
+                };
+            }, { passive: true });
+
+            document.addEventListener('touchmove', function (e) {
+                if (!drag) return;
+                const touch = e.touches[0];
+                const dx = touch.clientX - drag.startX;
+                const dy = touch.clientY - drag.startY;
+                if (!drag.dragging) {
+                    if (Math.abs(dx) < 8) return;
+                    if (Math.abs(dy) > Math.abs(dx)) { drag = null; return; } // גלילה אנכית — לא swipe
+                    drag.dragging = true;
+                }
+                drag.deltaX = Math.max(-100, Math.min(100, dx));
+                drag.content.style.transform = 'translateX(' + drag.deltaX + 'px)';
+            }, { passive: true });
+
+            document.addEventListener('touchend', function () {
+                if (!drag) return;
+                const { row, content, deltaX, dragging } = drag;
+                if (dragging) {
+                    // מונע פתיחת עריכה מה-click הסינתטי שהדפדפן עשוי לירות אחרי
+                    // המגע. דפדפנים בדרך כלל לא יורים click אחרי גרירה אמיתית,
+                    // אז מאפסים את הדגל אחרי רגע כדי לא להשפיע על לחיצות הבאות
+                    // שלא קשורות לגרירה הזו בכלל.
+                    justSwiped = true;
+                    setTimeout(function () { justSwiped = false; }, 400);
+                }
+                if (dragging && Math.abs(deltaX) > THRESHOLD) {
+                    const openDir = deltaX > 0 ? 'right' : 'left';
+                    content.style.transform = 'translateX(' + (openDir === 'right' ? OPEN_X : -OPEN_X) + 'px)';
+                    content.dataset.openDir = openDir;
+                    row.classList.add('swipe-open');
+                    openRow = row;
+                } else {
+                    closeRow(row);
+                }
+                drag = null;
+            });
+
+            // לחיצה במקום כלשהו מחוץ לשורה הפתוחה (כולל שורה אחרת) סוגרת אותה
+            document.addEventListener('click', function (e) {
+                if (openRow && e.target.closest(ROW_SELECTOR) !== openRow) {
+                    closeRow(openRow);
+                }
+            });
+
+            // לחיצה על פאנל שנחשף — אותם flows קיימים (עריכה/מחיקה), בלי שכפול קוד
+            document.addEventListener('click', function (e) {
+                const editBtn = e.target.closest('.swipe-action-edit');
+                if (editBtn) {
+                    const row = editBtn.closest(ROW_SELECTOR);
+                    closeRow(row);
+                    openEditModal(buildTxFromRow(row), row);
+                    return;
+                }
+                const delBtn = e.target.closest('.swipe-action-delete');
+                if (delBtn) {
+                    const row = delBtn.closest(ROW_SELECTOR);
+                    window.appConfirm({
+                        title: 'למחוק את העסקה?',
+                        message: 'הפעולה תסיר את העסקה מכל הדוחות והגרפים.',
+                        confirmText: 'מחק עסקה',
+                    }).then(function (ok) {
+                        if (!ok) { closeRow(row); return; }
+                        deleteTransaction(row.dataset.id, function (msg) {
+                            closeRow(row);
+                            window.showToast(msg, 'error');
+                        });
+                    });
+                }
+            });
+        })();
     })();
     </script>
 </body>

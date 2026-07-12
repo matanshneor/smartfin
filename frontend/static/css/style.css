@@ -42,7 +42,11 @@
     --color-income-light:  #4ADE80;
     --color-expense-light: #F87171;
     --color-savings-light: #E8C96A;
+    --gradient-danger:     linear-gradient(135deg, #DC2626, #B91C1C);
     --color-primary:       #A67C00;
+    --color-forecast-bg:     #F0F3F8;
+    --color-forecast-border: #3B5FA0;
+    --color-forecast-text:   #2C4677;
 
     /* Borders & shadows */
     --border-subtle:       1px solid rgba(28, 25, 23, 0.07);
@@ -51,6 +55,7 @@
     --shadow-lift:         0 8px 28px rgba(31, 24, 8, 0.09), 0 2px 6px rgba(31, 24, 8, 0.05);
     --shadow-gold:         0 6px 18px rgba(166, 124, 0, 0.28);
     --shadow-dock:         0 8px 26px rgba(31, 24, 8, 0.10), 0 1px 4px rgba(31, 24, 8, 0.05);
+    --divider-subtle:      rgba(28, 25, 23, 0.06);
 
     /* Layout */
     --radius:              14px;
@@ -148,6 +153,19 @@ ul { list-style: none; }
     color: var(--hero-text);
 }
 
+.hero-badge {
+    display: inline-block;
+    vertical-align: middle;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--hero-text-muted);
+    background: var(--hero-chip-bg);
+    border: 1px solid var(--hero-chip-border);
+    padding: 3px 9px;
+    border-radius: 99px;
+    margin-inline-start: 6px;
+}
+
 .hero-subtitle {
     color: var(--hero-text-muted);
     font-size: 0.88rem;
@@ -207,6 +225,13 @@ ul { list-style: none; }
     color: var(--hero-text-muted);
 }
 
+.hero-empty-message {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--hero-text);
+    margin-top: 2px;
+}
+
 .hero-bar {
     margin-top: 18px;
 }
@@ -227,6 +252,7 @@ ul { list-style: none; }
 }
 
 .stats-nav-btn {
+    position: relative;
     width: 38px;
     height: 38px;
     border-radius: 50%;
@@ -245,6 +271,8 @@ ul { list-style: none; }
 .stats-nav-btn:active {
     background: rgba(255, 255, 255, 0.16);
 }
+
+.stats-nav-btn svg { width: 17px; height: 17px; }
 
 /* KPI chips inside hero */
 .kpi-chips {
@@ -335,7 +363,7 @@ ul { list-style: none; }
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(28, 25, 23, 0.08);
     border-radius: 16px;
-    box-shadow: 0 8px 30px rgba(31, 24, 8, 0.12), 0 2px 6px rgba(31, 24, 8, 0.06);
+    box-shadow: var(--shadow-dock);
     padding: 0 6px;
 }
 
@@ -474,7 +502,7 @@ ul { list-style: none; }
 }
 
 .balance-bar-fill.danger {
-    background: linear-gradient(90deg, #DC2626, #991B1B);
+    background: var(--gradient-danger);
 }
 
 .balance-bar-legend {
@@ -500,7 +528,7 @@ ul { list-style: none; }
 }
 
 .section-header h2 {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     font-weight: 700;
 }
 
@@ -539,7 +567,7 @@ ul { list-style: none; }
 .tx-icon {
     width: 38px;
     height: 38px;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -547,7 +575,11 @@ ul { list-style: none; }
     background: var(--color-input);
 }
 
-.tx-emoji { font-size: 0.95rem; }
+.tx-icon.income  { background: rgba(21, 128, 61, 0.07); }
+.tx-icon.expense { background: rgba(185, 28, 28, 0.06); }
+.tx-icon.savings { background: rgba(166, 124, 0, 0.07); }
+
+.tx-emoji { font-size: 1.1rem; }
 
 .tx-details {
     flex: 1;
@@ -608,14 +640,20 @@ ul { list-style: none; }
     flex-shrink: 0;
 }
 
-.owner-0 { background: rgba(166, 124, 0, 0.12);  color: #8A6700; }
-.owner-1 { background: rgba(15, 118, 110, 0.12); color: #0F766E; }
-.owner-2 { background: rgba(109, 74, 158, 0.12); color: #6D4A9E; }
-.owner-3 { background: rgba(59, 95, 160, 0.12);  color: #3B5FA0; }
+/* צבעי בני משפחה — לא-שגרתיים ולא מתנגשים עם הצבעים הסמנטיים
+   (ירוק=הכנסה, אדום=הוצאה, זהב=חיסכון). חייב להישאר מסונכרן עם
+   _OWNER_HEX ב-app.py (משמש בגרף "לפי בן משפחה"). */
+.owner-0 { background: rgba(46, 103, 168, 0.12); color: #2E67A8; }  /* כחול (מתן) */
+.owner-1 { background: rgba(112, 72, 176, 0.12); color: #7048B0; }  /* סגול (אור) */
+.owner-2 { background: rgba(160, 69, 124, 0.12); color: #A0457C; }  /* שזיף-מג'נטה */
+.owner-3 { background: rgba(168, 92, 62, 0.12);  color: #A85C3E; }  /* טרקוטה */
+.owner-4 { background: rgba(94, 115, 145, 0.12); color: #5E7391; }  /* כחול-אפור צפחה */
+.owner-5 { background: rgba(138, 106, 82, 0.12); color: #8A6A52; }  /* חום-טאופ */
 .owner-shared { background: rgba(28, 25, 23, 0.07); color: var(--color-text-muted); }
 
 /* תג קבלה מצורפת — לחיצה פותחת את התמונה, לא את עריכת העסקה */
 .receipt-badge {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -660,6 +698,40 @@ ul { list-style: none; }
     margin-top: 4px;
 }
 
+/* ─── Install banner (PWA) ────────────────────────────────────── */
+
+.install-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 16px 0;
+}
+
+.install-banner .alert-text { flex: 1; }
+
+.install-banner-close {
+    position: relative;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: inherit;
+    opacity: 0.6;
+}
+
+.install-banner-close::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    transform: translate(-50%, -50%);
+}
+
 /* ─── Alerts (חריגות) ─────────────────────────────────────────── */
 
 .alerts-section {
@@ -687,8 +759,15 @@ ul { list-style: none; }
 
 .alert-card.danger {
     background: #FCEDED;
-    border-inline-start-color: #B91C1C;
+    border-inline-start-color: var(--color-expense);
     color: #8E1A1A;
+}
+
+/* תחזית קצב ריצה — אזהרה מוקדמת (עוד לא חריגה בפועל), לכן צבע רגוע יותר */
+.alert-card.forecast {
+    background: var(--color-forecast-bg);
+    border-inline-start-color: var(--color-forecast-border);
+    color: var(--color-forecast-text);
 }
 
 /* ─── FAB ─────────────────────────────────────────────────────── */
@@ -705,7 +784,7 @@ ul { list-style: none; }
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 8px 22px rgba(166, 124, 0, 0.32);
+    box-shadow: var(--shadow-gold);
     z-index: 40;
     transition: transform 0.2s;
 }
@@ -832,8 +911,14 @@ ul { list-style: none; }
 }
 
 .confirm-yes {
-    background: #B91C1C;
+    background: var(--color-expense);
     color: #FFFFFF;
+}
+
+/* אישור לפעולה רגילה (לא הרסנית) — למשל סנכרון תבנית קבועה */
+.confirm-yes.confirm-yes-neutral {
+    background: var(--gradient-gold);
+    color: var(--hero-text);
 }
 
 /* ─── Modal (bottom sheet) ────────────────────────────────────── */
@@ -948,10 +1033,38 @@ ul { list-style: none; }
     box-shadow: 0 2px 8px rgba(21, 128, 61, 0.30);
 }
 
+.modal-sheet.expense-mode .toggle-btn.active {
+    background: var(--gradient-danger);
+    color: #FFFFFF;
+    box-shadow: 0 2px 8px rgba(185, 28, 28, 0.30);
+}
+
+.modal-sheet.savings-mode .toggle-btn.active {
+    background: var(--gradient-gold);
+    color: #FFFFFF;
+    box-shadow: 0 2px 8px rgba(166, 124, 0, 0.30);
+}
+
+/* אותם צבעי סוג-עסקה (הכנסה=ירוק, הוצאה=אדום, חיסכון=זהב) גם בטאבי ניהול
+   קטגוריות — בהגדרות ובעמוד פרויקט */
+.cat-type-tabs .toggle-btn[data-cat-tab="income"].active,
+.project-cat-tabs .toggle-btn[data-cat-tab="income"].active {
+    background: linear-gradient(135deg, #22A055, #15803D);
+    color: #FFFFFF;
+    box-shadow: 0 2px 8px rgba(21, 128, 61, 0.30);
+}
+
+.cat-type-tabs .toggle-btn[data-cat-tab="expense"].active,
+.project-cat-tabs .toggle-btn[data-cat-tab="expense"].active {
+    background: var(--gradient-danger);
+    color: #FFFFFF;
+    box-shadow: 0 2px 8px rgba(185, 28, 28, 0.30);
+}
+
 /* Owner toggle — של מי ההוצאה */
 .owner-toggle {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
     gap: 8px;
 }
 
@@ -1010,6 +1123,15 @@ ul { list-style: none; }
     border-radius: 10px;
     background: var(--color-gold-dim);
     overflow: hidden;
+}
+
+.scanner-thumbnail {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.55;
 }
 
 .scanner-line {
@@ -1242,16 +1364,31 @@ input[type="number"] {
     font-size: 1rem;
     font-weight: 700;
     letter-spacing: 0.02em;
-    box-shadow: 0 6px 18px rgba(166, 124, 0, 0.32);
+    box-shadow: var(--shadow-gold);
     transition: transform 0.15s, opacity 0.15s;
 }
 
 .submit-btn:active { transform: scale(0.98); }
 .submit-btn:disabled { opacity: 0.6; }
 
+a.submit-btn {
+    display: block;
+    text-decoration: none;
+    text-align: center;
+}
+
+.error-card { text-align: center; }
+.error-card .empty-icon { margin-bottom: 4px; }
+.error-message { text-align: center; margin-bottom: 20px; }
+
 .modal-sheet.income-mode .submit-btn {
     background: linear-gradient(135deg, #22A055, #15803D);
     box-shadow: 0 6px 18px rgba(21, 128, 61, 0.32);
+}
+
+.modal-sheet.expense-mode .submit-btn {
+    background: var(--gradient-danger);
+    box-shadow: 0 6px 18px rgba(185, 28, 28, 0.32);
 }
 
 .delete-tx-btn {
@@ -1300,6 +1437,22 @@ input[type="number"] {
 }
 
 .month-item { width: 100%; }
+
+/* חודשים מעבר ל-6 הראשונים — מוסתרים עד לחיצה על "הצג עוד" */
+#monthsArchive:not(.show-all) .month-extra { display: none; }
+
+.show-more-months {
+    display: block;
+    margin: 14px auto 0;
+    padding: 8px 22px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-gold);
+    background: var(--color-gold-dim);
+    border-radius: 99px;
+}
+
+.show-more-months:active { transform: scale(0.98); }
 
 .month-link {
     display: flex;
@@ -1355,39 +1508,45 @@ input[type="number"] {
     font-size: 0.98rem;
 }
 
+.current-month-badge {
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: var(--color-gold);
+    background: var(--color-gold-dim);
+    padding: 2px 8px;
+    border-radius: 99px;
+    margin-inline-start: 6px;
+    vertical-align: middle;
+}
+
 .month-balance {
     font-weight: 700;
     font-size: 0.92rem;
     font-variant-numeric: tabular-nums;
     direction: ltr;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .month-balance.surplus { color: var(--color-income); }
 .month-balance.deficit { color: var(--color-expense); }
 
-.month-bar-track {
-    height: 5px;
-    border-radius: 99px;
-    background: rgba(28, 25, 23, 0.07);
-    overflow: hidden;
-    margin-bottom: 7px;
-}
-
-.month-bar-fill {
-    height: 100%;
-    border-radius: 99px;
-    background: var(--gradient-gold);
-    transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.month-bar-fill.danger {
-    background: linear-gradient(90deg, #DC2626, #991B1B);
-}
-
 .month-stats {
     display: flex;
-    gap: 12px;
-    font-size: 0.74rem;
+    gap: 18px;
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.stat-label {
+    font-size: 0.64rem;
+    font-weight: 500;
     color: var(--color-text-muted);
 }
 
@@ -1403,26 +1562,6 @@ input[type="number"] {
 .month-chevron svg { width: 18px; height: 18px; }
 
 /* ─── Charts & KPI (light cards) ──────────────────────────────── */
-
-.kpi-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin-bottom: 16px;
-}
-
-.kpi-row-4 {
-    grid-template-columns: repeat(2, 1fr);
-}
-
-.kpi-card {
-    background: var(--color-card);
-    border: var(--border-subtle);
-    border-radius: var(--radius);
-    padding: 14px 8px;
-    text-align: center;
-    box-shadow: var(--shadow-card);
-}
 
 .kpi-label {
     font-size: 0.74rem;
@@ -1457,6 +1596,14 @@ input[type="number"] {
     font-size: 1.05rem;
     font-weight: 700;
     margin-bottom: 16px;
+}
+
+.cat-manage-bar .chart-title { margin-bottom: 0; }
+
+.wealth-bucket-hint {
+    font-size: 0.74rem;
+    color: var(--color-text-muted);
+    margin-top: 2px;
 }
 
 .chart-empty {
@@ -1501,6 +1648,15 @@ input[type="number"] {
     color: var(--color-text-muted);
 }
 
+/* תווית מסבירה במרכז הדונאט (בלי מספר) — רק כדי שלא ייראה ריק */
+.doughnut-caption {
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+    color: var(--color-text-soft);
+}
+
 /* Legend */
 .legend-list {
     display: flex;
@@ -1514,7 +1670,7 @@ input[type="number"] {
     gap: 8px;
     font-size: 0.85rem;
     padding: 6px 4px;
-    border-bottom: 1px solid rgba(28, 25, 23, 0.05);
+    border-bottom: 1px solid var(--divider-subtle);
 }
 
 .legend-item:last-child { border-bottom: none; }
@@ -1551,7 +1707,7 @@ input[type="number"] {
 /* ── Expandable category rows ── */
 
 .legend-item-wrap {
-    border-bottom: 1px solid rgba(28, 25, 23, 0.05);
+    border-bottom: 1px solid var(--divider-subtle);
 }
 
 .legend-item-wrap:last-child { border-bottom: none; }
@@ -1587,6 +1743,14 @@ input[type="number"] {
     background: var(--color-input);
 }
 
+/* רשימה עצמאית (לא drilldown מתקפל) — למשל בעמוד פרויקט בודד */
+.cat-tx-list.cat-tx-list-standalone {
+    display: block;
+    background: none;
+    padding: 0;
+    margin: 0;
+}
+
 .legend-item-wrap.open .cat-tx-list,
 .breakdown-bar-row.open .cat-tx-list {
     display: block;
@@ -1600,7 +1764,7 @@ input[type="number"] {
     margin: 0 -4px;
     border-radius: 8px;
     font-size: 0.82rem;
-    border-bottom: 1px solid rgba(28, 25, 23, 0.06);
+    border-bottom: 1px solid var(--divider-subtle);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     transition: background 0.15s;
@@ -1630,7 +1794,7 @@ input[type="number"] {
 }
 
 .cat-tx-amount {
-    font-weight: 600;
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
     direction: ltr;
     white-space: nowrap;
@@ -1671,7 +1835,7 @@ li.zero-cat-row { display: none; }
 /* כל העסקאות */
 .all-tx-title {
     font-weight: 700;
-    font-size: 1.02rem;
+    font-size: 1.05rem;
 }
 
 .all-tx-count {
@@ -1706,7 +1870,7 @@ li.zero-cat-row { display: none; }
 .breakdown-icon {
     width: 38px;
     height: 38px;
-    border-radius: 12px;
+    border-radius: var(--radius-sm);
     background: var(--color-input);
     display: flex;
     align-items: center;
@@ -1816,7 +1980,7 @@ li.zero-cat-row { display: none; }
 .member-bar-fill {
     height: 100%;
     border-radius: 99px;
-    background: linear-gradient(90deg, #DC2626, #991B1B);
+    background: var(--gradient-danger);
 }
 
 .member-stats-row {
@@ -1857,7 +2021,7 @@ li.zero-cat-row { display: none; }
 .group-icon {
     width: 38px;
     height: 38px;
-    border-radius: 11px;
+    border-radius: var(--radius-sm);
     background: var(--color-gold-dim);
     color: var(--color-gold);
     display: flex;
@@ -1902,7 +2066,7 @@ li.zero-cat-row { display: none; }
 .settings-group-body {
     display: none;
     padding: 4px 16px 16px;
-    border-top: 1px solid rgba(28, 25, 23, 0.06);
+    border-top: 1px solid var(--divider-subtle);
 }
 
 .settings-group.open .settings-group-body { display: block; }
@@ -1947,11 +2111,51 @@ li.zero-cat-row { display: none; }
 
 .cat-manage-bar .cat-type-tabs { flex: 1; }
 
-/* מצב רגיל: שורות נקיות — כפתורי עריכה/מחיקה והוספה מוסתרים */
+/* מצב רגיל: שורות נקיות — כפתורי עריכה/מחיקה/סידור והוספה מוסתרים */
 #categoriesArea:not(.managing) .edit-cat-btn,
 #categoriesArea:not(.managing) .delete-cat-btn,
-#categoriesArea:not(.managing) #addCatForm {
+#categoriesArea:not(.managing) .cat-reorder-btns,
+#categoriesArea:not(.managing) #addCatForm,
+#projectCategoriesArea:not(.managing) .delete-cat-btn,
+#projectCategoriesArea:not(.managing) #addProjectCatForm {
     display: none;
+}
+
+.cat-reorder-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.cat-move-btn {
+    position: relative;
+    width: 30px;
+    height: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    border-radius: 4px;
+}
+
+.cat-move-btn svg { width: 12px; height: 12px; }
+
+/* אזור לחיצה נסתר מותאם (לא 44×44 הגנרי) — שני הכפתורים צמודים זה מעל זה
+   בפער קטן, אז אזור סימטרי מלא היה חופף בין השניים ומבלבל את הנגיעה */
+.cat-move-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 20px;
+    transform: translate(-50%, -50%);
+}
+
+.cat-move-btn:disabled {
+    opacity: 0.25;
+    pointer-events: none;
 }
 
 #addCatForm {
@@ -1965,18 +2169,6 @@ li.zero-cat-row { display: none; }
 
 /* ─── Settings ────────────────────────────────────────────────── */
 
-.settings-section {
-    margin-bottom: 26px;
-}
-
-.settings-section-title {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: var(--color-gold);
-    padding: 0 4px;
-    margin-bottom: 10px;
-}
-
 .settings-card {
     background: var(--color-card);
     border: var(--border-subtle);
@@ -1984,13 +2176,6 @@ li.zero-cat-row { display: none; }
     padding: 16px;
     margin-bottom: 10px;
     box-shadow: var(--shadow-card);
-}
-
-.settings-card-title {
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: var(--color-text-soft);
-    margin-bottom: 12px;
 }
 
 /* Family */
@@ -2025,6 +2210,7 @@ li.zero-cat-row { display: none; }
 }
 
 .icon-btn {
+    position: relative;
     width: 36px;
     height: 36px;
     border-radius: 11px;
@@ -2075,7 +2261,7 @@ li.zero-cat-row { display: none; }
     gap: 12px;
     margin-top: 16px;
     padding-top: 16px;
-    border-top: 1px solid rgba(28, 25, 23, 0.07);
+    border-top: 1px solid var(--divider-subtle);
 }
 
 .invite-code-label {
@@ -2172,7 +2358,7 @@ li.zero-cat-row { display: none; }
     align-items: center;
     gap: 12px;
     padding: 11px 0;
-    border-bottom: 1px solid rgba(28, 25, 23, 0.06);
+    border-bottom: 1px solid var(--divider-subtle);
 }
 
 .recurring-row:first-child { padding-top: 0; }
@@ -2181,7 +2367,7 @@ li.zero-cat-row { display: none; }
 .recurring-icon {
     width: 38px;
     height: 38px;
-    border-radius: 12px;
+    border-radius: var(--radius-sm);
     background: var(--color-input);
     display: flex;
     align-items: center;
@@ -2217,14 +2403,6 @@ li.zero-cat-row { display: none; }
 .recurring-amount.expense { color: var(--color-expense); }
 .recurring-amount.savings { color: var(--color-savings); }
 
-.recurring-empty {
-    font-size: 0.85rem;
-    color: var(--color-text-muted);
-    text-align: center;
-    padding: 8px 0;
-    line-height: 1.6;
-}
-
 /* Categories management */
 .categories-list {
     display: flex;
@@ -2236,7 +2414,7 @@ li.zero-cat-row { display: none; }
     align-items: center;
     gap: 12px;
     padding: 10px 0;
-    border-bottom: 1px solid rgba(28, 25, 23, 0.06);
+    border-bottom: 1px solid var(--divider-subtle);
 }
 
 .category-row:first-child { padding-top: 0; }
@@ -2260,10 +2438,11 @@ li.zero-cat-row { display: none; }
 }
 
 .edit-cat-btn {
+    position: relative;
     width: 30px;
     height: 30px;
     border-radius: 10px;
-    background: var(--color-gold-dim);
+    background: var(--color-input);
     color: var(--color-gold);
     display: flex;
     align-items: center;
@@ -2272,6 +2451,21 @@ li.zero-cat-row { display: none; }
 }
 
 .edit-cat-btn svg { width: 14px; height: 14px; }
+
+.edit-project-settings-btn {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    background: var(--color-input);
+    color: var(--color-gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.edit-project-settings-btn svg { width: 14px; height: 14px; }
 
 .category-row.editing {
     gap: 8px;
@@ -2287,7 +2481,9 @@ li.zero-cat-row { display: none; }
 .category-row.editing .btn-sm { padding: 8px 12px; white-space: nowrap; }
 
 .delete-cat-btn,
-.delete-recurring-btn {
+.delete-recurring-btn,
+.delete-project-btn {
+    position: relative;
     width: 30px;
     height: 30px;
     border-radius: 10px;
@@ -2298,6 +2494,20 @@ li.zero-cat-row { display: none; }
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+}
+
+li.project-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.project-row .breakdown-main {
+    flex: 1;
+    min-width: 0;
+    text-decoration: none;
+    color: inherit;
 }
 
 /* Add category */
@@ -2373,20 +2583,36 @@ li.zero-cat-row { display: none; }
     margin-bottom: 8px;
 }
 
-.password-toggle-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.password-toggle-row .settings-card-title { margin-bottom: 0; }
-
 .password-form {
     display: none;
     margin-top: 14px;
 }
 
 .password-form.visible { display: block; }
+
+/* מחיקת חשבון — אזור סכנה */
+.btn-danger-ghost {
+    color: var(--color-expense);
+    border: 1px solid rgba(185, 28, 28, 0.25);
+    background: rgba(185, 28, 28, 0.05);
+}
+
+.btn-danger {
+    background: var(--gradient-danger);
+    color: #FFFFFF;
+    box-shadow: 0 2px 8px rgba(185, 28, 28, 0.25);
+}
+
+.delete-account-warning {
+    font-size: 0.8rem;
+    line-height: 1.55;
+    color: var(--color-expense);
+    background: #FCEDED;
+    border-inline-start: 3px solid var(--color-expense);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 14px;
+}
 
 .logout-btn {
     display: block;
@@ -2484,7 +2710,7 @@ li.zero-cat-row { display: none; }
     background: var(--color-card);
     border-radius: 20px;
     padding: 28px 22px 24px;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 24px 60px rgba(20, 16, 7, 0.4);
     overflow: hidden;
     animation: auth-card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -2535,6 +2761,12 @@ li.zero-cat-row { display: none; }
     text-align: center;
     margin-top: 14px;
     font-size: 0.85rem;
+}
+
+.auth-link {
+    color: var(--color-gold);
+    font-weight: 600;
+    text-decoration: none;
 }
 
 /* ─── Onboarding wizard ───────────────────────────────────────── */
@@ -2665,8 +2897,8 @@ li.zero-cat-row { display: none; }
 @media (min-width: 600px) {
     .page-hero { padding-top: 32px; }
     .hero-amount { font-size: 4rem; }
-    .category-grid { grid-template-columns: repeat(5, 1fr); }
-    .kpi-chips, .kpi-row-4 { grid-template-columns: repeat(4, 1fr); }
+    .category-grid, .onboarding-cat-grid { grid-template-columns: repeat(5, 1fr); }
+    .kpi-chips { grid-template-columns: repeat(4, 1fr); }
 }
 
 /* ─── Reduced motion ──────────────────────────────────────────── */
@@ -2788,3 +3020,144 @@ li.zero-cat-row { display: none; }
 }
 
 .suffix-input { padding-inline-end: 34px; }
+
+/* שורת "עסקה אחרונה" זמנית (UI אופטימי) — עד שהרענון המלא מחליף אותה בנתון אמיתי */
+.tx-pending {
+    opacity: 0.6;
+    cursor: default;
+    pointer-events: none;
+}
+
+/* ── Swipe actions על שורות עסקה: ימינה=עריכה, שמאלה=מחיקה (נוסף ללחיצה) ── */
+.swipe-content {
+    position: relative;
+    z-index: 2;
+    transition: transform 0.2s ease-out;
+    touch-action: pan-y;
+    background: inherit;
+}
+
+.swipe-action {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+    color: #FFFFFF;
+    z-index: 1;
+    gap: 4px;
+}
+
+.swipe-action svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+.swipe-action-edit {
+    left: 0;
+    background: var(--gradient-gold);
+}
+
+.swipe-action-delete {
+    right: 0;
+    background: var(--gradient-danger);
+}
+
+li.transaction-item.swipe-ready .swipe-action-edit  { border-radius: var(--radius) 0 0 var(--radius); }
+li.transaction-item.swipe-ready .swipe-action-delete { border-radius: 0 var(--radius) var(--radius) 0; }
+
+li.transaction-item.swipe-ready {
+    display: block;
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    overflow: hidden;
+    position: relative;
+}
+
+li.transaction-item.swipe-ready > .swipe-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--color-card);
+    border: var(--border-subtle);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    box-shadow: var(--shadow-card);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.cat-tx-row.swipe-ready {
+    display: block;
+    padding: 0;
+    overflow: hidden;
+    position: relative;
+}
+
+.cat-tx-row.swipe-ready > .swipe-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 4px;
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 8px;
+    /* רקע אטום שיסתיר את פאנלי הפעולה עד שמחליקים — תואם לרקע הבז'
+       של .cat-tx-list (drilldown בעמוד החודש). ברשימה עצמאית בעמוד
+       פרויקט הרקע לבן, ראה override למטה. */
+    background: var(--color-input);
+}
+
+.cat-tx-list-standalone .cat-tx-row.swipe-ready > .swipe-content {
+    background: var(--color-card);
+}
+
+.recurring-row.swipe-ready {
+    display: block;
+    padding: 0;
+    overflow: hidden;
+    position: relative;
+}
+
+.recurring-row.swipe-ready > .swipe-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 0;
+    width: 100%;
+    box-sizing: border-box;
+    /* רקע אטום — שורות עסקאות קבועות יושבות על כרטיס לבן בהגדרות */
+    background: var(--color-card);
+}
+
+/* משוב טעינה עדין בזמן שנתוני המודאל נטענים (FAB או שורת עסקה שנלחצה) */
+.is-loading-trigger {
+    opacity: 0.55;
+    pointer-events: none;
+    transition: opacity 0.15s;
+}
+
+/* מרחיבים את אזור הלחיצה בפועל ל-44×44 בלי לשנות את הגודל הוויזואלי —
+   פסאודו-אלמנט שקוף וממורכז, גדול יותר מהאייקון הנראה */
+.modal-close::before,
+.icon-btn::before,
+.edit-cat-btn::before,
+.edit-project-settings-btn::before,
+.delete-cat-btn::before,
+.delete-recurring-btn::before,
+.delete-project-btn::before,
+.receipt-badge::before,
+.stats-nav-btn::before,
+.pref-switch::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+}

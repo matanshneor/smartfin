@@ -14,8 +14,12 @@
         <p class="hero-subtitle">{% if is_current %}החודש הנוכחי{% else %}נתוני חודש{% endif %}</p>
     </div>
     <div class="stats-month-nav">
-        <a href="{{ url_for('month_view', year=prev_year, month=prev_month) }}" class="stats-nav-btn" aria-label="חודש קודם">‹</a>
-        <a href="{{ url_for('month_view', year=next_year, month=next_month) }}" class="stats-nav-btn" aria-label="חודש הבא">›</a>
+        <a href="{{ url_for('month_view', year=prev_year, month=prev_month) }}" class="stats-nav-btn" aria-label="חודש קודם">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        <a href="{{ url_for('month_view', year=next_year, month=next_month) }}" class="stats-nav-btn" aria-label="חודש הבא">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </a>
     </div>
 </div>
 
@@ -44,6 +48,12 @@
 {% endblock %}
 
 {% block content %}
+{% set freq_labels = {
+    'monthly_1':  'כל 1 לחודש',
+    'monthly_15': 'כל 15 לחודש',
+    'weekly':     'כל שבוע',
+    'biweekly':   'כל שבועיים'
+} %}
 
 <!-- Alerts: חריגות -->
 {% if anomalies %}
@@ -63,8 +73,7 @@
     <div class="doughnut-wrap">
         <canvas id="overviewChart" aria-label="חלוקת ההכנסות: הוצאות, חיסכון ויתרה"></canvas>
         <div class="doughnut-center">
-            <p class="doughnut-total">₪{{ "{:,.0f}".format(summary.income) }}</p>
-            <p class="doughnut-label">הכנסות</p>
+            <p class="doughnut-caption">פילוח החודש</p>
         </div>
     </div>
     <ul class="legend-list" id="overviewLegend"></ul>
@@ -91,6 +100,30 @@
     {% endif %}
     <ul class="legend-list">
         {% for item in expense_active %}
+        {% if item.is_project %}
+        <li class="legend-item-wrap">
+            {% if item.project_id %}
+            <a class="legend-item clickable" href="{{ url_for('project_detail', project_id=item.project_id) }}">
+                <span class="legend-dot" style="background: var(--chart-color-{{ loop.index0 % 8 }});"></span>
+                <span class="legend-icon">{{ item.icon }}</span>
+                <span class="legend-name">{{ item.name }}</span>
+                <span class="legend-pct">{{ item.pct }}%</span>
+                <span class="legend-amount">₪{{ "{:,.0f}".format(item.total) }}</span>
+                <span class="expand-chevron" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18" transform="rotate(90 12 12)"/></svg>
+                </span>
+            </a>
+            {% else %}
+            <div class="legend-item">
+                <span class="legend-dot" style="background: var(--chart-color-{{ loop.index0 % 8 }});"></span>
+                <span class="legend-icon">{{ item.icon }}</span>
+                <span class="legend-name">{{ item.name }}</span>
+                <span class="legend-pct">{{ item.pct }}%</span>
+                <span class="legend-amount">₪{{ "{:,.0f}".format(item.total) }}</span>
+            </div>
+            {% endif %}
+        </li>
+        {% else %}
         {% set cat_txs = month_transactions | selectattr('type', 'equalto', 'expense')
                                             | selectattr('category_name', 'equalto', item.name) | list %}
         <li class="legend-item-wrap">
@@ -109,13 +142,14 @@
             {% if cat_txs %}
             <ul class="cat-tx-list">
                 {% for tx in cat_txs %}
-                <li class="cat-tx-row" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
-                    data-category-id="{{ tx.category_id or '' }}" data-description="{{ tx.description }}"
+                <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                    data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
                     data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
                     data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
-                    data-recurring-end-date="{{ tx.recurring_end_date or '' }}">
+                    data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
+                    data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
                     <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
-                    <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}</span>
+                    <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.is_recurring or tx.recurring_parent_id %} · 🔁 {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
                     {% if family_settings.owner_attribution.expense %}
                     {% set color = member_colors.get(tx.user_id) %}
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
@@ -129,6 +163,7 @@
             </ul>
             {% endif %}
         </li>
+        {% endif %}
         {% endfor %}
 
         {% if expense_zero %}
@@ -160,6 +195,30 @@
     {% set savings_zero   = savings_breakdown | rejectattr('total', 'gt', 0) | list %}
     <ul class="breakdown-bars">
         {% for item in savings_active %}
+        {% if item.is_project %}
+        <li class="breakdown-bar-row">
+            {% if item.project_id %}
+            <a class="breakdown-main clickable" href="{{ url_for('project_detail', project_id=item.project_id) }}">
+            {% else %}
+            <div class="breakdown-main">
+            {% endif %}
+                <span class="breakdown-icon">{{ item.icon }}</span>
+                <div class="breakdown-info">
+                    <div class="breakdown-name-row">
+                        <span class="breakdown-name">{{ item.name }}</span>
+                        <span class="breakdown-amount savings">₪{{ "{:,.0f}".format(item.total) }}</span>
+                    </div>
+                    <div class="breakdown-track">
+                        <div class="breakdown-fill savings" style="width: {{ item.pct }}%;"></div>
+                    </div>
+                </div>
+            {% if item.project_id %}
+            </a>
+            {% else %}
+            </div>
+            {% endif %}
+        </li>
+        {% else %}
         {% set cat_txs = month_transactions | selectattr('type', 'equalto', 'savings')
                                             | selectattr('category_name', 'equalto', item.name) | list %}
         <li class="breakdown-bar-row">
@@ -184,13 +243,14 @@
             {% if cat_txs %}
             <ul class="cat-tx-list">
                 {% for tx in cat_txs %}
-                <li class="cat-tx-row" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
-                    data-category-id="{{ tx.category_id or '' }}" data-description="{{ tx.description }}"
+                <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                    data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
                     data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
                     data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
-                    data-recurring-end-date="{{ tx.recurring_end_date or '' }}">
+                    data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
+                    data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
                     <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
-                    <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}</span>
+                    <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.is_recurring or tx.recurring_parent_id %} · 🔁 {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
                     {% if family_settings.owner_attribution.savings %}
                     {% set color = member_colors.get(tx.user_id) %}
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
@@ -201,6 +261,7 @@
             </ul>
             {% endif %}
         </li>
+        {% endif %}
         {% endfor %}
         {% if not savings_active %}
         <div class="chart-empty"><p>💰</p><p>אין הפרשות לחיסכון החודש</p></div>
@@ -237,6 +298,30 @@
     {% set income_zero   = income_breakdown | rejectattr('total', 'gt', 0) | list %}
     <ul class="breakdown-bars">
         {% for item in income_active %}
+        {% if item.is_project %}
+        <li class="breakdown-bar-row">
+            {% if item.project_id %}
+            <a class="breakdown-main clickable" href="{{ url_for('project_detail', project_id=item.project_id) }}">
+            {% else %}
+            <div class="breakdown-main">
+            {% endif %}
+                <span class="breakdown-icon">{{ item.icon }}</span>
+                <div class="breakdown-info">
+                    <div class="breakdown-name-row">
+                        <span class="breakdown-name">{{ item.name }}</span>
+                        <span class="breakdown-amount income">₪{{ "{:,.0f}".format(item.total) }}</span>
+                    </div>
+                    <div class="breakdown-track">
+                        <div class="breakdown-fill income" style="width: {{ item.pct }}%;"></div>
+                    </div>
+                </div>
+            {% if item.project_id %}
+            </a>
+            {% else %}
+            </div>
+            {% endif %}
+        </li>
+        {% else %}
         {% set cat_txs = month_transactions | selectattr('type', 'equalto', 'income')
                                             | selectattr('category_name', 'equalto', item.name) | list %}
         <li class="breakdown-bar-row">
@@ -261,13 +346,14 @@
             {% if cat_txs %}
             <ul class="cat-tx-list">
                 {% for tx in cat_txs %}
-                <li class="cat-tx-row" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
-                    data-category-id="{{ tx.category_id or '' }}" data-description="{{ tx.description }}"
+                <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                    data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
                     data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
                     data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
-                    data-recurring-end-date="{{ tx.recurring_end_date or '' }}">
+                    data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
+                    data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
                     <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
-                    <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}</span>
+                    <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.is_recurring or tx.recurring_parent_id %} · 🔁 {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
                     {% if family_settings.owner_attribution.income %}
                     {% set color = member_colors.get(tx.user_id) %}
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
@@ -278,6 +364,7 @@
             </ul>
             {% endif %}
         </li>
+        {% endif %}
         {% endfor %}
         {% if not income_active %}
         <div class="chart-empty"><p>💼</p><p>אין הכנסות רשומות החודש</p></div>
@@ -331,13 +418,14 @@
             </div>
             <ul class="cat-tx-list">
                 {% for tx in month_transactions %}
-                <li class="cat-tx-row" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
-                    data-category-id="{{ tx.category_id or '' }}" data-description="{{ tx.description }}"
+                <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                    data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
                     data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
                     data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
-                    data-recurring-end-date="{{ tx.recurring_end_date or '' }}">
+                    data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
+                    data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
                     <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
-                    <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}</span>
+                    <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.is_recurring or tx.recurring_parent_id %} · 🔁 {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
                     {% if family_settings.owner_attribution[tx.type] %}
                     {% set color = member_colors.get(tx.user_id) %}
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
@@ -440,7 +528,7 @@
                     plugins: {
                         tooltip: {
                             callbacks: {
-                                label: c => ` ${c.label}: ₪${c.parsed.toLocaleString()} (${Math.round(c.parsed / summary.income * 100)}%)`
+                                label: c => ` ${c.label}: ₪${c.parsed.toLocaleString('en-US')} (${Math.round(c.parsed / summary.income * 100)}%)`
                             }
                         }
                     }
@@ -455,7 +543,7 @@
                     <span class="legend-dot" style="background:${p.color}"></span>
                     <span class="legend-name">${p.label}</span>
                     <span class="legend-pct">${Math.round(p.value / summary.income * 100)}%</span>
-                    <span class="legend-amount">₪${p.value.toLocaleString()}</span>`;
+                    <span class="legend-amount">₪${p.value.toLocaleString('en-US')}</span>`;
                 legend.appendChild(li);
             });
         }
@@ -485,7 +573,7 @@
                     plugins: {
                         tooltip: {
                             callbacks: {
-                                label: c => ` ₪${c.parsed.toLocaleString()} (${expenseData[c.dataIndex].pct}%)`
+                                label: c => ` ₪${c.parsed.toLocaleString('en-US')} (${expenseData[c.dataIndex].pct}%)`
                             }
                         }
                     }
@@ -496,11 +584,6 @@
 
     // ── 5. חלוקה בין בני המשפחה — גרף נפרד לכל סוג שהמשפחה הפעילה בו שיוך ──
     const membersData = {{ members_json | safe }};
-    const MEMBER_COLORS = {
-        expense: 'rgba(160,69,69,0.9)',   // אדום מעומעם
-        income:  'rgba(61,107,84,0.9)',   // ירוק מעומעם
-        savings: 'rgba(166,124,0,0.9)',   // זהב
-    };
     membersData.forEach(function (mb) {
         const ctx = document.getElementById('membersChart-' + mb.type);
         if (!ctx || !mb.rows.length) return;
@@ -511,7 +594,8 @@
                 datasets: [{
                     label:           mb.label,
                     data:            mb.rows.map(m => m.expense),
-                    backgroundColor: MEMBER_COLORS[mb.type],
+                    // צבע קבוע לכל בן משפחה — זהה לצבע תג-השם שלו (ראה app.py)
+                    backgroundColor: mb.rows.map(m => m.color),
                     borderRadius:    6,
                     maxBarThickness: 64,
                 }]
@@ -522,7 +606,7 @@
                 plugins: {
                     tooltip: {
                         callbacks: {
-                            label: c => ` ${mb.label}: ₪${c.parsed.y.toLocaleString()}`
+                            label: c => ` ${mb.label}: ₪${c.parsed.y.toLocaleString('en-US')}`
                         }
                     }
                 },
@@ -530,7 +614,7 @@
                     x: { grid: { display: false }, ticks: { font: { size: 12 } } },
                     y: {
                         grid: { color: GRID_LINE },
-                        ticks: { font: { size: 11 }, callback: v => '₪' + v.toLocaleString() }
+                        ticks: { font: { size: 11 }, callback: v => '₪' + v.toLocaleString('en-US') }
                     }
                 }
             }
