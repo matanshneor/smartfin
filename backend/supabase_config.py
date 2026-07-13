@@ -767,6 +767,7 @@ def materialize_recurring(family_id: str) -> int:
 
 def _recurring_occurrences(template: dict, until) -> list:
     """תאריכי המופעים של תבנית קבועה — אחרי תאריך המקור, עד 'until' (כולל)."""
+    import calendar
     from datetime import date, timedelta
 
     start = date.fromisoformat(str(template["date"]))
@@ -775,11 +776,15 @@ def _recurring_occurrences(template: dict, until) -> list:
     freq = template.get("recurring_frequency") or "monthly_1"
 
     out = []
-    if freq in ("monthly_1", "monthly_15"):
-        day = 1 if freq == "monthly_1" else 15
+    if freq in ("monthly_1", "monthly_15", "monthly_same"):
+        # monthly_same חוזר כל חודש ביום־בחודש של תאריך המקור (למשל ה-23);
+        # monthly_1/15 קבועים ל-1 או ל-15
+        target_day = {"monthly_1": 1, "monthly_15": 15}.get(freq, start.day)
         # מתחילים מחודש ההתחלה עצמו — מופע באותו חודש אחרי תאריך ההתחלה נחשב
         y, m = start.year, start.month
         while len(out) < 500:
+            # קיצוץ ליום האחרון של החודש (למשל יום 31 בפברואר → 28/29)
+            day = min(target_day, calendar.monthrange(y, m)[1])
             d = date(y, m, day)
             if d > until or (end and d > end):
                 break
