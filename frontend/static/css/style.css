@@ -172,6 +172,12 @@ ul { list-style: none; }
     margin-top: 2px;
 }
 
+.back-to-current {
+    color: var(--color-gold-bright);
+    font-weight: 600;
+    text-decoration: none;
+}
+
 .avatar-circle {
     width: 42px;
     height: 42px;
@@ -835,9 +841,28 @@ ul { list-style: none; }
     pointer-events: none;
     transition: opacity 0.25s, transform 0.25s;
     z-index: 200;
-    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.toast .toast-msg {
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.toast-action {
+    flex-shrink: 0;
+    pointer-events: auto;
+    background: none;
+    border: none;
+    color: var(--color-gold-bright);
+    font-family: inherit;
+    font-size: 0.86rem;
+    font-weight: 700;
+    padding: 4px 2px;
+    cursor: pointer;
 }
 
 .toast.show {
@@ -1231,6 +1256,29 @@ input[type="number"] {
 }
 
 /* Amount input */
+/* צ'יפים "היום/אתמול" בבורר התאריך */
+.date-quick-chips {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.date-chip {
+    padding: 6px 16px;
+    border-radius: 99px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--color-text-soft);
+    background: var(--color-input);
+    border: 1px solid transparent;
+}
+
+.date-chip.active {
+    color: var(--color-gold);
+    background: var(--color-gold-dim);
+    border-color: var(--color-gold-border);
+}
+
 .amount-input-wrap {
     position: relative;
 }
@@ -1391,18 +1439,33 @@ a.submit-btn {
     box-shadow: 0 6px 18px rgba(185, 28, 28, 0.32);
 }
 
-.delete-tx-btn {
-    display: none;
-    width: 100%;
-    padding: 12px;
+/* שורת פעולות של מצב עריכה: "הוסף שוב" + "מחק" זה לצד זה */
+.edit-mode-actions {
+    display: flex;
+    gap: 8px;
     margin-top: 10px;
+}
+
+.duplicate-tx-btn,
+.delete-tx-btn {
+    flex: 1;
+    padding: 12px;
     border-radius: var(--radius-sm);
-    background: rgba(185, 28, 28, 0.07);
-    border: 1px solid rgba(185, 28, 28, 0.22);
-    color: var(--color-expense);
     font-weight: 600;
     font-size: 0.92rem;
     text-align: center;
+}
+
+.duplicate-tx-btn {
+    background: var(--color-input);
+    border: 1px solid transparent;
+    color: var(--color-text-soft);
+}
+
+.delete-tx-btn {
+    background: rgba(185, 28, 28, 0.07);
+    border: 1px solid rgba(185, 28, 28, 0.22);
+    color: var(--color-expense);
 }
 
 .delete-tx-btn:disabled { opacity: 0.6; }
@@ -1756,6 +1819,17 @@ a.submit-btn {
     display: block;
 }
 
+/* חיפוש עסקאות — מוצג רק כשרשימת "כל העסקאות" פתוחה */
+.tx-search-wrap { display: none; margin: 8px 0 4px; }
+.legend-item-wrap.open .tx-search-wrap { display: block; }
+.tx-search-input { font-size: 0.88rem; padding: 9px 12px; }
+.tx-search-empty {
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+    text-align: center;
+    padding: 12px 0 4px;
+}
+
 .cat-tx-row {
     display: flex;
     align-items: center;
@@ -1919,78 +1993,11 @@ li.zero-cat-row { display: none; }
 .breakdown-fill.income  { background: linear-gradient(90deg, #22A055, #15803D); }
 .breakdown-fill.savings { background: var(--gradient-gold); }
 
-/* Bar / line chart wrappers */
-.bar-chart-wrap,
+/* Chart wrapper (doughnut / bar / line canvases) */
 .line-chart-wrap {
     position: relative;
     height: 240px;
 }
-
-/* Member breakdown */
-.members-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.member-row {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-}
-
-.member-avatar {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    background: var(--gradient-gold);
-    color: #FFFFFF;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    flex-shrink: 0;
-}
-
-.member-info { flex: 1; min-width: 0; }
-
-.member-name-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 6px;
-}
-
-.member-name { font-weight: 700; font-size: 0.92rem; }
-
-.member-expense {
-    color: var(--color-expense);
-    font-weight: 600;
-    font-size: 0.85rem;
-    direction: ltr;
-}
-
-.member-bar-track {
-    height: 6px;
-    border-radius: 99px;
-    background: rgba(28, 25, 23, 0.07);
-    overflow: hidden;
-    margin-bottom: 6px;
-}
-
-.member-bar-fill {
-    height: 100%;
-    border-radius: 99px;
-    background: var(--gradient-danger);
-}
-
-.member-stats-row {
-    display: flex;
-    gap: 14px;
-    font-size: 0.78rem;
-}
-
-.member-stat.income  { color: var(--color-income); }
-.member-stat.savings { color: var(--color-savings); }
 
 /* ─── Settings: accordion groups ──────────────────────────────── */
 
@@ -2178,37 +2185,6 @@ li.zero-cat-row { display: none; }
     box-shadow: var(--shadow-card);
 }
 
-/* Family */
-.family-name-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.family-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 13px;
-    background: var(--color-gold-dim);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.3rem;
-    flex-shrink: 0;
-}
-
-.family-name-info { flex: 1; }
-
-.family-name-label {
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-}
-
-.family-name-value {
-    font-weight: 700;
-    font-size: 1rem;
-}
-
 .icon-btn {
     position: relative;
     width: 36px;
@@ -2254,16 +2230,6 @@ li.zero-cat-row { display: none; }
     color: var(--color-text-soft);
 }
 
-.invite-code-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid var(--divider-subtle);
-}
-
 .invite-code-label {
     font-size: 0.75rem;
     color: var(--color-text-muted);
@@ -2275,13 +2241,6 @@ li.zero-cat-row { display: none; }
     color: var(--color-gold);
     direction: ltr;
     word-break: break-all;
-}
-
-.invite-code-hint {
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-    margin-top: 10px;
-    line-height: 1.5;
 }
 
 /* Members */
@@ -2527,13 +2486,6 @@ li.project-row {
 .add-cat-form select { margin-bottom: 12px; }
 
 /* Account */
-.account-row {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 16px;
-}
-
 .member-avatar-lg {
     width: 52px;
     height: 52px;
@@ -2546,25 +2498,6 @@ li.project-row {
     font-weight: 700;
     font-size: 1.2rem;
     flex-shrink: 0;
-}
-
-.account-details {
-    flex: 1;
-    min-width: 0;
-}
-
-.account-name {
-    font-weight: 700;
-    font-size: 1.05rem;
-}
-
-.account-meta {
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
-    margin-top: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 .account-edit {

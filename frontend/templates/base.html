@@ -20,11 +20,11 @@
 </head>
 <body>
 
-    <div class="page-hero">
+    <header class="page-hero">
         <div class="hero-inner">
             {% block hero %}{% endblock %}
         </div>
-    </div>
+    </header>
 
     <main class="main-content">
         <div class="alert-card warning install-banner" id="installBanner" style="display:none;" role="status">
@@ -150,7 +150,7 @@
                     <div class="amount-input-wrap">
                         <span class="amount-currency">₪</span>
                         <input class="form-input amount-input" type="number" id="txAmount"
-                               placeholder="0.00" min="0" step="0.01" inputmode="decimal" required>
+                               placeholder="0.00" min="0" step="0.01" inputmode="decimal" enterkeyhint="next" required>
                     </div>
                 </div>
 
@@ -178,11 +178,15 @@
                 <div class="form-group">
                     <label class="form-label" for="txDescription">תיאור קצר</label>
                     <input class="form-input" type="text" id="txDescription"
-                           placeholder="למשל: שופרסל, משכורת…" maxlength="80">
+                           placeholder="למשל: שופרסל, משכורת…" maxlength="80" enterkeyhint="done">
                 </div>
 
                 <div class="form-group">
                     <label class="form-label" for="txDate">תאריך</label>
+                    <div class="date-quick-chips">
+                        <button type="button" class="date-chip" data-days="0">היום</button>
+                        <button type="button" class="date-chip" data-days="-1">אתמול</button>
+                    </div>
                     <input class="form-input" type="date" id="txDate" required>
                 </div>
 
@@ -216,7 +220,10 @@
                     <span id="submitLabel">הוסף הוצאה</span>
                 </button>
 
-                <button type="button" class="delete-tx-btn" id="deleteTxBtn">מחק עסקה</button>
+                <div class="edit-mode-actions" id="editModeActions" style="display:none;">
+                    <button type="button" class="btn-ghost duplicate-tx-btn" id="duplicateTxBtn">הוסף שוב (שכפל)</button>
+                    <button type="button" class="delete-tx-btn" id="deleteTxBtn">מחק עסקה</button>
+                </div>
 
             </form>
 
@@ -240,17 +247,46 @@
     </div>
 
     <script>
+    // בריחת HTML — כל ערך שהמשתמש הזין (שם קטגוריה/פרויקט/אייקון/תיאור)
+    // חייב לעבור דרך זה לפני הזרקה ל-innerHTML, אחרת שם עם תגית זדונית
+    // שיצר בן משפחה אחד ירוץ אצל כולם (XSS). זמין גלובלית לכל העמודים.
+    window.escapeHtml = function (s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    };
+
     // ── מערכת משוב גלובלית: toast + דיאלוג אישור ──
     (function () {
         const toast = document.getElementById('appToast');
         let toastTimer = null;
 
-        window.showToast = function (msg, type) {
-            toast.textContent = msg;
+        // action = { label, onClick } — כפתור פעולה אופציונלי (למשל "בטל" למחיקה).
+        // כשמוצג כפתור, הטוסט נשאר 6 שניות כדי לתת זמן להגיב.
+        window.showToast = function (msg, type, action) {
+            toast.innerHTML = '';
+            const span = document.createElement('span');
+            span.className = 'toast-msg';
+            span.textContent = msg;
+            toast.appendChild(span);
             toast.classList.toggle('error', type === 'error');
-            toast.classList.add('show');
             clearTimeout(toastTimer);
-            toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 2600);
+            let duration = 2600;
+            if (action) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'toast-action';
+                btn.textContent = action.label;
+                btn.addEventListener('click', function () {
+                    clearTimeout(toastTimer);
+                    toast.classList.remove('show');
+                    action.onClick();
+                });
+                toast.appendChild(btn);
+                duration = 6000;
+            }
+            toast.classList.add('show');
+            toastTimer = setTimeout(function () { toast.classList.remove('show'); }, duration);
         };
 
         // הודעה שנשמרה לפני רענון דף — מוצגת עכשיו
@@ -453,6 +489,8 @@
         const submitLabel  = document.getElementById('submitLabel');
         const submitBtn    = document.getElementById('submitBtn');
         const deleteBtn    = document.getElementById('deleteTxBtn');
+        const editModeActions = document.getElementById('editModeActions');
+        const duplicateBtn = document.getElementById('duplicateTxBtn');
         const categoryGrid = document.getElementById('categoryGrid');
         const projectGroup = document.getElementById('projectGroup');
         const txProject    = document.getElementById('txProject');
@@ -487,7 +525,28 @@
         let projectCategoriesCache = {}; // מפתח: "<projectId>:<type>"
         let categoryGridIsProject = false; // האם רשת הקטגוריות הנוכחית מציגה קטגוריות פרויקט או משפחה
 
-        function todayStr() { return new Date().toISOString().split('T')[0]; }
+        // תאריך לפי השעון המקומי (לא UTC) עם היסט אופציונלי בימים — אחרת בין
+        // חצות ל~03:00 בישראל היה יוצא תאריך של אתמול.
+        function dateStr(offsetDays) {
+            const d = new Date();
+            if (offsetDays) d.setDate(d.getDate() + offsetDays);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+        function todayStr() { return dateStr(0); }
+
+        // צ'יפים "היום"/"אתמול" — קיצור לבחירת התאריך הנפוץ בלי בורר
+        function syncDateChips() {
+            document.querySelectorAll('.date-chip').forEach(function (chip) {
+                chip.classList.toggle('active', dateStr(parseInt(chip.dataset.days, 10)) === txDate.value);
+            });
+        }
+        document.querySelectorAll('.date-chip').forEach(function (chip) {
+            chip.addEventListener('click', function () {
+                txDate.value = dateStr(parseInt(chip.dataset.days, 10));
+                syncDateChips();
+            });
+        });
+        txDate.addEventListener('change', syncDateChips);
 
         function loadCategories() {
             if (categoriesCache) return Promise.resolve(categoriesCache);
@@ -523,7 +582,11 @@
         function refreshCategoryGrid(selectedId) {
             const projectId = txProject.value;
             if (projectId) {
-                loadProjectCategories(projectId, currentType).then(function (cats) {
+                const forType = currentType;
+                loadProjectCategories(projectId, forType).then(function (cats) {
+                    // אם המשתמש החליף פרויקט/סוג בזמן הטעינה — לא לדרוס את הרשת
+                    // עם תוצאה של בקשה ישנה (מירוץ out-of-order).
+                    if (txProject.value !== projectId || currentType !== forType) return;
                     renderCategoryGrid(cats, selectedId, true);
                 });
             } else {
@@ -542,7 +605,7 @@
                 btn.className = 'cat-btn';
                 btn.dataset.value = cat.id;
                 btn.dataset.type = cat.type;
-                btn.innerHTML = `<span class="cat-emoji">${cat.icon}</span><span>${cat.name}</span>`;
+                btn.innerHTML = `<span class="cat-emoji">${escapeHtml(cat.icon)}</span><span>${escapeHtml(cat.name)}</span>`;
                 btn.setAttribute('role', 'radio');
                 btn.setAttribute('aria-checked', 'false');
                 categoryGrid.appendChild(btn);
@@ -598,7 +661,7 @@
             const trackKey = { expense: 'track_expense', income: 'track_income', savings: 'track_savings' }[currentType];
             const projects = (projectsCache || []).filter(p => p[trackKey]);
             txProject.innerHTML = '<option value="">ללא</option>' +
-                projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                projects.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');
             txProject.value = projects.some(p => p.id === selectedProjectId) ? selectedProjectId : '';
         }
 
@@ -647,6 +710,7 @@
             formError.textContent = '';
             recurFields.classList.remove('visible');
             resetScanUI();
+            syncDateChips();
         }
 
         function updateSubmitLabel() {
@@ -695,7 +759,7 @@
             editingRecurringParentId = null;
             originalAmount = null;
             modalTitle.textContent = 'הוספת עסקה';
-            deleteBtn.style.display = 'none';
+            editModeActions.style.display = 'none';
             resetForm();
             withLoadingTrigger(fabBtn, Promise.all([loadCategories(), loadMembers(), loadProjects()]))
                 .then(function () {
@@ -710,7 +774,7 @@
             editingRecurringParentId = tx.recurringParentId || null;
             originalAmount = parseFloat(tx.amount);
             modalTitle.textContent = 'עריכת עסקה';
-            deleteBtn.style.display = 'block';
+            editModeActions.style.display = 'flex';
             formError.textContent = '';
 
             withLoadingTrigger(triggerEl, Promise.all([loadCategories(), loadMembers(), loadProjects()]))
@@ -721,6 +785,7 @@
                     txAmount.value       = tx.amount;
                     txDescription.value  = tx.description || '';
                     txDate.value         = tx.date;
+                    syncDateChips();
                     recurringCb.checked  = tx.isRecurring;
                     recurFields.classList.toggle('visible', tx.isRecurring);
                     if (tx.isRecurring) {
@@ -734,6 +799,14 @@
         }
 
         fabBtn.addEventListener('click', openAddModal);
+
+        // פתיחה אוטומטית של מודל ההוספה דרך קיצור ה-PWA "הוסף עסקה" (‎/?add=1‎).
+        // מנקים את הפרמטר מה-URL כדי שרענון לא יפתח שוב את המודל.
+        if (new URLSearchParams(window.location.search).get('add') === '1') {
+            history.replaceState(null, '', window.location.pathname);
+            openAddModal();
+        }
+
         closeBtn.addEventListener('click', closeModal);
         overlay.addEventListener('click', function (e) {
             if (e.target === overlay) closeModal();
@@ -926,13 +999,21 @@
             return li;
         }
 
+        // ניקוי סימון-שגיאה של שדה הסכום ברגע שמתקנים אותו (נגישות)
+        txAmount.addEventListener('input', function () {
+            txAmount.removeAttribute('aria-invalid');
+        });
+
         txForm.addEventListener('submit', function (e) {
             e.preventDefault();
             formError.textContent = '';
+            txAmount.removeAttribute('aria-invalid');
 
             const amount = parseFloat(txAmount.value);
-            if (!amount || amount <= 0) {
+            if (!amount || amount <= 0 || !isFinite(amount)) {
                 formError.textContent = 'נא להזין סכום תקין';
+                txAmount.setAttribute('aria-invalid', 'true');
+                txAmount.setAttribute('aria-describedby', 'formError');
                 txAmount.focus();
                 return;
             }
@@ -1043,21 +1124,81 @@
 
         // מוחק עסקה בפועל (אחרי אישור) — משמש גם את כפתור המחיקה במודאל וגם
         // את פעולת ה-swipe על שורת עסקה, כדי לא לשכפל את אותה לוגיקה
-        function deleteTransaction(id, onFail) {
-            fetch('/api/transactions/' + id, { method: 'DELETE' })
+        // מחיקה עם אפשרות ביטול: מוחקים מיד בשרת ומסירים את השורה מה-DOM (בלי
+        // reload מיידי שמכווץ רשימות פתוחות), ומציגים טוסט "בטל" ל-6 שניות.
+        // ב"בטל" משחזרים ע"י re-POST מנתוני השורה (קבלה מצורפת, אם הייתה, לא
+        // משוחזרת). אם לא ביטלו — reload בתום החלון כדי לרענן סיכומים (יתרה/KPI).
+        let pendingDeleteReload = null;
+
+        function deleteWithUndo(txData, row, onFail) {
+            fetch('/api/transactions/' + txData.id, { method: 'DELETE' })
                 .then(r => r.json())
                 .then(function (d) {
-                    if (d.status === 'ok') {
-                        sessionStorage.setItem('sf_toast', 'העסקה נמחקה');
+                    if (d.status !== 'ok') { if (onFail) onFail('מחיקה נכשלה'); return; }
+                    if (row) row.remove();
+                    window.showToast('העסקה נמחקה', null, {
+                        label: 'בטל',
+                        onClick: function () {
+                            clearTimeout(pendingDeleteReload);
+                            restoreTransaction(txData);
+                        },
+                    });
+                    clearTimeout(pendingDeleteReload);
+                    pendingDeleteReload = setTimeout(function () {
                         window.location.reload();
-                    } else if (onFail) {
-                        onFail('מחיקה נכשלה');
-                    }
+                    }, 6000);
                 })
                 .catch(function () {
                     if (onFail) onFail('שגיאת רשת — נסה שוב');
                 });
         }
+
+        function restoreTransaction(txData) {
+            const payload = {
+                amount:              txData.amount,
+                type:                txData.type,
+                category_id:         txData.categoryId || null,
+                project_category_id: txData.projectCategoryId || null,
+                description:         txData.description || '',
+                date:                txData.date,
+                owner:               txData.userId || null,
+                is_recurring:        txData.isRecurring,
+                recurring_frequency: txData.isRecurring ? txData.recurringFrequency : null,
+                recurring_end_date:  txData.isRecurring ? txData.recurringEndDate : null,
+                receipt_path:        null,
+                project_id:          txData.projectId || null,
+            };
+            fetch('/api/transactions', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(payload),
+            })
+            .then(r => r.json())
+            .then(function (data) {
+                if (data.error) { window.showToast(data.error, 'error'); return; }
+                sessionStorage.setItem('sf_toast', 'העסקה שוחזרה');
+                window.location.reload();
+            })
+            .catch(function () { window.showToast('שחזור נכשל — נסה שוב', 'error'); });
+        }
+
+        // "הוסף שוב" (שכפול): הופך את מודל העריכה הפתוח למודל הוספה חדש עם
+        // אותם ערכים ותאריך היום — לרישום מהיר של קנייה חוזרת (קפה, קניות).
+        duplicateBtn.addEventListener('click', function () {
+            editId = null;
+            editingRecurringParentId = null;
+            originalAmount = null;
+            modalTitle.textContent = 'הוספת עסקה';
+            editModeActions.style.display = 'none';
+            // שכפול הוא עסקה חד-פעמית — לא ממשיכים את מצב ה"קבועה"
+            recurringCb.checked = false;
+            recurFields.classList.remove('visible');
+            txDate.value = todayStr();
+            syncDateChips();
+            updateSubmitLabel();
+            txAmount.focus();
+            window.showToast('שכפול — עדכן ושמור');
+        });
 
         // Delete (edit mode only)
         deleteBtn.addEventListener('click', function () {
@@ -1068,10 +1209,11 @@
                 confirmText: 'מחק עסקה',
             }).then(function (ok) {
                 if (!ok) return;
-                deleteBtn.disabled = true;
-                deleteTransaction(editId, function (msg) {
-                    deleteBtn.disabled = false;
-                    formError.textContent = msg;
+                const row = document.querySelector('[data-id="' + editId + '"]');
+                const txData = row ? buildTxFromRow(row) : { id: editId };
+                closeModal();
+                deleteWithUndo(txData, row, function (msg) {
+                    window.showToast(msg, 'error');
                 });
             });
         });
@@ -1269,7 +1411,7 @@
                         confirmText: 'מחק עסקה',
                     }).then(function (ok) {
                         if (!ok) { closeRow(row); return; }
-                        deleteTransaction(row.dataset.id, function (msg) {
+                        deleteWithUndo(buildTxFromRow(row), row, function (msg) {
                             closeRow(row);
                             window.showToast(msg, 'error');
                         });

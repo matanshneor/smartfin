@@ -4,7 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#141007">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SmartFin">
+    <meta name="description" content="SmartFin – ניהול תקציב משפחתי חכם: מעקב הוצאות, הכנסות וחיסכון">
     <title>SmartFin – בואו נתחיל</title>
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="icon" href="{{ url_for('static', filename='icons/icon-192.svg') }}" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-180.png') }}">
         <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap">
@@ -142,8 +150,8 @@
                     </div>
 
                     <div class="onboarding-add-row">
-                        <input class="form-input emoji-input onboarding-new-icon" type="text" maxlength="2" placeholder="🏷" value="🏷">
-                        <input class="form-input onboarding-new-name" type="text" placeholder="קטגוריה חדשה">
+                        <input class="form-input emoji-input onboarding-new-icon" type="text" maxlength="2" placeholder="🏷" value="🏷" aria-label="אייקון">
+                        <input class="form-input onboarding-new-name" type="text" placeholder="קטגוריה חדשה" aria-label="שם קטגוריה חדשה">
                         <button type="button" class="btn-sm btn-primary onboarding-add-btn" data-add-type="{{ type_key }}">הוסף</button>
                     </div>
                 </div>
@@ -159,6 +167,12 @@
     </div>
 
     <script>
+    // עמוד עצמאי (לא יורש מ-base.html) — escapeHtml מקומי
+    window.escapeHtml = window.escapeHtml || function (s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    };
     (function () {
         const errorBox = document.getElementById('onboardingError');
         const steps    = { 1: document.getElementById('step1'), 2: document.getElementById('step2'),
@@ -234,7 +248,7 @@
                 chip.dataset.name = nameVal;
                 chip.dataset.icon = icon.value.trim() || '🏷';
                 chip.dataset.type = type;
-                chip.innerHTML = `<span class="cat-emoji">${chip.dataset.icon}</span><span>${nameVal}</span>`;
+                chip.innerHTML = `<span class="cat-emoji">${window.escapeHtml(chip.dataset.icon)}</span><span>${window.escapeHtml(nameVal)}</span>`;
                 grid.appendChild(chip);
 
                 name.value = '';

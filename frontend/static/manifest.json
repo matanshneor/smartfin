@@ -3,12 +3,20 @@
   "short_name": "SmartFin",
   "description": "ניהול תקציב משפחתי חכם",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#141007",
+  "background_color": "#F7F4ED",
   "theme_color": "#141007",
   "orientation": "portrait",
   "lang": "he",
   "dir": "rtl",
+  "shortcuts": [
+    {
+      "name": "הוסף עסקה",
+      "short_name": "הוספה",
+      "url": "/?add=1"
+    }
+  ],
   "icons": [
     {
       "src": "/static/icons/icon-192.png",

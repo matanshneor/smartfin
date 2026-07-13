@@ -204,9 +204,9 @@
                     <input type="hidden" id="newCatType" value="expense">
                     <div class="add-cat-row">
                         <input class="form-input emoji-input" type="text" id="newCatIcon"
-                               placeholder="🏷" maxlength="2" value="🏷">
+                               placeholder="🏷" maxlength="2" value="🏷" aria-label="אייקון">
                         <input class="form-input" type="text" id="newCatName"
-                               placeholder="שם קטגוריה חדשה" maxlength="30" required>
+                               placeholder="שם קטגוריה חדשה" maxlength="30" required aria-label="שם קטגוריה חדשה">
                         <button type="submit" class="btn-sm btn-primary">הוסף</button>
                     </div>
                     <p class="form-error" id="addCatError" role="alert"></p>
@@ -738,8 +738,8 @@
     // ── סדר קטגוריות (▲▼) ──
     function catRowInnerHTML(id, icon, name, isCustom) {
         return `
-            <span class="cat-row-icon">${icon}</span>
-            <span class="cat-row-name">${name}</span>
+            <span class="cat-row-icon">${escapeHtml(icon)}</span>
+            <span class="cat-row-name">${escapeHtml(name)}</span>
             ${isCustom ? `
             <button class="edit-cat-btn" data-id="${id}" aria-label="ערוך קטגוריה">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -818,15 +818,18 @@
         row.innerHTML = `
             <div class="cat-edit-form">
                 <div class="add-cat-row">
-                    <input class="form-input emoji-input cat-edit-icon" type="text" maxlength="2" value="${origIcon}">
-                    <input class="form-input cat-edit-name" type="text" maxlength="30" value="${origName}">
+                    <input class="form-input emoji-input cat-edit-icon" type="text" maxlength="2">
+                    <input class="form-input cat-edit-name" type="text" maxlength="30">
                 </div>
                 <div class="edit-actions">
-                    <button class="btn-sm btn-primary cat-edit-save" data-id="${id}">שמור</button>
+                    <button class="btn-sm btn-primary cat-edit-save" data-id="${escapeHtml(id)}">שמור</button>
                     <button class="btn-sm btn-ghost cat-edit-cancel">ביטול</button>
                 </div>
             </div>
         `;
+        // ערכי המשתמש נכתבים דרך .value (לא אינטרפולציה) — בטוח מ-attribute-XSS
+        row.querySelector('.cat-edit-icon').value = origIcon;
+        row.querySelector('.cat-edit-name').value = origName;
         row.querySelector('.cat-edit-name').focus();
     });
 
@@ -1460,13 +1463,13 @@
         row.innerHTML = `
             <div class="cat-edit-form" style="width:100%;">
                 <div class="add-cat-row">
-                    <input class="form-input proj-edit-name" type="text" maxlength="50" value="${name}">
+                    <input class="form-input proj-edit-name" type="text" maxlength="50">
                 </div>
                 <div class="form-group">
                     <label class="form-label">יעד תקציב (אופציונלי)</label>
                     <div class="amount-input-wrap">
                         <span class="amount-currency">₪</span>
-                        <input class="form-input amount-input proj-edit-budget" type="number" min="0" step="1" value="${budget}">
+                        <input class="form-input amount-input proj-edit-budget" type="number" min="0" step="1">
                     </div>
                 </div>
                 <div class="form-group">
@@ -1488,11 +1491,14 @@
                 </div>
                 <p class="form-error proj-edit-error" role="alert"></p>
                 <div class="edit-actions">
-                    <button class="btn-sm btn-primary proj-edit-save" data-id="${id}">שמור</button>
+                    <button class="btn-sm btn-primary proj-edit-save" data-id="${escapeHtml(id)}">שמור</button>
                     <button class="btn-sm btn-ghost proj-edit-cancel">ביטול</button>
                 </div>
             </div>
         `;
+        // ערכי המשתמש דרך .value (לא אינטרפולציה) — בטוח מ-attribute-XSS
+        row.querySelector('.proj-edit-name').value = name || '';
+        row.querySelector('.proj-edit-budget').value = budget || '';
         row.querySelector('.proj-edit-name').focus();
     });
 
