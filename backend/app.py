@@ -464,9 +464,9 @@ def month_view():
         month=month,
         is_current=is_current,
         summary_json=json.dumps(summary),
-        expense_json=json.dumps(expense_breakdown),
-        income_json=json.dumps(income_breakdown),
-        savings_json=json.dumps(savings_breakdown),
+        # רק קטגוריות פעילות (total>0) — כדי שאינדקסי הצבעים בגרף העגול
+        # יתאמו למקרא (שגם הוא מסונן ל-active), ובלי פרוסות ברוחב 0.
+        expense_json=json.dumps([c for c in expense_breakdown if c.get("total", 0) > 0]),
         members_json=json.dumps(member_breakdowns),
     )
 

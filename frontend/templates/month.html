@@ -11,7 +11,9 @@
 <div class="hero-top">
     <div>
         <h1 class="hero-title">{{ month_label }}</h1>
-        <p class="hero-subtitle">{% if is_current %}החודש הנוכחי{% else %}נתוני חודש{% endif %}</p>
+        <p class="hero-subtitle">
+            {% if is_current %}החודש הנוכחי{% else %}<a href="{{ url_for('month_view') }}" class="back-to-current">חזרה לחודש הנוכחי ←</a>{% endif %}
+        </p>
     </div>
     <div class="stats-month-nav">
         <a href="{{ url_for('month_view', year=prev_year, month=prev_month) }}" class="stats-nav-btn" aria-label="חודש קודם">
@@ -407,14 +409,21 @@
 <!-- כל העסקאות של החודש -->
 {% if month_transactions %}
 <section class="chart-card">
+    <h2 class="chart-title">כל העסקאות</h2>
     <ul class="legend-list">
         <li class="legend-item-wrap">
             <div class="legend-item clickable all-tx-header" role="button" tabindex="0" aria-expanded="false">
-                <span class="legend-name all-tx-title">כל העסקאות</span>
+                <span class="legend-name all-tx-title">הצג הכול</span>
                 <span class="all-tx-count">{{ month_transactions | length }}</span>
                 <span class="expand-chevron" aria-hidden="true">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                 </span>
+            </div>
+            <div class="tx-search-wrap">
+                <input type="search" class="form-input tx-search-input" id="txSearch"
+                       placeholder="חיפוש עסקה…" aria-label="חיפוש בעסקאות החודש"
+                       autocomplete="off" enterkeyhint="search">
+                <p class="tx-search-empty" id="txSearchEmpty" style="display:none;">לא נמצאו עסקאות תואמות</p>
             </div>
             <ul class="cat-tx-list">
                 {% for tx in month_transactions %}
@@ -620,6 +629,24 @@
             }
         });
     });
+
+    // ── חיפוש/סינון ברשימת "כל העסקאות" (client-side) ──
+    const txSearch = document.getElementById('txSearch');
+    if (txSearch) {
+        const allRows = Array.from(document.querySelectorAll('.all-tx-header + .tx-search-wrap + .cat-tx-list .cat-tx-row'));
+        const emptyMsg = document.getElementById('txSearchEmpty');
+        txSearch.addEventListener('input', function () {
+            const q = txSearch.value.trim().toLowerCase();
+            let shown = 0;
+            allRows.forEach(function (row) {
+                const desc = (row.querySelector('.cat-tx-desc') || {}).textContent || '';
+                const match = !q || desc.toLowerCase().indexOf(q) !== -1;
+                row.style.display = match ? '' : 'none';
+                if (match) shown++;
+            });
+            emptyMsg.style.display = (q && shown === 0) ? 'block' : 'none';
+        });
+    }
 })();
 </script>
 {% endblock %}
