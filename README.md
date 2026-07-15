@@ -59,7 +59,7 @@ flask --app backend.app run --port 8080
 | `SUPABASE_URL` | `https://<ref>.supabase.co` |
 | `SUPABASE_KEY` | anon public key |
 | `SECRET_KEY`   | מחרוזת אקראית לסשן Flask — **חובה, האפליקציה לא עולה בלעדיו** |
-| `ANTHROPIC_API_KEY` | מפתח Anthropic — נדרש רק לסריקת קבלות (בלעדיו הסריקה לא פעילה) |
+| `OPENAI_API_KEY` | מפתח OpenAI — נדרש רק לסריקת קבלות (בלעדיו הסריקה לא פעילה) |
 | `FLASK_ENV`    | `development` מקומית בלבד — **לא להגדיר בפרודקשן** (שולט בהקשחת עוגיות) |
 
 ## בדיקות
@@ -87,5 +87,5 @@ cd backend && supabase link --project-ref <REF> && supabase db push
 
 1. Push ל-GitHub → Railway → Deploy from GitHub repo
 2. משתני סביבה: `SUPABASE_URL`, `SUPABASE_KEY`, `SECRET_KEY` (ערך אקראי חזק!),
-   `ANTHROPIC_API_KEY` (אופציונלי — לסריקת קבלות). **לא** להגדיר `FLASK_ENV`.
+   `OPENAI_API_KEY` (אופציונלי — לסריקת קבלות). **לא** להגדיר `FLASK_ENV`.
 3. **חשוב:** לעדכן ב-Supabase Auth את `SITE_URL` ו-`URI_ALLOW_LIST` לדומיין החדש (בשביל קישורי איפוס סיסמה)
