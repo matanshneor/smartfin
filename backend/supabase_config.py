@@ -488,16 +488,17 @@ def get_transaction_receipt_path(transaction_id: str, family_id: str):
 
 
 def scan_receipt(image_bytes: bytes, content_type: str, category_names: list):
-    """שולח תמונת קבלה ל-Claude ומחלץ סכום, בית עסק, תאריך וקטגוריה מוצעת
-    מתוך קטגוריות ההוצאות של המשפחה בלבד. Returns (data_dict, error)."""
+    """שולח תמונת קבלה ל-OpenAI (מודל ראייה) ומחלץ סכום, בית עסק, תאריך וקטגוריה
+    מוצעת מתוך קטגוריות ההוצאות של המשפחה בלבד. Returns (data_dict, error)."""
     import base64
+    import json
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         return None, "סריקת קבלות אינה מוגדרת בשרת"
 
     try:
-        import anthropic
+        from openai import OpenAI
     except ImportError:
         return None, "סריקת קבלות אינה זמינה כרגע"
 
@@ -509,59 +510,65 @@ def scan_receipt(image_bytes: bytes, content_type: str, category_names: list):
         category_prop["enum"] = category_names
 
     tool = {
-        "name": "extract_receipt",
-        "description": "מחלץ מתמונת קבלה ישראלית את הסכום, שם בית העסק, התאריך והקטגוריה המתאימה.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "amount": {
-                    "type": "number",
-                    "description": "הסכום הכולל ששולם, מספר בלבד. אם התמונה אינה קבלה קריאה, החזר 0.",
+        "type": "function",
+        "function": {
+            "name": "extract_receipt",
+            "description": "מחלץ מתמונת קבלה ישראלית את הסכום, שם בית העסק, התאריך והקטגוריה המתאימה.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "amount": {
+                        "type": "number",
+                        "description": "הסכום הכולל ששולם, מספר בלבד. אם התמונה אינה קבלה קריאה, החזר 0.",
+                    },
+                    "merchant": {
+                        "type": "string",
+                        "description": "שם בית העסק כפי שמופיע בקבלה.",
+                    },
+                    "date": {
+                        "type": "string",
+                        "description": "תאריך העסקה בפורמט YYYY-MM-DD. השאר ריק אם לא ברור.",
+                    },
+                    "category_name": category_prop,
                 },
-                "merchant": {
-                    "type": "string",
-                    "description": "שם בית העסק כפי שמופיע בקבלה.",
-                },
-                "date": {
-                    "type": "string",
-                    "description": "תאריך העסקה בפורמט YYYY-MM-DD. השאר ריק אם לא ברור.",
-                },
-                "category_name": category_prop,
+                "required": ["amount", "merchant"],
             },
-            "required": ["amount", "merchant"],
         },
     }
 
     try:
-        client = anthropic.Anthropic(api_key=api_key)
-        message = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+        client = OpenAI(api_key=api_key)
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
             max_tokens=300,
             tools=[tool],
-            tool_choice={"type": "tool", "name": "extract_receipt"},
+            tool_choice={"type": "function", "function": {"name": "extract_receipt"}},
             messages=[{
                 "role": "user",
                 "content": [
-                    {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": b64}},
                     {"type": "text", "text": "זו תמונה של קבלה ישראלית. חלץ ממנה את הנתונים באמצעות הכלי."},
+                    {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{b64}"}},
                 ],
             }],
         )
-        for block in message.content:
-            if block.type == "tool_use":
-                data = block.input or {}
-                try:
-                    amount = float(data.get("amount") or 0)
-                except (TypeError, ValueError):
-                    amount = 0
-                if amount <= 0:
-                    return None, "לא הצלחתי לקרוא את הקבלה — נסה שוב או הזן ידנית"
-                return {
-                    "amount":         amount,
-                    "merchant":       (data.get("merchant") or "").strip(),
-                    "date":           (data.get("date") or "").strip() or None,
-                    "category_name":  (data.get("category_name") or "").strip() or None,
-                }, None
+        tool_calls = response.choices[0].message.tool_calls
+        if tool_calls:
+            try:
+                data = json.loads(tool_calls[0].function.arguments or "{}")
+            except (TypeError, ValueError):
+                data = {}
+            try:
+                amount = float(data.get("amount") or 0)
+            except (TypeError, ValueError):
+                amount = 0
+            if amount <= 0:
+                return None, "לא הצלחתי לקרוא את הקבלה — נסה שוב או הזן ידנית"
+            return {
+                "amount":         amount,
+                "merchant":       (data.get("merchant") or "").strip(),
+                "date":           (data.get("date") or "").strip() or None,
+                "category_name":  (data.get("category_name") or "").strip() or None,
+            }, None
         return None, "לא הצלחתי לקרוא את הקבלה — נסה שוב או הזן ידנית"
     except Exception as e:
         print(f"[ERROR] scan_receipt: {e}")
