@@ -2123,6 +2123,7 @@ li.zero-cat-row { display: none; }
 #categoriesArea:not(.managing) .delete-cat-btn,
 #categoriesArea:not(.managing) .cat-reorder-btns,
 #categoriesArea:not(.managing) #addCatForm,
+#projectCategoriesArea:not(.managing) .edit-cat-btn,
 #projectCategoriesArea:not(.managing) .delete-cat-btn,
 #projectCategoriesArea:not(.managing) #addProjectCatForm {
     display: none;
