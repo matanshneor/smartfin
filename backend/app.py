@@ -1,8 +1,9 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, g
 from dotenv import load_dotenv
-from functools import wraps
+from functools import wraps, partial
 from datetime import datetime, timedelta
 from werkzeug.middleware.proxy_fix import ProxyFix
+from concurrent.futures import ThreadPoolExecutor
 import json
 import math
 import os
@@ -125,6 +126,41 @@ def _member_colors(family_id):
         return {}
     members = db.get_family_members(family_id)
     return {m["id"]: i % len(_OWNER_HEX) for i, m in enumerate(members)}
+
+
+def _run_parallel(tasks: dict) -> dict:
+    """מריץ שליפות DB בלתי-תלויות במקביל ומחזיר {name: result}.
+    כל שליפת Supabase בתוכנית החינמית עולה ~200ms של תקורת REST/רשת (לא זמן
+    DB), אז עמוד עם 7 שליפות רצופות ממתין ~1.5ש'. הרצה מקבילית הופכת את הסכום
+    לזמן של בערך שליפה אחת. הערה: בתוך ה-threads אין Flask context (g/session),
+    אז כל task חייב להיות callable ללא-ארגומנטים שנוגע רק בשכבת ה-DB עם ערכים
+    שכבר קשורים אליו. הלקוח של Supabase הוא singleton עם httpx thread-safe
+    והטוקן נקבע פעם אחת ב-before_request, כך שקריאות-קריאה מקבילות בטוחות."""
+    if not tasks:
+        return {}
+    results = {}
+    with ThreadPoolExecutor(max_workers=min(len(tasks), 12)) as ex:
+        future_to_name = {ex.submit(fn): name for name, fn in tasks.items()}
+        for future, name in future_to_name.items():
+            results[name] = future.result()
+    return results
+
+
+def _prime_request_cache(family_id, settings=None, categories=None, members=None, family=None):
+    """מזריק ל-cache של הבקשה (flask.g) ערכים שכבר נשלפו במקביל, כדי
+    ש-context-processors ו-_member_colors ישתמשו בהם במקום לשלוף שוב באותה
+    בקשה. המפתחות חייבים להיות זהים לאלה שב-_request_cache ב-supabase_config."""
+    cache = getattr(g, "_sf_cache", None)
+    if cache is None:
+        cache = g._sf_cache = {}
+    if categories is not None:
+        cache[f"categories:{family_id}"] = categories
+    if members is not None:
+        cache[f"members:{family_id}"] = members
+    if family is not None:
+        cache[f"family:{family_id}"] = family
+    if settings is not None:
+        g.family_settings = settings
 
 
 # צבעי-מילוי מוצקים לעמודות גרף "לפי בן משפחה" — זהים לצבעי תגי-השם
@@ -382,32 +418,52 @@ def dashboard():
     now       = datetime.now()
     family_id = user["family_id"]
 
-    if family_id and db.family_needs_onboarding(family_id):
-        return redirect(url_for("onboarding"))
+    if not family_id:
+        return render_template(
+            "index.html", active_page="dashboard", user=user,
+            summary=db._empty_summary(), transactions=[], categories=db.get_categories(None),
+            member_colors={}, month_label=_month_label(now.year, now.month),
+            year=now.year, month=now.month, is_new_family=True,
+        )
 
-    # השלמת מופעים של עסקאות קבועות — פעם ביום לכל משתמש
+    # השלמת מופעים של עסקאות קבועות — פעם ביום לכל משתמש (עלול לכתוב שורות,
+    # אז לפני מקבץ השליפות)
     today_str = now.strftime("%Y-%m-%d")
-    if family_id and session.get("recurring_synced") != today_str:
+    if session.get("recurring_synced") != today_str:
         db.materialize_recurring(family_id)
         session["recurring_synced"] = today_str
 
-    summary      = db.get_monthly_summary(family_id, now.year, now.month) if family_id else db._empty_summary()
-    transactions = db.get_recent_transactions(family_id, settings=family_settings(), viewer_user_id=user["id"]) if family_id else []
-    categories   = db.get_categories(family_id)
-    is_new_family = db.family_has_no_transactions(family_id) if family_id else True
+    # שליפות בלתי-תלויות במקביל — מכווץ ~5 קריאות רצופות ל-Supabase לזמן של ~1
+    batch = _run_parallel({
+        "settings":   lambda: db.get_family_settings(family_id),
+        "summary":    lambda: db.get_monthly_summary(family_id, now.year, now.month),
+        "categories": lambda: db.get_categories(family_id),
+        "members":    lambda: db.get_family_members(family_id),
+        "is_new":     lambda: db.family_has_no_transactions(family_id),
+    })
+
+    # "צריך onboarding" == אפס קטגוריות — נגזר מהקטגוריות שכבר שלפנו (בלי שליפה נוספת)
+    if not batch["categories"]:
+        return redirect(url_for("onboarding"))
+
+    # "עסקאות אחרונות" תלויות בהעדפות — נשלפות אחרי שיש לנו אותן
+    transactions = db.get_recent_transactions(family_id, settings=batch["settings"], viewer_user_id=user["id"])
+
+    # מיחזור תוצאות המקבץ ל-context-processors ו-_member_colors (בלי שליפה חוזרת)
+    _prime_request_cache(family_id, settings=batch["settings"], categories=batch["categories"], members=batch["members"])
 
     return render_template(
         "index.html",
         active_page="dashboard",
         user=user,
-        summary=summary,
+        summary=batch["summary"],
         transactions=transactions,
-        categories=categories,
+        categories=batch["categories"],
         member_colors=_member_colors(family_id),
         month_label=_month_label(now.year, now.month),
         year=now.year,
         month=now.month,
-        is_new_family=is_new_family,
+        is_new_family=batch["is_new"],
     )
 
 
@@ -421,31 +477,64 @@ def month_view():
     month     = request.args.get("month", now.month, type=int)
     family_id = user["family_id"]
 
-    settings_ = family_settings()
-    summary = db.get_monthly_summary(family_id, year, month) if family_id else db._empty_summary()
-
-    expense_breakdown = db.get_category_breakdown(family_id, year, month, "expense", user["id"]) if family_id else []
-    income_breakdown  = db.get_category_breakdown(family_id, year, month, "income", user["id"])  if family_id else []
-    savings_breakdown = db.get_category_breakdown(family_id, year, month, "savings", user["id"]) if family_id else []
     is_current = (year == now.year and month == now.month)
-    anomalies         = db.get_anomalies(family_id, year, month, summary, settings_) if family_id else []
-    if family_id and is_current:
-        anomalies += db.get_run_rate_forecasts(family_id, year, month, settings_)
-    month_transactions = db.get_month_transactions(family_id, year, month, settings_, user["id"]) if family_id else []
+
+    if not family_id:
+        return render_template(
+            "month.html", active_page="month", user=user,
+            summary=db._empty_summary(), expense_breakdown=[], income_breakdown=[],
+            savings_breakdown=[], member_breakdowns=[], anomalies=[], month_transactions=[],
+            member_colors={}, month_label=_month_label(year, month), year=year, month=month,
+            is_current=is_current, summary_json=json.dumps(db._empty_summary()),
+            expense_json=json.dumps([]), members_json=json.dumps([]),
+        )
+
+    # שלב 1 — שליפות בלתי-תלויות + מקדימות, במקביל (6 קריאות → זמן של ~1)
+    p1 = _run_parallel({
+        "settings": partial(db.get_family_settings, family_id),
+        "summary":  partial(db.get_monthly_summary, family_id, year, month),
+        "members":  partial(db.get_family_members, family_id),
+        "expense":  partial(db.get_category_breakdown, family_id, year, month, "expense", user["id"]),
+        "income":   partial(db.get_category_breakdown, family_id, year, month, "income", user["id"]),
+        "savings":  partial(db.get_category_breakdown, family_id, year, month, "savings", user["id"]),
+    })
+    settings_         = p1["settings"]
+    summary           = p1["summary"]
+    expense_breakdown = p1["expense"]
+    income_breakdown  = p1["income"]
+    savings_breakdown = p1["savings"]
+
+    # שלב 2 — שליפות שתלויות בהעדפות/בסיכום, גם הן במקביל
+    active_types = [t for t in ("expense", "income", "savings") if settings_["owner_attribution"].get(t)]
+    p2_tasks = {
+        "anomalies":    partial(db.get_anomalies, family_id, year, month, summary, settings_),
+        "transactions": partial(db.get_month_transactions, family_id, year, month, settings_, user["id"]),
+    }
+    if is_current:
+        p2_tasks["run_rate"] = partial(db.get_run_rate_forecasts, family_id, year, month, settings_)
+    for t in active_types:
+        p2_tasks[f"mb_{t}"] = partial(db.get_member_breakdown, family_id, year, month, t)
+    p2 = _run_parallel(p2_tasks)
+
+    anomalies = list(p2["anomalies"])
+    if is_current:
+        anomalies += p2["run_rate"]
+    month_transactions = p2["transactions"]
+
+    # מיחזור המקבץ ל-context-processors ו-_member_colors (בלי שליפה חוזרת)
+    _prime_request_cache(family_id, settings=settings_, members=p1["members"])
 
     # גרף חלוקה בין בני משפחה לכל סוג עסקה שהמשפחה הפעילה בו שיוך
     _type_labels = {"expense": "הוצאות", "income": "הכנסות", "savings": "חיסכון"}
+    mcolors = _member_colors(family_id)
     member_breakdowns = []
-    if family_id:
-        mcolors = _member_colors(family_id)
-        for t in ("expense", "income", "savings"):
-            if settings_["owner_attribution"].get(t):
-                rows = db.get_member_breakdown(family_id, year, month, t)
-                for r in rows:
-                    idx = mcolors.get(r.get("user_id"))
-                    r["color"] = _OWNER_HEX.get(idx, _SHARED_HEX) if idx is not None else _SHARED_HEX
-                if rows:
-                    member_breakdowns.append({"type": t, "label": _type_labels[t], "rows": rows})
+    for t in active_types:
+        rows = p2[f"mb_{t}"]
+        for r in rows:
+            idx = mcolors.get(r.get("user_id"))
+            r["color"] = _OWNER_HEX.get(idx, _SHARED_HEX) if idx is not None else _SHARED_HEX
+        if rows:
+            member_breakdowns.append({"type": t, "label": _type_labels[t], "rows": rows})
 
     return render_template(
         "month.html",
