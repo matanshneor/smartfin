@@ -629,10 +629,11 @@ def get_recent_transactions(family_id: str, limit: int = 5, settings: dict = Non
     try:
         # מרווח ביטחון: אם יסוננו שורות פרטיות, עדיין נרצה להגיע ל-limit שורות גלויות
         fetch_limit = limit * 3 if viewer_user_id else limit
+        # ממוין לפי סדר ההוספה (created_at) ולא לפי תאריך העסקה — כך עסקה שהוזנה
+        # לאחרונה מופיעה ראשונה גם אם תוארכה לתאריך ישן (בקשת מתן)
         result = client.table("transactions") \
             .select("*, categories(name, icon), project_categories(name, icon), profiles(name, workplace), projects(owner_id)") \
             .eq("family_id", family_id) \
-            .order("date", desc=True) \
             .order("created_at", desc=True) \
             .limit(fetch_limit) \
             .execute()
