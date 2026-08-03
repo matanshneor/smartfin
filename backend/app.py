@@ -521,6 +521,16 @@ def month_view():
         anomalies += p2["run_rate"]
     month_transactions = p2["transactions"]
 
+    # פעילות פרויקטים החודש — מוחרגת מהמאזן/הגרפים, ומוצגת בנפרד. נגזרת
+    # מהעסקאות שכבר נשלפו (שכוללות גם עסקאות פרויקט), בלי שליפה נוספת.
+    project_txs = [t for t in month_transactions if t.get("project_id")]
+    project_month = {
+        "expense":      round(sum(t["amount"] for t in project_txs if t["type"] == "expense"), 2),
+        "income":       round(sum(t["amount"] for t in project_txs if t["type"] == "income"), 2),
+        "savings":      round(sum(t["amount"] for t in project_txs if t["type"] == "savings"), 2),
+        "transactions": project_txs,
+    }
+
     # מיחזור המקבץ ל-context-processors ו-_member_colors (בלי שליפה חוזרת)
     _prime_request_cache(family_id, settings=settings_, members=p1["members"])
 
@@ -547,6 +557,7 @@ def month_view():
         member_breakdowns=member_breakdowns,
         anomalies=anomalies,
         month_transactions=month_transactions,
+        project_month=project_month,
         member_colors=_member_colors(family_id),
         month_label=_month_label(year, month),
         year=year,

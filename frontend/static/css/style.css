@@ -2499,6 +2499,45 @@ li.project-row {
     flex-shrink: 0;
 }
 
+/* תג "שייך לפרויקט" על שורת עסקה ברשימות */
+.project-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    background: var(--color-input);
+    border-radius: 99px;
+    padding: 2px 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* קטע "פרויקטים החודש" — סכומים */
+.pm-figure {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(28, 25, 23, 0.06);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+.pm-figure:last-of-type { border-bottom: none; }
+
+.pm-amount {
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+    font-weight: 700;
+}
+.pm-amount.expense { color: var(--color-expense); }
+.pm-amount.income  { color: var(--color-income); }
+.pm-amount.savings { color: var(--color-savings); }
+
 /* Add category */
 .add-cat-row {
     display: flex;

@@ -583,9 +583,12 @@ def get_monthly_summary(family_id: str, year: int, month: int) -> dict:
     if not client:
         return _empty_summary()
     try:
+        # עסקאות המשויכות לפרויקט לא נכללות במאזן החודשי — פרויקט הוא הוצאה/
+        # הכנסה חד-פעמית/הונית שמעוותת את תמונת ה"חודש הרגיל" (מוצגות בנפרד).
         result = client.table("transactions") \
             .select("type, amount") \
             .eq("family_id", family_id) \
+            .is_("project_id", "null") \
             .gte("date", f"{year}-{month:02d}-01") \
             .lt("date", _next_month(year, month)) \
             .execute()
@@ -632,7 +635,7 @@ def get_recent_transactions(family_id: str, limit: int = 5, settings: dict = Non
         # ממוין לפי סדר ההוספה (created_at) ולא לפי תאריך העסקה — כך עסקה שהוזנה
         # לאחרונה מופיעה ראשונה גם אם תוארכה לתאריך ישן (בקשת מתן)
         result = client.table("transactions") \
-            .select("*, categories(name, icon), project_categories(name, icon), profiles(name, workplace), projects(owner_id)") \
+            .select("*, categories(name, icon), project_categories(name, icon), profiles(name, workplace), projects(owner_id, name, icon)") \
             .eq("family_id", family_id) \
             .order("created_at", desc=True) \
             .limit(fetch_limit) \
@@ -653,7 +656,7 @@ def get_month_transactions(family_id: str, year: int, month: int, settings: dict
         return []
     try:
         result = client.table("transactions") \
-            .select("*, categories(name, icon), project_categories(name, icon), profiles(name, workplace), projects(owner_id)") \
+            .select("*, categories(name, icon), project_categories(name, icon), profiles(name, workplace), projects(owner_id, name, icon)") \
             .eq("family_id", family_id) \
             .gte("date", f"{year}-{month:02d}-01") \
             .lt("date", _next_month(year, month)) \
@@ -1352,14 +1355,9 @@ def get_category_breakdown(family_id: str, year: int, month: int, type_: str = "
     (expense / income / savings). Every category of the type is always included —
     months without data for a category show 0.
 
-    עסקאות המשויכות לפרויקט מוחרגות מסכום הקטגוריה הרגילה שלהן, ומרוכזות
-    בשורה נפרדת — כדי לא לנפח את הקטגוריה הרגילה בהוצאה/הכנסה/חיסכון
-    חד-פעמיים וגדולים. שורת פרויקט מופיעה רק בחודשים עם פעילות בפועל (לא
-    zero-fill כמו קטגוריות).
-
-    פרטיות פרויקט אישי: אם viewer_user_id אינו הבעלים, השורה מוצגת עם תווית
-    גנרית ("פרויקט <שם פרטי>" במקום שם הפרויקט האמיתי) ובלי project_id —
-    כדי שבצד הלקוח היא לא תהיה קישור לחיצה לעמוד הפרויקט."""
+    עסקאות המשויכות לפרויקט מוחרגות לחלוטין מהפילוח החודשי (הן מוצגות בנפרד
+    בקטע "פרויקטים החודש") — פרויקט הוא הוצאה/הכנסה חד-פעמית/הונית שמעוותת
+    את תמונת ה"חודש הרגיל". (viewer_user_id נשמר לתאימות; אינו בשימוש כעת.)"""
     client = get_client()
     if not client:
         return []
@@ -1373,48 +1371,21 @@ def get_category_breakdown(family_id: str, year: int, month: int, type_: str = "
                 icons[cat["name"]]  = cat.get("icon", "📦")
 
         result = client.table("transactions") \
-            .select("amount, categories(name, icon), project_id") \
+            .select("amount, categories(name, icon)") \
             .eq("family_id", family_id) \
             .eq("type", type_) \
+            .is_("project_id", "null") \
             .gte("date", f"{year}-{month:02d}-01") \
             .lt("date", _next_month(year, month)) \
             .execute()
 
-        project_totals: dict = {}
         for row in result.data:
-            pid = row.get("project_id")
-            if pid:
-                project_totals[pid] = project_totals.get(pid, 0.0) + float(row["amount"])
-                continue
             cat  = row.get("categories") or {}
             name = cat.get("name", "אחר")
             totals[name] = totals.get(name, 0) + float(row["amount"])
             icons.setdefault(name, cat.get("icon", "📦"))
 
-        project_rows = []
-        if project_totals:
-            projects = client.table("projects").select("id, name, owner_id") \
-                .in_("id", list(project_totals.keys())).execute().data
-            member_names = {m["id"]: m["name"] for m in get_family_members(family_id)}
-            for p in projects:
-                pid = p["id"]
-                amt = project_totals.get(pid)
-                if not amt:
-                    continue
-                is_owner = (not p.get("owner_id")) or (p["owner_id"] == viewer_user_id)
-                if is_owner:
-                    label, exposed_id = f"פרויקט: {p['name']}", pid
-                else:
-                    owner_name = first_name(member_names.get(p["owner_id"], "משפחה"))
-                    label, exposed_id = f"פרויקט {owner_name}", None
-                project_rows.append({
-                    "name": label, "icon": "🎯", "total": amt,
-                    "is_project": True, "project_id": exposed_id,
-                })
-
-        grand_total = sum(totals.values()) + sum(project_totals.values())
-        grand_total = grand_total or 1
-
+        grand_total = sum(totals.values()) or 1
         breakdown = [
             {
                 "name": name,
@@ -1423,11 +1394,8 @@ def get_category_breakdown(family_id: str, year: int, month: int, type_: str = "
                 "pct":  round((total / grand_total) * 100),
             }
             for name, total in totals.items()
-        ] + [
-            dict(pr, pct=round((pr["total"] / grand_total) * 100), total=round(pr["total"], 2))
-            for pr in project_rows
         ]
-        # פעילות קודם (לפי גובה — כולל שורות פרויקט), אפסים בסוף לפי א"ב
+        # פעילות קודם (לפי גובה), אפסים בסוף לפי א"ב
         breakdown.sort(key=lambda x: (-x["total"], x["name"]))
         return breakdown
     except Exception as e:
@@ -1512,6 +1480,7 @@ def _fetch_category_history_averages(family_id: str, year: int, month: int):
         .select("amount, date, categories(name, icon)") \
         .eq("family_id", family_id) \
         .eq("type", "expense") \
+        .is_("project_id", "null") \
         .gte("date", f"{start_year}-{start_month:02d}-01") \
         .lt("date", _next_month(year, month)) \
         .execute()
@@ -1641,6 +1610,7 @@ def get_member_breakdown(family_id: str, year: int, month: int, type_: str = "ex
             .select("amount, user_id, profiles(name)") \
             .eq("family_id", family_id) \
             .eq("type", type_) \
+            .is_("project_id", "null") \
             .gte("date", f"{year}-{month:02d}-01") \
             .lt("date", _next_month(year, month)) \
             .execute()
@@ -1778,6 +1748,7 @@ def _format_transactions(rows: list, settings: dict = None) -> list:
         else:
             cat = row.get("categories") or {}
         user = row.get("profiles") or {}
+        proj = row.get("projects") or {}
         out.append({
             "id":                   row["id"],
             "type":                 row["type"],
@@ -1806,6 +1777,8 @@ def _format_transactions(rows: list, settings: dict = None) -> list:
             # כשמשנים סכום במופע.
             "recurring_parent_id":  row.get("recurring_parent_id"),
             "project_id":           row.get("project_id"),
+            "project_name":         proj.get("name"),
+            "project_icon":         proj.get("icon"),
             "has_receipt":          bool(row.get("receipt_path")),
         })
     return out
