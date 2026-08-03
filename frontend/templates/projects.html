@@ -25,6 +25,11 @@
             <input class="form-input" type="text" id="projectName" placeholder="לדוגמה: טיול ליפן" maxlength="50" required>
         </div>
         <div class="form-group">
+            <label class="form-label" for="projectDescription">תיאור (אופציונלי)</label>
+            <textarea class="form-input" id="projectDescription" maxlength="200" rows="2"
+                      placeholder="למשל: טיול משפחתי ליפן, קיץ 2026"></textarea>
+        </div>
+        <div class="form-group">
             <label class="form-label" for="projectBudget">יעד תקציב (אופציונלי)</label>
             <div class="amount-input-wrap">
                 <span class="amount-currency">₪</span>
@@ -127,6 +132,7 @@
         e.preventDefault();
         errorEl.textContent = '';
         const name = document.getElementById('projectName').value.trim();
+        const description = document.getElementById('projectDescription').value.trim();
         const budgetVal = document.getElementById('projectBudget').value;
         const trackExpense = document.getElementById('projectTrackExpense').checked;
         const trackIncome  = document.getElementById('projectTrackIncome').checked;
@@ -144,6 +150,7 @@
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({
                 name: name,
+                description: description,
                 budget_target: budgetVal ? parseFloat(budgetVal) : null,
                 is_personal: isPersonal,
                 track_expense: trackExpense,
