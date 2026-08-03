@@ -72,15 +72,14 @@
     {% if projects %}
     <ul class="breakdown-bars" id="projectsList" style="margin-top:14px;">
         {% for p in projects %}
-        <li class="breakdown-bar-row project-row" data-id="{{ p.id }}">
-            <a class="breakdown-main clickable" href="{{ url_for('project_detail', project_id=p.id) }}">
+        <li class="project-row" data-id="{{ p.id }}">
+            <a class="project-main clickable" href="{{ url_for('project_detail', project_id=p.id) }}">
                 <span class="breakdown-icon">{{ '🔒' if p.is_personal else '🎯' }}</span>
-                <div class="breakdown-info">
-                    <div class="breakdown-name-row">
-                        <span class="breakdown-name">{{ p.name }}</span>
-                        <span class="breakdown-amount">₪{{ "{:,.0f}".format(p.amount) }}</span>
-                    </div>
+                <div class="project-info">
+                    <span class="project-name">{{ p.name }}</span>
+                    {% if p.description %}<span class="project-sub">{{ p.description }}</span>{% endif %}
                 </div>
+                <span class="project-amount">{% if p.amount < 0 %}-₪{{ "{:,.0f}".format(p.amount | abs) }}{% else %}₪{{ "{:,.0f}".format(p.amount) }}{% endif %}</span>
             </a>
             <button type="button" class="delete-project-btn" data-id="{{ p.id }}" aria-label="מחק פרויקט">✕</button>
         </li>
@@ -171,7 +170,7 @@
         if (!btn) return;
         const id  = btn.dataset.id;
         const row = btn.closest('.project-row');
-        const name = row.querySelector('.breakdown-name').textContent.trim();
+        const name = row.querySelector('.project-name').textContent.trim();
 
         window.appConfirm({
             title: 'למחוק את "' + name + '"?',
