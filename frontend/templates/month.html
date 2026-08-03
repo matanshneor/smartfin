@@ -72,16 +72,16 @@
 <!-- Chart 1: לאן הלך הכסף (חלוקת ההכנסות) -->
 <section class="chart-card">
     <h2 class="chart-title">לאן הלך הכסף החודש</h2>
-    {% if summary.income > 0 %}
+    {% if summary.expense > 0 or summary.savings > 0 %}
     <div class="doughnut-wrap">
-        <canvas id="overviewChart" aria-label="חלוקת ההכנסות: הוצאות, חיסכון ויתרה"></canvas>
+        <canvas id="overviewChart" aria-label="לאן הלך הכסף: הוצאות מול חיסכון"></canvas>
         <div class="doughnut-center">
             <p class="doughnut-caption">פילוח החודש</p>
         </div>
     </div>
     <ul class="legend-list" id="overviewLegend"></ul>
     {% else %}
-    <div class="chart-empty"><p>💸</p><p>אין הכנסות רשומות החודש</p></div>
+    <div class="chart-empty"><p>💸</p><p>אין הוצאות או חיסכון החודש</p></div>
     {% endif %}
 </section>
 
@@ -536,13 +536,14 @@
 
     const summary = {{ summary_json | safe }};
 
-    // ── 1. לאן הלך הכסף: הוצאות / חיסכון / נשאר ──
-    if (summary.income > 0) {
+    // ── 1. לאן הלך הכסף: כל הכסף שיצא (הוצאות + חיסכון) והחלוקה ביניהם ──
+    // בלי קשר להכנסות — הגרף מציג מה יצא, לא כמה נשאר.
+    const outTotal = summary.expense + summary.savings;
+    if (outTotal > 0) {
         const ctx = document.getElementById('overviewChart');
         const parts = [
-            { label: 'הוצאות',    value: summary.expense,               color: '#A04545' },
-            { label: 'חיסכון',    value: summary.savings,               color: '#A67C00' },
-            { label: 'נשאר בעו״ש', value: Math.max(summary.remaining, 0), color: '#3D6B54' },
+            { label: 'הוצאות', value: summary.expense, color: '#A04545' },
+            { label: 'חיסכון', value: summary.savings, color: '#A67C00' },
         ].filter(p => p.value > 0);
 
         if (ctx && parts.length) {
@@ -565,7 +566,7 @@
                     plugins: {
                         tooltip: {
                             callbacks: {
-                                label: c => ` ${c.label}: ₪${c.parsed.toLocaleString('en-US')} (${Math.round(c.parsed / summary.income * 100)}%)`
+                                label: c => ` ${c.label}: ₪${c.parsed.toLocaleString('en-US')} (${Math.round(c.parsed / outTotal * 100)}%)`
                             }
                         }
                     }
@@ -579,7 +580,7 @@
                 li.innerHTML = `
                     <span class="legend-dot" style="background:${p.color}"></span>
                     <span class="legend-name">${p.label}</span>
-                    <span class="legend-pct">${Math.round(p.value / summary.income * 100)}%</span>
+                    <span class="legend-pct">${Math.round(p.value / outTotal * 100)}%</span>
                     <span class="legend-amount">₪${p.value.toLocaleString('en-US')}</span>`;
                 legend.appendChild(li);
             });
