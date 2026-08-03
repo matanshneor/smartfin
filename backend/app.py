@@ -606,6 +606,21 @@ def project_detail(project_id):
                            member_colors=_member_colors(family_id))
 
 
+@app.route("/projects/<project_id>/edit")
+@login_required
+def project_edit(project_id):
+    """מסך עריכת הגדרות הפרויקט (שם/תיאור/יעד/מעקב/שיתוף) + ניהול הקטגוריות —
+    נפרד מעמוד התצוגה הנקי של הפרויקט."""
+    user      = get_current_user()
+    family_id = user["family_id"]
+    project = db.get_project_detail(project_id, family_id, user["id"]) if family_id else None
+    if not project:
+        return redirect(url_for("projects"))
+    return render_template("project_edit.html", active_page="projects", user=user,
+                           project=project,
+                           member_colors=_member_colors(family_id))
+
+
 def _parse_project_body(body: dict):
     """מפענח ומאמת שדות משותפים ליצירה/עדכון של פרויקט (שם/יעד/סוגי מעקב
     בלבד — לא בעלות: זו נקבעת בנפרד ב-add_project_route, ומשתנה אחר כך רק
@@ -619,6 +634,8 @@ def _parse_project_body(body: dict):
     if err:
         return None, "יעד תקציב חייב להיות מספר"
 
+    description = (body.get("description") or "").strip()[:200] or None
+
     track_expense = bool(body.get("track_expense", True))
     track_income  = bool(body.get("track_income", False))
     track_savings = bool(body.get("track_savings", False))
@@ -626,7 +643,7 @@ def _parse_project_body(body: dict):
         return None, "יש לבחור לפחות סוג עסקה אחד למעקב"
 
     return {
-        "name": name, "budget_target": budget_target,
+        "name": name, "budget_target": budget_target, "description": description,
         "track_expense": track_expense, "track_income": track_income,
         "track_savings": track_savings,
     }, None
