@@ -235,7 +235,7 @@
         <div class="settings-group-body">
             <div class="cat-manage-bar">
                 <span></span>
-                <button type="button" class="btn-sm btn-ghost" id="newProjectSettingsBtn">פרויקט חדש</button>
+                <button type="button" class="btn-sm btn-ghost" id="newProjectSettingsBtn">יצירת פרויקט חדש</button>
             </div>
 
             <form class="add-cat-form" id="newProjectSettingsForm" novalidate style="display:none; margin-top:14px;">
@@ -292,7 +292,7 @@
                     data-track-expense="{{ p.track_expense | lower }}"
                     data-track-income="{{ p.track_income | lower }}"
                     data-track-savings="{{ p.track_savings | lower }}">
-                    <span class="cat-row-icon">{{ '🔒' if p.is_personal else '🎯' }}</span>
+                    <span class="cat-row-icon">{{ p.icon or ('🔒' if p.is_personal else '🎯') }}</span>
                     <span class="cat-row-name">{{ p.name }}</span>
                     <a class="btn-sm btn-ghost" href="{{ url_for('project_detail', project_id=p.id) }}">ניהול מלא</a>
                     <button class="edit-project-settings-btn" data-id="{{ p.id }}" aria-label="ערוך פרויקט">
