@@ -1026,6 +1026,7 @@ def get_projects(family_id: str, viewer_user_id: str) -> list:
             budget = p.get("budget_target")
             out.append({
                 "id": p["id"], "name": p["name"],
+                "description": p.get("description"),
                 "is_personal": bool(p.get("owner_id")),
                 "owner_id": p.get("owner_id"),
                 "budget_target": float(budget) if budget is not None else None,
