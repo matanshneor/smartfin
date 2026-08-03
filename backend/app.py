@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 from functools import wraps, partial
 from datetime import datetime, timedelta
 from werkzeug.middleware.proxy_fix import ProxyFix
-from concurrent.futures import ThreadPoolExecutor
 import json
 import math
 import os
@@ -128,22 +127,15 @@ def _member_colors(family_id):
     return {m["id"]: i % len(_OWNER_HEX) for i, m in enumerate(members)}
 
 
-def _run_parallel(tasks: dict) -> dict:
-    """מריץ שליפות DB בלתי-תלויות במקביל ומחזיר {name: result}.
-    כל שליפת Supabase בתוכנית החינמית עולה ~200ms של תקורת REST/רשת (לא זמן
-    DB), אז עמוד עם 7 שליפות רצופות ממתין ~1.5ש'. הרצה מקבילית הופכת את הסכום
-    לזמן של בערך שליפה אחת. הערה: בתוך ה-threads אין Flask context (g/session),
-    אז כל task חייב להיות callable ללא-ארגומנטים שנוגע רק בשכבת ה-DB עם ערכים
-    שכבר קשורים אליו. הלקוח של Supabase הוא singleton עם httpx thread-safe
-    והטוקן נקבע פעם אחת ב-before_request, כך שקריאות-קריאה מקבילות בטוחות."""
-    if not tasks:
-        return {}
-    results = {}
-    with ThreadPoolExecutor(max_workers=min(len(tasks), 12)) as ex:
-        future_to_name = {ex.submit(fn): name for name, fn in tasks.items()}
-        for future, name in future_to_name.items():
-            results[name] = future.result()
-    return results
+def _run_queries(tasks: dict) -> dict:
+    """מריץ קבוצת שליפות DB ומחזיר {name: result}.
+    היה בעבר מקבילי (ThreadPoolExecutor) אבל הלקוח של Supabase הוא singleton
+    עם httpx client משותף — קריאות מקביליות מ-threads על אותו client גרמו ל-
+    "Server disconnected" תחת gunicorn (השליפה נכשלה בשקט והחזירה אפסים). מאז
+    שהעברנו את השרת ל-EU (אזור europe-west4) כל שליפה עולה ~30ms, אז הרצה
+    רצופה מהירה לגמרי (~7 שליפות = ~0.2ש') ובטוחה. רץ ב-thread הראשי, אז גם
+    flask.g/_request_cache עובד כרגיל."""
+    return {name: fn() for name, fn in tasks.items()}
 
 
 def _prime_request_cache(family_id, settings=None, categories=None, members=None, family=None):
@@ -434,7 +426,7 @@ def dashboard():
         session["recurring_synced"] = today_str
 
     # שליפות בלתי-תלויות במקביל — מכווץ ~5 קריאות רצופות ל-Supabase לזמן של ~1
-    batch = _run_parallel({
+    batch = _run_queries({
         "settings":   lambda: db.get_family_settings(family_id),
         "summary":    lambda: db.get_monthly_summary(family_id, now.year, now.month),
         "categories": lambda: db.get_categories(family_id),
@@ -490,7 +482,7 @@ def month_view():
         )
 
     # שלב 1 — שליפות בלתי-תלויות + מקדימות, במקביל (6 קריאות → זמן של ~1)
-    p1 = _run_parallel({
+    p1 = _run_queries({
         "settings": partial(db.get_family_settings, family_id),
         "summary":  partial(db.get_monthly_summary, family_id, year, month),
         "members":  partial(db.get_family_members, family_id),
@@ -514,7 +506,7 @@ def month_view():
         p2_tasks["run_rate"] = partial(db.get_run_rate_forecasts, family_id, year, month, settings_)
     for t in active_types:
         p2_tasks[f"mb_{t}"] = partial(db.get_member_breakdown, family_id, year, month, t)
-    p2 = _run_parallel(p2_tasks)
+    p2 = _run_queries(p2_tasks)
 
     anomalies = list(p2["anomalies"])
     if is_current:
