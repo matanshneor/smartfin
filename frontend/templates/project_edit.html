@@ -22,8 +22,11 @@
 
     <form class="add-cat-form" id="editProjectForm" novalidate style="margin-top:14px;">
         <div class="form-group">
-            <label class="form-label" for="editProjectName">שם הפרויקט</label>
-            <input class="form-input" type="text" id="editProjectName" maxlength="50" value="{{ project.name }}" required>
+            <label class="form-label" for="editProjectName">אייקון ושם</label>
+            <div class="add-cat-row">
+                <input class="form-input emoji-input" type="text" id="editProjectIcon" maxlength="4" value="{{ project.icon or '' }}" placeholder="🎯" aria-label="אייקון הפרויקט">
+                <input class="form-input" type="text" id="editProjectName" maxlength="50" value="{{ project.name }}" required>
+            </div>
         </div>
         <div class="form-group">
             <label class="form-label" for="editProjectDescription">תיאור (אופציונלי)</label>
@@ -135,6 +138,7 @@
         e.preventDefault();
         editError.textContent = '';
         const name = document.getElementById('editProjectName').value.trim();
+        const icon = document.getElementById('editProjectIcon').value.trim();
         const description = document.getElementById('editProjectDescription').value.trim();
         const budgetVal = document.getElementById('editProjectBudget').value;
         const trackExpense = document.getElementById('editProjectTrackExpense').checked;
@@ -153,6 +157,7 @@
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({
                 name: name,
+                icon: icon,
                 description: description,
                 budget_target: budgetVal ? parseFloat(budgetVal) : null,
                 track_expense: trackExpense,

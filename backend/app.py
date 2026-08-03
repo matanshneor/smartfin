@@ -635,6 +635,7 @@ def _parse_project_body(body: dict):
         return None, "יעד תקציב חייב להיות מספר"
 
     description = (body.get("description") or "").strip()[:200] or None
+    icon = (body.get("icon") or "").strip()[:16] or None
 
     track_expense = bool(body.get("track_expense", True))
     track_income  = bool(body.get("track_income", False))
@@ -644,6 +645,7 @@ def _parse_project_body(body: dict):
 
     return {
         "name": name, "budget_target": budget_target, "description": description,
+        "icon": icon,
         "track_expense": track_expense, "track_income": track_income,
         "track_savings": track_savings,
     }, None
