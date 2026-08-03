@@ -1058,7 +1058,7 @@ def _project_totals(family_id: str) -> dict:
 
 
 def add_project(family_id: str, name: str, created_by: str, budget_target: float = None,
-                owner_id: str = None,
+                owner_id: str = None, description: str = None,
                 track_expense: bool = True, track_income: bool = False, track_savings: bool = False):
     client = get_client()
     if not client:
@@ -1066,7 +1066,8 @@ def add_project(family_id: str, name: str, created_by: str, budget_target: float
     try:
         result = client.table("projects").insert({
             "family_id": family_id, "name": name, "budget_target": budget_target,
-            "owner_id": owner_id, "created_by": created_by, "track_expense": track_expense,
+            "owner_id": owner_id, "created_by": created_by, "description": description,
+            "track_expense": track_expense,
             "track_income": track_income, "track_savings": track_savings,
         }).execute()
         project = result.data[0] if result.data else None
@@ -1080,7 +1081,7 @@ def add_project(family_id: str, name: str, created_by: str, budget_target: float
 
 
 def update_project(project_id: str, family_id: str, name: str, budget_target: float = None,
-                   track_expense: bool = True,
+                   description: str = None, track_expense: bool = True,
                    track_income: bool = False, track_savings: bool = False):
     """מעדכן שם/יעד/סוגי מעקב בלבד. שינוי בעלות (אישי/משותף) נעשה רק דרך
     share_project/unshare_project הייעודיות — לא כאן."""
@@ -1101,7 +1102,7 @@ def update_project(project_id: str, family_id: str, name: str, budget_target: fl
         ]
 
         client.table("projects").update({
-            "name": name, "budget_target": budget_target,
+            "name": name, "budget_target": budget_target, "description": description,
             "track_expense": track_expense, "track_income": track_income,
             "track_savings": track_savings,
         }).eq("id", project_id).eq("family_id", family_id).execute()
@@ -1216,14 +1217,33 @@ def get_project_detail(project_id: str, family_id: str, viewer_user_id: str) -> 
         transactions = _format_transactions(result.data)
 
         totals = {"expense": 0.0, "income": 0.0, "savings": 0.0}
+        # חלוקה לפי קטגוריה לכל סוג — מחושב מהעסקאות שכבר נשלפו (בלי שליפה נוספת)
+        grouped = {"expense": {}, "income": {}, "savings": {}}
         for t in transactions:
-            if t["type"] in totals:
-                totals[t["type"]] += t["amount"]
+            typ = t["type"]
+            if typ not in totals:
+                continue
+            totals[typ] += t["amount"]
+            key = t.get("category_name") or "אחר"
+            entry = grouped[typ].setdefault(
+                key, {"name": key, "icon": t.get("category_icon") or "📦", "total": 0.0})
+            entry["total"] += t["amount"]
+
+        breakdown = {}
+        for typ, cats in grouped.items():
+            items = [c for c in cats.values() if c["total"] > 0]
+            tot = sum(c["total"] for c in items) or 1
+            for c in items:
+                c["pct"] = round(c["total"] / tot * 100)
+                c["total"] = round(c["total"], 2)
+            items.sort(key=lambda c: c["total"], reverse=True)
+            breakdown[typ] = items
 
         budget = proj.get("budget_target")
         spent = totals["expense"]
         return {
             "id": proj["id"], "name": proj["name"],
+            "description": proj.get("description"),
             "is_personal": bool(proj.get("owner_id")),
             "owner_id": proj.get("owner_id"),
             "created_by": proj.get("created_by"),
@@ -1234,6 +1254,7 @@ def get_project_detail(project_id: str, family_id: str, viewer_user_id: str) -> 
             "income": round(totals["income"], 2),
             "savings": round(totals["savings"], 2),
             "remaining": round(float(budget) - spent, 2) if budget is not None else None,
+            "breakdown": breakdown,
             "transactions": transactions,
         }
     except Exception as e:
