@@ -407,6 +407,32 @@
 </section>
 {% endfor %}
 
+<!-- פרויקטים החודש — מוחרג מהמאזן החודשי, מוצג בנפרד -->
+{% if project_month.transactions %}
+<section class="chart-card">
+    <h2 class="chart-title">פרויקטים החודש</h2>
+    <p class="wealth-bucket-hint" style="margin:2px 0 12px;">עסקאות אלה משויכות לפרויקטים ואינן נכללות במאזן החודשי</p>
+    {% if project_month.expense %}<div class="pm-figure"><span>הוצאות פרויקטים</span><span class="pm-amount expense">₪{{ "{:,.0f}".format(project_month.expense) }}</span></div>{% endif %}
+    {% if project_month.income %}<div class="pm-figure"><span>הכנסות פרויקטים</span><span class="pm-amount income">₪{{ "{:,.0f}".format(project_month.income) }}</span></div>{% endif %}
+    {% if project_month.savings %}<div class="pm-figure"><span>חיסכון פרויקטים</span><span class="pm-amount savings">₪{{ "{:,.0f}".format(project_month.savings) }}</span></div>{% endif %}
+    <ul class="cat-tx-list cat-tx-list-standalone" style="margin-top:12px;">
+        {% for tx in project_month.transactions %}
+        <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+            data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
+            data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
+            data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
+            data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
+            data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
+            <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
+            <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}</span>
+            <span class="project-tag">{{ tx.project_icon or '🎯' }} {{ tx.project_name or 'פרויקט' }}</span>
+            <span class="cat-tx-amount {{ tx.type }}">{% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ "{:,.0f}".format(tx.amount) }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
 <!-- כל העסקאות של החודש -->
 {% if month_transactions %}
 <section class="chart-card">
@@ -436,6 +462,7 @@
                     data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
                     <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
                     <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.is_recurring or tx.recurring_parent_id %} · 🔁 {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
+                    {% if tx.project_id %}<span class="project-tag">{{ tx.project_icon or '🎯' }} {{ tx.project_name or 'פרויקט' }}</span>{% endif %}
                     {% if family_settings.owner_attribution[tx.type] %}
                     {% set color = member_colors.get(tx.user_id) %}
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
