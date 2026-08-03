@@ -1027,6 +1027,7 @@ def get_projects(family_id: str, viewer_user_id: str) -> list:
             out.append({
                 "id": p["id"], "name": p["name"],
                 "description": p.get("description"),
+                "icon": p.get("icon"),
                 "is_personal": bool(p.get("owner_id")),
                 "owner_id": p.get("owner_id"),
                 "budget_target": float(budget) if budget is not None else None,
@@ -1059,7 +1060,7 @@ def _project_totals(family_id: str) -> dict:
 
 
 def add_project(family_id: str, name: str, created_by: str, budget_target: float = None,
-                owner_id: str = None, description: str = None,
+                owner_id: str = None, description: str = None, icon: str = None,
                 track_expense: bool = True, track_income: bool = False, track_savings: bool = False):
     client = get_client()
     if not client:
@@ -1068,7 +1069,7 @@ def add_project(family_id: str, name: str, created_by: str, budget_target: float
         result = client.table("projects").insert({
             "family_id": family_id, "name": name, "budget_target": budget_target,
             "owner_id": owner_id, "created_by": created_by, "description": description,
-            "track_expense": track_expense,
+            "icon": icon, "track_expense": track_expense,
             "track_income": track_income, "track_savings": track_savings,
         }).execute()
         project = result.data[0] if result.data else None
@@ -1082,7 +1083,7 @@ def add_project(family_id: str, name: str, created_by: str, budget_target: float
 
 
 def update_project(project_id: str, family_id: str, name: str, budget_target: float = None,
-                   description: str = None, track_expense: bool = True,
+                   description: str = None, icon: str = None, track_expense: bool = True,
                    track_income: bool = False, track_savings: bool = False):
     """מעדכן שם/יעד/סוגי מעקב בלבד. שינוי בעלות (אישי/משותף) נעשה רק דרך
     share_project/unshare_project הייעודיות — לא כאן."""
@@ -1104,7 +1105,7 @@ def update_project(project_id: str, family_id: str, name: str, budget_target: fl
 
         client.table("projects").update({
             "name": name, "budget_target": budget_target, "description": description,
-            "track_expense": track_expense, "track_income": track_income,
+            "icon": icon, "track_expense": track_expense, "track_income": track_income,
             "track_savings": track_savings,
         }).eq("id", project_id).eq("family_id", family_id).execute()
 
@@ -1245,6 +1246,7 @@ def get_project_detail(project_id: str, family_id: str, viewer_user_id: str) -> 
         return {
             "id": proj["id"], "name": proj["name"],
             "description": proj.get("description"),
+            "icon": proj.get("icon"),
             "is_personal": bool(proj.get("owner_id")),
             "owner_id": proj.get("owner_id"),
             "created_by": proj.get("created_by"),
