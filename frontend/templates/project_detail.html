@@ -51,6 +51,13 @@
 {% endblock %}
 
 {% block content %}
+{% set freq_labels = {
+    'monthly_same': 'כל חודש',
+    'monthly_1':  'כל 1 לחודש',
+    'monthly_15': 'כל 15 לחודש',
+    'weekly':     'כל שבוע',
+    'biweekly':   'כל שבועיים'
+} %}
 
 <div style="display:flex; justify-content:flex-end; margin-bottom:2px;">
     <a href="{{ url_for('project_edit', project_id=project.id) }}" class="btn-sm btn-ghost">ערוך הגדרות פרויקט</a>
@@ -84,7 +91,52 @@
                 <p class="doughnut-label">{{ type_labels[typ] }}</p>
             </div>
         </div>
-        <ul class="legend-list" id="legend-{{ typ }}"></ul>
+        <ul class="legend-list">
+            {% set type_txs = project.transactions | selectattr('type', 'equalto', typ) | list %}
+            {% for item in project.breakdown[typ] %}
+            {% set cat_txs = type_txs | selectattr('category_name', 'equalto', item.name) | list %}
+            {% if item.name == 'אחר' %}
+                {% set cat_txs = cat_txs + (type_txs | rejectattr('category_name') | list) %}
+            {% endif %}
+            <li class="legend-item-wrap">
+                <div class="legend-item {% if cat_txs %}clickable{% endif %}" {% if cat_txs %}role="button" tabindex="0" aria-expanded="false"{% endif %}>
+                    <span class="legend-dot" style="background: var(--chart-color-{{ loop.index0 % 8 }});"></span>
+                    <span class="legend-icon">{{ item.icon }}</span>
+                    <span class="legend-name">{{ item.name }}</span>
+                    <span class="legend-pct">{{ item.pct }}%</span>
+                    <span class="legend-amount">₪{{ "{:,.0f}".format(item.total) }}</span>
+                    {% if cat_txs %}
+                    <span class="expand-chevron" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </span>
+                    {% endif %}
+                </div>
+                {% if cat_txs %}
+                <ul class="cat-tx-list">
+                    {% for tx in cat_txs %}
+                    <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                        data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
+                        data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
+                        data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
+                        data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
+                        data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
+                        <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
+                        <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.is_recurring or tx.recurring_parent_id %} · 🔁 {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
+                        {% if family_settings.owner_attribution[typ] %}
+                        {% set color = member_colors.get(tx.user_id) %}
+                        <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
+                        {% endif %}
+                        {% if tx.has_receipt %}
+                        <button type="button" class="receipt-badge" data-receipt-id="{{ tx.id }}" title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</button>
+                        {% endif %}
+                        <span class="cat-tx-amount {{ tx.type }}">₪{{ "{:,.0f}".format(tx.amount) }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
     </section>
     {% endif %}
 {% endfor %}
@@ -141,6 +193,29 @@
     Chart.defaults.plugins.tooltip.titleColor = '#FAF7F0';
     Chart.defaults.plugins.tooltip.bodyColor = '#E7E0D2';
 
+    // צבעי הגרף זמינים גם ל-CSS — הנקודות במקרא מרונדרות בשרת
+    COLORS.forEach((c, i) =>
+        document.documentElement.style.setProperty('--chart-color-' + i, c));
+
+    // ── הרחבת קטגוריה: הצגת כל העסקאות שלה בפרויקט (כמו בעמוד החודש) ──
+    function toggleExpand(trigger) {
+        const wrap = trigger.closest('.legend-item-wrap');
+        if (!wrap) return;
+        const isOpen = wrap.classList.toggle('open');
+        trigger.setAttribute('aria-expanded', isOpen);
+    }
+
+    document.addEventListener('click', function (e) {
+        const trigger = e.target.closest('.legend-item.clickable');
+        if (trigger) toggleExpand(trigger);
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const trigger = e.target.closest('.legend-item.clickable');
+        if (trigger) { e.preventDefault(); toggleExpand(trigger); }
+    });
+
     const breakdown = {{ project.breakdown | tojson }};
     ['expense', 'income', 'savings'].forEach(function (typ) {
         const items = breakdown[typ] || [];
@@ -171,18 +246,6 @@
                     }
                 }
             }
-        });
-
-        const legend = document.getElementById('legend-' + typ);
-        items.forEach(function (d, i) {
-            const li = document.createElement('li');
-            li.className = 'legend-item';
-            li.innerHTML = `
-                <span class="legend-dot" style="background:${COLORS[i % COLORS.length]}"></span>
-                <span class="legend-name">${escapeHtml(d.name)}</span>
-                <span class="legend-pct">${d.pct}%</span>
-                <span class="legend-amount">₪${Number(d.total).toLocaleString('en-US')}</span>`;
-            legend.appendChild(li);
         });
     });
 })();
