@@ -281,6 +281,83 @@ ul { list-style: none; }
 .stats-nav-btn svg { width: 17px; height: 17px; }
 
 /* KPI chips inside hero */
+/* ════ רצועת חודשים מגנטית (ראש עמוד החודש) ════
+   הדפדפן עושה את ה"מגנט" לבד דרך scroll-snap — בלי JS ובלי מאזין גלילה,
+   כך שהגרירה נשארת על thread נפרד ולא נתקעת בזמן עבודה של הדף. */
+
+.month-strip {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    padding: 2px 0 4px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    /* הגרירה לא נגררת לדף שמאחור בקצוות */
+    overscroll-behavior-x: contain;
+    /* פס גלילה נקי: פיירפוקס + IE/Edge ישן (webkit — בכלל נפרד למטה) */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.month-strip::-webkit-scrollbar { display: none; }
+
+/* ריפוד וירטואלי בקצוות — בלעדיו הפריט הראשון והאחרון לא יכולים להתמרכז */
+.month-strip::before,
+.month-strip::after {
+    content: '';
+    flex: 0 0 calc(50% - 56px);
+}
+
+.month-chip {
+    scroll-snap-align: center;
+    /* לא מדלג על חודשים בגרירה מהירה */
+    scroll-snap-stop: always;
+    flex: 0 0 104px;
+    background: var(--hero-chip-bg);
+    border: 1px solid var(--hero-chip-border);
+    border-radius: var(--radius-sm);
+    padding: 9px 8px;
+    text-align: center;
+    text-decoration: none;
+    color: var(--hero-text);
+    opacity: 0.5;
+    transform: scale(0.94);
+    transition: opacity 0.25s ease, transform 0.25s ease, background 0.25s ease,
+                border-color 0.25s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.month-chip.is-current {
+    opacity: 1;
+    transform: scale(1);
+    background: var(--color-gold-dim);
+    border-color: var(--color-gold-border);
+}
+
+.month-chip-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.month-chip.is-current .month-chip-name { color: var(--color-gold-bright); }
+
+.month-chip-year {
+    font-size: 0.68rem;
+    color: var(--hero-text-muted);
+    margin-top: 1px;
+}
+
+.month-chip-badge {
+    display: block;
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: var(--color-gold-bright);
+    margin-top: 2px;
+}
+
 .kpi-chips {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -549,24 +626,34 @@ ul { list-style: none; }
     gap: 9px;
 }
 
+/* השורה עצמה היא מיכל אנכי: כותרת (.tx-head) + עורך מתקפל (.tx-editor).
+   הריפוד עבר ל-.tx-head כדי שהעורך יוכל להיפתח בלי רווח כפול. */
 .transaction-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+    display: block;
     background: var(--color-card);
     border: var(--border-subtle);
     border-radius: var(--radius);
-    padding: 12px 14px;
     box-shadow: var(--shadow-card);
-    transition: transform 0.15s, background 0.2s;
+    transition: transform 0.15s, background 0.2s, opacity 0.25s ease, box-shadow 0.25s ease,
+                border-color 0.25s ease;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+}
+
+.tx-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
 }
 
 .transaction-item:active {
     background: var(--color-card-hover);
     transform: scale(0.99);
 }
+
+/* כרטיסייה פתוחה לא "נלחצת" — היא כבר במוקד */
+.transaction-item.open:active { transform: none; background: var(--color-card); }
 
 .tx-icon {
     width: 38px;
@@ -625,6 +712,70 @@ ul { list-style: none; }
 .tx-amount.income  { color: var(--color-income); }
 .tx-amount.expense { color: var(--color-expense); }
 .tx-amount.savings { color: var(--color-savings); }
+
+/* ════ עריכה בתוך הכרטיסייה (דף הבית) ════
+   הגובה מונפש דרך grid-template-rows: 0fr→1fr — הדרך היחידה לאנימציית
+   גובה חלקה בלי לדעת את הגובה מראש (max-height מחייב ניחוש, ומקפיץ
+   כשהניחוש שגוי). ההנפשה של השאר היא opacity+transform בלבד, שרצות על
+   ה-compositor ולא גורמות לחישוב פריסה מחדש. */
+
+.tx-editor {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.transaction-item.open .tx-editor { grid-template-rows: 1fr; }
+
+.tx-editor > .tx-editor-inner { overflow: hidden; }
+
+.tx-editor-body {
+    padding: 2px 14px 14px;
+    border-top: 1px solid var(--divider-subtle);
+    margin-top: 2px;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity 0.2s ease 0.06s, transform 0.2s ease 0.06s;
+}
+
+.transaction-item.open .tx-editor-body { opacity: 1; transform: none; }
+
+/* פוקוס: הפתוחה מורמת ומודגשת, השאר נסוגות */
+.transaction-item.open {
+    box-shadow: var(--shadow-lift);
+    border-color: var(--color-gold-border);
+}
+
+li.transaction-item.open.swipe-ready > .swipe-content {
+    box-shadow: var(--shadow-lift);
+    border-color: var(--color-gold-border);
+}
+
+.transactions-list.has-open .transaction-item:not(.open) {
+    opacity: 0.42;
+    transform: scale(0.985);
+}
+
+.tx-editor-row { margin-top: 12px; }
+
+.tx-editor-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.tx-editor-actions .btn-sm { flex: 1; }
+
+.tx-editor-delete {
+    flex: 0 0 46px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: rgba(185, 28, 28, 0.08);
+    color: var(--color-expense);
+    font-size: 0.95rem;
+    cursor: pointer;
+    font-family: inherit;
+}
 
 /* ── תגי שם צבעוניים: למי שייכת העסקה ── */
 
@@ -2903,6 +3054,19 @@ li.project-row {
     .kpi-chips { grid-template-columns: repeat(4, 1fr); }
 }
 
+/* מתג ה-haptic של iOS: חייב להיות ב-DOM ובעל גודל כדי ש-WebKit יפעיל
+   רטט בהחלפה, אבל בלתי נראה לחלוטין. display:none היה מבטל את האפקט. */
+.haptic-switch {
+    position: fixed;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: -1;
+}
+
 /* ─── Reduced motion ──────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -3081,13 +3245,13 @@ li.transaction-item.swipe-ready {
 }
 
 li.transaction-item.swipe-ready > .swipe-content {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+    /* block, לא flex: הכרטיס הלבן מכיל כותרת + עורך זה מתחת לזה.
+       הפריסה האופקית של השורה עברה ל-.tx-head. */
+    display: block;
     background: var(--color-card);
     border: var(--border-subtle);
     border-radius: var(--radius);
-    padding: 12px 14px;
+    padding: 0;
     box-shadow: var(--shadow-card);
     width: 100%;
     box-sizing: border-box;

@@ -235,6 +235,11 @@
     <!-- Toast: הודעת משוב קטנה -->
     <div class="toast" id="appToast" role="status" aria-live="polite"></div>
 
+    <!-- מתג נסתר שמפעיל את ה-haptic של iOS (אין ל-Safari navigator.vibrate).
+         aria-hidden + tabindex="-1": קיים ל-WebKit, בלתי נראה למשתמש ולקורא מסך -->
+    <input type="checkbox" switch id="hapticSwitch" class="haptic-switch"
+           tabindex="-1" aria-hidden="true">
+
     <!-- דיאלוג אישור מעוצב (מחליף את confirm של הדפדפן) -->
     <div class="confirm-overlay" id="confirmOverlay" role="alertdialog" aria-modal="true">
         <div class="confirm-card">
@@ -256,6 +261,52 @@
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     };
+
+    // ── משוב חושי על עסקה שנכנסה: צליל עדין + נקישה ──
+    // הצליל מסונתז בזמן אמת (בלי קובץ שמע, בלי בקשת רשת): שני טונים עולים
+    // קצרים. הרטט מנוסה בשתי דרכים כי אין אחת שעובדת בכל מקום —
+    // navigator.vibrate באנדרואיד, ומתג switch נסתר שמפעיל את ה-haptic של iOS.
+    // אין שום דרך לדעת אם המכשיר מושתק, אז לא מנסים: iOS פשוט יבלע את הצליל.
+    (function () {
+        let audioCtx = null;
+
+        function tone(ctx, freq, startAt, dur, peak) {
+            const osc  = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + startAt);
+            // עטיפת עוצמה רכה — בלי "קליק" בקצוות
+            gain.gain.setValueAtTime(0.0001, ctx.currentTime + startAt);
+            gain.gain.exponentialRampToValueAtTime(peak, ctx.currentTime + startAt + 0.012);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + startAt + dur);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(ctx.currentTime + startAt);
+            osc.stop(ctx.currentTime + startAt + dur + 0.02);
+        }
+
+        window.appFeedback = function () {
+            if (localStorage.getItem('sf_feedback_off') === '1') return;
+
+            // צליל
+            try {
+                const Ctx = window.AudioContext || window.webkitAudioContext;
+                if (Ctx) {
+                    if (!audioCtx) audioCtx = new Ctx();
+                    if (audioCtx.state === 'suspended') audioCtx.resume();
+                    tone(audioCtx, 783.99,  0,    0.16, 0.10);  // סול
+                    tone(audioCtx, 1174.66, 0.12, 0.30, 0.09);  // רה, אוקטבה מעל
+                }
+            } catch (err) { /* אין שמע — לא סיבה להיכשל */ }
+
+            // רטט
+            try {
+                if (navigator.vibrate) navigator.vibrate([12, 40, 22]);
+                const sw = document.getElementById('hapticSwitch');
+                if (sw) sw.checked = !sw.checked;
+            } catch (err) { /* אין רטט — ממשיכים */ }
+        };
+    })();
 
     // ── מערכת משוב גלובלית: toast + דיאלוג אישור ──
     (function () {
@@ -801,6 +852,14 @@
 
         fabBtn.addEventListener('click', openAddModal);
 
+        // חימום המטמון בדף הבית: הקטגוריות ובני המשפחה נמשכים ברקע אחרי
+        // שהדף התייצב, כדי שגם הפתיחה הראשונה של כרטיסייה תהיה מיידית.
+        if (document.querySelector('.transactions-list')) {
+            const warm = function () { loadCategories(); loadMembers(); };
+            if ('requestIdleCallback' in window) requestIdleCallback(warm, { timeout: 2500 });
+            else setTimeout(warm, 1200);
+        }
+
         // פתיחה אוטומטית של מודל ההוספה דרך קיצור ה-PWA "הוסף עסקה" (‎/?add=1‎).
         // מנקים את הפרמטר מה-URL כדי שרענון לא יפתח שוב את המודל.
         if (new URLSearchParams(window.location.search).get('add') === '1') {
@@ -988,12 +1047,14 @@
             const desc = txDescription.value.trim();
 
             li.innerHTML =
-                '<div class="tx-icon ' + currentType + '"><span class="tx-emoji">' + (icon || '📦') + '</span></div>' +
-                '<div class="tx-details">' +
-                    '<p class="tx-name"></p>' +
-                    '<p class="tx-meta"></p>' +
-                '</div>' +
-                '<div class="tx-side"><p class="tx-amount ' + currentType + '"></p></div>';
+                '<div class="tx-head">' +
+                    '<div class="tx-icon ' + currentType + '"><span class="tx-emoji">' + (icon || '📦') + '</span></div>' +
+                    '<div class="tx-details">' +
+                        '<p class="tx-name"></p>' +
+                        '<p class="tx-meta"></p>' +
+                    '</div>' +
+                    '<div class="tx-side"><p class="tx-amount ' + currentType + '"></p></div>' +
+                '</div>';
             li.querySelector('.tx-name').textContent = name;
             li.querySelector('.tx-meta').textContent = (desc ? desc + ' · ' : '') + dateLabel;
             li.querySelector('.tx-amount').textContent = sign + '₪' + Math.round(amount).toLocaleString('en-US');
@@ -1075,10 +1136,16 @@
                     return;
                 }
 
+                // עסקה חדשה נכנסה — צליל ונקישה. חייב לקרות כאן, בתוך שרשרת
+                // הלחיצה של המשתמש, כי iOS מאפשר שמע רק מתוך אינטראקציה.
+                const isNew = !editId;
+                if (isNew) window.appFeedback();
+
                 function finish() {
                     sessionStorage.setItem('sf_toast', editId ? 'העסקה עודכנה' : 'העסקה נוספה');
                     closeModal();
-                    window.location.reload();
+                    // שהות קצרה כדי שהצליל יסתיים לפני שהדף נטען מחדש
+                    setTimeout(function () { window.location.reload(); }, isNew ? 380 : 0);
                 }
 
                 const sideEffects = [];
@@ -1258,23 +1325,277 @@
             };
         }
 
+        // ══ עריכה בתוך הכרטיסייה — דף הבית בלבד ══
+        // הכרטיסייה נפתחת במקום המודאל: שומרת את ההקשר (שאר הרשימה נשארת
+        // גלויה, רק מעומעמת) ומקצרת את הדרך לעריכה הנפוצה. פרויקט/עסקה
+        // חוזרת עדיין דרך המודאל, בכפתור "עוד אפשרויות".
+        let openInlineRow = null;
+
+        function isHomeRow(row) {
+            return row.classList.contains('transaction-item') && !!row.closest('.transactions-list');
+        }
+
+        function closeInlineEditor() {
+            const row = openInlineRow;
+            if (!row) return;
+            openInlineRow = null;
+            row.classList.remove('open');
+            const head = row.querySelector('.tx-head');
+            if (head) head.setAttribute('aria-expanded', 'false');
+            const list = row.closest('.transactions-list');
+            if (list) list.classList.remove('has-open');
+            // מרוקנים רק אחרי שהאנימציה נגמרה — אחרת התוכן נעלם באמצע הקיפול
+            setTimeout(function () {
+                if (row.classList.contains('open')) return;
+                const inner = row.querySelector('.tx-editor-inner');
+                if (inner) inner.innerHTML = '';
+            }, 340);
+        }
+
+        function openInlineEditor(row) {
+            if (openInlineRow === row) { closeInlineEditor(); return; }
+            closeInlineEditor();
+
+            const inner = row.querySelector('.tx-editor-inner');
+            // אין מיכל (שורה זמנית / תבנית ישנה) — נופלים חזרה למודאל במקום לא לעשות כלום
+            if (!inner) { openEditModal(buildTxFromRow(row), row); return; }
+
+            const tx = buildTxFromRow(row);
+            withLoadingTrigger(row, Promise.all([loadCategories(), loadMembers()])
+                .then(function () {
+                    return tx.projectId ? loadProjectCategories(tx.projectId, tx.type) : null;
+                }))
+                .then(function (projCats) {
+                    inner.innerHTML = '';
+                    inner.appendChild(buildInlineEditor(row, tx, projCats));
+                    row.classList.add('open');
+                    const head = row.querySelector('.tx-head');
+                    if (head) head.setAttribute('aria-expanded', 'true');
+                    const list = row.closest('.transactions-list');
+                    if (list) list.classList.add('has-open');
+                    openInlineRow = row;
+                })
+                .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
+        }
+
+        function buildInlineEditor(row, tx, projCats) {
+            const isProject = !!tx.projectId;
+            const cats = isProject ? (projCats || [])
+                                   : (categoriesCache || []).filter(c => c.type === tx.type);
+            const hasOwner = !!window.SF_ATTRIBUTION[tx.type];
+            const state = {
+                categoryId: isProject ? tx.projectCategoryId : tx.categoryId,
+                owner:      tx.userId || 'shared',
+            };
+
+            const body = document.createElement('div');
+            body.className = 'tx-editor-body';
+            body.innerHTML =
+                '<div class="tx-editor-row">' +
+                    '<label class="form-label">סכום (₪)</label>' +
+                    '<div class="amount-input-wrap">' +
+                        '<span class="amount-currency">₪</span>' +
+                        '<input class="form-input amount-input inline-amount" type="number" min="0" step="0.01" inputmode="decimal">' +
+                    '</div>' +
+                '</div>' +
+                '<div class="tx-editor-row">' +
+                    '<label class="form-label">קטגוריה</label>' +
+                    '<div class="category-grid inline-cats" role="radiogroup" aria-label="בחר קטגוריה"></div>' +
+                '</div>' +
+                (hasOwner
+                    ? '<div class="tx-editor-row">' +
+                          '<label class="form-label">' + escapeHtml(OWNER_LABELS[tx.type]) + '</label>' +
+                          '<div class="owner-toggle inline-owner" role="radiogroup"></div>' +
+                      '</div>'
+                    : '') +
+                '<div class="tx-editor-row">' +
+                    '<label class="form-label">תיאור קצר</label>' +
+                    '<input class="form-input inline-desc" type="text" maxlength="80">' +
+                '</div>' +
+                '<div class="tx-editor-row">' +
+                    '<label class="form-label">תאריך</label>' +
+                    '<input class="form-input inline-date" type="date">' +
+                '</div>' +
+                '<div class="form-error inline-error" role="alert"></div>' +
+                '<div class="tx-editor-actions">' +
+                    '<button type="button" class="btn-sm btn-primary inline-save">שמור</button>' +
+                    '<button type="button" class="btn-sm btn-ghost inline-more">עוד אפשרויות</button>' +
+                    '<button type="button" class="tx-editor-delete inline-del" aria-label="מחק עסקה">🗑</button>' +
+                '</div>';
+
+            const amountEl = body.querySelector('.inline-amount');
+            const descEl   = body.querySelector('.inline-desc');
+            const dateEl   = body.querySelector('.inline-date');
+            const errEl    = body.querySelector('.inline-error');
+            amountEl.value = tx.amount;
+            descEl.value   = tx.description || '';
+            dateEl.value   = tx.date;
+
+            // קטגוריות
+            const grid = body.querySelector('.inline-cats');
+            cats.forEach(function (cat) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'cat-btn' + (cat.id === state.categoryId ? ' active' : '');
+                btn.dataset.value = cat.id;
+                btn.setAttribute('role', 'radio');
+                btn.setAttribute('aria-checked', cat.id === state.categoryId ? 'true' : 'false');
+                btn.innerHTML = `<span class="cat-emoji">${escapeHtml(cat.icon)}</span><span>${escapeHtml(cat.name)}</span>`;
+                grid.appendChild(btn);
+            });
+            grid.addEventListener('click', function (e) {
+                const btn = e.target.closest('.cat-btn');
+                if (!btn) return;
+                grid.querySelectorAll('.cat-btn').forEach(function (b) {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-checked', 'false');
+                });
+                btn.classList.add('active');
+                btn.setAttribute('aria-checked', 'true');
+                state.categoryId = btn.dataset.value;
+            });
+
+            // שיוך לבן משפחה
+            const ownerBox = body.querySelector('.inline-owner');
+            if (ownerBox) {
+                [{ value: 'shared', label: 'משותפת' }]
+                    .concat((membersCache || []).map(m => ({ value: m.id, label: m.name })))
+                    .forEach(function (opt) {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'owner-btn' + (opt.value === state.owner ? ' active' : '');
+                        btn.dataset.value = opt.value;
+                        btn.textContent = opt.label;
+                        btn.setAttribute('role', 'radio');
+                        btn.setAttribute('aria-checked', opt.value === state.owner ? 'true' : 'false');
+                        ownerBox.appendChild(btn);
+                    });
+                ownerBox.addEventListener('click', function (e) {
+                    const btn = e.target.closest('.owner-btn');
+                    if (!btn) return;
+                    ownerBox.querySelectorAll('.owner-btn').forEach(function (b) {
+                        b.classList.remove('active');
+                        b.setAttribute('aria-checked', 'false');
+                    });
+                    btn.classList.add('active');
+                    btn.setAttribute('aria-checked', 'true');
+                    state.owner = btn.dataset.value;
+                });
+            }
+
+            // שמירה — אותו PUT של המודאל. שדות שלא נערכים כאן (עסקה חוזרת,
+            // שיוך לפרויקט) נשלחים כפי שהם, אחרת השרת היה מאפס אותם.
+            const saveBtn = body.querySelector('.inline-save');
+            saveBtn.addEventListener('click', function () {
+                errEl.textContent = '';
+                const amount = parseFloat(amountEl.value);
+                if (!amount || amount <= 0 || !isFinite(amount)) {
+                    errEl.textContent = 'נא להזין סכום תקין';
+                    amountEl.focus();
+                    return;
+                }
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'שומר…';
+
+                fetch('/api/transactions/' + tx.id, {
+                    method:  'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({
+                        amount:              amount,
+                        type:                tx.type,
+                        category_id:         isProject ? null : (state.categoryId || null),
+                        project_category_id: isProject ? (state.categoryId || null) : null,
+                        description:         descEl.value.trim(),
+                        date:                dateEl.value,
+                        owner:               hasOwner ? state.owner : null,
+                        is_recurring:        tx.isRecurring,
+                        recurring_frequency: tx.isRecurring ? (tx.recurringFrequency || null) : null,
+                        recurring_end_date:  tx.isRecurring ? (tx.recurringEndDate || null) : null,
+                        project_id:          tx.projectId || null,
+                    }),
+                })
+                .then(r => r.json())
+                .then(function (data) {
+                    if (data.error) {
+                        errEl.textContent = data.error;
+                        saveBtn.disabled = false;
+                        saveBtn.textContent = 'שמור';
+                        return;
+                    }
+                    sessionStorage.setItem('sf_toast', 'העסקה עודכנה');
+                    window.location.reload();
+                })
+                .catch(function () {
+                    errEl.textContent = 'שגיאת רשת — נסה שוב';
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'שמור';
+                });
+            });
+
+            // "עוד אפשרויות" — ממשיך למודאל המלא עם מה שכבר הוקלד כאן
+            body.querySelector('.inline-more').addEventListener('click', function () {
+                const carried = Object.assign({}, tx, {
+                    amount:      amountEl.value,
+                    description: descEl.value,
+                    date:        dateEl.value,
+                    userId:      hasOwner && state.owner !== 'shared' ? state.owner : '',
+                });
+                if (isProject) carried.projectCategoryId = state.categoryId;
+                else           carried.categoryId        = state.categoryId;
+                closeInlineEditor();
+                openEditModal(carried, row);
+            });
+
+            // מחיקה — בדיוק אותו flow של ה-swipe: אישור, ואז מחיקה עם "בטל"
+            body.querySelector('.inline-del').addEventListener('click', function () {
+                window.appConfirm({
+                    title: 'למחוק את העסקה?',
+                    message: 'הפעולה תסיר את העסקה מכל הדוחות והגרפים.',
+                    confirmText: 'מחק עסקה',
+                }).then(function (ok) {
+                    if (!ok) return;
+                    closeInlineEditor();
+                    deleteWithUndo(tx, row, function (msg) { window.showToast(msg, 'error'); });
+                });
+            });
+
+            return body;
+        }
+
         // ── פתיחת עריכה בלחיצה על עסקה קיימת (עמוד הבית + עמוד החודש + עסקאות קבועות בהגדרות) ──
         document.addEventListener('click', function (e) {
             if (justSwiped) { justSwiped = false; return; }
             if (e.target.closest('.receipt-badge, .delete-recurring-btn, .swipe-action')) return;
+            // לחיצה בתוך העורך הפתוח היא עבודה בטופס, לא בקשה לסגור אותו
+            if (e.target.closest('.tx-editor')) return;
             const row = e.target.closest('.transaction-item, .cat-tx-row, .recurring-row');
-            if (!row || !row.dataset.id) return;
+            if (!row || !row.dataset.id) {
+                // לחיצה מחוץ לכל שורה סוגרת עורך פתוח
+                if (openInlineRow) closeInlineEditor();
+                return;
+            }
+            if (isHomeRow(row)) { openInlineEditor(row); return; }
             openEditModal(buildTxFromRow(row), row);
         });
 
         // ── אותה פתיחת עריכה במקלדת (Enter/Space) — השורות מסומנות
         // role="button" tabindex="0" בתבניות, בדיוק כמו .legend-item[role=button] הקיים ב-month.html ──
         document.addEventListener('keydown', function (e) {
+            // Escape סוגר עורך פתוח בכרטיסייה (המודאל מטפל ב-Escape בעצמו)
+            if (e.key === 'Escape' && openInlineRow) {
+                const head = openInlineRow.querySelector('.tx-head');
+                closeInlineEditor();
+                if (head) head.focus({ preventScroll: true });
+                return;
+            }
             if (e.key !== 'Enter' && e.key !== ' ') return;
             if (e.target.closest('.receipt-badge, .delete-recurring-btn, .swipe-action')) return;
+            // בתוך שדות העורך, Enter/רווח שייכים לשדה עצמו
+            if (e.target.closest('.tx-editor')) return;
             const row = e.target.closest('.transaction-item, .cat-tx-row, .recurring-row');
             if (!row || !row.dataset.id) return;
             e.preventDefault();
+            if (isHomeRow(row)) { openInlineEditor(row); return; }
             openEditModal(buildTxFromRow(row), row);
         });
 
@@ -1324,6 +1645,9 @@
                 if (e.target.closest('.receipt-badge, .delete-recurring-btn, .swipe-action')) return;
                 const row = e.target.closest(ROW_SELECTOR);
                 if (!row || !row.dataset.id) return;
+                // גרירה בזמן שעורך פתוח — סוגרת אותו קודם, כדי לא לגרור כרטיס
+                // פתוח על פני פאנלי הפעולה
+                if (openInlineRow && !e.target.closest('.tx-editor')) closeInlineEditor();
                 ensureSwipeStructure(row);
 
                 if (drag && drag.row !== row) closeRow(drag.row);
@@ -1400,6 +1724,8 @@
                 if (editBtn) {
                     const row = editBtn.closest(ROW_SELECTOR);
                     closeRow(row);
+                    // בדף הבית "עריכה" פותחת את הכרטיסייה, כמו לחיצה רגילה
+                    if (isHomeRow(row)) { openInlineEditor(row); return; }
                     openEditModal(buildTxFromRow(row), row);
                     return;
                 }
