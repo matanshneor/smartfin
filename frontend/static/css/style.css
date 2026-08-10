@@ -1562,7 +1562,32 @@ input[type="number"] {
 }
 
 .submit-btn:active { transform: scale(0.98); }
-.submit-btn:disabled { opacity: 0.6; }
+.submit-btn:disabled,
+.submit-btn.is-busy { opacity: 0.6; }
+
+/* כפתור השמירה במודאל הוא <label> (ראה ההערה בתבנית): צריך את מה
+   ש-<button> נותן בחינם — פריסה, מרכוז, וסמן יד */
+label.submit-btn {
+    display: block;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+}
+
+label.submit-btn.is-busy { cursor: default; }
+
+/* פקד ה-submit האמיתי, מוסתר: קיים רק כדי ש-Enter בתוך שדה ישלח את הטופס */
+.submit-fallback {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+}
 
 a.submit-btn {
     display: block;
@@ -3054,17 +3079,15 @@ li.project-row {
     .kpi-chips { grid-template-columns: repeat(4, 1fr); }
 }
 
-/* מתג ה-haptic של iOS: חייב להיות ב-DOM ובעל גודל כדי ש-WebKit יפעיל
-   רטט בהחלפה, אבל בלתי נראה לחלוטין. display:none היה מבטל את האפקט. */
+/* מתג ה-haptic של iOS: חייב להישאר מרונדר (display:none מבטל את האפקט),
+   אבל בלתי נראה. הערכים זהים למה שנבדק במכשיר בפועל — לא לשנות בלי
+   לבדוק שוב שהנקישה עדיין מגיעה. */
 .haptic-switch {
-    position: fixed;
-    inset-block-start: 0;
-    inset-inline-start: 0;
+    position: absolute;
     width: 1px;
     height: 1px;
     opacity: 0;
     pointer-events: none;
-    z-index: -1;
 }
 
 /* ─── Reduced motion ──────────────────────────────────────────── */
