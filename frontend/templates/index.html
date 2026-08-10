@@ -97,38 +97,46 @@
     {% if transactions %}
     <ul class="transactions-list" aria-label="רשימת עסקאות אחרונות">
         {% for tx in transactions %}
-        <li class="transaction-item" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+        {# role/tabindex יושבים על .tx-head ולא על ה-li: אחרי הפתיחה ה-li מכיל
+           טופס, ו-role="button" שעוטף שדות קלט הוא שגוי לקוראי מסך #}
+        <li class="transaction-item" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
             data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
             data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}"
             data-is-recurring="{{ tx.is_recurring | lower }}"
             data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
             data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
                     data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
-            <div class="tx-icon {{ tx.type }}">
-                <span class="tx-emoji">{{ tx.category_icon }}</span>
+            <div class="tx-head" role="button" tabindex="0" aria-expanded="false"
+                 aria-label="עריכת {{ tx.category_name }}, {{ "{:,.0f}".format(tx.amount) }} שקלים">
+                <div class="tx-icon {{ tx.type }}">
+                    <span class="tx-emoji">{{ tx.category_icon }}</span>
+                </div>
+                <div class="tx-details">
+                    <p class="tx-name">{{ tx.category_name }}</p>
+                    <p class="tx-meta">
+                        {%- if tx.workplace or tx.description %}{{ tx.workplace or tx.description }} · {% endif -%}
+                        {{ tx.date[8:10] }}.{{ tx.date[5:7] }}
+                    </p>
+                    {% if tx.project_id %}<span class="project-tag">{{ tx.project_icon or '🎯' }} {{ tx.project_name or 'פרויקט' }}</span>{% endif %}
+                </div>
+                <div class="tx-side">
+                    <p class="tx-amount {{ tx.type }}">
+                        {% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ "{:,.0f}".format(tx.amount) }}
+                    </p>
+                    {% if family_settings.owner_attribution[tx.type] %}
+                    {% set color = member_colors.get(tx.user_id) %}
+                    <span class="owner-pill owner-{{ color if color is not none else 'shared' }}">
+                        {{ tx.user_name if tx.user_id else 'משותפת' }}
+                    </span>
+                    {% endif %}
+                    {% if tx.has_receipt %}
+                    <button type="button" class="receipt-badge" data-receipt-id="{{ tx.id }}" title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</button>
+                    {% endif %}
+                </div>
             </div>
-            <div class="tx-details">
-                <p class="tx-name">{{ tx.category_name }}</p>
-                <p class="tx-meta">
-                    {%- if tx.workplace or tx.description %}{{ tx.workplace or tx.description }} · {% endif -%}
-                    {{ tx.date[8:10] }}.{{ tx.date[5:7] }}
-                </p>
-                {% if tx.project_id %}<span class="project-tag">{{ tx.project_icon or '🎯' }} {{ tx.project_name or 'פרויקט' }}</span>{% endif %}
-            </div>
-            <div class="tx-side">
-                <p class="tx-amount {{ tx.type }}">
-                    {% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ "{:,.0f}".format(tx.amount) }}
-                </p>
-                {% if family_settings.owner_attribution[tx.type] %}
-                {% set color = member_colors.get(tx.user_id) %}
-                <span class="owner-pill owner-{{ color if color is not none else 'shared' }}">
-                    {{ tx.user_name if tx.user_id else 'משותפת' }}
-                </span>
-                {% endif %}
-                {% if tx.has_receipt %}
-                <button type="button" class="receipt-badge" data-receipt-id="{{ tx.id }}" title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</button>
-                {% endif %}
-            </div>
+            {# מיכל העורך נשאר ריק עד הפתיחה — בלעדיו כל טעינת עמוד הייתה נושאת
+               טופס שלם לכל עסקה ברשימה #}
+            <div class="tx-editor"><div class="tx-editor-inner"></div></div>
         </li>
         {% endfor %}
     </ul>

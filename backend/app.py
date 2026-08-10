@@ -477,6 +477,7 @@ def month_view():
             summary=db._empty_summary(), expense_breakdown=[], income_breakdown=[],
             savings_breakdown=[], member_breakdowns=[], anomalies=[], month_transactions=[],
             member_colors={}, month_label=_month_label(year, month), year=year, month=month,
+            strip_months=[{"year": year, "month": month}], hebrew_months=_HEBREW_MONTHS,
             is_current=is_current, summary_json=json.dumps(db._empty_summary()),
             expense_json=json.dumps([]), members_json=json.dumps([]),
         )
@@ -489,12 +490,21 @@ def month_view():
         "expense":  partial(db.get_category_breakdown, family_id, year, month, "expense", user["id"]),
         "income":   partial(db.get_category_breakdown, family_id, year, month, "income", user["id"]),
         "savings":  partial(db.get_category_breakdown, family_id, year, month, "savings", user["id"]),
+        # רצועת החודשים בראש העמוד — RPC אחד שמחזיר את כל החודשים עם נתונים
+        "archive":  partial(db.get_months_archive, family_id),
     })
     settings_         = p1["settings"]
     summary           = p1["summary"]
     expense_breakdown = p1["expense"]
     income_breakdown  = p1["income"]
     savings_breakdown = p1["savings"]
+
+    # רצועת החודשים: מהישן לחדש (ה-RPC מחזיר מהחדש לישן), ותמיד כוללת את
+    # החודש הנצפה — גם אם אין בו עסקאות ולכן הוא לא חוזר מה-RPC
+    strip_months = [{"year": m["year"], "month": m["month"]} for m in reversed(p1["archive"] or [])]
+    if not any(m["year"] == year and m["month"] == month for m in strip_months):
+        strip_months.append({"year": year, "month": month})
+        strip_months.sort(key=lambda m: (m["year"], m["month"]))
 
     # שלב 2 — שליפות שתלויות בהעדפות/בסיכום, גם הן במקביל
     active_types = [t for t in ("expense", "income", "savings") if settings_["owner_attribution"].get(t)]
@@ -554,6 +564,8 @@ def month_view():
         month_label=_month_label(year, month),
         year=year,
         month=month,
+        strip_months=strip_months,
+        hebrew_months=_HEBREW_MONTHS,
         is_current=is_current,
         summary_json=json.dumps(summary),
         # רק קטגוריות פעילות (total>0) — כדי שאינדקסי הצבעים בגרף העגול

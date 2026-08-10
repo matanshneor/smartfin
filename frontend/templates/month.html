@@ -25,6 +25,20 @@
     </div>
 </div>
 
+{# רצועת חודשים מגנטית: גוללים לצדדים, נעצרת מיושרת, לחיצה נכנסת לחודש #}
+{% if strip_months | length > 1 %}
+<nav class="month-strip" id="monthStrip" aria-label="מעבר בין חודשים">
+    {% for m in strip_months %}
+    <a class="month-chip {% if m.year == year and m.month == month %}is-current{% endif %}"
+       href="{{ url_for('month_view', year=m.year, month=m.month) }}"
+       {% if m.year == year and m.month == month %}aria-current="page"{% endif %}>
+        <span class="month-chip-name">{{ hebrew_months[m.month] }}</span>
+        <span class="month-chip-year">{{ m.year }}</span>
+    </a>
+    {% endfor %}
+</nav>
+{% endif %}
+
 <div class="kpi-chips">
     <div class="kpi-chip">
         <p class="kpi-label">הכנסות</p>
@@ -482,6 +496,24 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+// מרכוז החודש הנוכחי ברצועה בטעינה. ה"מגנט" עצמו כולו CSS — כאן רק
+// ממקמים את נקודת ההתחלה. בלוק נפרד ולפני Chart.js בכוונה: גם אם ה-CDN
+// לא נענה, הרצועה עדיין תיפתח במקום הנכון.
+(function () {
+    const strip = document.getElementById('monthStrip');
+    if (!strip) return;
+    const active = strip.querySelector('.month-chip.is-current');
+    if (!active) return;
+    // ללא אנימציה — קפיצה לגלילה חלקה בטעינת עמוד נראית כמו תקלה
+    const prev = strip.style.scrollBehavior;
+    strip.style.scrollBehavior = 'auto';
+    strip.scrollLeft += active.getBoundingClientRect().left + active.offsetWidth / 2
+                      - (strip.getBoundingClientRect().left + strip.offsetWidth / 2);
+    strip.style.scrollBehavior = prev;
+})();
+</script>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 
 <script>
