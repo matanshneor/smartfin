@@ -217,9 +217,17 @@
 
                 <div class="form-error" id="formError" role="alert"></div>
 
-                <button type="submit" class="submit-btn" id="submitBtn">
+                {# כפתור השליחה הוא <label> של מתג ה-switch הנסתר, כי WebKit
+                   נותן haptic רק על מגע אמיתי בפקד — לא על שינוי מקוד. הכפתור
+                   הנסתר שמעליו שומר על שליחה עם Enter מתוך שדות הטופס, שהייתה
+                   הולכת לאיבוד בלי פקד submit אמיתי. #}
+                <button type="submit" class="submit-fallback" tabindex="-1" aria-hidden="true"></button>
+
+                <label class="submit-btn" id="submitBtn" for="hapticSubmit" role="button" tabindex="0">
                     <span id="submitLabel">הוסף הוצאה</span>
-                </button>
+                </label>
+                <input type="checkbox" switch id="hapticSubmit" class="haptic-switch"
+                       tabindex="-1" aria-hidden="true">
 
                 <div class="edit-mode-actions" id="editModeActions" style="display:none;">
                     <button type="button" class="btn-ghost duplicate-tx-btn" id="duplicateTxBtn">הוסף שוב (שכפל)</button>
@@ -234,11 +242,6 @@
 
     <!-- Toast: הודעת משוב קטנה -->
     <div class="toast" id="appToast" role="status" aria-live="polite"></div>
-
-    <!-- מתג נסתר שמפעיל את ה-haptic של iOS (אין ל-Safari navigator.vibrate).
-         aria-hidden + tabindex="-1": קיים ל-WebKit, בלתי נראה למשתמש ולקורא מסך -->
-    <input type="checkbox" switch id="hapticSwitch" class="haptic-switch"
-           tabindex="-1" aria-hidden="true">
 
     <!-- דיאלוג אישור מעוצב (מחליף את confirm של הדפדפן) -->
     <div class="confirm-overlay" id="confirmOverlay" role="alertdialog" aria-modal="true">
@@ -299,11 +302,11 @@
                 }
             } catch (err) { /* אין שמע — לא סיבה להיכשל */ }
 
-            // רטט
+            // רטט — אנדרואיד בלבד. באייפון אין navigator.vibrate, ושינוי מתג
+            // מקוד לא מפעיל את ה-Taptic (נבדק): שם הנקישה מגיעה מהמגע עצמו
+            // בכפתור השמירה, שהוא <label> של מתג switch נסתר.
             try {
                 if (navigator.vibrate) navigator.vibrate([12, 40, 22]);
-                const sw = document.getElementById('hapticSwitch');
-                if (sw) sw.checked = !sw.checked;
             } catch (err) { /* אין רטט — ממשיכים */ }
         };
     })();
@@ -730,8 +733,16 @@
         // מחדש כי התוכן (שדות, כפתור מחיקה) משתנה בין הוספה לעריכה
         function getModalFocusables() {
             return Array.prototype.slice.call(
-                overlay.querySelectorAll('button, input, select, textarea, a[href]')
-            ).filter(function (el) { return el.offsetParent !== null && !el.disabled; });
+                // [tabindex] נכלל כי כפתור השמירה הוא <label role="button">;
+                // tabindex="-1"/aria-hidden מסוננים כדי שמלכודת הפוקוס לא תנחת
+                // על הפקדים הנסתרים (מתג ה-haptic, כפתור ה-submit לגיבוי)
+                overlay.querySelectorAll('button, input, select, textarea, a[href], [tabindex]')
+            ).filter(function (el) {
+                return el.offsetParent !== null
+                    && !el.disabled
+                    && el.getAttribute('tabindex') !== '-1'
+                    && el.getAttribute('aria-hidden') !== 'true';
+            });
         }
 
         function resetScanUI() {
@@ -1066,8 +1077,40 @@
             txAmount.removeAttribute('aria-invalid');
         });
 
+        // כפתור השמירה הוא <label>, לא <button> — ראה ההערה ליד הסימון.
+        // המחיר: אין disabled אמיתי, אז חוסמים לחיצה כפולה בדגל, ואת
+        // הכיבוי החזותי עושים במחלקה.
+        let isSubmitting = false;
+
+        function setSubmitBusy(busy) {
+            isSubmitting = busy;
+            submitBtn.classList.toggle('is-busy', busy);
+            submitBtn.setAttribute('aria-disabled', busy ? 'true' : 'false');
+        }
+
+        function requestSubmit() {
+            if (typeof txForm.requestSubmit === 'function') txForm.requestSubmit();
+            else txForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        }
+
+        // מגע בכפתור מחליף את המתג (וזה מה שמפיק את הנקישה ב-iOS) — ומכאן
+        // ממשיכים לשליחה הרגילה. השליחה תלויה בשינוי המתג ולא בלחיצה עצמה,
+        // כי על תווית אין אירוע "לחיצה" שאפשר לסמוך עליו בכל הדפדפנים.
+        const hapticSubmit = document.getElementById('hapticSubmit');
+        if (hapticSubmit) {
+            hapticSubmit.addEventListener('change', function () { requestSubmit(); });
+        }
+
+        // מקלדת: תווית עם role="button" לא נשלחת מעצמה ב-Enter/רווח
+        submitBtn.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            requestSubmit();
+        });
+
         txForm.addEventListener('submit', function (e) {
             e.preventDefault();
+            if (isSubmitting) return;
             formError.textContent = '';
             txAmount.removeAttribute('aria-invalid');
 
@@ -1095,7 +1138,7 @@
                 project_id:          txProject.value || null,
             };
 
-            submitBtn.disabled = true;
+            setSubmitBusy(true);
             submitLabel.textContent = 'שומר…';
 
             // UI אופטימי: רק בהוספה חדשה (לא עריכה) ורק בדף הבית — שם יש רשימת
@@ -1110,7 +1153,7 @@
                     list.insertBefore(placeholderRow, list.firstChild);
                 }
                 closeModal();
-                submitBtn.disabled = false;
+                setSubmitBusy(false);
                 updateSubmitLabel();
             }
 
@@ -1131,7 +1174,7 @@
                         return;
                     }
                     formError.textContent = data.error;
-                    submitBtn.disabled = false;
+                    setSubmitBusy(false);
                     updateSubmitLabel();
                     return;
                 }
@@ -1185,7 +1228,7 @@
                     return;
                 }
                 formError.textContent = 'שגיאת רשת — נסה שוב';
-                submitBtn.disabled = false;
+                setSubmitBusy(false);
                 updateSubmitLabel();
             });
         });
