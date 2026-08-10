@@ -1661,9 +1661,6 @@
                 if (e.target.closest('.receipt-badge, .delete-recurring-btn, .swipe-action')) return;
                 const row = e.target.closest(ROW_SELECTOR);
                 if (!row || !row.dataset.id) return;
-                // גרירה בזמן שעורך פתוח — סוגרת אותו קודם, כדי לא לגרור כרטיס
-                // פתוח על פני פאנלי הפעולה
-                if (openInlineRow && !e.target.closest('.tx-editor')) closeInlineEditor();
                 ensureSwipeStructure(row);
 
                 if (drag && drag.row !== row) closeRow(drag.row);
@@ -1699,6 +1696,12 @@
                     if (Math.abs(dx) < 8) return;
                     if (Math.abs(dy) > Math.abs(dx)) { drag = null; return; } // גלילה אנכית — לא swipe
                     drag.dragging = true;
+                    // רק עכשיו ידוע שזו גרירה ולא נגיעה: סוגרים עורך פתוח כדי
+                    // לא לגרור כרטיס פתוח מעל פאנלי הפעולה. אסור לעשות זאת
+                    // ב-touchstart — שם עוד לא יודעים אם זו גרירה, וסגירה
+                    // מוקדמת גורמת לנגיעה רגילה להיראות כאילו היא לא סוגרת
+                    // (הכרטיסייה נסגרה ב-touchstart ונפתחה שוב ב-click).
+                    if (openInlineRow) closeInlineEditor();
                 }
                 drag.deltaX = Math.max(-100, Math.min(100, dx));
                 drag.content.style.transform = 'translateX(' + drag.deltaX + 'px)';
