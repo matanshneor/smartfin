@@ -1562,6 +1562,26 @@
             return body;
         }
 
+        // כל לחיצה מחוץ לטופס הפתוח סוגרת אותו — לא משנה על מה נלחץ.
+        // רץ ב-capture כדי לתפוס גם לחיצות שמטפלים אחרים עוצרים בדרך
+        // (תג קבלה, פאנל swipe, כפתורים בתוך שורות אחרות).
+        document.addEventListener('click', function (e) {
+            if (!openInlineRow) return;
+            // עבודה בתוך שדות העריכה עצמם, או בדיאלוג שנפתח מתוכם — לא סגירה
+            if (e.target.closest('.tx-editor, .modal-overlay, .confirm-overlay, .toast')) return;
+
+            const clickedRow = e.target.closest('.transaction-item');
+            const wasOpen    = openInlineRow;
+            closeInlineEditor();
+
+            // לחיצה חוזרת על אותה עסקה = סגירה בלבד. עוצרים את האירוע כאן
+            // כדי שהמטפל שלמטה לא יפתח אותה מחדש באותה לחיצה. תג הקבלה יוצא
+            // מן הכלל: הוא סוגר את הכרטיסייה וגם פותח את הקבלה.
+            if (clickedRow === wasOpen && !e.target.closest('.receipt-badge')) {
+                e.stopPropagation();
+            }
+        }, true);
+
         // ── פתיחת עריכה בלחיצה על עסקה קיימת (עמוד הבית + עמוד החודש + עסקאות קבועות בהגדרות) ──
         document.addEventListener('click', function (e) {
             if (justSwiped) { justSwiped = false; return; }
@@ -1569,11 +1589,7 @@
             // לחיצה בתוך העורך הפתוח היא עבודה בטופס, לא בקשה לסגור אותו
             if (e.target.closest('.tx-editor')) return;
             const row = e.target.closest('.transaction-item, .cat-tx-row, .recurring-row');
-            if (!row || !row.dataset.id) {
-                // לחיצה מחוץ לכל שורה סוגרת עורך פתוח
-                if (openInlineRow) closeInlineEditor();
-                return;
-            }
+            if (!row || !row.dataset.id) return;
             if (isHomeRow(row)) { openInlineEditor(row); return; }
             openEditModal(buildTxFromRow(row), row);
         });
