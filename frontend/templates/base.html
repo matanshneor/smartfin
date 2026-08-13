@@ -1145,8 +1145,10 @@
             // "עסקאות אחרונות" מוכרת שאפשר להוסיף לה שורה זמנית מיד, לפני
             // שהשרת בכלל ענה. שאר הדף (כרטיסי סיכום, גרפים) ממשיך להתעדכן
             // רק ברענון המלא שקורה בהצלחה ממילא.
+            // עסקה שמשויכת לפרויקט לא מוצגת בדף הבית כלל, אז אין לה שורה
+            // זמנית — אחרת הייתה מהבהבת לרגע ונעלמת ברענון
             let placeholderRow = null;
-            if (!editId && window.location.pathname === '/') {
+            if (!editId && !txProject.value && window.location.pathname === '/') {
                 const list = document.querySelector('.transactions-list');
                 if (list) {
                     placeholderRow = buildPlaceholderTxRow(amount);

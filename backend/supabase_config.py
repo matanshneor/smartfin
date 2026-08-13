@@ -625,7 +625,11 @@ def _filter_hidden_personal_projects(rows: list, viewer_user_id: str) -> list:
 
 def get_recent_transactions(family_id: str, limit: int = 5, settings: dict = None,
                             viewer_user_id: str = None) -> list:
-    """Returns the most recent transactions with category and user info."""
+    """Returns the most recent transactions with category and user info.
+
+    עסקאות המשויכות לפרויקט מוחרגות — הן שייכות לפרויקט בלבד, ומופיעות בעמוד
+    הפרויקט ובקטע "פרויקטים החודש". עקבי עם שאר נתוני החודש, שכולם מסננים
+    אותן (סיכום, פילוח קטגוריות, חלוקה בין בני משפחה, השוואת חודשים)."""
     client = get_client()
     if not client:
         return []
@@ -637,6 +641,7 @@ def get_recent_transactions(family_id: str, limit: int = 5, settings: dict = Non
         result = client.table("transactions") \
             .select("*, categories(name, icon), project_categories(name, icon), profiles(name, workplace), projects(owner_id, name, icon)") \
             .eq("family_id", family_id) \
+            .is_("project_id", "null") \
             .order("created_at", desc=True) \
             .limit(fetch_limit) \
             .execute()

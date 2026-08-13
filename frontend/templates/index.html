@@ -117,7 +117,6 @@
                         {%- if tx.workplace or tx.description %}{{ tx.workplace or tx.description }} · {% endif -%}
                         {{ tx.date[8:10] }}.{{ tx.date[5:7] }}
                     </p>
-                    {% if tx.project_id %}<span class="project-tag">{{ tx.project_icon or '🎯' }} {{ tx.project_name or 'פרויקט' }}</span>{% endif %}
                 </div>
                 <div class="tx-side">
                     <p class="tx-amount {{ tx.type }}">

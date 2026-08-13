@@ -533,6 +533,13 @@ def month_view():
         "transactions": project_txs,
     }
 
+    # ומכאן — רק העסקאות הרגילות. כל שאר נתוני החודש (סיכום, פילוח קטגוריות,
+    # חלוקה בין בני משפחה, חריגות) כבר מסננים עסקאות פרויקט בשאילתה עצמה;
+    # הרשימה הזו הייתה היחידה שלא, והתבנית מתאימה עסקאות לקטגוריות לפי *שם*.
+    # קטגוריית פרויקט ששמה זהה לקטגוריה משפחתית (למשל "אחר", שנזרעת בשתיהן)
+    # גרמה לעסקת הפרויקט להופיע בתוך הקטגוריה החודשית — בלי להיספר בסכום שלה.
+    month_transactions = [t for t in month_transactions if not t.get("project_id")]
+
     # מיחזור המקבץ ל-context-processors ו-_member_colors (בלי שליפה חוזרת)
     _prime_request_cache(family_id, settings=settings_, members=p1["members"])
 
