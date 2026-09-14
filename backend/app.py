@@ -573,8 +573,8 @@ def month_view():
             savings_breakdown=[], member_breakdowns=[], anomalies=[], month_transactions=[],
             member_colors={}, month_label=_month_label(year, month), year=year, month=month,
             strip_months=[{"year": year, "month": month}], hebrew_months=_HEBREW_MONTHS,
-            is_current=is_current, summary_json=json.dumps(db._empty_summary()),
-            expense_json=json.dumps([]), members_json=json.dumps([]),
+            is_current=is_current, summary_data=db._empty_summary(),
+            expense_data=[], members_data=[],
             # התבנית ניגשת ל-project_month ללא תנאי. המסלול הזה נשכח כשנוספו
             # הפרויקטים, ומשתמש בלי משפחה קיבל 500 במקום העמוד הריק המיועד.
             project_month={"expense": 0, "income": 0, "savings": 0, "transactions": []},
@@ -672,11 +672,11 @@ def month_view():
         strip_months=strip_months,
         hebrew_months=_HEBREW_MONTHS,
         is_current=is_current,
-        summary_json=json.dumps(summary),
+        summary_data=summary,
         # רק קטגוריות פעילות (total>0) — כדי שאינדקסי הצבעים בגרף העגול
         # יתאמו למקרא (שגם הוא מסונן ל-active), ובלי פרוסות ברוחב 0.
-        expense_json=json.dumps([c for c in expense_breakdown if c.get("total", 0) > 0]),
-        members_json=json.dumps(member_breakdowns),
+        expense_data=[c for c in expense_breakdown if c.get("total", 0) > 0],
+        members_data=member_breakdowns,
     )
 
 
@@ -690,7 +690,7 @@ def months():
     trend     = db.get_monthly_trend(family_id, num_months=12) if family_id else []
     now       = datetime.now()
     return render_template("months.html", active_page="months", user=user,
-                           archive=archive, trend_json=json.dumps(trend),
+                           archive=archive, trend_data=trend,
                            today_year=now.year, today_month=now.month,
                            _HEBREW_MONTHS=_HEBREW_MONTHS)
 
@@ -1569,10 +1569,41 @@ def health():
 
 # ─── Security headers ─────────────────────────────────────────────────────────
 
+# Content-Security-Policy: ההגנה החזקה ביותר מפני XSS — הדפדפן מסרב להריץ
+# קוד שלא הגיע מהמקורות המותרים. אפשר היה להגדיר אותה רק אחרי שכל ה-JS
+# הוצא מה-HTML לקבצים: מדיניות שמתירה 'unsafe-inline' מוותרת על רוב הערך,
+# כי בדיוק כך נראית הזרקת קוד.
+#
+# script-src הוא 'self' בלבד — Chart.js הורד מקומית במקום להיטען מ-CDN.
+# ל-style-src נדרש 'unsafe-inline' כי התבניות משתמשות ב-style="..." לערכים
+# מחושבים (רוחב פסי התקדמות, צבע לכל בן משפחה); זו הרפיה מקובלת ומצומצמת,
+# והיא לא מאפשרת הרצת קוד.
+_CSP = "; ".join([
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob:",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+])
+
+# מצב הדיווח נשלט בסביבה כדי שאפשר יהיה להריץ קודם ב-Report-Only, לראות מה
+# נשבר בפרודקשן האמיתי, ורק אז לאכוף. ברירת המחדל היא אכיפה.
+_CSP_REPORT_ONLY = os.environ.get("CSP_REPORT_ONLY") == "1"
+
+
 @app.after_request
 def add_security_headers(response):
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    header = ("Content-Security-Policy-Report-Only" if _CSP_REPORT_ONLY
+              else "Content-Security-Policy")
+    response.headers.setdefault(header, _CSP)
     if not _IS_DEV:
         response.headers.setdefault(
             "Strict-Transport-Security", "max-age=31536000; includeSubDomains")
