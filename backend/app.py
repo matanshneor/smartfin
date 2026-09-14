@@ -79,7 +79,13 @@ app.config.update(
 
 # מאחורי ה-proxy של Railway (TLS termination) — כדי ש-request.host_url יחזיר
 # https בקישורי איפוס-סיסמה. לא מזיק בפיתוח מקומי.
-app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+#
+# x_for=1 חיוני ל-rate limiting ולא רק לנוחות: בלעדיו remote_addr הוא צומת
+# הקצה של Railway ולא המשתמש. נמדד בפועל — 12 בקשות ממחשב אחד התפצלו על
+# ארבע כתובות proxy שונות, כך שהמגבלה לא נאכפה. גרוע מכך, כל המשתמשים
+# חולקים את אותן כתובות, ולכן משתמש אחד רועש היה יכול לנעול את ההתחברות
+# לכולם. Railway מסיים TLS בשכבה אחת, ולכן הערך הוא 1 ולא יותר.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 # הגבלת קצב על מסלולי האימות — מונע ניחוש סיסמאות וסריקת מספרי טלפון.
 #
