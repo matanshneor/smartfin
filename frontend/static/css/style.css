@@ -3568,7 +3568,8 @@ li.transaction-item.swipe-ready > .swipe-content {
    המהות של SmartFin היא תקציב משפחתי משותף — לא צילום קבלה. לכן הגיבור של
    העמוד הוא מסך החודש עצמו, עם כרטיס "מי הוציא" צף עליו: מסך אחד שכמה
    אנשים מזינים אליו. צילום הקבלה ירד לסקשן ההזנה, כאחת משלוש דרכים.
-   כותרות ב-Frank Ruhl Libre — סריף עברי עיתונאי, ותק ואמינות.
+   הטיפוגרפיה זהה לאפליקציה (Rubik דרך --font-display): דף הנחיתה הוא
+   הרושם הראשון, ואם הוא נראה כמו מוצר אחר — זה בדיוק מה שהוא משדר.
    ────────────────────────────────────────────────────────────────────────── */
 
 .lp {
@@ -3582,7 +3583,7 @@ li.transaction-item.swipe-ready > .swipe-content {
     overflow-x: hidden;
 }
 
-.lp h1, .lp h2, .lp h3 { font-family: 'Frank Ruhl Libre', Georgia, serif; }
+.lp h1, .lp h2, .lp h3 { font-family: var(--font-display); }
 
 /* ── Hero ─────────────────────────────────────────────────────────────────── */
 
@@ -3632,7 +3633,7 @@ li.transaction-item.swipe-ready > .swipe-content {
 
 .lp-h1 {
     font-size: clamp(2.2rem, 8.5vw, 3.6rem);
-    font-weight: 800; line-height: 1.14; margin: 0 0 20px; letter-spacing: -0.01em;
+    font-weight: 800; line-height: 1.14; margin: 0 0 20px;
 }
 .lp-h1 em { font-style: normal; color: var(--color-gold-bright); }
 
@@ -3859,7 +3860,7 @@ li.transaction-item.swipe-ready > .swipe-content {
 .lp-step-n {
     flex-shrink: 0; width: 30px; height: 30px; display: grid; place-items: center;
     border-radius: 50%; background: var(--color-gold-dim); color: var(--color-gold);
-    font-family: 'Frank Ruhl Libre', Georgia, serif; font-weight: 700; font-size: 0.95rem;
+    font-family: var(--font-display); font-weight: 700; font-size: 0.95rem;
 }
 
 .lp-trust { margin-top: 78px; background: var(--color-bg-elevated); border-block: var(--border-subtle); }
