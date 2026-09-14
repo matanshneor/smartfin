@@ -152,6 +152,11 @@
                 </div>
 
                 <button type="submit" class="submit-btn">הירשם</button>
+                <p class="field-hint auth-legal-note">
+                    בהרשמה אתם מאשרים את
+                    <a href="{{ url_for('terms') }}">תנאי השימוש</a>
+                    ואת <a href="{{ url_for('privacy') }}">מדיניות הפרטיות</a>.
+                </p>
             </form>
         </div>
     </div>

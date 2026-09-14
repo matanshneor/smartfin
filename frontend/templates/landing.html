@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#141007">
+    <meta name="description" content="SmartFin – ניהול תקציב משפחתי משותף: מצלמים קבלה והיא נרשמת לבד, רואים לאן הכסף הולך, ומנהלים פרויקטים בנפרד מהחודש השוטף.">
+    <title>SmartFin – ניהול תקציב משפחתי</title>
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="icon" href="{{ url_for('static', filename='icons/icon-192.svg') }}" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-180.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="landing-body">
+
+    <header class="landing-hero">
+        <nav class="landing-nav">
+            <span class="landing-brand">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                    <path d="M5 21L12.5 13.5L17.5 18.5L27 9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M20 9H27V16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                SmartFin
+            </span>
+            <a class="landing-nav-link" href="{{ url_for('login') }}">התחברות</a>
+        </nav>
+
+        <div class="landing-hero-inner">
+            <h1 class="landing-title">התקציב המשפחתי,<br>בלי הרישום הידני</h1>
+            <p class="landing-sub">
+                מצלמים את הקבלה — הסכום, בית העסק והקטגוריה נרשמים לבד.
+                כל בני המשפחה רואים את אותה תמונה, בזמן אמת.
+            </p>
+            <div class="landing-cta-row">
+                <a class="landing-cta" href="{{ url_for('signup') }}">פתיחת חשבון — בחינם</a>
+                <a class="landing-cta-ghost" href="{{ url_for('login') }}">כבר יש לי חשבון</a>
+            </div>
+            <p class="landing-note">עברית מלאה · מותקן כאפליקציה בטלפון · בלי פרסומות</p>
+        </div>
+    </header>
+
+    <main class="landing-main">
+
+        <section class="landing-section">
+            <h2 class="landing-h2">מה זה עושה</h2>
+            <div class="landing-grid">
+
+                <article class="landing-card">
+                    <span class="landing-card-icon">📸</span>
+                    <h3 class="landing-card-title">צילום קבלה</h3>
+                    <p class="landing-card-text">
+                        מצלמים, והסכום, שם בית העסק, התאריך והקטגוריה נקראים אוטומטית.
+                        אפשר תמיד לתקן או להזין ידנית.
+                    </p>
+                </article>
+
+                <article class="landing-card">
+                    <span class="landing-card-icon">👨‍👩‍👧</span>
+                    <h3 class="landing-card-title">משפחה אחת, תמונה אחת</h3>
+                    <p class="landing-card-text">
+                        מזמינים בני משפחה בקוד קצר. כל אחד מזין מהטלפון שלו,
+                        וכולם רואים את אותם נתונים מיד.
+                    </p>
+                </article>
+
+                <article class="landing-card">
+                    <span class="landing-card-icon">🔁</span>
+                    <h3 class="landing-card-title">הוצאות קבועות</h3>
+                    <p class="landing-card-text">
+                        שכר דירה, מנויים, ביטוחים — נרשמים מעצמם כל חודש,
+                        בתדירות שבחרתם.
+                    </p>
+                </article>
+
+                <article class="landing-card">
+                    <span class="landing-card-icon">🧳</span>
+                    <h3 class="landing-card-title">פרויקטים בנפרד</h3>
+                    <p class="landing-card-text">
+                        טיול, שיפוץ או אירוע מנוהלים בנפרד — כדי שהוצאה חד-פעמית
+                        גדולה לא תעוות לכם את החודש הרגיל.
+                    </p>
+                </article>
+
+                <article class="landing-card">
+                    <span class="landing-card-icon">📊</span>
+                    <h3 class="landing-card-title">לאן הכסף הולך</h3>
+                    <p class="landing-card-text">
+                        פילוח לפי קטגוריה ולפי בן משפחה, השוואה בין חודשים,
+                        והתראה כשקטגוריה חורגת מהממוצע.
+                    </p>
+                </article>
+
+                <article class="landing-card">
+                    <span class="landing-card-icon">🔒</span>
+                    <h3 class="landing-card-title">הנתונים שלכם</h3>
+                    <p class="landing-card-text">
+                        בלי פרסומות ובלי מכירת מידע. אפשר למחוק את החשבון
+                        ואת כל הנתונים בכל רגע.
+                    </p>
+                </article>
+
+            </div>
+        </section>
+
+        <section class="landing-section landing-steps-section">
+            <h2 class="landing-h2">איך מתחילים</h2>
+            <ol class="landing-steps">
+                <li class="landing-step">
+                    <span class="landing-step-num">1</span>
+                    <span class="landing-step-text"><strong>נרשמים</strong> ובוחרים את הקטגוריות שמתאימות לכם</span>
+                </li>
+                <li class="landing-step">
+                    <span class="landing-step-num">2</span>
+                    <span class="landing-step-text"><strong>מזמינים</strong> את בני המשפחה עם קוד בן 6 תווים</span>
+                </li>
+                <li class="landing-step">
+                    <span class="landing-step-num">3</span>
+                    <span class="landing-step-text"><strong>מזינים</strong> — בצילום קבלה או בשתי הקלדות</span>
+                </li>
+            </ol>
+        </section>
+
+        <section class="landing-final">
+            <h2 class="landing-final-title">מוכנים להתחיל?</h2>
+            <p class="landing-final-sub">פתיחת חשבון לוקחת פחות מדקה.</p>
+            <a class="landing-cta" href="{{ url_for('signup') }}">פתיחת חשבון — בחינם</a>
+        </section>
+
+    </main>
+
+    <footer class="landing-footer">
+        <div class="landing-footer-links">
+            <a href="{{ url_for('privacy') }}">מדיניות פרטיות</a>
+            <span aria-hidden="true">·</span>
+            <a href="{{ url_for('terms') }}">תנאי שימוש</a>
+        </div>
+        <p class="landing-footer-note">SmartFin — ניהול תקציב משפחתי</p>
+    </footer>
+
+</body>
+</html>

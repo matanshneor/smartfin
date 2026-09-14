@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, g
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, g, make_response
 from dotenv import load_dotenv
 from functools import wraps, partial
 from datetime import datetime, timedelta
@@ -482,9 +482,19 @@ def onboarding_complete():
 # ─── Main pages (5 עמודים: בית · החודש · השוואה · פרויקטים · הגדרות) ────────
 
 @app.route("/")
-@login_required
 def dashboard():
-    """דף הבית: מבט מהיר על החודש הנוכחי + הוספת עסקה."""
+    """השורש מגיש שני דברים שונים: דף נחיתה ציבורי למי שלא מחובר, והדשבורד
+    למי שכן.
+
+    עד היום הוא היה מוגן ב-login_required והפנה ישר ל-/login, כך שכל מי
+    שקיבל קישור נחת על טופס התחברות בלי לדעת מה זה ולמה שימסור נתונים
+    פיננסיים. שם הפונקציה נשאר dashboard כדי שכל url_for הקיים ימשיך לעבוד."""
+    if "user_id" not in session:
+        response = make_response(render_template("landing.html"))
+        # התוכן כאן תלוי במצב ההתחברות, ולכן אסור שיישמר במטמון כלשהו
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
     user      = get_current_user()
     now       = datetime.now()
     family_id = user["family_id"]
@@ -1529,6 +1539,18 @@ def join_family():
     # בלי עדכון ה-session המשתמש ימשיך לראות את המשפחה הישנה עד ליציאה וכניסה
     session["family_id"] = family_id
     return jsonify({"status": "ok", "family_id": family_id})
+
+
+@app.route("/privacy")
+def privacy():
+    """מדיניות פרטיות — ציבורית בכוונה: מי ששוקל להירשם צריך לקרוא אותה
+    לפני שהוא מוסר נתונים, לא אחרי."""
+    return render_template("privacy.html")
+
+
+@app.route("/terms")
+def terms():
+    return render_template("terms.html")
 
 
 @app.route("/sw.js")
