@@ -79,3 +79,21 @@ def test_signup_points_at_the_legal_pages(anon):
 
     assert "/terms" in body
     assert "/privacy" in body
+
+
+@pytest.mark.parametrize("path", ["/login", "/signup", "/reset-password"])
+def test_auth_screens_offer_a_way_back(anon, path):
+    """לחיצה על "פתיחת חשבון" מדף הנחיתה הייתה מסלול חד-כיווני — היחידה
+    דרך חזרה הייתה כפתור האחורה של הדפדפן, שבאפליקציה מותקנת למסך הבית
+    בכלל לא תמיד קיים."""
+    body = anon.get(path).get_data(as_text=True)
+
+    assert 'class="auth-back"' in body, f"{path} משאיר את המשתמש תקוע"
+
+
+def test_the_way_back_leads_to_the_landing_page(anon):
+    """הקישור מצביע על השורש, שמגיש למי שלא מחובר את דף הנחיתה."""
+    body = anon.get("/signup").get_data(as_text=True)
+    back = body[body.index('class="auth-back"'):]
+
+    assert 'href="/"' in back[:120]
