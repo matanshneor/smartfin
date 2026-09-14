@@ -12,6 +12,42 @@ from . import supabase_config as db
 
 load_dotenv()
 
+# ─── ניטור שגיאות ────────────────────────────────────────────────────────────
+# בלי זה שגיאה שמשתמש נתקל בה מגיעה ל-error.html ושם נעלמת: ה-print ללוגים של
+# Railway נמחק ואף אחד לא קורא אותו. עם משתמש אחד זה נסבל כי הוא מגלה לבד;
+# עם מאה זה אומר שמשתמש מתוסכל עוזב ואין לנו מושג למה.
+# פעיל רק כש-SENTRY_DSN מוגדר, כך שפיתוח מקומי ופריסות קיימות לא מושפעים.
+def _scrub_event(event, hint):
+    """מנקה את האירוע לפני שהוא עוזב את השרת.
+
+    האפליקציה מטפלת בנתונים פיננסיים, ומסלול סריקת הקבלה נושא תמונה של
+    קבלה אמיתית — שום אחד מאלה לא אמור להגיע לשירות חיצוני. send_default_pii
+    כבר מכסה את רוב זה; הניקוי המפורש כאן הוא רשת ביטחון שנייה ומתעד את
+    הכוונה, כדי ששדרוג עתידי של ברירות המחדל לא ידליף בשקט."""
+    request_data = event.get("request") or {}
+    request_data.pop("data", None)
+    request_data.pop("cookies", None)
+    headers = request_data.get("headers") or {}
+    for sensitive in ("Cookie", "Authorization"):
+        headers.pop(sensitive, None)
+    return event
+
+
+_sentry_dsn = os.environ.get("SENTRY_DSN")
+if _sentry_dsn:
+    import sentry_sdk
+    from sentry_sdk.integrations.flask import FlaskIntegration
+
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        integrations=[FlaskIntegration()],
+        send_default_pii=False,   # בלי כתובות IP, עוגיות או גוף בקשה
+        traces_sample_rate=0.0,   # שגיאות בלבד — מדידות ביצועים עולות כסף ולא נחוצות כאן
+        environment=os.environ.get("RAILWAY_ENVIRONMENT_NAME", "local"),
+        before_send=_scrub_event,
+    )
+
+
 _BASE = os.path.dirname(__file__)
 app = Flask(
     __name__,
