@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#141007">
+    <title>SmartFin – תנאי שימוש</title>
+    <link rel="icon" href="{{ url_for('static', filename='icons/icon-192.svg') }}" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="legal-body">
+<main class="legal-page">
+
+    <a class="legal-back" href="{{ url_for('dashboard') }}">← חזרה</a>
+
+    <h1 class="legal-title">תנאי שימוש</h1>
+    <p class="legal-updated">עודכן לאחרונה: 14 בספטמבר 2026</p>
+
+    <h2 class="legal-h2">מה השירות</h2>
+    <p class="legal-p">
+        SmartFin היא כלי לרישום ומעקב אחר תקציב משפחתי. היא אינה ייעוץ פיננסי,
+        אינה מבצעת פעולות כספיות, ואינה מתחברת לחשבונות בנק. כל הנתונים מוזנים
+        על ידכם.
+    </p>
+
+    <h2 class="legal-h2">החשבון שלכם</h2>
+    <ul class="legal-list">
+        <li>השימוש מותר מגיל 18, או באישור הורה.</li>
+        <li>אתם אחראים לשמירת הסיסמה ולפעולות שנעשות בחשבון.</li>
+        <li>קוד ההזמנה מצרף כל מי שמחזיק בו למשפחה שלכם ומאפשר לו לראות את נתוניה — יש למסור אותו רק למי שאתם רוצים שיראה אותם.</li>
+    </ul>
+
+    <h2 class="legal-h2">שימוש הוגן</h2>
+    <p class="legal-p">
+        אין להשתמש בשירות לפעילות בלתי חוקית, אין לנסות לגשת לנתונים של משפחות
+        אחרות, ואין להעמיס על המערכת באופן שפוגע במשתמשים אחרים.
+    </p>
+
+    <h2 class="legal-h2">זמינות</h2>
+    <p class="legal-p">
+        השירות ניתן כמות שהוא, ללא התחייבות לזמינות רציפה. הוא מתופעל על ידי
+        אדם אחד ולא על ידי חברה, ועשויות להיות הפסקות לצורכי תחזוקה או בעקבות
+        תקלות אצל ספקי התשתית.
+    </p>
+
+    <h2 class="legal-h2">הנתונים שלכם</h2>
+    <p class="legal-p">
+        הנתונים שהזנתם שייכים לכם. אנחנו לא מוכרים אותם ולא משתמשים בהם
+        לפרסום. אפשר למחוק את החשבון ואת הנתונים בכל עת דרך ההגדרות. מומלץ
+        לשמור עותק עצמאי של מידע שחשוב לכם — ראו גם את
+        <a href="{{ url_for('privacy') }}">מדיניות הפרטיות</a>.
+    </p>
+
+    <h2 class="legal-h2">אחריות</h2>
+    <p class="legal-p">
+        השירות מסופק ללא אחריות מכל סוג. איננו אחראים להחלטות כלכליות שהתקבלו
+        על סמך המידע המוצג, לאובדן נתונים, או לנזק עקיף כלשהו. חישובים
+        ופילוחים מבוססים על מה שהוזן, וטעות בהזנה תוביל לתוצאה שגויה.
+    </p>
+    <p class="legal-p">
+        חילוץ נתונים מצילום קבלה מבוסס על זיהוי אוטומטי ואינו מדויק תמיד —
+        באחריותכם לבדוק את הערכים לפני השמירה.
+    </p>
+
+    <h2 class="legal-h2">שינויים</h2>
+    <p class="legal-p">
+        התנאים עשויים להתעדכן. המשך שימוש לאחר עדכון מהווה הסכמה לגרסה
+        המעודכנת. תאריך העדכון מופיע בראש העמוד.
+    </p>
+
+    <h2 class="legal-h2">סיום</h2>
+    <p class="legal-p">
+        אתם רשאים להפסיק את השימוש ולמחוק את החשבון בכל עת. אנו רשאים להשעות
+        חשבון שמפר את התנאים האלה.
+    </p>
+
+    <p class="legal-footer-links">
+        <a href="{{ url_for('privacy') }}">מדיניות פרטיות</a> ·
+        <a href="{{ url_for('dashboard') }}">לדף הבית</a>
+    </p>
+
+</main>
+</body>
+</html>

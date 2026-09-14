@@ -1,4 +1,4 @@
-const CACHE = 'smartfin-v6';
+const CACHE = 'smartfin-v7';
 
 const PRECACHE = [
     '/static/css/style.css',
@@ -50,6 +50,12 @@ self.addEventListener('fetch', function (e) {
                 })
             )
         );
+        return;
+    }
+
+    // השורש מגיש דף נחיתה למי שלא מחובר ודשבורד למי שכן, ולכן אסור לשמור
+    // אותו במטמון: משתמש מחובר שיצא לרגע מהרשת היה מקבל את דף השיווק.
+    if (url.pathname === '/') {
         return;
     }
 

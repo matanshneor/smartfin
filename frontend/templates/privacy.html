@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#141007">
+    <meta name="robots" content="index">
+    <title>SmartFin – מדיניות פרטיות</title>
+    <link rel="icon" href="{{ url_for('static', filename='icons/icon-192.svg') }}" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="legal-body">
+<main class="legal-page">
+
+    <a class="legal-back" href="{{ url_for('dashboard') }}">← חזרה</a>
+
+    <h1 class="legal-title">מדיניות פרטיות</h1>
+    <p class="legal-updated">עודכן לאחרונה: 14 בספטמבר 2026</p>
+
+    <p class="legal-lead">
+        SmartFin היא אפליקציה לניהול תקציב משפחתי. המסמך הזה מתאר איזה מידע
+        נאסף, למה, מי רואה אותו, וכיצד למחוק אותו. הוא כתוב כדי שיהיה מובן,
+        לא כדי שיהיה ארוך.
+    </p>
+
+    <h2 class="legal-h2">איזה מידע נאסף</h2>
+    <ul class="legal-list">
+        <li><strong>פרטי חשבון</strong> — שם, כתובת אימייל ומספר טלפון, שנמסרים בהרשמה. מקום עבודה, אם בחרתם למלא אותו.</li>
+        <li><strong>נתונים פיננסיים שאתם מזינים</strong> — סכומים, קטגוריות, תיאורים, תאריכים, שיוך לבן משפחה, תנועות קבועות ופרויקטים.</li>
+        <li><strong>תמונות קבלות</strong> — רק אם השתמשתם בצילום קבלה.</li>
+        <li><strong>רישום כניסות</strong> — תיעוד פנימי של מועדי התחברות, לצורכי אבטחה ואיתור שימוש לרעה.</li>
+    </ul>
+    <p class="legal-p">
+        אין באפליקציה פרסומות, אין רכיבי מעקב של צד שלישי, ואין חיבור לחשבון
+        הבנק שלכם. כל נתון מגיע ממה שהזנתם בעצמכם.
+    </p>
+
+    <h2 class="legal-h2">מי רואה את המידע</h2>
+    <p class="legal-p">
+        בני המשפחה שמשויכים לאותה משפחה באפליקציה רואים את תנועות המשפחה
+        המשותפות. פרויקט שסומן כפרטי גלוי רק לבעליו. משפחות אחרות אינן יכולות
+        לראות את הנתונים שלכם — ההפרדה נאכפת ברמת בסיס הנתונים ומכוסה בבדיקות
+        אוטומטיות.
+    </p>
+
+    <h2 class="legal-h2">שירותים חיצוניים</h2>
+    <ul class="legal-list">
+        <li><strong>Supabase</strong> — אחסון בסיס הנתונים והזדהות. השרתים ממוקמים באיחוד האירופי (פרנקפורט).</li>
+        <li><strong>Railway</strong> — הרצת האפליקציה. השרת ממוקם באיחוד האירופי (אמסטרדם).</li>
+        <li><strong>OpenAI</strong> — <strong>רק</strong> כאשר אתם מצלמים קבלה: התמונה נשלחת לעיבוד כדי לחלץ ממנה סכום, בית עסק ותאריך. אם לא תשתמשו בצילום קבלה, שום תמונה לא נשלחת.</li>
+        <li><strong>Sentry</strong> — דיווח על תקלות טכניות. גוף הבקשה, העוגיות וכותרות ההזדהות מוסרים לפני השליחה, כך שנתונים פיננסיים ותמונות קבלות אינם נכללים.</li>
+        <li><strong>Upstash</strong> — מוני הגבלת קצב לצורכי אבטחה. נשמרות בו כתובות IP בלבד, לזמן קצר.</li>
+    </ul>
+
+    <h2 class="legal-h2">כמה זמן המידע נשמר</h2>
+    <p class="legal-p">
+        הנתונים נשמרים כל עוד החשבון פעיל. מחיקת החשבון מתוך ההגדרות מסירה את
+        הפרופיל ואת הנתונים הקשורים אליו.
+    </p>
+
+    <h2 class="legal-h2">הזכויות שלכם</h2>
+    <p class="legal-p">
+        מכיוון שהנתונים מאוחסנים באיחוד האירופי, חלות עליהם הוראות ה-GDPR.
+        אתם רשאים לעיין במידע שלכם, לתקן אותו, ולמחוק אותו. עיון ותיקון אפשריים
+        ישירות באפליקציה; מחיקה מלאה זמינה בהגדרות ← מחיקת חשבון.
+    </p>
+
+    <h2 class="legal-h2">אבטחה</h2>
+    <p class="legal-p">
+        התעבורה מוצפנת. הסיסמאות אינן נשמרות אצלנו אלא מנוהלות בשירות ההזדהות
+        של Supabase. הגישה לנתונים מוגבלת ברמת בסיס הנתונים כך שמשתמש יכול
+        להגיע רק לנתוני המשפחה שלו.
+    </p>
+    <p class="legal-p">
+        עם זאת — SmartFin מפותחת ומתוחזקת על ידי אדם אחד, ואינה מוצר של חברה.
+        אנחנו מעדיפים לומר זאת מראש ולא להבטיח רמת אבטחה של ארגון גדול.
+    </p>
+
+    <h2 class="legal-h2">יצירת קשר</h2>
+    <p class="legal-p">
+        לשאלות בנושא פרטיות או בקשות למחיקת מידע, ניתן לפנות דרך פרטי הקשר
+        המופיעים באפליקציה.
+    </p>
+
+    <p class="legal-footer-links">
+        <a href="{{ url_for('terms') }}">תנאי שימוש</a> ·
+        <a href="{{ url_for('dashboard') }}">לדף הבית</a>
+    </p>
+
+</main>
+</body>
+</html>
