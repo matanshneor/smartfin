@@ -516,8 +516,14 @@ def month_view():
     """עמוד החודש: כל הנתונים והגרפים של חודש נתון (ברירת מחדל: הנוכחי)."""
     user      = get_current_user()
     now       = datetime.now()
+    # type=int מוודא שזה מספר, לא שזה חודש קיים: ?month=99999999 הפיל את
+    # העמוד ב-500 עד שהתגלה. נופלים לחודש הנוכחי במקום להתפוצץ.
     year      = request.args.get("year",  now.year,  type=int)
     month     = request.args.get("month", now.month, type=int)
+    if not 1 <= (month or 0) <= 12:
+        month = now.month
+    if not 1970 <= (year or 0) <= 2100:
+        year = now.year
     family_id = user["family_id"]
 
     is_current = (year == now.year and month == now.month)
@@ -531,6 +537,9 @@ def month_view():
             strip_months=[{"year": year, "month": month}], hebrew_months=_HEBREW_MONTHS,
             is_current=is_current, summary_json=json.dumps(db._empty_summary()),
             expense_json=json.dumps([]), members_json=json.dumps([]),
+            # התבנית ניגשת ל-project_month ללא תנאי. המסלול הזה נשכח כשנוספו
+            # הפרויקטים, ומשתמש בלי משפחה קיבל 500 במקום העמוד הריק המיועד.
+            project_month={"expense": 0, "income": 0, "savings": 0, "transactions": []},
         )
 
     # שלב 1 — שליפות בלתי-תלויות + מקדימות, במקביל (6 קריאות → זמן של ~1)
@@ -1555,6 +1564,11 @@ _HEBREW_MONTHS = [
 ]
 
 def _month_label(year: int, month: int) -> str:
+    """שם החודש בעברית. חודש מחוץ לטווח נחתך במקום להיכנס לאינדוקס —
+    ‎_HEBREW_MONTHS[13] זרק IndexError והפיל את העמוד, ו-‎_HEBREW_MONTHS[-5]
+    החזיר בשקט את אוגוסט, וזה הגרוע מבין השניים."""
+    if not 1 <= month <= 12:
+        month = datetime.now().month
     return f"{_HEBREW_MONTHS[month]} {year}"
 
 
