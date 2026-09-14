@@ -126,17 +126,33 @@
             {% endif %}
 
             <!-- הזמנת בן משפחה -->
-            {% if family.get('id') %}
+            {% if family.get('invite_code') %}
             <div class="group-divider"></div>
             <div class="group-row">
                 <div class="group-row-info">
                     <p class="group-row-label">הזמנת בן משפחה</p>
-                    <p class="group-row-hint">מי שנרשם עם הקוד מצטרף אוטומטית למשפחה</p>
+                    <p class="group-row-hint">מוסרים את הקוד, והוא מצטרף למשפחה — בהרשמה או דרך המסך הזה</p>
                 </div>
-                <span id="inviteCode" hidden>{{ family['id'] }}</span>
-                <button class="btn-sm btn-ghost" id="copyCodeBtn">העתק קוד</button>
+                <span class="invite-code-inline" id="inviteCode">{{ family['invite_code'] }}</span>
+                <button class="btn-sm btn-ghost" id="copyCodeBtn">העתק</button>
             </div>
             {% endif %}
+
+            <!-- הצטרפות למשפחה אחרת -->
+            <div class="group-divider"></div>
+            <div class="group-row group-row-stack">
+                <div class="group-row-info">
+                    <p class="group-row-label">הצטרפות למשפחה אחרת</p>
+                    <p class="group-row-hint">קיבלתם קוד הזמנה? הזינו אותו כאן</p>
+                </div>
+                <div class="join-family-row">
+                    <input class="form-input invite-code-input" type="text" id="joinCodeInput"
+                           maxlength="12" placeholder="קוד הזמנה" autocomplete="off"
+                           autocapitalize="characters" autocorrect="off" spellcheck="false" dir="ltr">
+                    <button class="btn-sm btn-primary" id="joinFamilyBtn">הצטרפות</button>
+                </div>
+                <p class="form-error" id="joinFamilyError" role="alert"></p>
+            </div>
         </div>
     </section>
 
@@ -701,8 +717,69 @@
         copyBtn.addEventListener('click', function () {
             navigator.clipboard.writeText(inviteCode.textContent.trim()).then(function () {
                 copyBtn.textContent = '✓ הועתק';
-                setTimeout(function () { copyBtn.textContent = 'העתק קוד'; }, 2000);
+                setTimeout(function () { copyBtn.textContent = 'העתק'; }, 2000);
             });
+        });
+    }
+
+    // ── Join another family ──
+    // עד היום רגע ההרשמה היה ההזדמנות היחידה להזין קוד, ומי שנרשם לפני
+    // שקיבל אותו נשאר תקוע במשפחה משלו בלי דרך חזרה.
+    const joinBtn   = document.getElementById('joinFamilyBtn');
+    const joinInput = document.getElementById('joinCodeInput');
+    const joinError = document.getElementById('joinFamilyError');
+
+    if (joinBtn && joinInput) {
+        joinBtn.addEventListener('click', function () {
+            const code = joinInput.value.trim();
+            joinError.textContent = '';
+            if (!code) {
+                joinError.textContent = 'נא להזין קוד הזמנה';
+                return;
+            }
+
+            function send(confirmed) {
+                return fetch('/api/family/join', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ code: code, confirm: confirmed }),
+                }).then(r => r.json().then(d => ({ status: r.status, data: d })));
+            }
+
+            joinBtn.disabled = true;
+            joinBtn.textContent = 'מצטרף…';
+
+            send(false)
+                .then(function (res) {
+                    // 409 = למשפחה הנוכחית יש תנועות, והמעבר ינתק אותן.
+                    // מאשרים מפורשות עם המספר לפני שממשיכים.
+                    if (res.status === 409 && res.data.needs_confirm) {
+                        const n = res.data.transaction_count;
+                        const ok = confirm(
+                            `למשפחה הנוכחית שלכם יש ${n} תנועות.\n\n` +
+                            'מעבר למשפחה אחרת מנתק אתכם מהן — הן יישארו במשפחה הישנה ' +
+                            'ולא תוכלו לראות אותן יותר.\n\nלהמשיך?'
+                        );
+                        if (!ok) return null;
+                        return send(true);
+                    }
+                    return res;
+                })
+                .then(function (res) {
+                    if (res === null) return;
+                    if (res.status >= 400) {
+                        joinError.textContent = res.data.error || 'ההצטרפות נכשלה';
+                        return;
+                    }
+                    window.location.reload();
+                })
+                .catch(function () {
+                    joinError.textContent = 'שגיאת רשת — נסו שוב';
+                })
+                .finally(function () {
+                    joinBtn.disabled = false;
+                    joinBtn.textContent = 'הצטרפות';
+                });
         });
     }
 

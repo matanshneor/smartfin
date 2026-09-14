@@ -270,11 +270,26 @@ def signup():
                     print(f"[ERROR] signup: {err}")
                     error = "הרשמה נכשלה — נסה שוב בעוד כמה רגעים"
             else:
-                # If invite code provided, join that family after signup
+                # הצטרפות למשפחה קיימת לפי קוד ההזמנה. כישלון כאן לא מבטל את
+                # ההרשמה — המשתמש כבר נוצר ב-Auth ואסור להשאיר אותו בלי דרך
+                # להיכנס — אבל הוא כן חייב להיאמר בקול. בעבר הערך המוחזר נזרק,
+                # וכל מצטרף קיבל "נרשמת בהצלחה" ואז משפחה חדשה משלו בשקט.
+                success = "נרשמת בהצלחה! כעת ניתן להתחבר."
                 if invite_code and response and response.user:
-                    db.join_family_by_code(response.user.id, invite_code)
+                    # ה-RPC מזהה את המצטרף דרך auth.uid(), ולכן ה-client חייב
+                    # לשאת את הטוקן של המשתמש החדש. לא מסתמכים על כך שה-SDK
+                    # יעשה זאת לבד אחרי sign_up — קובעים אותו במפורש, כמו
+                    # בכל מסלול אחר באפליקציה.
+                    session_obj = getattr(response, "session", None)
+                    if session_obj and session_obj.access_token:
+                        db.set_auth_token(session_obj.access_token)
+                    _, join_err = db.join_family_by_code(invite_code)
+                    if join_err:
+                        print(f"[WARN] signup join failed for {email}: {join_err}")
+                        success = (f"נרשמת בהצלחה! אבל {join_err}. "
+                                   "אפשר להתחבר ולהצטרף למשפחה דרך ההגדרות.")
                 return render_template("login.html", active_tab="login",
-                    success="נרשמת בהצלחה! כעת ניתן להתחבר.")
+                    success=success)
 
     return render_template("login.html", error=error, active_tab="signup")
 
@@ -1391,6 +1406,56 @@ def update_family():
         return jsonify({"error": "Name required"}), 422
     ok = db.update_family_name(user["family_id"], name)
     return jsonify({"status": "ok" if ok else "error"})
+
+
+@app.route("/api/family/preview", methods=["GET"])
+@login_required
+@limiter.limit("20 per minute")
+def preview_family_code():
+    """תצוגה מקדימה לפני הצטרפות — "מצטרפים למשפחת כהן?". מוגבל בקצב כדי
+    שלא ישמש לסריקת קודים."""
+    code = request.args.get("code", "").strip()
+    if not code:
+        return jsonify({"error": "Code required"}), 422
+    name = db.family_name_for_code(code)
+    if not name:
+        return jsonify({"found": False}), 404
+    return jsonify({"found": True, "name": name})
+
+
+@app.route("/api/family/join", methods=["POST"])
+@login_required
+@limiter.limit("10 per minute")
+def join_family():
+    """הצטרפות למשפחה קיימת אחרי ההרשמה.
+
+    עד היום רגע ההרשמה היה ההזדמנות היחידה בכל חיי המוצר להזין קוד, ומי
+    שנרשם לפני שקיבל אותו נשאר תקוע במשפחה משלו בלי דרך חזרה."""
+    user = get_current_user()
+    body = request.get_json(silent=True) or {}
+    code = body.get("code", "").strip()
+    if not code:
+        return jsonify({"error": "לא הוזן קוד הזמנה"}), 422
+
+    # מעבר למשפחה אחרת נוטש את התנועות הקיימות — הן נשארות קשורות למשפחה
+    # הישנה. למשתמש חדש זה לא מזיק; למשתמש עם היסטוריה זה הרסני, ולכן
+    # דורשים אישור מפורש ומחזירים את המספר כדי שה-UI יוכל להציג אותו.
+    current_family = user.get("family_id")
+    if current_family and not body.get("confirm"):
+        existing = db.family_transaction_count(current_family)
+        if existing:
+            return jsonify({
+                "needs_confirm": True,
+                "transaction_count": existing,
+            }), 409
+
+    family_id, err = db.join_family_by_code(code)
+    if err:
+        return jsonify({"error": err}), 400
+
+    # בלי עדכון ה-session המשתמש ימשיך לראות את המשפחה הישנה עד ליציאה וכניסה
+    session["family_id"] = family_id
+    return jsonify({"status": "ok", "family_id": family_id})
 
 
 @app.route("/sw.js")
