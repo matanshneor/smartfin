@@ -40,7 +40,7 @@
                 <a class="lp-btn" href="{{ url_for('signup') }}">פתיחת חשבון</a>
                 <a class="lp-btn-quiet" href="{{ url_for('login') }}">יש לי כבר חשבון</a>
             </div>
-            <p class="lp-micro">בחינם · עברית מלאה · מותקן כאפליקציה בטלפון</p>
+            <p class="lp-micro">בחינם · עברית מלאה · בלי פרסומות</p>
         </div>
 
         <!-- החתימה: מסך אחד שכמה אנשים מזינים אליו -->
@@ -76,14 +76,18 @@
                 </div>
             </div>
 
-            <!-- מי הוציא מה — מה שהופך תקציב לתקציב משפחתי -->
-            <div class="lp-split">
-                <p class="lp-split-title">מי הוציא החודש</p>
-                <ul class="lp-split-list">
-                    <li><i class="lp-dot lp-dot-a"></i><span>מתן</span><b>₪6,240</b></li>
-                    <li><i class="lp-dot lp-dot-b"></i><span>אור</span><b>₪4,110</b></li>
-                    <li><i class="lp-dot lp-dot-c"></i><span>משותף</span><b>₪1,230</b></li>
-                </ul>
+            <!-- התראת חריגה: פיצ'ר אמיתי, ומוסיף עניין בלי להמציא אנשים -->
+            <div class="lp-alert">
+                <span class="lp-alert-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"
+                              stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </span>
+                <span class="lp-alert-body">
+                    <span class="lp-alert-title">מזון גבוה מהרגיל</span>
+                    <span class="lp-alert-text">‎18% מעל הממוצע של שלושת החודשים האחרונים</span>
+                </span>
             </div>
         </div>
     </div>
