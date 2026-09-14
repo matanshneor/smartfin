@@ -1,129 +1,171 @@
-# SmartFin – ניהול תקציב משפחתי
+# SmartFin — Family Budget Management
 
-אפליקציית ווב (Mobile-First PWA) לניהול תקציב משפחתי משותף. עברית, RTL,
-מותקנת למסך הבית. עיצוב **"Gold Fintech"**: Hero כהה, כרטיסים לבנים צפים,
-מבטא זהב, גרפים ואנימציות מרוסנים.
+A mobile-first PWA for managing a shared household budget. The interface is
+Hebrew and right-to-left, and installs to the home screen. Visual language is
+**"Gold Fintech"**: a dark hero, floating white cards, a gold accent, and
+restrained charts and motion.
 
-🔗 **חי בכתובת:** https://smartfin.up.railway.app
+🔗 **Live at:** https://smartfin.up.railway.app
 
-## סטאק
+## Stack
 
-- **Backend:** Python 3.11 + Flask (תבניות Jinja2, מוגש ב-gunicorn)
-- **Database & Auth:** Supabase (PostgreSQL + GoTrue), עם RLS מלא על כל הטבלאות
-- **Frontend:** HTML + CSS מותאם אישית + Vanilla JS + Chart.js (בלי build step)
-- **סריקת קבלות:** OpenAI (`gpt-4o-mini`, ראייה)
-- **PWA:** Service Worker (stale-while-revalidate ל-static, ניתוב API עוקף cache)
-- **Deployment:** Railway (חי, אזור `europe-west4`)
+- **Backend:** Python 3.11 + Flask (Jinja2 templates, served by gunicorn)
+- **Database & auth:** Supabase (PostgreSQL + GoTrue), RLS enforced on every table
+- **Frontend:** HTML + hand-written CSS + vanilla JS + Chart.js (no build step)
+- **Receipt scanning:** OpenAI (`gpt-4o-mini`, vision)
+- **Rate limiting:** Flask-Limiter (in-memory, auth routes only)
+- **PWA:** service worker — stale-while-revalidate for static assets, network-only for API calls
+- **Deployment:** Railway (live, region `europe-west4`)
 
-## מבנה הפרויקט
+## Project layout
 
 ```
 SmartFin/
 ├── backend/
-│   ├── app.py                  # כל ה-routes (46): עמודים + API + אימות + הקשחה
-│   ├── supabase_config.py      # שכבת ה-DB: שאילתות, אימות, אנליטיקה, מנוע עסקאות קבועות
-│   └── supabase/migrations/    # מקור האמת של סכמת מסד הנתונים (29 מיגרציות)
+│   ├── app.py                  # all 46 routes: pages, API, auth, hardening
+│   ├── supabase_config.py      # data layer: queries, auth, analytics, recurring engine
+│   └── supabase/migrations/    # source of truth for the database schema (29 migrations)
 ├── frontend/
 │   ├── templates/              # base, index, month, months, settings, projects,
 │   │                           # project_detail, project_edit, login, onboarding,
 │   │                           # reset_password, error
-│   └── static/                 # style.css, sw.js, manifest.json, icons/
-├── tests/                      # בדיקות בידוד RLS (pytest)
-├── docs/SPEC.md                # מסמך האפיון
-├── Procfile / runtime.txt      # הגדרות Railway (gunicorn, Python 3.11.9)
+│   └── static/
+│       ├── css/style.css       # the entire stylesheet
+│       ├── sw.js, manifest.json, icons/
+├── tests/                      # RLS isolation suite (pytest)
+├── docs/SPEC.md                # product specification
+├── Procfile / runtime.txt      # Railway configuration (gunicorn, Python 3.11.9)
 └── requirements.txt / requirements-dev.txt
 ```
 
-## פיצ'רים
+## Features
 
-**עמודים ראשיים**
-- **בית** — "נשאר בעו״ש" של החודש (הכנסות − הוצאות − חיסכון) + הוספת עסקה מהירה + עסקאות אחרונות (ממוינות לפי סדר ההוספה)
-- **החודש** — גרפי עוגה (לאן הלך הכסף = הוצאות מול חיסכון · הוצאות/הכנסות/חיסכון לפי קטגוריה · חלוקה לפי בן משפחה), התראות חריגה, וכל עסקאות החודש
-- **השוואה** — מאזן חודשי לאורך זמן, עם צלילה לכל חודש
-- **הגדרות** — פרופיל, קטגוריות, פרויקטים, חשבון — במבנה אקורדיון
+### Main screens
 
-**עסקאות**
-- הוצאה / הכנסה / חיסכון · עריכה, מחיקה (עם ביטול), ושכפול מכל מקום · החלקה (swipe) במובייל · צ'יפי "היום/אתמול"
-- שיוך לבן משפחה עם תגי-צבע קבועים לכל אחד (הוצאות והכנסות; חיסכון תמיד משפחתי)
-- **עסקאות קבועות** — מנוע שמשלים מופעים אוטומטית, רטרואקטיבית וקדימה; תדירויות: כל חודש (באותו התאריך), 1/15 לחודש, שבועי, דו-שבועי
-- **סריקת קבלות** — צילום קבלה → חילוץ אוטומטי של סכום, בית עסק, תאריך וקטגוריה (OpenAI Vision)
+- **Home** — the month's remaining balance (income − expenses − savings), quick
+  transaction entry, and recent transactions ordered by insertion. Tapping a
+  transaction expands an inline editor in place (amount, category, owner,
+  description, date, plus save and delete); project and recurring settings open
+  the full modal via "more options".
+- **Month** — doughnut charts (where the money went: expenses vs. savings ·
+  expenses, income and savings by category · split by family member), anomaly
+  alerts, and every transaction of the month. A horizontally scroll-snapped
+  strip at the top jumps between every month that has data. Categories expand
+  inline to reveal the transactions behind them.
+- **Comparison** — the monthly balance over time, with a drill-down into any month.
+- **Settings** — profile, categories, projects and account, in an accordion layout.
 
-**פרויקטים** (טיול, שיפוץ, אירוע...)
-- משותפים לכל המשפחה או אישיים (חשופים רק לבעלים), עם המרה דו-כיוונית
-- אייקון, תיאור, יעד תקציב, וקטגוריות ייעודיות משלהם
-- עמוד תצוגה נקי (סיכום + גרף עוגה + כל העסקאות) עם מסך עריכה נפרד לכל ההגדרות
-- **עסקאות פרויקט מוחרגות מהמאזן החודשי** — הוצאה/הכנסה חד-פעמית/הונית לא מעוותת את תמונת "החודש הרגיל"; היא מוצגת בנפרד בקטע "פרויקטים החודש" ומתויגת ברשימות העסקאות
+### Transactions
 
-**אנליטיקה**
-- התראת חריגה: קטגוריה שחורגת מממוצע 3 החודשים הקודמים
-- תחזית קצב-ריצה: אזהרה על חריגה צפויה לפני סוף החודש
+- Expense / income / savings · edit, delete (with undo) and duplicate from
+  anywhere · swipe gestures on mobile · "today / yesterday" quick chips
+- Attribution to a family member with a stable per-member color tag (expenses and
+  income; savings are always shared)
+- **Recurring transactions** — an engine that materializes occurrences
+  automatically, both retroactively and forward. Frequencies: monthly on the same
+  date, on the 1st and 15th, weekly, and biweekly.
+- **Receipt scanning** — photograph a receipt and the amount, merchant, date and
+  category are extracted automatically (OpenAI vision). Capped at 100 scans per
+  family per month; manual entry is always available.
+- Saving a transaction plays a short synthesized two-tone chime and fires haptic
+  feedback (`navigator.vibrate`, with a hidden `switch` input as the iOS fallback).
 
-**משפחות וחשבון**
-- קוד הזמנה + אונבורדינג לבחירת קטגוריות למשפחה חדשה
-- התחברות במייל **או** בטלפון · "שכחתי סיסמה" · שינוי סיסמה · עריכת פרופיל
-- איפוס עסקאות ומחיקת חשבון לצמיתות — עם ארכיון פנימי לבעל האתר (כלום לא באמת אובד)
-- "זכור אותי": סשן 90 יום עם רענון טוקן אוטומטי
+### Projects (a trip, a renovation, an event…)
 
-## הרצה מקומית
+- Shared with the whole family or private to their owner, convertible in both directions
+- Each carries an icon, description, budget target and its own dedicated categories
+- A clean overview page (summary, doughnut chart, all transactions) with a
+  separate edit screen for every setting
+- **Project transactions are excluded from the monthly balance** — a one-off or
+  capital expense does not distort the regular month. They are shown separately
+  in the "projects this month" section of the month page, and are kept out of the
+  home feed and the monthly category drill-downs.
+
+### Analytics
+
+- Anomaly alert: a category exceeding its trailing three-month average
+- Run-rate forecast: a warning about a projected overrun before the month ends
+
+### Families and accounts
+
+- Invite code plus an onboarding flow for picking a new family's categories
+- Sign in by email **or** phone · password reset · password change · profile editing
+- Transaction reset and permanent account deletion, backed by an internal
+  owner-only archive (nothing is truly lost)
+- "Remember me": a 90-day session with automatic token refresh
+
+### Hardening
+
+- `SECRET_KEY` is mandatory — the app refuses to start without it
+- Session cookies are `HttpOnly` + `SameSite=Lax`, and `Secure` outside development
+- Request bodies capped at 8 MB; uploads restricted to JPG / PNG / WebP
+- Auth rate limits per IP: 10/min on login, 5/min on signup, 3/min on password reset
+
+## Running locally
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env          # ומלא את המפתחות
+cp .env.example .env          # then fill in the keys
 flask --app backend.app run --port 8080
 ```
 
-> הערה: השרת המקומי מתחבר לאותו פרויקט Supabase של הפרודקשן. תבניות ו-Python
-> נטענים מחדש רק בהפעלה מחדש של השרת (אין auto-reload בפרודקשן/ברירת מחדל).
+> Note: the local server connects to the same Supabase project as production.
+> Templates and Python are reloaded only on server restart (no auto-reload by default).
 
-### משתני סביבה
+### Environment variables
 
-| משתנה | תיאור |
-|-------|-------|
+| Variable | Description |
+|----------|-------------|
 | `SUPABASE_URL` | `https://<ref>.supabase.co` |
 | `SUPABASE_KEY` | anon public key |
-| `SECRET_KEY`   | מחרוזת אקראית לחתימת הסשן — **חובה, האפליקציה לא עולה בלעדיו** |
-| `OPENAI_API_KEY` | מפתח OpenAI — נדרש רק לסריקת קבלות (בלעדיו הכפתור לא פעיל) |
-| `FLASK_ENV`    | `development` מקומית בלבד — **לא להגדיר בפרודקשן** (שולט בהקשחת עוגיות + HSTS) |
+| `SECRET_KEY` | random string used to sign the session — **required; the app will not start without it** |
+| `OPENAI_API_KEY` | OpenAI key — needed only for receipt scanning (without it the button is disabled) |
+| `FLASK_ENV` | `development` locally only — **never set in production** (controls cookie hardening and HSTS) |
 
-## בדיקות
+## Tests
 
 ```bash
 pip install -r requirements-dev.txt
 python3 -m pytest tests/ -v
 ```
 
-בדיקות בידוד ה-RLS רצות מול פרויקט ה-Supabase האמיתי עם שני חשבונות בדיקה
-קבועים (ראה `tests/setup_rls_test_users.py` — הרצה חד-פעמית ליצירתם).
-זהירות: לוגין חוזר יותר מ-10 פעמים בדקה מאותו IP מוחזר עם 429 (Rate limit).
+The RLS isolation suite runs against the real Supabase project using two fixed
+test accounts (see `tests/setup_rls_test_users.py`, a one-time script that
+creates them). Caution: more than 10 logins per minute from the same IP are
+rejected with a 429.
 
-## מסד נתונים
+## Database
 
-הסכמה מנוהלת במלואה ב-`backend/supabase/migrations/`. לפרויקט Supabase חדש:
+The schema lives entirely in `backend/supabase/migrations/`. For a fresh
+Supabase project:
 
 ```bash
 cd backend && supabase link --project-ref <REF> && supabase db push
 ```
 
-- כל הטבלאות עם RLS מלא. הערה: חלק מהטבלאות נוצרו עם כיסוי CRUD חלקי —
-  בהוספת נתיב כתיבה חדש, כדאי לבדוק את מדיניות ה-RLS של הטבלה מראש.
-- טבלאות פנימיות לבעל האתר (RLS **ללא** policies → לקוחות מקבלים `[]`):
-  `owner_archive` — ארכיון כל מה שנמחק · `login_events` — תיעוד כניסות.
+- Every table has RLS enabled. Note that some tables were created with partial
+  CRUD coverage — when adding a new write path, check the table's policies first.
+- Owner-only internal tables (RLS enabled with **no** policies, so clients
+  receive `[]`): `owner_archive`, an archive of everything deleted, and
+  `login_events`, a sign-in log.
 
-## פריסה ל-Railway
+## Deploying to Railway
 
-האפליקציה **חיה** ב-Railway (שירות `smartfin`).
+The app runs live on Railway (service `smartfin`).
 
-**קריטי לביצועים — אזור:** שירות ה-Railway חייב לרוץ באותו אזור גאוגרפי
-כמו Supabase (כאן: Railway `europe-west4` מול Supabase `eu-central-1`).
-אחרת כל שליפה חוצה יבשות (~250ms במקום ~30ms) והעמודים איטיים מאוד.
-משנים ב-Railway → Service → Settings → Regions.
+**Critical for performance — region:** the Railway service must run in the same
+geographic region as Supabase (here: Railway `europe-west4` against Supabase
+`eu-central-1`). Otherwise every query crosses continents (~250 ms instead of
+~30 ms) and pages become very slow. Change it under Railway → Service →
+Settings → Regions.
 
-**עדכון גרסה:** `git push` ל-`main`, ואז `railway up` (מעלה ובונה מחדש).
+**Shipping a new version:** `git push` to `main`, then `railway up` (uploads and rebuilds).
 
-**משתני סביבה בפרודקשן:** `SUPABASE_URL`, `SUPABASE_KEY`,
-`SECRET_KEY` (ערך אקראי חזק, שונה מהמקומי), `OPENAI_API_KEY` (אופציונלי).
-**לא** להגדיר `FLASK_ENV` — ההשמטה שלו מפעילה עוגיות מאובטחות + HSTS.
-`PORT` מוזרק אוטומטית (gunicorn מאזין עליו; ברירת מחדל 8080).
+**Production environment variables:** `SUPABASE_URL`, `SUPABASE_KEY`,
+`SECRET_KEY` (a strong random value, different from the local one) and
+`OPENAI_API_KEY` (optional). Do **not** set `FLASK_ENV` — omitting it enables
+secure cookies and HSTS. `PORT` is injected automatically (gunicorn binds to it;
+defaults to 8080).
 
-**Supabase Auth:** בכל שינוי דומיין יש לעדכן `SITE_URL` ו-`URI_ALLOW_LIST`
-לדומיין החדש — אחרת קישורי "שכחתי סיסמה" יישברו.
+**Supabase Auth:** whenever the domain changes, update `SITE_URL` and
+`URI_ALLOW_LIST` to the new domain, or password-reset links will break.
