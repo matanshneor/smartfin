@@ -82,16 +82,29 @@ app.config.update(
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # הגבלת קצב על מסלולי האימות — מונע ניחוש סיסמאות וסריקת מספרי טלפון.
-# אחסון in-memory (פר-worker): מספיק להגנה בסיסית על אפליקציה משפחתית.
+#
+# האחסון חייב להיות משותף בפרודקשן. עם "memory://" כל worker של gunicorn
+# סופר לעצמו, כך שהמגבלה מוכפלת במספר ה-workers, וכל פריסה מאפסת את המונים —
+# כלומר ההגנה על התחברות, הרשמה ואיפוס סיסמה רופפת בהרבה ממה שכתוב בקוד.
+# זה היה מספיק כשזו הייתה אפליקציה משפחתית; ברגע שהכתובת מופצת זה לא.
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+
+_RATELIMIT_STORAGE = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
 
 limiter = Limiter(
     get_remote_address,
     app=app,
-    storage_uri="memory://",
+    storage_uri=_RATELIMIT_STORAGE,
     default_limits=[],  # רק המסלולים שמסומנים במפורש מוגבלים
 )
+
+# אם נשארנו על זיכרון מקומי בפרודקשן — אומרים את זה בקול. הכישלון כאן שקט
+# מטבעו: הבקשות ממשיכות לעבוד והמגבלה פשוט לא נאכפת, כך שבלי ההתראה הזאת
+# אין שום דרך להבחין בין "מוגן" ל"נראה מוגן".
+if _RATELIMIT_STORAGE.startswith("memory://") and not _IS_DEV:
+    print("[WARNING] rate limiting is using in-memory storage in production — "
+          "limits are per-worker and reset on every deploy. Set RATELIMIT_STORAGE_URI.")
 
 
 # ─── Auth helpers ─────────────────────────────────────────────────────────────
