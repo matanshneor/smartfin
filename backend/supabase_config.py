@@ -1,6 +1,8 @@
 import os
 import uuid
+
 from dotenv import load_dotenv
+from gotrue.errors import AuthApiError, AuthRetryableError
 
 load_dotenv()
 
@@ -146,15 +148,27 @@ def sign_up(email: str, password: str, name: str, phone: str = None):
 
 
 def refresh_session(refresh_token: str):
-    """Exchanges a refresh token for a fresh access token. Returns (response, error)."""
+    """מחליפה refresh token בטוקן גישה טרי. מחזירה (response, error, fatal).
+
+    ה-fatal הוא העיקר כאן: הוא מבדיל בין "השרת לא היה זמין לרגע" לבין
+    "הטוקן נדחה". בלי ההבחנה הזאת כל בליפ רשת היה מנתק את המשתמש, וזה
+    הורס את ההבטחה שנשארים מחוברים עד יציאה יזומה."""
     client = get_client()
     if not client:
-        return None, "Database not configured"
+        return None, "Database not configured", False
     try:
         response = client.auth.refresh_session(refresh_token)
-        return response, None
+        return response, None, False
+    except AuthRetryableError as e:
+        # תקלה זמנית (רשת, timeout) — שומרים על ההתחברות ומנסים שוב בבקשה הבאה
+        return None, str(e), False
+    except AuthApiError as e:
+        # 5xx הוא תקלה אצלם, לא טוקן פסול. רק דחייה אמיתית מצדיקה ניתוק.
+        transient = (e.status or 0) >= 500
+        return None, str(e), not transient
     except Exception as e:
-        return None, str(e)
+        # לא מזוהה — מניחים זמני. ניתוק שגוי גרוע יותר מבקשה אחת מנוונת.
+        return None, str(e), False
 
 
 # ─── Profile ──────────────────────────────────────────────────────────────────

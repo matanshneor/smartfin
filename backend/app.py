@@ -63,8 +63,12 @@ if not _secret:
     raise RuntimeError("SECRET_KEY environment variable is required — refusing to start without it")
 app.secret_key = _secret
 
-# "זכור אותי": the session cookie survives browser restarts until the user logs out
-app.permanent_session_lifetime = timedelta(days=90)
+# נשארים מחוברים עד יציאה יזומה. העוגייה מוגדרת לעשר שנים — בפועל "תמיד" —
+# ו-SESSION_REFRESH_EACH_REQUEST (ברירת המחדל של Flask, מפורש כאן) דוחף את
+# תאריך התפוגה קדימה בכל בקשה, כך שמשתמש פעיל לעולם לא מגיע אליו.
+# מה שמאפשר את זה בפועל הוא רענון ה-refresh token ב-inject_auth: טוקן הגישה
+# של Supabase חי כשעה, וההתחברות שורדת כי הוא מוחלף מעצמו.
+app.permanent_session_lifetime = timedelta(days=3650)
 
 # הקשחת עוגיות: העוגייה נושאת את טוקני Supabase, אז Secure חובה בפרודקשן
 # (בפיתוח מקומי על http זה היה שובר את ההתחברות — לכן מותנה).
@@ -73,6 +77,7 @@ app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",   # גם הגנת CSRF בסיסית
     SESSION_COOKIE_SECURE=not _IS_DEV,
+    SESSION_REFRESH_EACH_REQUEST=True,   # חלון התפוגה נע קדימה עם כל שימוש
     PREFERRED_URL_SCHEME="https" if not _IS_DEV else "http",
     MAX_CONTENT_LENGTH=8 * 1024 * 1024,  # תקרת גודל בקשה — מגן על העלאת קבלות
 )
@@ -134,16 +139,21 @@ def inject_auth():
     # long-lived Flask session keeps working without re-login.
     expires_at = session.get("token_expires_at") or 0
     if session.get("refresh_token") and time.time() > expires_at - 120:
-        response, err = db.refresh_session(session["refresh_token"])
+        response, err, fatal = db.refresh_session(session["refresh_token"])
         if not err and response and response.session:
             token = response.session.access_token
             session["access_token"]     = token
             session["refresh_token"]    = response.session.refresh_token
             session["token_expires_at"] = response.session.expires_at
-        elif err:
-            # Refresh token revoked/expired — force a clean re-login
+            session.permanent = True     # כל שימוש מאריך את חלון העוגייה
+        elif fatal:
+            # הטוקן נדחה באמת (בוטל, או נעשה בו שימוש חוזר) — אין דרך לשחזר
             session.clear()
             return
+        else:
+            # תקלה זמנית: לא מנתקים. הבקשה הזאת עלולה לחזור חסרה, והבאה
+            # תנסה לרענן שוב. ניתוק בגלל בליפ רשת גרוע בהרבה.
+            print(f"[WARN] token refresh failed, keeping session: {err}")
 
     db.set_auth_token(token)
 
