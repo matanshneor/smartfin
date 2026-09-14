@@ -3716,28 +3716,26 @@ li.transaction-item.swipe-ready > .swipe-content {
 .lp-cat-track { display: block; height: 4px; border-radius: 999px; background: var(--color-input); overflow: hidden; }
 .lp-cat-track i { display: block; height: 100%; border-radius: 999px; background: var(--gradient-gold); }
 
-/* הכרטיס הצף: מה שהופך "תקציב" ל"תקציב משפחתי".
-   במובייל הוא יושב מתחת למסך — הצפה שם רק הייתה מסתירה את הקטגוריות,
-   שהן בדיוק מה שהמסך אמור להראות. */
-.lp-split {
-    width: min(232px, 78vw);
-    margin: -18px auto 0;
+/* הכרטיס הצף: התראת חריגה — מוסיפה עניין ומראה פיצ'ר אמיתי.
+   במובייל הוא יושב מתחת למסך; הצפה שם רק הייתה מסתירה את הקטגוריות. */
+.lp-alert {
+    display: flex; align-items: flex-start; gap: 11px;
+    width: min(248px, 82vw);
+    margin: -16px auto 0;
     background: var(--color-card); color: var(--color-text);
-    border-radius: var(--radius); padding: 14px 16px;
+    border-radius: var(--radius); padding: 14px 15px;
     box-shadow: 0 18px 40px rgba(0,0,0,0.42);
 }
-.lp-split-title {
-    font-size: 0.7rem; color: var(--color-text-muted);
-    margin: 0 0 10px; font-weight: 500;
+
+.lp-alert-icon {
+    flex-shrink: 0; width: 30px; height: 30px; display: grid; place-items: center;
+    border-radius: 9px; background: rgba(185, 28, 28, 0.09); color: var(--color-expense);
 }
-.lp-split-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
-.lp-split-list li { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; }
-.lp-split-list span { flex: 1; }
-.lp-split-list b { direction: ltr; font-weight: 600; }
-.lp-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-.lp-dot-a { background: #D4AF37; }
-.lp-dot-b { background: #6C8EBF; }
-.lp-dot-c { background: #9AA0A6; }
+.lp-alert-icon svg { width: 17px; height: 17px; }
+
+.lp-alert-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.lp-alert-title { font-weight: 600; font-size: 0.84rem; }
+.lp-alert-text  { font-size: 0.72rem; line-height: 1.45; color: var(--color-text-muted); }
 
 /* ── Sections ─────────────────────────────────────────────────────────────── */
 
@@ -3893,9 +3891,9 @@ li.transaction-item.swipe-ready > .swipe-content {
     .lp-showcase { padding-bottom: 0; align-items: flex-start; }
     /* הכרטיס חורג החוצה ונוגע רק בקצה המסך — מספיק כדי לקשור ביניהם,
        בלי להסתיר את הקטגוריות שהמסך אמור להראות */
-    .lp-split {
-        position: absolute; bottom: 46px; inset-inline-end: 0;
-        width: 186px; margin: 0;
+    .lp-alert {
+        position: absolute; bottom: 52px; inset-inline-end: 0;
+        width: 212px; margin: 0;
     }
     .lp-section { padding-top: 92px; }
 }
