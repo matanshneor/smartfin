@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#141007">
-    <meta name="description" content="SmartFin – מצלמים קבלה והתקציב המשפחתי מתעדכן לבד. סכום, בית עסק, תאריך וקטגוריה נקראים אוטומטית, וכל בני המשפחה רואים את אותה תמונה.">
-    <title>SmartFin – התקציב המשפחתי, בלי להקליד</title>
+    <meta name="description" content="SmartFin – תקציב אחד לכל המשפחה. כל אחד מזין מהטלפון שלו, וכולם רואים כמה נשאר החודש, לפי קטגוריה ולפי בן משפחה.">
+    <title>SmartFin – תקציב אחד לכל המשפחה</title>
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <link rel="icon" href="{{ url_for('static', filename='icons/icon-192.svg') }}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-180.png') }}">
@@ -31,79 +31,24 @@
     <div class="lp-hero-grid">
         <div class="lp-hero-copy">
             <p class="lp-eyebrow">ניהול תקציב משפחתי</p>
-            <h1 class="lp-h1">צילמתם קבלה —<br><em>התקציב כבר מעודכן</em></h1>
+            <h1 class="lp-h1">תקציב אחד<br><em>לכל המשפחה</em></h1>
             <p class="lp-lede">
-                הסכום, בית העסק, התאריך והקטגוריה נקראים מהקבלה לבד.
-                כל בני המשפחה רואים את אותה תמונה, מאותו רגע.
+                כל אחד מזין מהטלפון שלו, וכולם רואים את אותה תמונה:
+                כמה נכנס, כמה יצא, ובעיקר — כמה באמת נשאר החודש.
             </p>
             <div class="lp-actions">
                 <a class="lp-btn" href="{{ url_for('signup') }}">פתיחת חשבון</a>
                 <a class="lp-btn-quiet" href="{{ url_for('login') }}">יש לי כבר חשבון</a>
             </div>
-            <p class="lp-micro">בחינם · עברית מלאה · נתונים באיחוד האירופי</p>
+            <p class="lp-micro">בחינם · עברית מלאה · מותקן כאפליקציה בטלפון</p>
         </div>
 
-        <!-- החתימה של העמוד: קבלה נסרקת והופכת לשורה באפליקציה -->
-        <div class="lp-scan" aria-hidden="true">
-            <div class="lp-receipt">
-                <div class="lp-receipt-head">
-                    <span class="lp-receipt-shop">מכולת השכונה</span>
-                    <span class="lp-receipt-date">14.09.2026</span>
-                </div>
-                <div class="lp-receipt-lines">
-                    <span></span><span></span><span></span><span></span><span></span>
-                </div>
-                <div class="lp-receipt-total">
-                    <span>סה״כ</span><strong>₪248.60</strong>
-                </div>
-                <div class="lp-scanline"></div>
-            </div>
-
-            <div class="lp-arrow">
-                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M12 4v16M12 20l-5-5M12 20l5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </div>
-
-            <div class="lp-row">
-                <span class="lp-row-icon">🛒</span>
-                <span class="lp-row-body">
-                    <span class="lp-row-name">מכולת השכונה</span>
-                    <span class="lp-row-meta">מזון · 14 בספטמבר</span>
-                </span>
-                <span class="lp-row-amt">‎−₪248.60</span>
-            </div>
-        </div>
-    </div>
-</header>
-
-<main>
-
-    <!-- רואים את המוצר -->
-    <section class="lp-section lp-product">
-        <div class="lp-product-grid">
-            <div class="lp-product-copy">
-                <h2 class="lp-h2">החודש שלכם, במסך אחד</h2>
-                <ul class="lp-points">
-                    <li>
-                        <strong>כמה באמת נשאר</strong>
-                        היתרה מחושבת מהכנסות פחות הוצאות וחיסכון — לא יתרת הבנק, אלא מה שנשאר לחודש.
-                    </li>
-                    <li>
-                        <strong>מי הוציא מה</strong>
-                        כל עסקה משויכת לבן משפחה, עם צבע קבוע. אפשר גם לסמן כמשותפת.
-                    </li>
-                    <li>
-                        <strong>התראה לפני שחורגים</strong>
-                        קטגוריה שעברה את הממוצע של שלושת החודשים האחרונים מסומנת, ולא מתגלה בסוף החודש.
-                    </li>
-                </ul>
-            </div>
-
-            <div class="lp-phone" aria-hidden="true">
+        <!-- החתימה: מסך אחד שכמה אנשים מזינים אליו -->
+        <div class="lp-showcase" aria-hidden="true">
+            <div class="lp-phone">
                 <div class="lp-phone-screen">
                     <div class="lp-app-hero">
-                        <p class="lp-app-greeting">שלום, מתן</p>
+                        <p class="lp-app-greeting">ספטמבר 2026</p>
                         <p class="lp-app-label">נשאר בעו״ש החודש</p>
                         <p class="lp-app-amount">₪4,820</p>
                         <p class="lp-app-sub">מתוך ₪18,400 הכנסות החודש</p>
@@ -114,24 +59,99 @@
                         <div class="lp-app-card"><span>הוצאות</span><strong>₪11,580</strong></div>
                         <div class="lp-app-card"><span>חיסכון</span><strong>₪2,000</strong></div>
                     </div>
-                    <div class="lp-app-list">
-                        <div class="lp-app-row"><span>🛒</span><span>מכולת השכונה</span><b>₪248</b></div>
-                        <div class="lp-app-row"><span>⛽</span><span>דלק</span><b>₪310</b></div>
-                        <div class="lp-app-row"><span>🏠</span><span>שכר דירה</span><b>₪5,400</b></div>
+                    <div class="lp-app-cats">
+                        <div class="lp-cat">
+                            <span class="lp-cat-top"><span>🏠 דיור</span><b>₪5,400</b></span>
+                            <span class="lp-cat-track"><i style="width:78%"></i></span>
+                        </div>
+                        <div class="lp-cat">
+                            <span class="lp-cat-top"><span>🛒 מזון</span><b>₪2,910</b></span>
+                            <span class="lp-cat-track"><i style="width:46%"></i></span>
+                        </div>
+                        <div class="lp-cat">
+                            <span class="lp-cat-top"><span>🚗 תחבורה</span><b>₪1,340</b></span>
+                            <span class="lp-cat-track"><i style="width:24%"></i></span>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <!-- מי הוציא מה — מה שהופך תקציב לתקציב משפחתי -->
+            <div class="lp-split">
+                <p class="lp-split-title">מי הוציא החודש</p>
+                <ul class="lp-split-list">
+                    <li><i class="lp-dot lp-dot-a"></i><span>מתן</span><b>₪6,240</b></li>
+                    <li><i class="lp-dot lp-dot-b"></i><span>אור</span><b>₪4,110</b></li>
+                    <li><i class="lp-dot lp-dot-c"></i><span>משותף</span><b>₪1,230</b></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main>
+
+    <section class="lp-section">
+        <h2 class="lp-h2 lp-h2-center">מה המסך הזה עונה לכם</h2>
+        <div class="lp-answers">
+            <article class="lp-answer">
+                <h3>כמה באמת נשאר</h3>
+                <p>הכנסות פחות הוצאות וחיסכון — לא יתרת הבנק, אלא מה שנשאר לחיות ממנו החודש.</p>
+            </article>
+            <article class="lp-answer">
+                <h3>לאן הכסף הלך</h3>
+                <p>פילוח לפי קטגוריה, עם אפשרות לפתוח כל אחת ולראות את העסקאות שמאחוריה.</p>
+            </article>
+            <article class="lp-answer">
+                <h3>מי הוציא מה</h3>
+                <p>כל עסקה משויכת לבן משפחה עם צבע קבוע, או מסומנת כהוצאה משותפת.</p>
+            </article>
+            <article class="lp-answer">
+                <h3>האם חרגתם</h3>
+                <p>קטגוריה שעברה את הממוצע של שלושת החודשים האחרונים מסומנת תוך כדי החודש.</p>
+            </article>
         </div>
     </section>
 
-    <!-- מה עוד יש -->
     <section class="lp-section">
-        <h2 class="lp-h2 lp-h2-center">מה עוד תמצאו כאן</h2>
-        <div class="lp-features">
-            <article class="lp-feature">
+        <h2 class="lp-h2 lp-h2-center">וההזנה לא אמורה להיות עבודה</h2>
+        <div class="lp-ways">
+            <article class="lp-way">
+                <h3>שתי הקלדות</h3>
+                <p>סכום, קטגוריה, ונגמר. תאריך של היום או אתמול בלחיצה אחת.</p>
+            </article>
+            <article class="lp-way">
                 <h3>הוצאות קבועות</h3>
                 <p>שכר דירה, מנויים וביטוחים נרשמים מעצמם — חודשי, דו־שבועי או שבועי.</p>
             </article>
+            <article class="lp-way lp-way-scan">
+                <h3>או צילום קבלה</h3>
+                <p>הסכום, בית העסק והתאריך נקראים מהתמונה. תמיד אפשר לתקן.</p>
+                <div class="lp-scan">
+                    <div class="lp-receipt">
+                        <div class="lp-receipt-head">
+                            <span class="lp-receipt-shop">מכולת השכונה</span>
+                        </div>
+                        <div class="lp-receipt-lines"><span></span><span></span><span></span></div>
+                        <div class="lp-receipt-total"><span>סה״כ</span><strong>₪248.60</strong></div>
+                        <div class="lp-scanline"></div>
+                    </div>
+                    <div class="lp-row">
+                        <span class="lp-row-icon">🛒</span>
+                        <span class="lp-row-body">
+                            <span class="lp-row-name">מכולת השכונה</span>
+                            <span class="lp-row-meta">מזון · 14 בספטמבר</span>
+                        </span>
+                        <span class="lp-row-amt">‎−₪248.60</span>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section class="lp-section">
+        <h2 class="lp-h2 lp-h2-center">ומה שמעבר לחודש השוטף</h2>
+        <div class="lp-features">
             <article class="lp-feature">
                 <h3>פרויקטים בנפרד</h3>
                 <p>טיול או שיפוץ מנוהלים לחוד, כדי שהוצאה חד־פעמית גדולה לא תעוות את החודש הרגיל.</p>
@@ -142,33 +162,31 @@
             </article>
             <article class="lp-feature">
                 <h3>מותקן כאפליקציה</h3>
-                <p>נוסף למסך הבית מהדפדפן. בלי חנות אפליקציות ובלי התקנה.</p>
+                <p>נוסף למסך הבית ישירות מהדפדפן. בלי חנות אפליקציות ובלי התקנה.</p>
             </article>
         </div>
     </section>
 
-    <!-- רצף אמיתי, ולכן ממוספר -->
     <section class="lp-section lp-steps-wrap">
         <h2 class="lp-h2 lp-h2-center">שלושה צעדים ואתם בפנים</h2>
         <ol class="lp-steps">
             <li><span class="lp-step-n">1</span><span><strong>נרשמים</strong> ובוחרים קטגוריות שמתאימות לכם</span></li>
             <li><span class="lp-step-n">2</span><span><strong>מזמינים</strong> את בני הבית עם קוד בן שישה תווים</span></li>
-            <li><span class="lp-step-n">3</span><span><strong>מזינים</strong> — בצילום קבלה או בשתי הקלדות</span></li>
+            <li><span class="lp-step-n">3</span><span><strong>מזינים</strong> — ורואים את התמונה מתמלאת</span></li>
         </ol>
     </section>
 
-    <!-- אמון: רק דברים נכונים -->
     <section class="lp-trust">
         <div class="lp-trust-inner">
             <div><strong>בלי פרסומות</strong><span>ובלי מכירת מידע</span></div>
-            <div><strong>שרתים באיחוד האירופי</strong><span>פרנקפורט ואמסטרדם</span></div>
-            <div><strong>מחיקה מלאה</strong><span>החשבון והנתונים, בלחיצה</span></div>
+            <div><strong>הנתונים שלכם</strong><span>אפשר למחוק הכול בלחיצה</span></div>
+            <div><strong>בחינם</strong><span>בלי כרטיס אשראי</span></div>
         </div>
     </section>
 
     <section class="lp-final">
         <h2 class="lp-h2">שווה לנסות חודש אחד</h2>
-        <p>פתיחת חשבון לוקחת פחות מדקה, ואפשר למחוק הכול מתי שתרצו.</p>
+        <p>פתיחת חשבון לוקחת פחות מדקה.</p>
         <a class="lp-btn" href="{{ url_for('signup') }}">פתיחת חשבון</a>
     </section>
 
