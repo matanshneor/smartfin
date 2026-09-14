@@ -3865,3 +3865,34 @@ li.transaction-item.swipe-ready > .swipe-content {
     .lp-product-grid { grid-template-columns: 0.95fr 1.05fr; gap: 60px; }
     .lp-section { padding-top: 92px; }
 }
+
+/* קישור חזרה ממסכי ההתחברות אל דף הנחיתה. עד שנוסף, מי שלחץ "פתיחת חשבון"
+   נכנס למסלול חד-כיווני ונאלץ להשתמש בכפתור האחורה של הדפדפן. */
+.auth-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 18px;
+    padding: 8px 15px 8px 13px;
+    font-size: 0.86rem;
+    font-weight: 500;
+    color: var(--hero-text-muted);
+    text-decoration: none;
+    background: var(--hero-chip-bg);
+    border: 1px solid var(--hero-chip-border);
+    border-radius: 999px;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.auth-back svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+.auth-back:hover,
+.auth-back:focus-visible {
+    color: var(--hero-text);
+    border-color: rgba(212, 175, 55, 0.45);
+}
+
+.auth-back:focus-visible {
+    outline: 2px solid var(--color-gold-bright);
+    outline-offset: 2px;
+}
