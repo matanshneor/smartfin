@@ -41,9 +41,23 @@ def family_b():
     return _login("b")
 
 
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "unit: בדיקה טהורה שלא נוגעת ב-Supabase — לא מתחברת ולא דורשת משתמשי בדיקה",
+    )
+
+
 @pytest.fixture(autouse=True)
-def _start_authenticated_as_family_a(family_a):
+def _start_authenticated_as_family_a(request):
     """כל בדיקה מתחילה עם ה-client מאומת כמשפחה א' כברירת מחדל — בדיקות
-    שצריכות להחליף הקשר (למשל לבדוק גישה חוצת-משפחה) עושות זאת בעצמן."""
+    שצריכות להחליף הקשר (למשל לבדוק גישה חוצת-משפחה) עושות זאת בעצמן.
+
+    בדיקות המסומנות ב-@pytest.mark.unit מדלגות על ההתחברות: הן בודקות לוגיקה
+    טהורה, ולוגין מיותר גם מאט אותן וגם שורף מהמכסה של 10 התחברויות לדקה."""
+    if "unit" in request.keywords:
+        yield
+        return
+    family_a = request.getfixturevalue("family_a")
     db.set_auth_token(family_a["token"])
     yield
