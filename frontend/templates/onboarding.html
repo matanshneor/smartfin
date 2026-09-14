@@ -34,7 +34,7 @@
 
         <div class="auth-form-card onboarding-card">
 
-            <div class="onboarding-steps" aria-hidden="true">
+            <div class="onboarding-steps" id="onboardingDots" style="display:none;" aria-hidden="true">
                 <span class="step-dot active" id="dotStep1">1</span>
                 <span class="step-line"></span>
                 <span class="step-dot" id="dotStep2">2</span>
@@ -45,6 +45,54 @@
             </div>
 
             <div class="form-error" id="onboardingError" role="alert"></div>
+
+            <!-- Step 0: המזלג — משפחה חדשה או הצטרפות לקיימת.
+                 בלי המסך הזה היה נרטיב יחיד ("אתה בעלים של משפחה חדשה"),
+                 ומי שקיבל קוד הזמנה לא מצא שום דרך להשתמש בו ופתח משפחה
+                 כפולה בלי לדעת. -->
+            <section class="onboarding-step" id="step0">
+                <h2 class="auth-form-title">ברוכים הבאים ל-SmartFin</h2>
+                <p class="onboarding-sub">איך תרצו להתחיל?</p>
+
+                <div class="onboarding-choice-list">
+                    <button type="button" class="onboarding-choice" id="chooseCreateBtn">
+                        <span class="onboarding-choice-icon">✨</span>
+                        <span class="onboarding-choice-text">
+                            <span class="onboarding-choice-title">פותחים משפחה חדשה</span>
+                            <span class="onboarding-choice-sub">נגדיר שם, קטגוריות, ונקבל קוד להזמנת בני המשפחה</span>
+                        </span>
+                    </button>
+
+                    <button type="button" class="onboarding-choice" id="chooseJoinBtn">
+                        <span class="onboarding-choice-icon">👋</span>
+                        <span class="onboarding-choice-text">
+                            <span class="onboarding-choice-title">מצטרפים למשפחה קיימת</span>
+                            <span class="onboarding-choice-sub">קיבלתם קוד הזמנה מבן משפחה? זה המקום</span>
+                        </span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Step join: הזנת קוד הזמנה -->
+            <section class="onboarding-step" id="stepJoin" style="display:none;">
+                <h2 class="auth-form-title">מה הקוד שקיבלתם?</h2>
+                <p class="onboarding-sub">
+                    קוד בן 6 תווים שמופיע אצל בן המשפחה שהזמין אתכם, תחת הגדרות ← המשפחה שלי.
+                </p>
+
+                <div class="form-group">
+                    <label class="form-label" for="joinCode">קוד הזמנה</label>
+                    <input class="form-input invite-code-input" type="text" id="joinCode"
+                           maxlength="12" placeholder="לדוגמה: K4F2QX" autocomplete="off"
+                           autocapitalize="characters" autocorrect="off" spellcheck="false" dir="ltr">
+                    <p class="field-hint" id="joinPreview"></p>
+                </div>
+
+                <div class="onboarding-actions">
+                    <button type="button" class="btn-sm btn-ghost" id="backFromJoinBtn">חזרה</button>
+                    <button type="button" class="submit-btn" id="joinFamilyBtn">הצטרפות</button>
+                </div>
+            </section>
 
             <!-- Step 1: שם המשפחה -->
             <section class="onboarding-step" id="step1">
@@ -57,7 +105,10 @@
                            value="{{ family.get('name', 'המשפחה שלי') }}" placeholder="לדוגמה: משפחת כהן">
                 </div>
 
-                <button type="button" class="submit-btn" id="toStep2Btn">המשך</button>
+                <div class="onboarding-actions">
+                    <button type="button" class="btn-sm btn-ghost" id="backToChoiceBtn">חזרה</button>
+                    <button type="button" class="submit-btn" id="toStep2Btn">המשך</button>
+                </div>
             </section>
 
             <!-- Step 2: קוד הזמנה -->
@@ -70,7 +121,7 @@
 
                 <div class="settings-card invite-code-card">
                     <p class="invite-code-label">קוד ההזמנה שלכם</p>
-                    <p class="invite-code-value" id="onboardingInviteCode">{{ family.get('id', '') }}</p>
+                    <p class="invite-code-value" id="onboardingInviteCode">{{ family.get('invite_code', '') }}</p>
                     <button type="button" class="btn-sm btn-ghost" id="copyInviteBtn">העתק קוד</button>
                 </div>
 
@@ -180,13 +231,99 @@
         const dots     = { 1: document.getElementById('dotStep1'), 2: document.getElementById('dotStep2'),
                            3: document.getElementById('dotStep3'), 4: document.getElementById('dotStep4') };
 
+        const step0    = document.getElementById('step0');
+        const stepJoin = document.getElementById('stepJoin');
+        const dotsBar  = document.getElementById('onboardingDots');
+
         function goToStep(n) {
             errorBox.textContent = '';
+            step0.style.display    = 'none';
+            stepJoin.style.display = 'none';
+            dotsBar.style.display  = 'flex';
             [1, 2, 3, 4].forEach(function (i) {
                 steps[i].style.display = i === n ? 'block' : 'none';
                 dots[i].classList.toggle('active', i <= n);
             });
         }
+
+        function showChoice(which) {
+            errorBox.textContent = '';
+            [1, 2, 3, 4].forEach(function (i) { steps[i].style.display = 'none'; });
+            dotsBar.style.display  = 'none';
+            step0.style.display    = which === 'start' ? 'block' : 'none';
+            stepJoin.style.display = which === 'join'  ? 'block' : 'none';
+        }
+
+        // ─── המזלג: משפחה חדשה או הצטרפות ───────────────────────────────────
+        document.getElementById('chooseCreateBtn').addEventListener('click', () => goToStep(1));
+        document.getElementById('chooseJoinBtn').addEventListener('click', function () {
+            showChoice('join');
+            document.getElementById('joinCode').focus();
+        });
+        document.getElementById('backFromJoinBtn').addEventListener('click', () => showChoice('start'));
+        document.getElementById('backToChoiceBtn').addEventListener('click', () => showChoice('start'));
+
+        const joinInput   = document.getElementById('joinCode');
+        const joinPreview = document.getElementById('joinPreview');
+        let previewTimer  = null;
+
+        // תצוגה מקדימה חיה: המשתמש רואה לאיזו משפחה הוא עומד להצטרף לפני
+        // שהוא מאשר, כדי שקוד שגוי ייתפס כאן ולא אחרי מעשה.
+        joinInput.addEventListener('input', function () {
+            const code = joinInput.value.trim();
+            joinPreview.textContent = '';
+            joinPreview.classList.remove('field-hint-ok', 'field-hint-bad');
+            clearTimeout(previewTimer);
+            if (code.replace(/[^A-Za-z0-9]/g, '').length < 6) return;
+
+            previewTimer = setTimeout(function () {
+                fetch('/api/family/preview?code=' + encodeURIComponent(code))
+                    .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+                    .then(function (res) {
+                        if (res.ok && res.data.found) {
+                            joinPreview.textContent = 'מצטרפים ל: ' + res.data.name;
+                            joinPreview.classList.add('field-hint-ok');
+                        } else {
+                            joinPreview.textContent = 'לא נמצאה משפחה עם הקוד הזה';
+                            joinPreview.classList.add('field-hint-bad');
+                        }
+                    })
+                    .catch(function () { /* התצוגה המקדימה היא נוחות בלבד — שקט בכשל */ });
+            }, 350);
+        });
+
+        document.getElementById('joinFamilyBtn').addEventListener('click', function () {
+            const code = joinInput.value.trim();
+            if (!code) {
+                errorBox.textContent = 'נא להזין את קוד ההזמנה';
+                return;
+            }
+            const btn = this;
+            btn.disabled = true;
+            btn.textContent = 'מצטרף…';
+
+            fetch('/api/family/join', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ code: code, confirm: true }),
+            })
+            .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+            .then(function (res) {
+                if (!res.ok) {
+                    errorBox.textContent = res.data.error || 'ההצטרפות נכשלה';
+                    btn.disabled = false;
+                    btn.textContent = 'הצטרפות';
+                    return;
+                }
+                // מצטרף לא עובר onboarding — הקטגוריות של המשפחה כבר קיימות
+                window.location.href = '/';
+            })
+            .catch(function () {
+                errorBox.textContent = 'שגיאת רשת — נסה שוב';
+                btn.disabled = false;
+                btn.textContent = 'הצטרפות';
+            });
+        });
 
         document.getElementById('toStep2Btn').addEventListener('click', function () {
             if (!document.getElementById('familyName').value.trim()) {

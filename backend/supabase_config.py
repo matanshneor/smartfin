@@ -1689,21 +1689,62 @@ def get_family(family_id: str) -> dict:
     return _request_cache(f"family:{family_id}", lambda: _fetch_family(family_id))
 
 
-def join_family_by_code(user_id: str, family_id: str) -> bool:
-    """Links a user to an existing family using the family's UUID as invite code."""
+def family_name_for_code(code: str):
+    """שם המשפחה שמאחורי קוד הזמנה, או None אם הקוד לא קיים — לתצוגה מקדימה
+    ("מצטרפים למשפחת כהן?") לפני שהמשתמש מאשר."""
+    client = get_client()
+    if not client or not code:
+        return None
+    try:
+        result = client.rpc("family_name_for_code", {"p_code": code}).execute()
+        return result.data or None
+    except Exception as e:
+        print(f"[ERROR] family_name_for_code: {e}")
+        return None
+
+
+def family_transaction_count(family_id: str) -> int:
+    """כמה תנועות יש למשפחה. משמש כדי להזהיר לפני מעבר למשפחה אחרת: התנועות
+    נשארות קשורות למשפחה הישנה דרך transactions.family_id, כך שמי שעוזב
+    משפחה עם היסטוריה מאבד אליה את הגישה."""
     client = get_client()
     if not client:
-        return False
+        return 0
     try:
-        # Verify family exists
-        fam = client.table("families").select("id").eq("id", family_id).execute()
-        if not fam.data:
-            return False
-        client.table("profiles").update({"family_id": family_id}).eq("id", user_id).execute()
-        return True
+        result = client.table("transactions") \
+            .select("id", count="exact") \
+            .eq("family_id", family_id) \
+            .limit(1).execute()
+        return result.count or 0
+    except Exception as e:
+        print(f"[ERROR] family_transaction_count: {e}")
+        return 0
+
+
+def join_family_by_code(code: str):
+    """מצרפת את המשתמש המחובר למשפחה לפי קוד הזמנה.
+
+    עוברת דרך RPC עם security definer ולא ב-SELECT ישיר: מדיניות ה-RLS
+    families_member_read מתירה לקרוא משפחה רק לחבר קיים בה, ומצטרף חדש
+    מעצם הגדרתו עוד לא חבר — לכן בדיקה ישירה תמיד נכשלת. ראו את המיגרציה
+    20260914120000_family_invite_code.sql.
+
+    מחזירה (family_id, error). error הוא None בהצלחה, ומחרוזת בעברית אחרת —
+    כדי שהקריאה למעלה תוכל להבחין בין "הצטרפת" ל"הקוד שגוי" במקום לבלוע."""
+    client = get_client()
+    if not client:
+        return None, "בסיס הנתונים אינו זמין כרגע"
+    if not code or not code.strip():
+        return None, "לא הוזן קוד הזמנה"
+    try:
+        result = client.rpc("join_family_by_code", {"p_code": code}).execute()
+        family_id = result.data
+        if not family_id:
+            return None, "קוד ההזמנה לא נמצא — בדקו שהועתק במלואו"
+        return family_id, None
     except Exception as e:
         print(f"[ERROR] join_family_by_code: {e}")
-        return False
+        return None, "ההצטרפות נכשלה — נסו שוב בעוד כמה רגעים"
 
 
 # ─── Archive (months list) ────────────────────────────────────────────────────
