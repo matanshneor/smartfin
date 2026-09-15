@@ -262,6 +262,7 @@
         {{ {'attribution': (family_settings.owner_attribution if family_settings else {})} | tojson }}
     </script>
 
+    <script src="{{ url_for('static', filename='js/auth-guard.js') }}"></script>
     <script src="{{ url_for('static', filename='js/core.js') }}"></script>
 
     {% block scripts %}{% endblock %}
