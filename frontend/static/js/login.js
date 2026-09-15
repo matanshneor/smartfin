@@ -73,3 +73,43 @@ if (window.location.hash.includes('type=recovery')) {
         });
     });
 })();
+
+
+/* נעילת שליחה כפולה בטפסי ההתחברות וההרשמה.
+ *
+ * הטפסים האלה היו הטפסים היחידים באפליקציה בלי נעילה — בכל שאר המקומות
+ * הכפתור ננעל (settings.js, onboarding.js, reset-password.js). באפליקציה
+ * המותקנת בטלפון אין אפילו ספינר של דפדפן, אז אחרי הקשה המסך פשוט לא
+ * מגיב בזמן שהשרת עובד, והמשתמש לוחץ שוב. יומן ההתחברויות מראה שזה קורה
+ * בפועל: כמעט כל התחברות רשומה פעמיים בהפרש שנייה. הלחיצה השנייה גם
+ * שורפת מהמכסה של 10 לדקה, ומי שחצה אותה נחת על דף שגיאה בלי מוצא.
+ */
+(function () {
+    function guardSubmit(form, busyText) {
+        if (!form) return;
+        const btn = form.querySelector('button[type="submit"]');
+        if (!btn) return;
+        const idleText = btn.textContent;
+
+        function release() {
+            btn.disabled = false;
+            btn.textContent = idleText;
+        }
+
+        form.addEventListener('submit', function () {
+            if (btn.disabled) return;
+            btn.disabled = true;
+            btn.textContent = busyText;
+            // שסתום ביטחון: אם השליחה לא הובילה לניווט (נפילת רשת), הכפתור
+            // חוזר לפעולה. עדיף ניסיון חוזר מטופס מת שאי אפשר לצאת ממנו.
+            setTimeout(release, 12000);
+        });
+
+        // חזרה לעמוד עם "אחורה" מגישה אותו מזיכרון הדפדפן, והכפתור
+        // היה חוזר נעול מהפעם הקודמת
+        window.addEventListener('pageshow', function (e) { if (e.persisted) release(); });
+    }
+
+    guardSubmit(document.getElementById('loginPanel'),  'מתחבר…');
+    guardSubmit(document.getElementById('signupPanel'), 'נרשם…');
+})();
