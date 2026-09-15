@@ -775,7 +775,13 @@ def materialize_recurring(family_id: str) -> int:
             .eq("family_id", family_id) \
             .not_.is_("recurring_parent_id", "null") \
             .execute().data
-        have = {(r["recurring_parent_id"], str(r["date"])) for r in existing}
+        # תאריכי המופעים הקיימים לכל תבנית. לא סט של צמדי (תבנית, תאריך):
+        # ההשוואה היא לפי תקופה ולא לפי תאריך מדויק, אחרת שינוי תאריך
+        # בתבנית מייצר סדרה חדשה שכולה "חסרה" ומכפיל חודשים אחורה.
+        have: dict = {}
+        for r in existing:
+            have.setdefault(r["recurring_parent_id"], set()).add(
+                date.fromisoformat(str(r["date"])))
 
         # מטמון קטגוריות-משכורת ומקום-עבודה נוכחי לכל בעלים — נמנע שליפה
         # חוזרת לכל מופע, ומאפשר להקפיא workplace על מופעי משכורת קבועה
@@ -796,9 +802,19 @@ def materialize_recurring(family_id: str) -> int:
         new_rows = []
         for t in templates:
             is_salary = t.get("type") == "income" and t.get("category_id") in salary_cat_ids
+            freq = t.get("recurring_frequency") or "monthly_1"
+            seen = have.setdefault(t["id"], set())
+            # שורת התבנית עצמה היא המופע הראשון (ראו התיעוד למעלה), אבל
+            # אין לה recurring_parent_id ולכן היא לא נשלפה עם המופעים.
+            # בלי זה תבנית שנפתחה ב-5 בינואר ועברה ל"ה-15 לחודש" מקבלת
+            # מופע שני בינואר, לצד השורה המקורית.
+            seen.add(date.fromisoformat(str(t["date"])))
             for d in _recurring_occurrences(t, today):
-                if (t["id"], d.isoformat()) in have:
+                if _already_materialized(freq, d, seen):
                     continue
+                # המופע שנוצר עכשיו תופס את התקופה שלו, כדי ששני מופעים
+                # מאותה תבנית באותה תקופה לא ייווצרו באותה ריצה
+                seen.add(d)
                 new_rows.append({
                     "amount":              t["amount"],
                     "type":                t["type"],
@@ -827,6 +843,31 @@ def materialize_recurring(family_id: str) -> int:
     except Exception as e:
         print(f"[ERROR] materialize_recurring: {e}")
         return 0
+
+
+def _occurrence_period(freq: str, d):
+    """מפתח התקופה של מופע. שני מופעים של אותה תבנית באותה תקופה הם אותה
+    עסקה — גם אם התאריך שלהם שונה.
+
+    בלי ההבחנה הזאת הדדופ השווה תאריכים מדויקים, ולכן שינוי תאריך בתבנית
+    (למשל משכורת שעוברת מה-5 ל-10 לחודש) ייצר סדרת תאריכים חדשה שאף אחד
+    ממנה לא היה מוכר — וכל החודשים אחורה נוצרו מחדש. משכורת של ₪14,000
+    הוכפלה על שמונה חודשים בבת אחת, בכל מסך באפליקציה.
+
+    לתדירות חודשית התקופה היא החודש הקלנדרי. לשבועית ודו-שבועית אין
+    "תקופה" טבעית, אז נחשב מרחק של עד חצי צעד כאותו מופע שרק זז."""
+    if freq in ("weekly", "biweekly"):
+        return None                      # מטופל במרחק, ראו _already_materialized
+    return (d.year, d.month)
+
+
+def _already_materialized(freq: str, d, existing_dates) -> bool:
+    """האם המופע הזה כבר קיים — לא לפי תאריך מדויק אלא לפי תקופה."""
+    if freq in ("weekly", "biweekly"):
+        tolerance = 3 if freq == "weekly" else 7
+        return any(abs((d - e).days) <= tolerance for e in existing_dates)
+    period = _occurrence_period(freq, d)
+    return any(_occurrence_period(freq, e) == period for e in existing_dates)
 
 
 def _recurring_occurrences(template: dict, until) -> list:
