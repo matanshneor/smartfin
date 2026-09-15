@@ -246,10 +246,24 @@ def _device_is_known() -> bool:
     return request.cookies.get(_DEVICE_COOKIE) == "1"
 
 
+def _is_api_request() -> bool:
+    """האם הבקשה מצפה ל-JSON ולא לעמוד HTML.
+
+    ההפרדה הזאת היא מה שמבדיל בין "המשתמש ניווט לכתובת" לבין "הקוד בדף
+    קרא לשרת". fetch עוקב אחרי הפניות בשקט, כך שדף HTML שמוחזר לקריאת
+    API חוזר כתשובה תקינה עם קוד 200 — והלקוח מנסה לפרסר אותו כ-JSON
+    ונכשל. המשתמש רואה "שגיאת רשת" שלא תיפסק לעולם."""
+    return request.path.startswith("/api/")
+
+
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if "user_id" not in session:
+            # קריאת API מקבלת 401 שהלקוח יודע לזהות; ניווט רגיל מקבל
+            # הפניה לטופס ההתחברות כמו תמיד.
+            if _is_api_request():
+                return jsonify({"error": "ההתחברות הסתיימה — יש להתחבר מחדש"}), 401
             return redirect(url_for("login"))
         return f(*args, **kwargs)
     return decorated
@@ -1757,8 +1771,10 @@ def add_security_headers(response):
 
 @app.errorhandler(404)
 def not_found(e):
-    return render_template("error.html", code=404,
-                           message="הדף שחיפשת לא נמצא"), 404
+    msg = "הדף שחיפשת לא נמצא"
+    if _is_api_request():
+        return jsonify({"error": msg}), 404
+    return render_template("error.html", code=404, message=msg), 404
 
 
 @app.errorhandler(413)
@@ -1769,15 +1785,19 @@ def payload_too_large(e):
 @app.errorhandler(429)
 def too_many_requests(e):
     msg = "יותר מדי ניסיונות בזמן קצר — נסה שוב בעוד דקה"
-    if request.path.startswith("/api/"):
+    if _is_api_request():
         return jsonify({"error": msg}), 429
     return render_template("error.html", code=429, message=msg), 429
 
 
 @app.errorhandler(500)
 def server_error(e):
-    return render_template("error.html", code=500,
-                           message="אירעה שגיאה בשרת. נסה שוב בעוד כמה רגעים."), 500
+    msg = "אירעה שגיאה בשרת. נסה שוב בעוד כמה רגעים."
+    if _is_api_request():
+        # בלי זה תקלת שרת אמיתית מגיעה למשתמש כ"שגיאת רשת", והוא מנסה
+        # שוב ושוב בקשה שלעולם לא תצליח — ואנחנו לא שומעים על התקלה.
+        return jsonify({"error": msg}), 500
+    return render_template("error.html", code=500, message=msg), 500
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
