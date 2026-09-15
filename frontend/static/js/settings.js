@@ -171,11 +171,14 @@ document.addEventListener('click', function (e) {
 
     window.appConfirm({
         title: 'להסיר את העסקה הקבועה?',
-        message: 'מופעים חדשים יפסיקו להיווצר. מופעים שכבר נוצרו יישארו.',
+        message: 'מופעים חדשים יפסיקו להיווצר. כל מה שכבר נרשם — כולל העסקה הראשונה — יישאר בהיסטוריה.',
         confirmText: 'הסר',
     }).then(function (ok) {
         if (!ok) return;
-        fetch('/api/transactions/' + id, { method: 'DELETE' })
+        // ‎/api/recurring‎ ולא ‎/api/transactions‎: זה עוצר את הסדרה ולא מוחק
+        // שורה. שורת התבנית היא העסקה הראשונה בסדרה, ומחיקתה הייתה מוציאה
+        // כסף אמיתי מההיסטוריה — בדיוק מה שההודעה למעלה מבטיחה שלא יקרה.
+        fetch('/api/recurring/' + id, { method: 'DELETE' })
         .then(r => r.json())
         .then(function (d) {
             if (d.status === 'ok') {
