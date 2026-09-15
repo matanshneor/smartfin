@@ -1408,6 +1408,25 @@ def delete_transaction(tx_id):
     return jsonify({"status": "ok" if ok else "error"}), 200 if ok else 500
 
 
+@app.route("/api/recurring/<template_id>", methods=["DELETE"])
+@login_required
+def stop_recurring_route(template_id):
+    """עוצר סדרה קבועה. במכוון לא מוחק את השורה: היא המופע הראשון בסדרה,
+    כלומר כסף שבאמת זז, והדיאלוג בהגדרות מבטיח שמה שכבר נוצר יישאר.
+    מי שרוצה למחוק את העסקה עצמה עושה זאת מרשימת העסקאות כמו בכל עסקה."""
+    user = get_current_user()
+    if not user["family_id"]:
+        return jsonify({"error": "לא משויכת משפחה לחשבון"}), 400
+
+    ok, err = db.stop_recurring(template_id, user["family_id"])
+    if not ok:
+        if err == "not found":
+            return jsonify({"error": "העסקה הקבועה לא נמצאה"}), 404
+        print(f"[ERROR] stop_recurring route: {err}")
+        return jsonify({"error": "ההסרה נכשלה — נסה שוב"}), 500
+    return jsonify({"status": "ok"})
+
+
 @app.route("/api/recurring/<template_id>/sync", methods=["PUT"])
 @login_required
 def sync_recurring_template(template_id):

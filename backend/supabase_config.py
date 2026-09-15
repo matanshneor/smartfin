@@ -954,6 +954,38 @@ def update_recurring_template(template_id: str, family_id: str, amount: float = 
         return None, str(e)
 
 
+def stop_recurring(transaction_id: str, family_id: str):
+    """עוצרת סדרה קבועה בלי למחוק כסף. מחזירה (ok, error).
+
+    "הסר את העסקה הקבועה" בהגדרות מבטיח למשתמש: "מופעים חדשים יפסיקו
+    להיווצר. מופעים שכבר נוצרו יישארו." בפועל זה הריץ מחיקה מלאה של
+    שורת התבנית — ושורת התבנית היא עסקה אמיתית לכל דבר, המופע הראשון
+    בסדרה, שנספרת בסיכום החודשי. כלומר שכר הדירה של החודש הראשון נעלם
+    מההיסטוריה בשקט, בניגוד גמור למה שנכתב בדיאלוג.
+
+    ובנוסף, המחיקה ניתקה את כל המופעים מהתבנית (‎on delete set null‎),
+    כך שמנגנון הדדופ הפסיק לראות אותם — ומי שיצר את אותה עסקה קבועה
+    מחדש קיבל את כל החודשים בשנית.
+
+    כיבוי הדגל פותר את שניהם: השורה נשארת כעסקה רגילה, הקישור שורד,
+    ולא נוצרים מופעים חדשים."""
+    client = get_client()
+    if not client:
+        return False, "Database not configured"
+    try:
+        result = client.table("transactions").update({
+            "is_recurring":         False,
+            "recurring_frequency":  None,
+            "recurring_end_date":   None,
+        }).eq("id", transaction_id).eq("family_id", family_id).execute()
+        if not result.data:
+            return False, "not found"
+        return True, None
+    except Exception as e:
+        print(f"[ERROR] stop_recurring: {e}")
+        return False, str(e)
+
+
 def delete_transaction(transaction_id: str, family_id: str):
     client = get_client()
     if not client:
