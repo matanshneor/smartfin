@@ -2953,6 +2953,15 @@ li.project-row {
 
 .onboarding-card { text-align: right; }
 
+/* שלב מוסתר כברירת מחדל, והראשון בלבד גלוי.
+   עד עכשיו ההסתרה הייתה style="display:none" על כל שלב בנפרד בתבנית —
+   וב-step1 זה נשכח, כך שמשתמש חדש קיבל את מסך הבחירה ואת השאלה על שם
+   המשפחה זה על גבי זה, במסך הראשון שהוא רואה אחרי ההרשמה. הכלל כאן הופך
+   "מוסתר" לברירת המחדל, כך שאי אפשר לשכוח אותו בשלב שיתווסף בעתיד.
+   ה-JS ממשיך לנהל את המעברים עם style.display, שגובר על שניהם. */
+.onboarding-step { display: none; }
+.onboarding-step#step0 { display: block; }
+
 .onboarding-sub {
     font-size: 0.85rem;
     color: var(--color-text-muted);
