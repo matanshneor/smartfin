@@ -21,7 +21,9 @@
 <body class="auth-body">
 
     <div class="auth-container">
-        <a class="auth-back" href="{{ url_for('dashboard') }}">
+        {# intro=1 מבקש במפורש את דף הנחיתה. בלעדיו השורש היה מחזיר מכשיר
+           מוכר ישר לכאן, וכפתור "חזרה" היה לולאה. #}
+        <a class="auth-back" href="{{ url_for('dashboard', intro=1) }}">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2"
                       stroke-linecap="round" stroke-linejoin="round"/>
@@ -73,6 +75,7 @@
                 <div class="form-group">
                     <label class="form-label" for="identifier">אימייל או טלפון</label>
                     <input class="form-input" type="text" id="identifier" name="identifier"
+                           value="{{ remembered_identifier or '' }}"
                            placeholder="your@email.com / 050-1234567" required autocomplete="username"
                            autocapitalize="none" autocorrect="off" spellcheck="false"
                            enterkeyhint="go" dir="ltr" style="text-align:right;">

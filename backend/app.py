@@ -129,6 +129,47 @@ if _RATELIMIT_STORAGE.startswith("memory://") and not _IS_DEV:
 
 # ─── Auth helpers ─────────────────────────────────────────────────────────────
 
+def _do_not_rewrite_session_cookie():
+    """מסמן שהתגובה הזאת לא תכתוב מחדש את עוגיית ה-session.
+
+    זה חשוב בדיוק כשהרענון נכשל. שני ה-workers של gunicorn מקבלים בקשות
+    במקביל, וה-refresh token של Supabase מסובב בכל רענון — כך שבקשה אחת
+    יכולה לרענן בהצלחה ולכתוב טוקן חדש לעוגייה, בעוד בקשה מקבילה, שיצאה
+    עם הטוקן הישן ונתקעה על רשת סלולרית איטית, מגיעה אחריה ונכשלת. אם
+    הבקשה הכושלת תכתוב את העוגייה שלה, היא תדרוס את הטוקן התקין בטוקן
+    מת — והמשתמש ינותק בביקור הבא בלי שעשה דבר.
+
+    הביטול עצמו נעשה ב-after_request ולא כאן, וזה לא עניין של סגנון:
+    Flask כותב את העוגייה כש-session מסומן permanent או modified, וכל
+    כתיבה ל-session בתוך ה-view (למשל recurring_synced בדשבורד) הייתה
+    מחזירה את modified לדלוק. גרוע מכך, ביטול permanent מוקדם היה הופך
+    את העוגייה שתיכתב לעוגיית-דפדפן שנמחקת בסגירה — כלומר בדיוק הניתוק
+    שאנחנו מונעים. ב-after_request כבר לא ירוץ קוד של view."""
+    g.sf_skip_session_cookie = True
+
+
+@app.after_request
+def _honour_session_cookie_freeze(response):
+    if g.get("sf_skip_session_cookie"):
+        # שני אלה יחד הם מה ש-should_set_cookie של Flask בודק. הערכים
+        # שבעוגייה אצל הדפדפן נשארים כפי שהם.
+        session.permanent = False
+        session.modified  = False
+    return response
+
+
+def _end_session(reason: str):
+    """מסיים את ההתחברות ומשאיר עקבות.
+
+    ניתוק היה עד עכשיו שקט לגמרי, ולכן משתמש שהתלונן שהוא "נזרק החוצה"
+    לא הותיר שום דבר לחקור אותו. ההבטחה היא להישאר מחובר עד יציאה יזומה,
+    אז כל ניתוק אחר הוא אירוע שצריך להיות אפשר לראות."""
+    print(f"[AUTH] session ended: {reason}")
+    if _sentry_dsn:
+        sentry_sdk.capture_message(f"session ended: {reason}", level="warning")
+    session.clear()
+
+
 @app.before_request
 def inject_auth():
     token = session.get("access_token")
@@ -146,16 +187,63 @@ def inject_auth():
             session["refresh_token"]    = response.session.refresh_token
             session["token_expires_at"] = response.session.expires_at
             session.permanent = True     # כל שימוש מאריך את חלון העוגייה
-        elif fatal:
-            # הטוקן נדחה באמת (בוטל, או נעשה בו שימוש חוזר) — אין דרך לשחזר
-            session.clear()
+        elif fatal and time.time() >= expires_at:
+            # הטוקן נדחה וגם טוקן הגישה כבר פג — ההתחברות מתה באמת ואין
+            # מה לשחזר. רק כאן מנתקים.
+            _end_session(f"refresh token rejected: {err}")
             return
         else:
-            # תקלה זמנית: לא מנתקים. הבקשה הזאת עלולה לחזור חסרה, והבאה
-            # תנסה לרענן שוב. ניתוק בגלל בליפ רשת גרוע בהרבה.
+            # לא מנתקים. שתי סיבות שונות מגיעות לכאן, ושתיהן בנות-שחזור:
+            # תקלה זמנית (רשת, 5xx), או דחייה בזמן שטוקן הגישה עדיין בתוקף —
+            # שזה בדיוק מה שקורה כשבקשה מקבילה כבר סובבה את הטוקן לפנינו.
+            # הבקשה הזאת ממשיכה עם טוקן הגישה הקיים, והבאה תנסה שוב; אם
+            # הדחייה אמיתית, הניתוק יקרה מעצמו כשטוקן הגישה יפוג.
             print(f"[WARN] token refresh failed, keeping session: {err}")
+            _do_not_rewrite_session_cookie()
 
     db.set_auth_token(token)
+
+
+# ─── זיכרון המכשיר ────────────────────────────────────────────────────────────
+#
+# דף הנחיתה הוא דף שיווק: הוא נועד למי שלא מכיר את SmartFin. מי שכבר התחבר
+# מהמכשיר הזה פעם אחת לא צריך לראות אותו שוב — גם לא כשה-session נגמר או
+# כשיצא ביוזמתו. שתי העוגיות כאן הן הזיכרון היחיד ששורד סיום session, ולכן
+# הן נפרדות מעוגיית ה-session ומכילות רק את המינימום:
+#
+#   sf_returning — "כבר התחברת מכאן". קובע לאן הולך השורש.
+#   sf_last_id   — המזהה שאיתו התחבר (אימייל או טלפון), כדי למלא מראש את
+#                  הטופס. נמחקת ביציאה יזומה: מי שיצא במכוון ביקש שיפסיקו
+#                  לזכור אותו, וגם ייתכן שהוא מפנה את המכשיר לבן משפחה אחר.
+#
+# שתיהן HttpOnly — אין להן שום שימוש ב-JS, וכך גם XSS לא יכול לקרוא את
+# האימייל. אף החלטת הרשאה לא נשענת עליהן: ערך מזויף בהן משנה לכל היותר
+# איזה דף מוגש למי שלא מחובר, ומה מודפס בשדה טקסט. הסיסמה עדיין נדרשת.
+_DEVICE_COOKIE   = "sf_returning"
+_LAST_ID_COOKIE  = "sf_last_id"
+_DEVICE_COOKIE_MAX_AGE = 10 * 365 * 24 * 60 * 60   # עשר שנים, כמו ה-session
+
+
+def _remember_device(response, identifier: str = ""):
+    """מסמן את המכשיר כמוכר, ואם נמסר מזהה — זוכר גם אותו."""
+    common = dict(max_age=_DEVICE_COOKIE_MAX_AGE, httponly=True,
+                  samesite="Lax", secure=not _IS_DEV)
+    response.set_cookie(_DEVICE_COOKIE, "1", **common)
+    identifier = (identifier or "").strip()
+    if identifier:
+        # תקרה וניקוי תווי בקרה — הערך חוזר לדפדפן ונכנס לשדה טופס, ואין
+        # שום סיבה שיהיה ארוך או מוזר. Jinja כבר עושה escaping בתבנית.
+        safe = re.sub(r"[\x00-\x1f\x7f]", "", identifier)[:120]
+        response.set_cookie(_LAST_ID_COOKIE, safe, **common)
+    return response
+
+
+def _remembered_identifier() -> str:
+    return re.sub(r"[\x00-\x1f\x7f]", "", request.cookies.get(_LAST_ID_COOKIE, ""))[:120]
+
+
+def _device_is_known() -> bool:
+    return request.cookies.get(_DEVICE_COOKIE) == "1"
 
 
 def login_required(f):
@@ -259,6 +347,10 @@ def login():
         return redirect(url_for("dashboard"))
 
     error = None
+    # מה ימלא את שדה "אימייל או טלפון". ב-GET זה המזהה שנשמר מההתחברות
+    # הקודמת מהמכשיר הזה; אחרי ניסיון כושל זה מה שהמשתמש הקליד עכשיו,
+    # כדי שלא יצטרך להקליד שוב אחרי טעות בסיסמה.
+    identifier = _remembered_identifier()
     if request.method == "POST":
         identifier = request.form.get("identifier", "").strip()
         password   = request.form.get("password", "")
@@ -293,9 +385,18 @@ def login():
                 family_id = db.ensure_family(user.id)
                 session["family_id"] = family_id
 
-            return redirect(url_for("dashboard"))
+            # מכאן והלאה המכשיר מוכר: גם אם ה-session ייגמר יום אחד, השורש
+            # יביא אותו לטופס ההתחברות ולא חזרה לדף השיווק.
+            return _remember_device(redirect(url_for("dashboard")), identifier)
 
-    return render_template("login.html", error=error, active_tab="login")
+    # העמוד נושא עכשיו את המזהה שנשמר, כך שהוא תלוי-עוגייה בדיוק כמו השורש
+    # ואסור שיישמר במטמון של דפדפן או proxy.
+    response = make_response(render_template("login.html", error=error,
+                                             active_tab="login",
+                                             remembered_identifier=identifier))
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Vary"] = "Cookie"
+    return response
 
 
 @app.route("/signup", methods=["GET", "POST"])
@@ -362,8 +463,14 @@ def signup():
                         print(f"[WARN] signup join failed for {email}: {join_err}")
                         success = (f"נרשמת בהצלחה! אבל {join_err}. "
                                    "אפשר להתחבר ולהצטרף למשפחה דרך ההגדרות.")
-                return render_template("login.html", active_tab="login",
-                    success=success)
+                # ההרשמה לא מחברת אוטומטית, אבל היא כן הופכת את המכשיר
+                # למוכר — מי שהרגע פתח חשבון בוודאי לא צריך לראות שוב את
+                # דף השיווק, והמייל שלו כבר ממולא בטופס.
+                return _remember_device(
+                    make_response(render_template("login.html", active_tab="login",
+                                                  success=success,
+                                                  remembered_identifier=email)),
+                    email)
 
     return render_template("login.html", error=error, active_tab="signup")
 
@@ -371,7 +478,12 @@ def signup():
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("login"))
+    # המכשיר נשאר מוכר (אין טעם להחזיר לדף שיווק מישהו שרק יצא), אבל
+    # המזהה נמחק: יציאה יזומה היא בקשה מפורשת להפסיק לזכור אותי, ולפעמים
+    # היא נעשית בדיוק כדי להעביר את המכשיר לבן משפחה אחר.
+    response = redirect(url_for("login"))
+    response.delete_cookie(_LAST_ID_COOKIE, samesite="Lax", secure=not _IS_DEV)
+    return response
 
 
 @app.route("/api/auth/forgot", methods=["POST"])
@@ -498,11 +610,21 @@ def dashboard():
 
     עד היום הוא היה מוגן ב-login_required והפנה ישר ל-/login, כך שכל מי
     שקיבל קישור נחת על טופס התחברות בלי לדעת מה זה ולמה שימסור נתונים
-    פיננסיים. שם הפונקציה נשאר dashboard כדי שכל url_for הקיים ימשיך לעבוד."""
+    פיננסיים. שם הפונקציה נשאר dashboard כדי שכל url_for הקיים ימשיך לעבוד.
+
+    מי שלא מחובר מקבל אחד משניים: מכשיר שמעולם לא התחבר מכאן רואה את דף
+    הנחיתה, ומכשיר מוכר מדלג עליו ישר לטופס ההתחברות. דף שיווק הוא התשובה
+    הנכונה לאורח, ולא למי שרק רצה להיכנס לתקציב שלו. ‎?intro=1 הוא הדרך
+    לראות את דף הנחיתה בכל זאת — משם מגיע כפתור "חזרה" שבדף ההתחברות."""
     if "user_id" not in session:
-        response = make_response(render_template("landing.html"))
-        # התוכן כאן תלוי במצב ההתחברות, ולכן אסור שיישמר במטמון כלשהו
+        if _device_is_known() and not request.args.get("intro"):
+            response = redirect(url_for("login"))
+        else:
+            response = make_response(render_template("landing.html"))
+        # התוכן כאן תלוי במצב ההתחברות ובעוגיית המכשיר, ולכן אסור שיישמר
+        # במטמון כלשהו — ו-Vary אומר את זה גם ל-proxy שבדרך.
         response.headers["Cache-Control"] = "no-store"
+        response.headers["Vary"] = "Cookie"
         return response
 
     user      = get_current_user()
@@ -1053,7 +1175,12 @@ def delete_account_route():
         return jsonify({"error": "מחיקת החשבון נכשלה"}), 500
 
     session.clear()
-    return jsonify({"status": "ok"})
+    # מחיקת חשבון היא מחיקה — לא משאירים אחריה את המזהה ולא את סימון
+    # המכשיר. מי שיפתח את הכתובת אחר כך הוא שוב אורח שרואה את דף הנחיתה.
+    response = jsonify({"status": "ok"})
+    response.delete_cookie(_LAST_ID_COOKIE, samesite="Lax", secure=not _IS_DEV)
+    response.delete_cookie(_DEVICE_COOKIE,  samesite="Lax", secure=not _IS_DEV)
+    return response
 
 
 def _parse_amount(raw):

@@ -10,6 +10,7 @@
    קודם כל שגיאה ברענון ניקתה את ה-session, כך שבליפ רשת אחד היה מנתק.
    רק דחייה אמיתית של ה-refresh token מצדיקה ניתוק.
 """
+import time
 from datetime import timedelta
 
 import pytest
@@ -86,6 +87,74 @@ def test_a_rejected_refresh_token_does_sign_the_user_out(client_with_expiring_to
         assert not sess.get("user_id")
 
 
+def test_a_rejection_while_the_access_token_still_works_does_not_sign_out(monkeypatch):
+    """מרוץ הסיבוב של Supabase: שני workers, שתי בקשות מקבילות, ו-refresh
+    token שמסובב בכל רענון. הבקשה שמגיעה שנייה מקבלת "כבר נעשה בו שימוש"
+    למרות שההתחברות חיה לגמרי — הרענון פשוט נעשה כבר על ידי האחרת.
+
+    מה שמבדיל בין דחייה אמיתית לתוצאה של המרוץ הוא טוקן הגישה: כל עוד הוא
+    בתוקף, יש במה להמשיך להשתמש והבקשה הבאה תנסה לרענן שוב."""
+    app.config["TESTING"] = True
+    with app.test_client() as c:
+        with c.session_transaction() as sess:
+            sess["user_id"]          = "00000000-0000-0000-0000-000000000000"
+            sess["access_token"]     = "still-valid"
+            sess["refresh_token"]    = "already-rotated-by-the-other-worker"
+            # בתוך חלון הרענון המוקדם (120 שניות) אבל עוד לא פג
+            sess["token_expires_at"] = time.time() + 60
+
+        monkeypatch.setattr(app_module.db, "refresh_session",
+                            lambda _t: (None, "Invalid Refresh Token: Already Used", True))
+
+        response = c.get("/settings")
+
+        with c.session_transaction() as sess:
+            assert sess.get("user_id"), "מרוץ סיבוב טוקנים ניתק את המשתמש"
+
+        # ולא פחות חשוב: הבקשה הכושלת לא כותבת עוגייה. אילו כתבה, היא
+        # הייתה דורסת את הטוקן החדש והתקין שהבקשה האחרת כבר שמרה.
+        assert not any(h[0] == "Set-Cookie" and h[1].startswith("session=")
+                       for h in response.headers), "בקשה כושלת דרסה את עוגיית ה-session"
+
+
+def _session_writing_view():
+    """עמוד שכותב ל-session תוך כדי טיפול בבקשה, כמו שהדשבורד עושה עם
+    recurring_synced. קיים כדי לבדוק שהקפאת העוגייה עומדת גם מולו."""
+    from flask import session as flask_session
+    flask_session["touched_by_the_view"] = "1"
+    return "ok"
+
+
+app.add_url_rule("/__test/session-writer", "test_session_writer", _session_writing_view)
+
+
+def test_freezing_the_cookie_survives_a_view_that_writes_to_the_session(
+        client_with_expiring_token, monkeypatch):
+    """מלכודת: ביטול הכתיבה נעשה אחרי ה-view דווקא. אילו נעשה לפניו, כתיבה
+    כלשהי ל-session בתוך ה-view הייתה מחזירה את הכתיבה לחיים — והעוגייה
+    שהייתה נכתבת כבר לא הייתה קבועה, כלומר נמחקת בסגירת הדפדפן. זה בדיוק
+    הניתוק שהמנגנון הזה אמור למנוע."""
+    monkeypatch.setattr(app_module.db, "refresh_session",
+                        lambda _t: (None, "temporary failure", False))
+
+    response = client_with_expiring_token.get("/__test/session-writer")
+
+    session_cookies = [h[1] for h in response.headers
+                       if h[0] == "Set-Cookie" and h[1].startswith("session=")]
+    assert not session_cookies, f"העוגייה נכתבה בכל זאת: {session_cookies}"
+
+
+def test_a_network_blip_does_not_overwrite_the_cookie(client_with_expiring_token, monkeypatch):
+    """אותו נימוק, בתקלה זמנית: אין לנו מה לשמור, אז לא נוגעים בעוגייה."""
+    monkeypatch.setattr(app_module.db, "refresh_session",
+                        lambda _t: (None, "temporary failure", False))
+
+    response = client_with_expiring_token.get("/settings")
+
+    assert not any(h[0] == "Set-Cookie" and h[1].startswith("session=")
+                   for h in response.headers)
+
+
 def test_a_successful_refresh_stores_the_rotated_token(client_with_expiring_token, monkeypatch):
     """Supabase מסובב את ה-refresh token בכל רענון. אם לא נשמור את החדש,
     הרענון הבא ייכשל והמשתמש ינותק אחרי כשעה."""
@@ -109,3 +178,102 @@ def test_logging_out_really_ends_the_session(client_with_expiring_token):
     with client_with_expiring_token.session_transaction() as sess:
         assert not sess.get("user_id")
         assert not sess.get("refresh_token")
+
+
+# ─── זיכרון המכשיר: לא חוזרים לדף השיווק ─────────────────────────────────────
+#
+# דף הנחיתה נועד למי שלא מכיר את האפליקציה. מי שכבר התחבר מהמכשיר הזה אמור
+# להגיע לאפליקציה, ואם ה-session נגמר — לטופס ההתחברות, לא לדף שיווק.
+
+@pytest.fixture
+def guest():
+    app.config["TESTING"] = True
+    return app.test_client()
+
+
+def test_signing_in_marks_the_device_as_known(guest, monkeypatch):
+    """נקודת הכניסה של כל המנגנון: בלי זה שום דבר אחר לא מופעל אף פעם."""
+    class _Session:
+        access_token, refresh_token, expires_at = "a", "r", 9999999999
+
+    class _User:
+        id, email = "00000000-0000-0000-0000-000000000000", "dana@example.com"
+
+    class _SignIn:
+        session, user = _Session(), _User()
+
+    monkeypatch.setattr(app_module.db, "sign_in",        lambda e, p: (_SignIn(), None))
+    monkeypatch.setattr(app_module.db, "set_auth_token", lambda t: None)
+    monkeypatch.setattr(app_module.db, "log_login_event", lambda: None)
+    monkeypatch.setattr(app_module.db, "get_profile",
+                        lambda uid: {"name": "דנה", "avatar_initial": "ד",
+                                     "family_id": "11111111-1111-1111-1111-111111111111"})
+
+    response = guest.post("/login", data={"identifier": "dana@example.com",
+                                          "password": "whatever"})
+
+    cookies = [h[1] for h in response.headers if h[0] == "Set-Cookie"]
+    assert any(c.startswith("sf_returning=1") for c in cookies)
+    assert any(c.startswith("sf_last_id=dana%40example.com") or
+               c.startswith("sf_last_id=dana@example.com") for c in cookies)
+    # המזהה יושב על המכשיר, ולכן HttpOnly — ל-JS אין בו שימוש, ו-XSS
+    # לא אמור לקרוא ממנו כתובת מייל.
+    assert all("HttpOnly" in c for c in cookies if c.startswith("sf_"))
+
+
+def test_a_first_time_visitor_gets_the_landing_page(guest):
+    response = guest.get("/")
+
+    assert response.status_code == 200
+    assert "lp-hero" in response.get_data(as_text=True)
+
+
+def test_a_known_device_skips_the_landing_page(guest):
+    """הלב של הבקשה: מכשיר שכבר התחבר פעם לא רואה שוב את דף השיווק."""
+    guest.set_cookie("sf_returning", "1")
+
+    response = guest.get("/")
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/login")
+
+
+def test_the_landing_page_stays_reachable_on_purpose(guest):
+    """כפתור "חזרה" שבטופס ההתחברות מצביע לכאן. בלי המילוט הזה הוא היה
+    מחזיר את המכשיר המוכר ל-/login, כלומר לולאה."""
+    guest.set_cookie("sf_returning", "1")
+
+    response = guest.get("/?intro=1")
+
+    assert response.status_code == 200
+    assert "lp-hero" in response.get_data(as_text=True)
+
+
+def test_the_router_is_never_cached(guest):
+    """התשובה בשורש נגזרת מהעוגיות. תשובה שמורה פירושה דף שיווק למשתמש
+    מחובר, או להפך."""
+    for path in ("/", "/login"):
+        response = guest.get(path)
+        assert response.headers.get("Cache-Control") == "no-store", path
+        assert "Cookie" in response.headers.get("Vary", ""), path
+
+
+def test_the_login_form_remembers_who_you_are(guest):
+    guest.set_cookie("sf_last_id", "someone@example.com")
+
+    body = guest.get("/login").get_data(as_text=True)
+
+    assert 'value="someone@example.com"' in body
+
+
+def test_logging_out_forgets_the_identifier_but_not_the_device(client_with_expiring_token):
+    """יציאה יזומה היא בקשה מפורשת להפסיק לזכור אותי — ולפעמים היא נעשית
+    כדי להעביר את המכשיר לבן משפחה אחר. אבל אין טעם להחזיר לדף שיווק
+    מישהו שהרגע השתמש באפליקציה."""
+    response = client_with_expiring_token.get("/logout")
+
+    cookies = [h[1] for h in response.headers if h[0] == "Set-Cookie"]
+    assert any(c.startswith("sf_last_id=") and "Expires=Thu, 01 Jan 1970" in c
+               for c in cookies), "המזהה לא נמחק ביציאה"
+    assert not any(c.startswith("sf_returning=") and "1970" in c
+                   for c in cookies), "סימון המכשיר נמחק ביציאה, והוא לא אמור"
