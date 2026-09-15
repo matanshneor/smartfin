@@ -3,6 +3,7 @@ import uuid
 
 from dotenv import load_dotenv
 from gotrue.errors import AuthApiError, AuthRetryableError
+from postgrest.exceptions import APIError
 
 load_dotenv()
 
@@ -173,15 +174,41 @@ def refresh_session(refresh_token: str):
 
 # ─── Profile ──────────────────────────────────────────────────────────────────
 
-def get_profile(user_id: str):
+# ‎PostgREST מחזיר את הקוד הזה כשהשאילתה הצליחה אבל לא החזירה שורות.
+# זו תשובה תקפה, לא תקלה — וההבחנה הזאת היא לב העניין ב-fetch_profile.
+_NO_ROWS = "PGRST116"
+
+
+def fetch_profile(user_id: str):
+    """מחזירה ‎(profile, ok)‎. ‎ok=False‎ פירושו **שהשליפה נכשלה** — לא שאין פרופיל.
+
+    ההפרדה הזאת נראית פדנטית והיא לא. עד עכשיו כל חריגה חזרה כ-None, וזה
+    לא הבדיל בין "למשתמש אין פרופיל" לבין "השרת לא ענה לשתי שניות".
+    ensure_family הסיק מ-None שאין למשתמש משפחה, יצר לו אחת חדשה, ודרס את
+    השיוך הקיים — כך שתקלת רשת חולפת בזמן התחברות ניתקה אותו לצמיתות מכל
+    ההיסטוריה שלו, בלי שום מסלול חזרה מהממשק, בזמן שבן הזוג שלו נשאר
+    במשפחה הישנה. משם והלאה השניים מזינים לשני תקציבים נפרדים בלי לדעת."""
     client = get_client()
     if not client:
-        return None
+        return None, False
     try:
         result = client.table("profiles").select("*, families(name)").eq("id", user_id).single().execute()
-        return result.data
-    except Exception:
-        return None
+        return result.data, True
+    except APIError as e:
+        if (e.json() or {}).get("code") == _NO_ROWS:
+            return None, True          # אין פרופיל — תשובה, לא כישלון
+        print(f"[ERROR] fetch_profile({user_id}): {e}")
+        return None, False
+    except Exception as e:
+        print(f"[ERROR] fetch_profile({user_id}): {e}")
+        return None, False
+
+
+def get_profile(user_id: str):
+    """הצורה הנוחה, לקוראים שעבורם "אין" ו"נכשל" שקולים (הצגת שם, אווטאר).
+    מי שמקבל החלטה על סמך היעדר פרופיל חייב להשתמש ב-fetch_profile."""
+    profile, _ = fetch_profile(user_id)
+    return profile
 
 
 def update_profile(user_id: str, name: str, phone: str = None, workplace: str = None):
@@ -310,11 +337,18 @@ def ensure_family(user_id: str, family_name: str = "המשפחה שלי"):
     client = get_client()
     if not client:
         return None
-    try:
-        profile = get_profile(user_id)
-        if profile and profile.get("family_id"):
-            return profile["family_id"]
 
+    profile, ok = fetch_profile(user_id)
+    if not ok:
+        # השליפה נכשלה. אסור להסיק מזה שאין משפחה: יצירת משפחה כאן דורסת
+        # את השיוך הקיים ומנתקת את המשתמש מכל ההיסטוריה שלו לצמיתות.
+        # כישלון גלוי, שממנו אפשר להתאושש בניסיון הבא, עדיף בהרבה.
+        print(f"[ERROR] ensure_family({user_id}): profile read failed — refusing to create a family")
+        return None
+    if profile and profile.get("family_id"):
+        return profile["family_id"]
+
+    try:
         family_id = str(uuid.uuid4())
         client.table("families").insert(
             {"id": family_id, "name": family_name}, returning="minimal"
