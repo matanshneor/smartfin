@@ -9,6 +9,8 @@
 חייבים להיות נגישים **בלי** session. אם מישהו יחזיר את login_required
 או ישנה את התנאי — הבדיקות כאן ייפלו.
 """
+import re
+
 import pytest
 
 from backend.app import app
@@ -92,8 +94,15 @@ def test_auth_screens_offer_a_way_back(anon, path):
 
 
 def test_the_way_back_leads_to_the_landing_page(anon):
-    """הקישור מצביע על השורש, שמגיש למי שלא מחובר את דף הנחיתה."""
+    """הקישור חייב להביא לדף הנחיתה — גם ממכשיר שכבר התחבר פעם, שהשורש
+    מחזיר אותו אחרת לטופס ההתחברות. לכן בודקים לאן הוא מוביל בפועל ולא
+    איך הוא כתוב."""
     body = anon.get("/signup").get_data(as_text=True)
     back = body[body.index('class="auth-back"'):]
+    href = re.search(r'href="([^"]+)"', back).group(1)
 
-    assert 'href="/"' in back[:120]
+    anon.set_cookie("sf_returning", "1")
+    landed = anon.get(href)
+
+    assert landed.status_code == 200, "כפתור החזרה לא מגיע לדף — כנראה לולאת הפניות"
+    assert "lp-hero" in landed.get_data(as_text=True)
