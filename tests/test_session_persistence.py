@@ -205,9 +205,11 @@ def test_signing_in_marks_the_device_as_known(guest, monkeypatch):
     monkeypatch.setattr(app_module.db, "sign_in",        lambda e, p: (_SignIn(), None))
     monkeypatch.setattr(app_module.db, "set_auth_token", lambda t: None)
     monkeypatch.setattr(app_module.db, "log_login_event", lambda: None)
-    monkeypatch.setattr(app_module.db, "get_profile",
-                        lambda uid: {"name": "דנה", "avatar_initial": "ד",
-                                     "family_id": "11111111-1111-1111-1111-111111111111"})
+    # fetch_profile ולא get_profile: מסלול ההתחברות צריך לדעת אם השליפה
+    # *נכשלה*, ולא רק מה היא החזירה — ראו tests/test_profile_read_failure.py
+    monkeypatch.setattr(app_module.db, "fetch_profile",
+                        lambda uid: ({"name": "דנה", "avatar_initial": "ד",
+                                      "family_id": "11111111-1111-1111-1111-111111111111"}, True))
 
     response = guest.post("/login", data={"identifier": "dana@example.com",
                                           "password": "whatever"})

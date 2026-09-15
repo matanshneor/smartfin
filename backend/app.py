@@ -382,8 +382,17 @@ def login():
             # Set JWT before querying profiles (RLS requires auth.uid())
             db.set_auth_token(response.session.access_token)
             db.log_login_event()  # תיעוד כניסה פנימי (לבעל האתר)
-            profile = db.get_profile(user.id)
+            profile, profile_ok = db.fetch_profile(user.id)
 
+        if not err and not profile_ok:
+            # הסיסמה נכונה, אבל הפרופיל לא נקרא. לא נכנסים: המשך מכאן היה
+            # מתחיל session בלי family_id, ומשם ensure_family היה יוצר
+            # משפחה חדשה ודורס את השיוך הקיים — ניתוק לצמיתות מכל
+            # ההיסטוריה בגלל תקלה של שתי שניות. כישלון שאפשר לנסות שוב
+            # אחריו הוא התוצאה הנכונה.
+            error = "לא הצלחנו לטעון את הפרטים שלך — נסה שוב בעוד רגע"
+
+        elif not err:
             session.permanent = True  # stay signed in until explicit logout
             session["user_id"]          = user.id
             session["user_email"]       = user.email
@@ -396,12 +405,19 @@ def login():
 
             # Auto-create family if user doesn't have one
             if not session["family_id"]:
-                family_id = db.ensure_family(user.id)
-                session["family_id"] = family_id
+                session["family_id"] = db.ensure_family(user.id)
 
-            # מכאן והלאה המכשיר מוכר: גם אם ה-session ייגמר יום אחד, השורש
-            # יביא אותו לטופס ההתחברות ולא חזרה לדף השיווק.
-            return _remember_device(redirect(url_for("dashboard")), identifier)
+            if not session["family_id"]:
+                # גם היצירה נכשלה. session בלי משפחה הוא אפליקציה שאי אפשר
+                # לעשות בה כלום, ובניסיון הבא הוא ינסה ליצור משפחה שוב —
+                # אז עדיף לא להיכנס מאשר להיכנס למצב תקוע.
+                session.clear()
+                error = "לא הצלחנו לטעון את הפרטים שלך — נסה שוב בעוד רגע"
+
+            else:
+                # מכאן והלאה המכשיר מוכר: גם אם ה-session ייגמר יום אחד,
+                # השורש יביא אותו לטופס ההתחברות ולא חזרה לדף השיווק.
+                return _remember_device(redirect(url_for("dashboard")), identifier)
 
     # העמוד נושא עכשיו את המזהה שנשמר, כך שהוא תלוי-עוגייה בדיוק כמו השורש
     # ואסור שיישמר במטמון של דפדפן או proxy.
