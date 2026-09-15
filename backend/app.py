@@ -1787,6 +1787,18 @@ def too_many_requests(e):
     msg = "יותר מדי ניסיונות בזמן קצר — נסה שוב בעוד דקה"
     if _is_api_request():
         return jsonify({"error": msg}), 429
+
+    # מסלולי האימות מקבלים את הטופס עצמו בחזרה, עם ההודעה מעליו.
+    # error.html הוא מבוי סתום — יש בו רק "חזור לדף הראשי" — ומי שנחסם
+    # הגיע לשם בדיוק כי לחץ פעמיים על "התחבר" ולא הבין למה כלום לא קרה.
+    # לשלוח אותו משם לדף מת, בלי מה שהקליד, זה להעניש אותו על חוסר סבלנות.
+    if request.path in ("/login", "/signup"):
+        return render_template(
+            "login.html", error=msg,
+            active_tab="signup" if request.path == "/signup" else "login",
+            remembered_identifier=_remembered_identifier(),
+        ), 429
+
     return render_template("error.html", code=429, message=msg), 429
 
 
