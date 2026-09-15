@@ -266,14 +266,22 @@ def test_the_login_form_remembers_who_you_are(guest):
     assert 'value="someone@example.com"' in body
 
 
-def test_logging_out_forgets_the_identifier_but_not_the_device(client_with_expiring_token):
-    """יציאה יזומה היא בקשה מפורשת להפסיק לזכור אותי — ולפעמים היא נעשית
-    כדי להעביר את המכשיר לבן משפחה אחר. אבל אין טעם להחזיר לדף שיווק
-    מישהו שהרגע השתמש באפליקציה."""
+def test_logging_out_brings_you_back_to_the_landing_page(client_with_expiring_token):
+    """יציאה יזומה מאפסת הכול. היא הדרך היחידה החוצה, ומי שבוחר בה מקבל
+    בדיוק את מה שאורח מקבל: דף הנחיתה, ומשם כפתור התחברות.
+
+    זה גם מה שנותן משמעות לסימון המכשיר — אחרי היציאה הוא נמחק, ולכן
+    מכשיר מסומן בלי session הוא בהכרח מקרה שבו ההתחברות נגמרה מעצמה."""
     response = client_with_expiring_token.get("/logout")
 
+    assert response.headers["Location"].endswith("/")
+
     cookies = [h[1] for h in response.headers if h[0] == "Set-Cookie"]
-    assert any(c.startswith("sf_last_id=") and "Expires=Thu, 01 Jan 1970" in c
-               for c in cookies), "המזהה לא נמחק ביציאה"
-    assert not any(c.startswith("sf_returning=") and "1970" in c
-                   for c in cookies), "סימון המכשיר נמחק ביציאה, והוא לא אמור"
+    for name in ("sf_last_id", "sf_returning"):
+        assert any(c.startswith(f"{name}=") and "Expires=Thu, 01 Jan 1970" in c
+                   for c in cookies), f"{name} לא נמחקה ביציאה"
+
+    # והמבחן האמיתי: הבקשה הבאה באמת מקבלת את דף הנחיתה
+    landed = client_with_expiring_token.get("/")
+    assert landed.status_code == 200
+    assert "lp-hero" in landed.get_data(as_text=True)
