@@ -96,6 +96,10 @@ def test_a_failed_read_never_creates_a_family(monkeypatch):
             created.append(name)
             raise AssertionError(f"נוצרה כתיבה ל-{name} למרות שהשליפה נכשלה")
 
+        def rpc(self, name, params):
+            created.append(name)
+            raise AssertionError(f"נקראה {name} למרות שהשליפה נכשלה")
+
     monkeypatch.setattr(db, "get_client", lambda: _Recorder())
     monkeypatch.setattr(db, "fetch_profile", lambda uid: (None, False))
 
@@ -105,20 +109,19 @@ def test_a_failed_read_never_creates_a_family(monkeypatch):
 
 def test_a_missing_profile_does_still_get_a_family(monkeypatch):
     """בקרת-נגד: הזהירות לא אמורה לשבור משתמש חדש אמיתי."""
-    writes = []
+    calls = []
 
     class _Fake:
-        def table(self, name): writes.append(name); return self
-        def insert(self, *a, **k): return self
-        def update(self, *a, **k): return self
-        def eq(self, *a, **k): return self
-        def execute(self): return self
+        # היצירה עוברת דרך RPC ולא בכתיבה ישירה: כתיבה ל-profiles.family_id
+        # חסומה ברמת ההרשאות מאז מיגרציה 20260916100000
+        def rpc(self, name, params): calls.append((name, params)); return self
+        def execute(self): self.data = "44444444-4444-4444-4444-444444444444"; return self
 
     monkeypatch.setattr(db, "get_client", lambda: _Fake())
     monkeypatch.setattr(db, "fetch_profile", lambda uid: (None, True))
 
-    assert db.ensure_family("some-user") is not None
-    assert "families" in writes
+    assert db.ensure_family("some-user") == "44444444-4444-4444-4444-444444444444"
+    assert calls and calls[0][0] == "create_own_family"
 
 
 # ─── מה שהמשתמש חווה ─────────────────────────────────────────────────────────
