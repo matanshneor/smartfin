@@ -74,6 +74,7 @@
                         <p class="member-settings-name">
                             {% if m.id == user.id %}<span id="accountNameDisplay">{{ m.full_name }}</span> <span class="me-badge">אני</span>
                             {% else %}{{ m.full_name }}{% endif %}
+                            {% if m.id == family.get('manager_id') %}<span class="manager-badge">מנהל המשפחה</span>{% endif %}
                         </p>
                         <p class="member-settings-meta">{{ m.email }}</p>
                         {% if m.id == user.id %}
@@ -88,6 +89,16 @@
                     <button class="icon-btn" id="editProfileBtn" aria-label="ערוך את הפרטים שלי">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                        </svg>
+                    </button>
+                    {# הסרה מוצגת רק למנהל, ורק על חבר אחר. הכלל נאכף ב-DB
+                       ממילא; ההסתרה כאן היא כדי לא להציע פעולה שתיכשל. #}
+                    {% elif user.id == family.get('manager_id') %}
+                    <button class="icon-btn icon-btn-danger remove-member-btn"
+                            data-id="{{ m.id }}" data-name="{{ m.full_name }}"
+                            aria-label="הסרת {{ m.full_name }} מהמשפחה">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/>
                         </svg>
                     </button>
                     {% endif %}
@@ -135,6 +146,7 @@
                 </div>
                 <span class="invite-code-inline" id="inviteCode">{{ family['invite_code'] }}</span>
                 <button class="btn-sm btn-ghost" id="copyCodeBtn">העתק</button>
+                <button class="btn-sm btn-ghost" id="rotateCodeBtn">קוד חדש</button>
             </div>
             {% endif %}
 
@@ -153,6 +165,18 @@
                 </div>
                 <p class="form-error" id="joinFamilyError" role="alert"></p>
             </div>
+
+            <!-- עזיבת המשפחה -->
+            {% if members | length > 1 %}
+            <div class="group-divider"></div>
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">עזיבת המשפחה</p>
+                    <p class="group-row-hint">תפתח לך משפחה חדשה וריקה. החשבון שלך נשאר.</p>
+                </div>
+                <button class="btn-sm btn-danger-ghost" id="leaveFamilyBtn">עזיבה</button>
+            </div>
+            {% endif %}
         </div>
     </section>
 

@@ -246,7 +246,13 @@ def fetch_profile(user_id: str):
     if not client:
         return None, False
     try:
-        result = client.table("profiles").select("*, families(name)").eq("id", user_id).single().execute()
+        # שם הקשר מצוין במפורש. מאז שנוסף families.manager_id יש שני קשרים
+        # בין הטבלאות — profiles.family_id→families ו-families.manager_id→profiles
+        # — ו-PostgREST מסרב לנחש למי התכוונו (PGRST201). בלי זה השליפה
+        # נכשלת, ומכיוון שהיא רצה בהתחברות, אף אחד לא מצליח להיכנס.
+        result = client.table("profiles") \
+            .select("*, families!profiles_family_id_fkey(name)") \
+            .eq("id", user_id).single().execute()
         return result.data, True
     except APIError as e:
         if (e.json() or {}).get("code") == _NO_ROWS:
@@ -1006,6 +1012,65 @@ def update_recurring_template(template_id: str, family_id: str, amount: float = 
         return (result.data[0] if result.data else None), None
     except Exception as e:
         return None, str(e)
+
+
+def remove_family_member(user_id: str, keep_transactions: bool = True):
+    """מסירה בן משפחה. מנהל המשפחה בלבד. מחזירה (ok, error).
+
+    הכללים נאכפים ב-DB ולא כאן: הפונקציה נגזרת מ-auth.uid(), בודקת שהקורא
+    הוא המנהל ושהיעד אכן במשפחה שלו, ומסרבת להסיר את המנהל עצמו — אחרת שני
+    חברים היו יכולים להסיר זה את זה עד שלא נשאר אף אחד."""
+    client = get_client()
+    if not client:
+        return False, "Database not configured"
+    try:
+        client.rpc("remove_family_member",
+                   {"p_user_id": user_id, "p_keep_transactions": keep_transactions}).execute()
+        return True, None
+    except Exception as e:
+        print(f"[ERROR] remove_family_member: {e}")
+        return False, str(e)
+
+
+def leave_family(keep_transactions: bool = True):
+    """עוזבת את המשפחה הנוכחית ופותחת משפחה חדשה וריקה.
+    מחזירה (new_family_id, error)."""
+    client = get_client()
+    if not client:
+        return None, "Database not configured"
+    try:
+        result = client.rpc("leave_family",
+                            {"p_keep_transactions": keep_transactions}).execute()
+        return (result.data or None), None
+    except Exception as e:
+        print(f"[ERROR] leave_family: {e}")
+        return None, str(e)
+
+
+def rotate_invite_code():
+    """מחליפה את קוד ההזמנה. מחזירה (new_code, error).
+    כל בן משפחה רשאי — מי שמגלה שהקוד דלף צריך לסגור אותו מיד."""
+    client = get_client()
+    if not client:
+        return None, "Database not configured"
+    try:
+        result = client.rpc("rotate_invite_code", {}).execute()
+        _invalidate_family_cache(get_my_family_id() or "")
+        return (result.data or None), None
+    except Exception as e:
+        print(f"[ERROR] rotate_invite_code: {e}")
+        return None, str(e)
+
+
+def get_my_family_id():
+    """מזהה המשפחה של המשתמש המחובר, לפי ה-DB ולא לפי ה-session."""
+    client = get_client()
+    if not client:
+        return None
+    try:
+        return client.rpc("get_my_family_id", {}).execute().data
+    except Exception:
+        return None
 
 
 def stop_recurring(transaction_id: str, family_id: str):
