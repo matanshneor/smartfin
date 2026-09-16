@@ -24,9 +24,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: גרסת פייתון מ-runtime.txt
+        # setup-python קורא את הקובץ אבל לא מסיר את הקידומת "python-" של
+        # פורמט Heroku, ש-Railway משתמש בו. גוזרים אותה כאן כדי שגרסת
+        # ה-CI וגרסת הפרודקשן יישארו מקור אמת אחד.
+        id: py
+        run: echo "version=$(sed 's/^python-//' runtime.txt)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-python@v5
         with:
-          python-version-file: runtime.txt
+          python-version: ${{ steps.py.outputs.version }}
           cache: pip
 
       - name: התקנת תלויות
@@ -46,9 +53,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: גרסת פייתון מ-runtime.txt
+        # setup-python קורא את הקובץ אבל לא מסיר את הקידומת "python-" של
+        # פורמט Heroku, ש-Railway משתמש בו. גוזרים אותה כאן כדי שגרסת
+        # ה-CI וגרסת הפרודקשן יישארו מקור אמת אחד.
+        id: py
+        run: echo "version=$(sed 's/^python-//' runtime.txt)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-python@v5
         with:
-          python-version-file: runtime.txt
+          python-version: ${{ steps.py.outputs.version }}
 
       - name: סריקת פרצות ידועות בתלויות
         run: |
