@@ -693,9 +693,9 @@ def onboarding():
 def onboarding_complete():
     user = get_current_user()
     if not user["family_id"]:
-        return jsonify({"error": "No family linked to account"}), 400
+        return jsonify({"error": "לא מצאנו את המשפחה שלך — רעננו את הדף, ואם זה חוזר התחברו מחדש"}), 400
     if not db.family_needs_onboarding(user["family_id"]):
-        return jsonify({"error": "Onboarding already completed"}), 400
+        return jsonify({"error": "ההגדרה הראשונית כבר הושלמה"}), 400
 
     body = request.get_json(silent=True) or {}
     family_name = (body.get("family_name") or "").strip()
@@ -1085,7 +1085,7 @@ def _parse_project_body(body: dict):
 def add_project_route():
     user = get_current_user()
     if not user["family_id"]:
-        return jsonify({"error": "No family linked to account"}), 400
+        return jsonify({"error": "לא מצאנו את המשפחה שלך — רעננו את הדף, ואם זה חוזר התחברו מחדש"}), 400
     body = request.get_json(silent=True) or {}
     fields, err = _parse_project_body(body)
     if err:
@@ -1158,7 +1158,7 @@ def share_project_route(project_id):
     user = get_current_user()
     ok, err = db.share_project(project_id, user["family_id"], user["id"])
     if not ok:
-        return jsonify({"error": err}), 422
+        return jsonify({"error": _user_message(err)}), 422
     return jsonify({"status": "ok"})
 
 
@@ -1170,7 +1170,7 @@ def unshare_project_route(project_id):
     user = get_current_user()
     ok, err = db.unshare_project(project_id, user["family_id"], user["id"])
     if not ok:
-        return jsonify({"error": err}), 422
+        return jsonify({"error": _user_message(err)}), 422
     return jsonify({"status": "ok"})
 
 
@@ -1289,7 +1289,7 @@ def update_profile():
     full_name = f"{first_name} {last_name}"
     ok, err = db.update_profile(user["id"], full_name, phone or None, workplace or None)
     if not ok:
-        return jsonify({"error": err or "עדכון הפרטים נכשל"}), 500
+        return jsonify({"error": _user_message(err, "עדכון הפרטים נכשל")}), 500
 
     # מקום עבודה השתנה בפועל וסופק סקופ — מיישמים על היסטוריית עסקאות המשכורת
     if workplace_scope and workplace != old_workplace and user["family_id"]:
@@ -1329,7 +1329,7 @@ def update_password():
 
     ok, err = db.update_password(session.get("access_token"), password)
     if not ok:
-        return jsonify({"error": err or "עדכון הסיסמה נכשל"}), 500
+        return jsonify({"error": _user_message(err, "עדכון הסיסמה נכשל")}), 500
     return jsonify({"status": "ok"})
 
 
@@ -1516,17 +1516,17 @@ def family_members():
 def add_transaction():
     user = get_current_user()
     if not user["family_id"]:
-        return jsonify({"error": "No family linked to account"}), 400
+        return jsonify({"error": "לא מצאנו את המשפחה שלך — רעננו את הדף, ואם זה חוזר התחברו מחדש"}), 400
 
     body = request.get_json(silent=True) or {}
 
     required = ("amount", "type", "date")
     if not all(body.get(k) for k in required):
-        return jsonify({"error": "Missing required fields: amount, type, date"}), 422
+        return jsonify({"error": "חסרים פרטים: סכום, סוג ותאריך הם שדות חובה"}), 422
 
     tx_type = body["type"]
     if tx_type not in ("expense", "income", "savings"):
-        return jsonify({"error": "type must be expense, income, or savings"}), 422
+        return jsonify({"error": "סוג העסקה חייב להיות הוצאה, הכנסה או חיסכון"}), 422
 
     amount, amount_err = _parse_amount(body["amount"])
     if amount_err:
@@ -1583,17 +1583,17 @@ def add_transaction():
 def update_transaction(tx_id):
     user = get_current_user()
     if not user["family_id"]:
-        return jsonify({"error": "No family linked to account"}), 400
+        return jsonify({"error": "לא מצאנו את המשפחה שלך — רעננו את הדף, ואם זה חוזר התחברו מחדש"}), 400
 
     body = request.get_json(silent=True) or {}
 
     required = ("amount", "type", "date")
     if not all(body.get(k) for k in required):
-        return jsonify({"error": "Missing required fields: amount, type, date"}), 422
+        return jsonify({"error": "חסרים פרטים: סכום, סוג ותאריך הם שדות חובה"}), 422
 
     tx_type = body["type"]
     if tx_type not in ("expense", "income", "savings"):
-        return jsonify({"error": "type must be expense, income, or savings"}), 422
+        return jsonify({"error": "סוג העסקה חייב להיות הוצאה, הכנסה או חיסכון"}), 422
 
     amount, amount_err = _parse_amount(body["amount"])
     if amount_err:
@@ -1669,7 +1669,7 @@ def sync_recurring_template(template_id):
     מופעים עתידיים שעוד לא נוצרו ישתמשו בערך החדש."""
     user = get_current_user()
     if not user["family_id"]:
-        return jsonify({"error": "No family linked to account"}), 400
+        return jsonify({"error": "לא מצאנו את המשפחה שלך — רעננו את הדף, ואם זה חוזר התחברו מחדש"}), 400
 
     body = request.get_json(silent=True) or {}
     amount = body.get("amount")
@@ -1699,7 +1699,7 @@ def sync_recurring_template(template_id):
 def scan_receipt_route():
     user = get_current_user()
     if not user["family_id"]:
-        return jsonify({"error": "No family linked to account"}), 400
+        return jsonify({"error": "לא מצאנו את המשפחה שלך — רעננו את הדף, ואם זה חוזר התחברו מחדש"}), 400
 
     try:
         used = db.receipt_scans_this_month(user["family_id"])
@@ -1857,7 +1857,7 @@ def delete_category(cat_id):
     user   = get_current_user()
     client = db.get_client()
     if not client:
-        return jsonify({"error": "DB not configured"}), 500
+        return jsonify({"error": "השירות אינו זמין כרגע — נסו שוב בעוד רגע"}), 500
     try:
         client.table("categories") \
             .delete() \
@@ -1894,7 +1894,7 @@ def update_family_settings_route():
     """עדכון העדפות המשפחה. מקבל עדכון חלקי וממזג לתוך הקיים."""
     user = get_current_user()
     if not user["family_id"]:
-        return jsonify({"error": "No family linked to account"}), 400
+        return jsonify({"error": "לא מצאנו את המשפחה שלך — רעננו את הדף, ואם זה חוזר התחברו מחדש"}), 400
 
     body  = request.get_json(silent=True) or {}
     patch = {}
@@ -1942,9 +1942,27 @@ def update_family():
     body = request.get_json(silent=True) or {}
     name = body.get("name", "").strip()
     if not name:
-        return jsonify({"error": "Name required"}), 422
+        return jsonify({"error": "נא להזין שם"}), 422
     ok = db.update_family_name(user["family_id"], name)
     return jsonify({"status": "ok" if ok else "error"})
+
+
+def _user_message(err, fallback: str = "הפעולה נכשלה — נסו שוב") -> str:
+    """מחזיר הודעה שמתאימה להצגה למשתמש.
+
+    שכבת ה-DB מחזירה שני סוגי מחרוזות באותו מקום: הודעות שנכתבו למשתמש
+    ("רק הבעלים של הפרויקט יכול…") וסימנים פנימיים שנכתבו למפתח
+    ("Database not configured", או ‎str(e)‎ גולמי מ-Supabase). המסלולים
+    הציגו את שתיהן כמו שהן.
+
+    הכלל כאן פשוט ובכוונה: הודעה למשתמש נכתבת בעברית. מחרוזת בלי עברית
+    היא פנימית — היא נכנסת ללוג ולא למסך. כך גם שגיאה עתידית שתיווסף
+    בשכבת ה-DB לא תדלוף לממשק בלי שאף אחד שם לב."""
+    if err and re.search(r"[\u0590-\u05FF]", str(err)):
+        return str(err)
+    if err:
+        logger.warning("internal error surfaced to a route: %s", err)
+    return fallback
 
 
 def _family_rpc_message(err: str) -> str:
@@ -2031,7 +2049,7 @@ def preview_family_code():
     שלא ישמש לסריקת קודים."""
     code = request.args.get("code", "").strip()
     if not code:
-        return jsonify({"error": "Code required"}), 422
+        return jsonify({"error": "נא להזין קוד הזמנה"}), 422
     name = db.family_name_for_code(code)
     if not name:
         return jsonify({"found": False}), 404
