@@ -2477,6 +2477,29 @@ li.zero-cat-row { display: none; }
     vertical-align: middle;
 }
 
+/* תג מנהל המשפחה — תפקיד אחד ויחיד במשפחה: מי שרשאי להסיר חברים.
+   אפור ולא זהב, כדי שלא יתחרה ב"אני" שלצידו. */
+.manager-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--color-text-muted);
+    background: var(--color-input);
+    border-radius: 99px;
+    padding: 1px 8px;
+    margin-inline-start: 4px;
+    vertical-align: middle;
+}
+
+/* כפתור אייקון להרסני — אדום רק בריחוף/מיקוד, כדי שרשימת החברים לא
+   תיראה כמו רשימת אזהרות. */
+.icon-btn-danger { color: var(--color-text-muted); }
+.icon-btn-danger:hover,
+.icon-btn-danger:focus-visible {
+    color: var(--color-expense);
+    background: var(--color-expense-dim, var(--color-input));
+}
+
 /* Recurring transactions */
 .recurring-list {
     display: flex;

@@ -1765,6 +1765,82 @@ def update_family():
     return jsonify({"status": "ok" if ok else "error"})
 
 
+def _family_rpc_message(err: str) -> str:
+    """מתרגם את שגיאות ה-RPC להודעה בעברית. ההודעות המקוריות באנגלית
+    ומיועדות ללוג, לא למשתמש."""
+    text = (err or "").lower()
+    if "only the family manager" in text:
+        return "רק מנהל המשפחה יכול להסיר בני משפחה"
+    if "manager cannot be removed" in text:
+        return "אי אפשר להסיר את מנהל המשפחה"
+    if "not a member of your family" in text:
+        return "המשתמש אינו חבר במשפחה שלך"
+    if "leave_family to remove yourself" in text:
+        return "כדי לצאת מהמשפחה השתמשו ב\"עזיבת המשפחה\""
+    return "הפעולה נכשלה — נסו שוב"
+
+
+@app.route("/api/family/members/<member_id>", methods=["DELETE"])
+@login_required
+@limiter.limit("10 per minute")
+def remove_family_member_route(member_id):
+    """הסרת בן משפחה. מנהל המשפחה בלבד — נאכף ב-DB.
+
+    keep_transactions הוא בחירה של המשתמש ולא ברירת מחדל שקטה: הכסף יצא
+    מהתקציב המשותף, אז "להשאיר" שומר על הסכומים החודשיים נכונים והעסקה
+    מוצגת כ"משותפת". "למחוק" משנה למפרע כל סיכום חודשי שבו הוא מופיע,
+    ולכן הוא חייב להיות בחירה מודעת."""
+    user = get_current_user()
+    if not user["family_id"]:
+        return jsonify({"error": "לא משויכת משפחה לחשבון"}), 400
+
+    body = request.get_json(silent=True) or {}
+    keep = body.get("keep_transactions", True) is not False
+
+    ok, err = db.remove_family_member(member_id, keep_transactions=keep)
+    if not ok:
+        return jsonify({"error": _family_rpc_message(err)}), 403
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/family/leave", methods=["POST"])
+@login_required
+@limiter.limit("10 per minute")
+def leave_family_route():
+    """עזיבת המשפחה. כל בן משפחה רשאי, כולל המנהל — כשהוא עוזב הניהול
+    עובר לוותיק שנשאר, כדי שלא תיוותר משפחה בלי מנהל."""
+    user = get_current_user()
+    if not user["family_id"]:
+        return jsonify({"error": "לא משויכת משפחה לחשבון"}), 400
+
+    body = request.get_json(silent=True) or {}
+    keep = body.get("keep_transactions", True) is not False
+
+    new_family_id, err = db.leave_family(keep_transactions=keep)
+    if err or not new_family_id:
+        return jsonify({"error": _family_rpc_message(err)}), 400
+
+    # ה-session נושא את המשפחה הישנה; בלי העדכון הזה כל שליפה בבקשה הבאה
+    # תסונן לפי משפחה שהמשתמש כבר לא חבר בה, והאפליקציה תיראה ריקה
+    session["family_id"] = new_family_id
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/family/invite-code", methods=["POST"])
+@login_required
+@limiter.limit("10 per minute")
+def rotate_invite_code_route():
+    """החלפת קוד ההזמנה. הקוד הישן מפסיק לעבוד מיד — זו כל המטרה."""
+    user = get_current_user()
+    if not user["family_id"]:
+        return jsonify({"error": "לא משויכת משפחה לחשבון"}), 400
+
+    code, err = db.rotate_invite_code()
+    if err or not code:
+        return jsonify({"error": "החלפת הקוד נכשלה — נסו שוב"}), 400
+    return jsonify({"status": "ok", "invite_code": code})
+
+
 @app.route("/api/family/preview", methods=["GET"])
 @login_required
 @limiter.limit("20 per minute")

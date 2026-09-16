@@ -1009,3 +1009,144 @@ document.addEventListener('click', function (e) {
     .catch(function () { errorEl.textContent = 'שגיאת רשת — נסה שוב'; saveBtn.disabled = false; });
 });
 })();
+
+
+/* ─── ניהול חברי המשפחה ──────────────────────────────────────────────────────
+ *
+ * עד עכשיו מי שהצטרף למשפחה — בטעות, או עם קוד שדלף בוואטסאפ — נשאר בה
+ * לתמיד: אין הסרה, אין עזיבה, והקוד נוצר פעם אחת ואי אפשר לשנותו.
+ */
+(function () {
+    const KEEP  = 'keep';
+    const WIPE  = 'delete';
+
+    /* הבחירה על העסקאות נשאלת ולא מוכרעת בשקט. הכסף יצא מהתקציב המשותף,
+     * אז "להשאיר" שומר את הסיכומים החודשיים נכונים והעסקאות מוצגות
+     * כ"משותפות"; "למחוק" משנה למפרע כל חודש שבו הן מופיעות.
+     *
+     * המחיקה היא דווקא כפתור האישור, וזה מכוון: appConfirm מחזיר false גם
+     * על Escape, על לחיצה מחוץ לדיאלוג ועל ✕. אילו "להשאיר" היה האישור,
+     * כל בריחה מהדיאלוג הייתה מוחקת עסקאות — בדיוק הבאג שקיים היום
+     * במחיקת פרויקט. כך כל דרך יציאה מגיעה לאפשרות הבטוחה. */
+    function askAboutTransactions(title, message) {
+        return window.appConfirm({
+            title: title,
+            message: message + '\n\nמה לעשות עם העסקאות שכבר נרשמו?',
+            confirmText: 'למחוק אותן',
+            cancelText:  'להשאיר כמשותפות',
+        }).then(function (wipe) {
+            return wipe ? WIPE : KEEP;
+        });
+    }
+
+    function send(url, method, body) {
+        return fetch(url, {
+            method:  method,
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(body || {}),
+        }).then(function (r) {
+            return r.json().then(function (d) { return { ok: r.ok, data: d }; });
+        });
+    }
+
+    // ── הסרת בן משפחה (מנהל בלבד) ──
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.remove-member-btn');
+        if (!btn) return;
+        const id   = btn.dataset.id;
+        const name = btn.dataset.name || 'בן המשפחה';
+        if (!id) return;
+
+        window.appConfirm({
+            title: 'להסיר את ' + name + ' מהמשפחה?',
+            message: name + ' יאבד גישה לתקציב המשפחתי מיד, ותיפתח לו משפחה '
+                   + 'חדשה וריקה. אפשר לצרף אותו שוב בקוד הזמנה.',
+            confirmText: 'המשך',
+        }).then(function (ok) {
+            if (!ok) return null;
+            return askAboutTransactions('העסקאות של ' + name,
+                'העסקאות שלו נרשמו מהתקציב המשותף.');
+        }).then(function (choice) {
+            if (!choice) return;
+            btn.disabled = true;
+            return send('/api/family/members/' + id, 'DELETE',
+                        { keep_transactions: choice === KEEP })
+                .then(function (res) {
+                    if (res.ok) {
+                        window.showToast(name + ' הוסר מהמשפחה');
+                        setTimeout(function () { window.location.reload(); }, 700);
+                    } else {
+                        btn.disabled = false;
+                        window.showToast(res.data.error || 'ההסרה נכשלה', 'error');
+                    }
+                })
+                .catch(function () {
+                    btn.disabled = false;
+                    window.showToast('שגיאת רשת — נסה שוב', 'error');
+                });
+        });
+    });
+
+    // ── עזיבת המשפחה ──
+    const leaveBtn = document.getElementById('leaveFamilyBtn');
+    if (leaveBtn) {
+        leaveBtn.addEventListener('click', function () {
+            window.appConfirm({
+                title: 'לעזוב את המשפחה?',
+                message: 'תאבד גישה לתקציב המשפחתי. תיפתח לך משפחה חדשה וריקה, '
+                       + 'והחשבון שלך נשאר. אפשר לחזור בקוד הזמנה.',
+                confirmText: 'המשך',
+            }).then(function (ok) {
+                if (!ok) return null;
+                return askAboutTransactions('העסקאות שלך',
+                    'העסקאות שרשמת נרשמו מהתקציב המשותף ויישארו אצל המשפחה.');
+            }).then(function (choice) {
+                if (!choice) return;
+                leaveBtn.disabled = true;
+                return send('/api/family/leave', 'POST',
+                            { keep_transactions: choice === KEEP })
+                    .then(function (res) {
+                        if (res.ok) {
+                            window.location.href = '/';
+                        } else {
+                            leaveBtn.disabled = false;
+                            window.showToast(res.data.error || 'העזיבה נכשלה', 'error');
+                        }
+                    })
+                    .catch(function () {
+                        leaveBtn.disabled = false;
+                        window.showToast('שגיאת רשת — נסה שוב', 'error');
+                    });
+            });
+        });
+    }
+
+    // ── החלפת קוד ההזמנה ──
+    const rotateBtn = document.getElementById('rotateCodeBtn');
+    if (rotateBtn) {
+        rotateBtn.addEventListener('click', function () {
+            window.appConfirm({
+                title: 'ליצור קוד הזמנה חדש?',
+                message: 'הקוד הנוכחי יפסיק לעבוד מיד. מי שכבר הצטרף נשאר במשפחה.',
+                confirmText: 'צור קוד חדש',
+            }).then(function (ok) {
+                if (!ok) return;
+                rotateBtn.disabled = true;
+                return send('/api/family/invite-code', 'POST')
+                    .then(function (res) {
+                        rotateBtn.disabled = false;
+                        if (res.ok && res.data.invite_code) {
+                            document.getElementById('inviteCode').textContent = res.data.invite_code;
+                            window.showToast('נוצר קוד חדש');
+                        } else {
+                            window.showToast(res.data.error || 'ההחלפה נכשלה', 'error');
+                        }
+                    })
+                    .catch(function () {
+                        rotateBtn.disabled = false;
+                        window.showToast('שגיאת רשת — נסה שוב', 'error');
+                    });
+            });
+        });
+    }
+})();
