@@ -1555,7 +1555,7 @@ input[type="number"] {
     content: '✓';
     color: #FFFFFF;
     font-size: 0.8rem;
-    font-weight: 800;
+    font-weight: 700;
 }
 
 .checkbox-text {
@@ -1697,7 +1697,7 @@ a.submit-btn {
 
 .year-label {
     font-size: 1.15rem;
-    font-weight: 800;
+    font-weight: 700;
     color: var(--color-gold-text);
     letter-spacing: 0.06em;
 }
@@ -1909,7 +1909,7 @@ a.submit-btn {
 
 .doughnut-total {
     font-size: 1.35rem;
-    font-weight: 800;
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
     color: var(--color-gold-text);
     direction: ltr;
@@ -3592,7 +3592,7 @@ li.transaction-item.swipe-ready > .swipe-content {
 .legal-title {
     font-family: var(--font-display);
     font-size: clamp(1.6rem, 5.5vw, 2.1rem);
-    font-weight: 800;
+    font-weight: 700;
     margin: 0 0 6px;
 }
 
@@ -3742,7 +3742,7 @@ li.transaction-item.swipe-ready > .swipe-content {
 
 .lp-h1 {
     font-size: clamp(2.2rem, 8.5vw, 3.6rem);
-    font-weight: 800; line-height: 1.14; margin: 0 0 20px;
+    font-weight: 700; line-height: 1.14; margin: 0 0 20px;
 }
 .lp-h1 em { font-style: normal; color: var(--color-gold-bright); }
 
