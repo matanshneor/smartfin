@@ -12,13 +12,23 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from backend import supabase_config as db
 
+# הסיסמאות מהסביבה ולא מהקוד — הריפו ציבורי, וסיסמה שכתובה בו היא סיסמה
+# עובדת לחשבון אמיתי. מגדירים RLS_TEST_PASSWORD_A/B ב-.env לפני ההרצה.
 TEST_ACCOUNTS = [
-    {"email": "rls-test-family-a@smartfin.test", "password": "RlsTest123!", "name": "בדיקת RLS א"},
-    {"email": "rls-test-family-b@smartfin.test", "password": "RlsTest123!", "name": "בדיקת RLS ב"},
+    {"email": os.environ.get("RLS_TEST_EMAIL_A", "rls-test-family-a@smartfin.test"),
+     "password": os.environ.get("RLS_TEST_PASSWORD_A"), "name": "בדיקת RLS א"},
+    {"email": os.environ.get("RLS_TEST_EMAIL_B", "rls-test-family-b@smartfin.test"),
+     "password": os.environ.get("RLS_TEST_PASSWORD_B"), "name": "בדיקת RLS ב"},
 ]
 
 
 def main():
+    missing = [a["email"] for a in TEST_ACCOUNTS if not a["password"]]
+    if missing:
+        print("חסרות סיסמאות בסביבה (RLS_TEST_PASSWORD_A / _B). "
+              "הגדירו אותן ב-.env ונסו שוב.")
+        return 1
+
     for account in TEST_ACCOUNTS:
         response, err = db.sign_up(account["email"], account["password"], account["name"])
         if err:
