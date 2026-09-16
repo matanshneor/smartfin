@@ -2031,7 +2031,7 @@ a.submit-btn {
 /* חיפוש עסקאות — מוצג רק כשרשימת "כל העסקאות" פתוחה */
 .tx-search-wrap { display: none; margin: 8px 0 4px; }
 .legend-item-wrap.open .tx-search-wrap { display: block; }
-.tx-search-input { font-size: 0.88rem; padding: 9px 12px; }
+.tx-search-input { font-size: 1rem; padding: 9px 12px; }
 .tx-search-empty {
     font-size: 0.82rem;
     color: var(--color-text-muted);
@@ -2358,17 +2358,22 @@ li.zero-cat-row { display: none; }
 
 .cat-move-btn svg { width: 12px; height: 12px; }
 
-/* אזור לחיצה נסתר מותאם (לא 44×44 הגנרי) — שני הכפתורים צמודים זה מעל זה
-   בפער קטן, אז אזור סימטרי מלא היה חופף בין השניים ומבלבל את הנגיעה */
+/* אזור לחיצה נסתר. הכפתור עצמו 30×15 כי שני החצים צמודים זה מעל זה,
+   ואזור סימטרי גדול היה חופף ביניהם — מה שגורם לפספוס להפעיל את הכיוון
+   ההפוך, כלומר גרוע מכלום. הפתרון הוא שכל אחד יתרחב *לכיוון שלו*: החץ
+   העליון כלפי מעלה, התחתון כלפי מטה. כך שניהם מגיעים ל-26px בלי לגעת
+   זה בזה, מעל המינימום של 24 שהתקן מבקש. */
 .cat-move-btn::before {
     content: '';
     position: absolute;
-    top: 50%;
     left: 50%;
-    width: 40px;
-    height: 20px;
-    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 26px;
+    transform: translateX(-50%);
 }
+
+.cat-move-up::before   { bottom: 0; }   /* מתרחב כלפי מעלה */
+.cat-move-down::before { top: 0; }      /* מתרחב כלפי מטה  */
 
 .cat-move-btn:disabled {
     opacity: 0.25;
@@ -2665,7 +2670,7 @@ li.zero-cat-row { display: none; }
 
 .category-row.editing .form-input {
     padding: 8px 10px;
-    font-size: 0.9rem;
+    font-size: 1rem;
 }
 
 .category-row.editing .cat-edit-icon { width: 52px; }
@@ -2884,6 +2889,21 @@ li.project-row {
 }
 .chart-title-row .chart-title { margin-bottom: 0; }
 .export-link { text-decoration: none; white-space: nowrap; }
+
+/* תווית שקיימת לקורא מסך ולא לעין.
+   ‎display:none‎ היה מסתיר אותה גם מקורא המסך, כלומר לא היה עושה כלום.
+   הצירוף כאן הוא הדפוס המקובל: האלמנט קיים, בגודל פיקסל, וחתוך. */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
 
 /* ─── Auth pages (dark fintech) ───────────────────────────────── */
 

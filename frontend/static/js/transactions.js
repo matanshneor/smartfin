@@ -939,7 +939,12 @@
             .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
     }
 
+    let inlineEditorSeq = 0;
+
     function buildInlineEditor(row, tx, projCats) {
+        // מזהה ייחודי לשורה: ‎for‎ ו-‎id‎ חייבים להתאים, ושני עורכים באותו
+        // עמוד עם אותו id היו מקשרים את התווית לשדה של השורה האחרת
+        const uid = 'inline-' + (++inlineEditorSeq);
         const isProject = !!tx.projectId;
         const cats = isProject ? (projCats || [])
                                : (categoriesCache || []).filter(c => c.type === tx.type);
@@ -953,10 +958,10 @@
         body.className = 'tx-editor-body';
         body.innerHTML =
             '<div class="tx-editor-row">' +
-                '<label class="form-label">סכום (₪)</label>' +
+                '<label class="form-label" for="' + uid + '-amount">סכום (₪)</label>' +
                 '<div class="amount-input-wrap">' +
                     '<span class="amount-currency">₪</span>' +
-                    '<input class="form-input amount-input inline-amount" type="number" min="0" step="0.01" inputmode="decimal">' +
+                    '<input class="form-input amount-input inline-amount" id="' + uid + '-amount" type="number" min="0" step="0.01" inputmode="decimal">' +
                 '</div>' +
             '</div>' +
             '<div class="tx-editor-row">' +
@@ -970,12 +975,12 @@
                   '</div>'
                 : '') +
             '<div class="tx-editor-row">' +
-                '<label class="form-label">תיאור קצר</label>' +
-                '<input class="form-input inline-desc" type="text" maxlength="80">' +
+                '<label class="form-label" for="' + uid + '-desc">תיאור קצר</label>' +
+                '<input class="form-input inline-desc" id="' + uid + '-desc" type="text" maxlength="80">' +
             '</div>' +
             '<div class="tx-editor-row">' +
-                '<label class="form-label">תאריך</label>' +
-                '<input class="form-input inline-date" type="date">' +
+                '<label class="form-label" for="' + uid + '-date">תאריך</label>' +
+                '<input class="form-input inline-date" id="' + uid + '-date" type="date">' +
             '</div>' +
             '<div class="form-error inline-error" role="alert"></div>' +
             '<div class="tx-editor-actions">' +
