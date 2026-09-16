@@ -18,19 +18,67 @@ load_dotenv()
 # Railway נמחק ואף אחד לא קורא אותו. עם משתמש אחד זה נסבל כי הוא מגלה לבד;
 # עם מאה זה אומר שמשתמש מתוסכל עוזב ואין לנו מושג למה.
 # פעיל רק כש-SENTRY_DSN מוגדר, כך שפיתוח מקומי ופריסות קיימות לא מושפעים.
+# שמות משתנים ושדות שאסור שיעזבו את השרת. נבדק מול השם בפועל בקוד:
+# password/current_password במסלולי האימות, access_token/refresh_token
+# ב-session, image_bytes/b64 בסריקת הקבלה.
+_SECRET_NAMES = (
+    "password", "passwd", "secret", "token", "authorization", "apikey",
+    "api_key", "image_bytes", "b64", "encrypted_password",
+)
+
+
+def _looks_secret(name: str) -> bool:
+    return any(s in str(name).lower() for s in _SECRET_NAMES)
+
+
 def _scrub_event(event, hint):
     """מנקה את האירוע לפני שהוא עוזב את השרת.
 
     האפליקציה מטפלת בנתונים פיננסיים, ומסלול סריקת הקבלה נושא תמונה של
-    קבלה אמיתית — שום אחד מאלה לא אמור להגיע לשירות חיצוני. send_default_pii
-    כבר מכסה את רוב זה; הניקוי המפורש כאן הוא רשת ביטחון שנייה ומתעד את
-    הכוונה, כדי ששדרוג עתידי של ברירות המחדל לא ידליף בשקט."""
+    קבלה אמיתית — שום אחד מאלה לא אמור להגיע לשירות חיצוני.
+
+    הניקוי הקודם נגע רק ב-event["request"], וזה לא היה מספיק: ה-SDK מצרף
+    לכל frame ב-stacktrace גם את המשתנים המקומיים שהיו בזיכרון באותו רגע.
+    בפועל זה אומר שחריגה כלשהי במסלול התחברות, הרשמה, איפוס סיסמה או
+    מחיקת חשבון הייתה שולחת את הסיסמה עצמה; חריגה ב-inject_auth הייתה
+    שולחת את טוקני Supabase; וחריגה בסריקת קבלה הייתה שולחת את התמונה.
+
+    include_local_variables=False כבר מכבה את זה ב-SDK, והניקוי כאן הוא
+    השכבה השנייה — בדיוק כמו שההערה המקורית התכוונה, אבל במקומות שבהם
+    הנתונים באמת נמצאים: extra, breadcrumbs, contexts ו-query_string,
+    שאף אחד מהם לא נגע בהם קודם."""
     request_data = event.get("request") or {}
     request_data.pop("data", None)
     request_data.pop("cookies", None)
+    # ה-query string נושא ?code=<קוד הזמנה> ב-/api/family/preview
+    request_data.pop("query_string", None)
     headers = request_data.get("headers") or {}
     for sensitive in ("Cookie", "Authorization"):
         headers.pop(sensitive, None)
+
+    # משתנים מקומיים בכל frame — הנתיב שהיה פתוח לגמרי
+    for value in (event.get("exception") or {}).get("values") or []:
+        for frame in (value.get("stacktrace") or {}).get("frames") or []:
+            frame.pop("vars", None)
+
+    # extra / contexts: ערכים שהקוד שולח במפורש, היום או בעתיד
+    for section in ("extra", "contexts"):
+        holder = event.get(section)
+        if isinstance(holder, dict):
+            for key in list(holder):
+                if _looks_secret(key):
+                    holder[key] = "[scrubbed]"
+
+    # breadcrumbs: ה-SDK מתעד בהן בקשות ושאילתות שקדמו לשגיאה
+    for crumb in event.get("breadcrumbs") or []:
+        if not isinstance(crumb, dict):
+            continue
+        data = crumb.get("data")
+        if isinstance(data, dict):
+            for key in list(data):
+                if _looks_secret(key):
+                    data[key] = "[scrubbed]"
+
     return event
 
 
@@ -43,6 +91,8 @@ if _sentry_dsn:
         dsn=_sentry_dsn,
         integrations=[FlaskIntegration()],
         send_default_pii=False,   # בלי כתובות IP, עוגיות או גוף בקשה
+        # ברירת המחדל היא True, והיא מה שצירף סיסמאות וטוקנים לכל דיווח
+        include_local_variables=False,
         traces_sample_rate=0.0,   # שגיאות בלבד — מדידות ביצועים עולות כסף ולא נחוצות כאן
         environment=os.environ.get("RAILWAY_ENVIRONMENT_NAME", "local"),
         before_send=_scrub_event,
