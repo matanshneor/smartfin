@@ -93,10 +93,17 @@ def test_the_installed_app_gets_our_offline_page_not_the_browsers():
     assert "e.respondWith(fetch(e.request).catch(() => offlinePage()));" in _SW
 
 
-def test_the_cache_version_was_bumped():
-    """בלי זה משתמשים קיימים ממשיכים לקבל את העמודים הישנים שכבר שמורים
-    אצלם, והתיקון לא מגיע לאף אחד מהם."""
-    assert "smartfin-v14" in _SW
+def test_old_caches_are_purged_when_the_version_changes():
+    """זה המנגנון שגורם לתיקון להגיע למשתמשים קיימים: בלי המחיקה הזאת
+    הם ממשיכים לקבל את מה שכבר שמור אצלם, ושינוי הגרסה לא שווה כלום.
+
+    הגרסה עצמה לא מקובעת כאן בכוונה — היא אמורה להשתנות בכל פריסה
+    שנוגעת בנכסים, ובדיקה שצריך לערוך בכל פעם היא בדיקה שמפסיקים
+    לכבד ומתחילים לעדכן אוטומטית בלי לקרוא."""
+    assert re.search(r"const CACHE\s*=\s*'smartfin-v\d+'", _SW), \
+        "אין קבוע גרסה למטמון"
+    activate = _SW[_SW.index("'activate'"):_SW.index("'fetch'")]
+    assert "keys.filter(k => k !== CACHE)" in activate and "caches.delete" in activate
 
 
 def test_chart_js_is_not_downloaded_by_everyone_on_install():
