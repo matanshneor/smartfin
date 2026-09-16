@@ -131,7 +131,9 @@
                     </span>
                     {% endif %}
                     {% if tx.has_receipt %}
-                    <button type="button" class="receipt-badge" data-receipt-id="{{ tx.id }}" title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</button>
+                    <a class="receipt-badge" href="{{ url_for('view_receipt', tx_id=tx.id) }}"
+                       target="_blank" rel="noopener"
+                       title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</a>
                     {% endif %}
                 </div>
             </div>

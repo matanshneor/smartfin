@@ -822,6 +822,23 @@ li.transaction-item.open.swipe-ready > .swipe-content {
     font-size: 0.8rem;
     line-height: 1;
     cursor: pointer;
+    /* הסמל הפך מ-<button> ל-<a> (פתיחת קבלה ב-iOS), אז צריך את מה
+       שכפתור קיבל בחינם */
+    text-decoration: none;
+    color: inherit;
+}
+
+/* אזור נגיעה אמיתי: הסמל עצמו 22px, מתחת למינימום הנגישות, והוא יושב
+   בתוך שורה שגם נגררת וגם נלחצת — פספוס פותח את מודאל העריכה במקום את
+   הקבלה. אותו דפוס כמו .install-banner-close ו-.cat-move-btn. */
+.receipt-badge::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    transform: translate(-50%, -50%);
 }
 
 .receipt-badge:hover { background: var(--color-gold-border); }

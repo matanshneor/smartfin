@@ -812,19 +812,18 @@
         });
     });
 
-    // ── תג 📎 על עסקה עם קבלה מצורפת: פותח את התמונה בלשונית חדשה ──
-    document.addEventListener('click', function (e) {
-        const badge = e.target.closest('.receipt-badge');
-        if (!badge) return;
-        e.stopPropagation();
-        fetch('/api/receipts/' + badge.dataset.receiptId)
-            .then(r => r.json())
-            .then(function (data) {
-                if (data.url) window.open(data.url, '_blank');
-                else window.showToast(data.error || 'לא ניתן להציג את הקבלה', 'error');
-            })
-            .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
-    });
+    /* ── תג 📎 על עסקה עם קבלה מצורפת ──
+     * אין כאן קוד, וזה התיקון. הגרסה הקודמת שלפה כתובת מהשרת ב-fetch
+     * ואז קראה ל-window.open — וב-iOS זה נחסם תמיד: הדפדפן מתיר פתיחת
+     * חלון רק כתוצאה ישירה מלחיצה, וההמתנה לשרת מנתקת את הקשר. לא קרה
+     * כלום — אין חלון, אין שגיאה, אין רמז — והקבלות שנסרקו פשוט לא היו
+     * נגישות מהטלפון.
+     *
+     * הסמל הוא עכשיו ‎<a href="/receipts/…" target="_blank">‎, והדפדפן
+     * מנווט בעצמו. ניווט שנובע מלחיצה לא נחסם.
+     *
+     * מה שכן חשוב: ‎.receipt-badge‎ מוחרג ממטפלי השורה למטה, אחרת לחיצה
+     * עליו הייתה פותחת גם את מודאל העריכה. */
 
     // דגל שמונע פתיחת עריכה מה"קליק" הסינתטי שהדפדפן יורה אחרי מחוות
     // מגע — בלי זה, swipe שגורר את השורה גם פותח בטעות את מודאל העריכה

@@ -193,7 +193,9 @@
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
                     {% endif %}
                     {% if tx.has_receipt %}
-                    <button type="button" class="receipt-badge" data-receipt-id="{{ tx.id }}" title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</button>
+                    <a class="receipt-badge" href="{{ url_for('view_receipt', tx_id=tx.id) }}"
+                       target="_blank" rel="noopener"
+                       title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</a>
                     {% endif %}
                     <span class="cat-tx-amount expense">₪{{ "{:,.0f}".format(tx.amount) }}</span>
                 </li>
@@ -512,7 +514,9 @@
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
                     {% endif %}
                     {% if tx.has_receipt %}
-                    <button type="button" class="receipt-badge" data-receipt-id="{{ tx.id }}" title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</button>
+                    <a class="receipt-badge" href="{{ url_for('view_receipt', tx_id=tx.id) }}"
+                       target="_blank" rel="noopener"
+                       title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</a>
                     {% endif %}
                     <span class="cat-tx-amount {{ tx.type }}">{% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ "{:,.0f}".format(tx.amount) }}</span>
                 </li>
