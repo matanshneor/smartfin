@@ -953,13 +953,19 @@ def month_view():
     }
     if is_current:
         p2_tasks["run_rate"] = partial(db.get_run_rate_forecasts, family_id, year, month, settings_)
+        # רק לחודש הנוכחי: "ההוצאות הקבועות שלנו" הוא מספר של עכשיו,
+        # ולחודש שעבר הוא היה משהו אחר שאין לנו דרך לשחזר
+        p2_tasks["recurring"] = partial(db.get_recurring_transactions, family_id,
+                                        settings=settings_)
     for t in active_types:
         p2_tasks[f"mb_{t}"] = partial(db.get_member_breakdown, family_id, year, month, t)
     p2 = _run_queries(p2_tasks)
 
     anomalies = list(p2["anomalies"])
+    fixed = None
     if is_current:
         anomalies += p2["run_rate"]
+        fixed = db.summarise_recurring(p2["recurring"])
     month_transactions = p2["transactions"]
 
     # פעילות פרויקטים החודש — מוחרגת מהמאזן/הגרפים, ומוצגת בנפרד. נגזרת
@@ -1006,6 +1012,7 @@ def month_view():
         anomalies=anomalies,
         month_transactions=month_transactions,
         project_month=project_month,
+        fixed=fixed,
         member_colors=_member_colors(family_id),
         month_label=_month_label(year, month),
         year=year,
