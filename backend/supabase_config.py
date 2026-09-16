@@ -380,12 +380,18 @@ def send_reset_email(email: str, redirect_to: str):
 
 
 def ensure_family(user_id: str, family_name: str = "המשפחה שלי"):
-    """Creates a family and links the user to it if they don't have one.
+    """יוצרת משפחה ומשייכת אליה את המשתמש, אם אין לו כבר אחת.
 
-    The families SELECT policy only allows reading a family once the user's
-    profile already points to it — a chicken-and-egg problem for a brand-new
-    family. We generate the id client-side and insert with returning="minimal"
-    so Postgres never re-checks the SELECT policy on the just-inserted row.
+    היצירה נעשית דרך ה-RPC ‎create_own_family‎ ולא בכתיבה ישירה, כי כתיבה
+    ישירה ל-‎profiles.family_id‎ חסומה עכשיו ברמת ההרשאות: היא הייתה הדרך
+    שבה משתמש מאומת יכול היה להעביר את עצמו למשפחה אחרת ולקרוא את כל
+    הכספים שלה (ראו מיגרציה 20260916100000). הפונקציה נגזרת מ-auth.uid()
+    ומסרבת להחליף משפחה קיימת, כך שהיא פותרת את הבעיה שלשמה היא קיימת
+    בלי לפתוח אותה מחדש.
+
+    היא גם פותרת את בעיית הביצה והתרנגולת שהייתה כאן: מדיניות הקריאה על
+    families מתירה לקרוא משפחה רק אחרי שהפרופיל כבר מצביע עליה, ולכן
+    היצירה והשיוך חייבים לקרות יחד — וכאן הם באמת אטומיים.
     """
     client = get_client()
     if not client:
@@ -402,13 +408,8 @@ def ensure_family(user_id: str, family_name: str = "המשפחה שלי"):
         return profile["family_id"]
 
     try:
-        family_id = str(uuid.uuid4())
-        client.table("families").insert(
-            {"id": family_id, "name": family_name}, returning="minimal"
-        ).execute()
-
-        client.table("profiles").update({"family_id": family_id}).eq("id", user_id).execute()
-        return family_id
+        result = client.rpc("create_own_family", {"p_name": family_name}).execute()
+        return result.data or None
     except Exception as e:
         print(f"[ERROR] ensure_family: {e}")
         return None
