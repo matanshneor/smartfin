@@ -1544,9 +1544,15 @@ def get_monthly_trend(family_id: str, num_months: int = 6) -> list:
             start_year  -= 1
         start_date = f"{start_year}-{start_month:02d}-01"
 
+        # אותה החרגה בדיוק כמו get_monthly_summary ו-get_months_archive:
+        # עסקה המשויכת לפרויקט היא הוצאה חד-פעמית/הונית שמעוותת את תמונת
+        # ה"חודש הרגיל", ולכן היא מוחרגת מהמאזן החודשי בכל מקום.
+        # כאן זה נשכח, ולכן הגרף והטבלה באותו עמוד הציגו שני מספרים
+        # סותרים לאותו חודש — הפרש בגודל הפרויקט, בלי שום הסבר על המסך.
         result = client.table("transactions") \
             .select("type, amount, date") \
             .eq("family_id", family_id) \
+            .is_("project_id", "null") \
             .gte("date", start_date) \
             .execute()
 
