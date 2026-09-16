@@ -2259,11 +2259,54 @@ def service_worker():
     return app.send_static_file("sw.js")
 
 
-# ─── Health check (Railway) ───────────────────────────────────────────────────
+# ─── Health checks ────────────────────────────────────────────────────────────
+#
+# שתי בדיקות, כי נשאלות כאן שתי שאלות שונות:
+#
+#   /health     — "התהליך חי?"  זו הבדיקה של Railway, והיא מחזירה 200 כל
+#                 עוד השרת עונה. אילו היא הייתה נכשלת בגלל תקלה ב-Supabase,
+#                 הפריסה הבאה הייתה נחסמת בדיוק ברגע הכי גרוע — תקלה של
+#                 שתי דקות במסד הייתה הופכת להשבתה ארוכה בהרבה.
+#   /health/db  — "המשתמשים יכולים באמת להשתמש באפליקציה?"  זו הבדיקה
+#                 שמוניטור חיצוני צריך לעקוב אחריה, והיא מחזירה 503 כשהמסד
+#                 לא עונה.
+#
+# קודם הייתה כאן רק הראשונה, והיא החזירה "ok" קבוע — כלומר גם כשהמסד היה
+# מת. מוניטור היה מדווח שהכול תקין בזמן שאף משפחה לא רואה את הכסף שלה,
+# והדרך היחידה לגלות הייתה שמישהו יטרח לספר.
+
+_HEALTH_TTL = 5.0            # שניות
+_health_cache = {"at": -_HEALTH_TTL, "ok": False, "detail": ""}
+
+
+def _database_health():
+    """מצב המסד, עם זיכרון של חמש שניות.
+
+    בלי הזיכרון, מוניטור תכוף (או מישהו שמחזיק F5) היה תופס worker
+    לכל בדיקה — ובדיוק בזמן תקלה, כשהבדיקות מתרבות והשרת עמוס, יש
+    ארבעה workers בסך הכול."""
+    now = time.monotonic()
+    if now - _health_cache["at"] >= _HEALTH_TTL:
+        ok, detail = db.ping()
+        _health_cache.update(at=now, ok=ok, detail=detail)
+        if not ok:
+            logger.warning("health: database unreachable (%s)", detail)
+    return _health_cache["ok"], _health_cache["detail"]
+
 
 @app.route("/health")
 def health():
-    return jsonify({"status": "ok"}), 200
+    ok, detail = _database_health()
+    # תמיד 200 — אבל אומר את האמת בגוף התשובה
+    return jsonify({"status": "ok", "database": "ok" if ok else detail}), 200
+
+
+@app.route("/health/db")
+def health_db():
+    ok, detail = _database_health()
+    if ok:
+        return jsonify({"status": "ok", "database": "ok"}), 200
+    return jsonify({"status": "degraded", "database": detail}), 503
 
 
 # ─── Security headers ─────────────────────────────────────────────────────────
