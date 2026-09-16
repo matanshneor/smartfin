@@ -24,10 +24,18 @@
 
     /* Gold */
     --color-gold:          #A67C00;
+    /* אותו זהב, כהה יותר, לטקסט בלבד.
+       #A67C00 על לבן נותן 3.82:1 — מתחת ל-4.5 שהתקן דורש לטקסט. הוא כן
+       עובר את הדרישה לתוכן שאינו טקסט (3:1), ולכן מסגרות, קווים ומילויים
+       ממשיכים להשתמש בו והזהות החזותית לא זזה. #846300 עובר גם במקרה
+       הקשה ביותר: טקסט על רקע זהב שקוף מעל רקע העמוד (תגיות). */
+    --color-gold-text:     #846300;
     --color-gold-bright:   #D4AF37;
     --color-gold-dim:      rgba(166, 124, 0, 0.10);
     --color-gold-border:   rgba(166, 124, 0, 0.28);
-    --gradient-gold:       linear-gradient(150deg, #BE9722 0%, #A67C00 100%);
+    /* הוכהה כדי שטקסט לבן עליו יעבור: הקצה הבהיר נתן 2.75:1, הרחק
+       מתחת לתקן, והוא הכפתור הראשי בהתחברות, בהרשמה ובאשף. */
+    --gradient-gold:       linear-gradient(150deg, #966F00 0%, #7F5F00 100%);
     --gradient-gold-text:  linear-gradient(150deg, #E3BE55 0%, #D4AF37 100%);
 
     /* Text */
@@ -38,7 +46,9 @@
     /* Semantic */
     --color-income:        #15803D;
     --color-expense:       #B91C1C;
-    --color-savings:       #A67C00;
+    /* משמש רק לסכומי חיסכון, שהם טקסט — ולכן אותו ערך כמו
+       --color-gold-text ולא כמו זהב המותג. */
+    --color-savings:       #846300;
     --color-income-light:  #4ADE80;
     --color-expense-light: #F87171;
     --color-savings-light: #E8C96A;
@@ -484,12 +494,12 @@ ul { list-style: none; }
 }
 
 .nav-item.active {
-    color: var(--color-gold);
+    color: var(--color-gold-text);
 }
 
 .nav-item.active .nav-icon {
     background: var(--color-gold-dim);
-    color: var(--color-gold);
+    color: var(--color-gold-text);
 }
 
 .nav-item.active .nav-label {
@@ -546,7 +556,7 @@ ul { list-style: none; }
 
 .summary-card.savings .card-icon {
     background: rgba(166, 124, 0, 0.07);
-    color: var(--color-gold);
+    color: var(--color-gold-text);
 }
 
 .summary-card .card-label {
@@ -616,7 +626,7 @@ ul { list-style: none; }
 .see-all-link {
     font-size: 0.82rem;
     font-weight: 600;
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     text-decoration: none;
 }
 
@@ -1281,7 +1291,7 @@ li.transaction-item.open.swipe-ready > .swipe-content {
 .owner-btn.active {
     background: var(--color-gold-dim);
     border-color: var(--color-gold);
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     font-weight: 700;
 }
 
@@ -1297,7 +1307,7 @@ li.transaction-item.open.swipe-ready > .swipe-content {
     border-radius: var(--radius-sm);
     background: var(--color-gold-dim);
     border: 1px dashed var(--color-gold-border);
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     font-weight: 600;
     font-size: 0.9rem;
 }
@@ -1364,7 +1374,7 @@ li.transaction-item.open.swipe-ready > .swipe-content {
 
 .scanner-label {
     font-size: 0.82rem;
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     font-weight: 500;
 }
 
@@ -1448,7 +1458,7 @@ input[type="number"] {
 }
 
 .date-chip.active {
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     background: var(--color-gold-dim);
     border-color: var(--color-gold-border);
 }
@@ -1462,7 +1472,7 @@ input[type="number"] {
     inset-inline-start: 14px;
     top: 50%;
     transform: translateY(-50%);
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     font-weight: 700;
     font-size: 1.1rem;
     pointer-events: none;
@@ -1504,7 +1514,7 @@ input[type="number"] {
 .cat-btn.active {
     background: var(--color-gold-dim);
     border-color: var(--color-gold);
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     font-weight: 700;
 }
 
@@ -1688,7 +1698,7 @@ a.submit-btn {
 .year-label {
     font-size: 1.15rem;
     font-weight: 800;
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     letter-spacing: 0.06em;
 }
 
@@ -1709,7 +1719,7 @@ a.submit-btn {
     padding: 8px 22px;
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     background: var(--color-gold-dim);
     border-radius: 99px;
 }
@@ -1773,7 +1783,7 @@ a.submit-btn {
 .current-month-badge {
     font-size: 0.62rem;
     font-weight: 600;
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     background: var(--color-gold-dim);
     padding: 2px 8px;
     border-radius: 99px;
@@ -1901,7 +1911,7 @@ a.submit-btn {
     font-size: 1.35rem;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     direction: ltr;
 }
 
@@ -2114,7 +2124,7 @@ li.zero-cat-row { display: none; }
 .all-tx-count {
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     background: var(--color-gold-dim);
     border-radius: 99px;
     padding: 2px 10px;
@@ -2229,7 +2239,7 @@ li.zero-cat-row { display: none; }
     height: 38px;
     border-radius: var(--radius-sm);
     background: var(--color-gold-dim);
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2391,7 +2401,7 @@ li.zero-cat-row { display: none; }
     height: 36px;
     border-radius: 11px;
     background: var(--color-input);
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2438,7 +2448,7 @@ li.zero-cat-row { display: none; }
 .invite-code-value {
     font-family: monospace;
     font-size: 0.78rem;
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     direction: ltr;
     word-break: break-all;
 }
@@ -2498,7 +2508,7 @@ li.zero-cat-row { display: none; }
     display: inline-block;
     font-size: 0.65rem;
     font-weight: 700;
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     background: var(--color-gold-dim);
     border-radius: 99px;
     padding: 1px 8px;
@@ -2625,7 +2635,7 @@ li.zero-cat-row { display: none; }
     height: 30px;
     border-radius: 10px;
     background: var(--color-input);
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2640,7 +2650,7 @@ li.zero-cat-row { display: none; }
     height: 30px;
     border-radius: 10px;
     background: var(--color-input);
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3012,7 +3022,7 @@ li.project-row {
 }
 
 .auth-link {
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     font-weight: 600;
     text-decoration: none;
 }
@@ -3179,7 +3189,7 @@ li.project-row {
     font-size: 1.05rem;
     font-weight: 700;
     letter-spacing: 0.16em;
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     direction: ltr;
     margin-inline-start: auto;
     margin-inline-end: 10px;
@@ -3374,7 +3384,7 @@ li.project-row {
 }
 
 .anomaly-example {
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     font-weight: 500;
 }
 
@@ -3553,7 +3563,7 @@ li.transaction-item.swipe-ready > .swipe-content {
 
 .legal-back {
     display: inline-block;
-    color: var(--color-gold);
+    color: var(--color-gold-text);
     text-decoration: none;
     font-size: 0.9rem;
     margin-bottom: 20px;
@@ -3600,7 +3610,7 @@ li.transaction-item.swipe-ready > .swipe-content {
 .legal-list { padding-inline-start: 22px; }
 .legal-list li { margin-bottom: 9px; }
 
-.legal-p a, .legal-list a { color: var(--color-gold); }
+.legal-p a, .legal-list a { color: var(--color-gold-text); }
 
 .legal-footer-links {
     margin-top: 40px;
@@ -3610,7 +3620,7 @@ li.transaction-item.swipe-ready > .swipe-content {
     text-align: center;
 }
 
-.legal-footer-links a { color: var(--color-gold); text-decoration: none; }
+.legal-footer-links a { color: var(--color-gold-text); text-decoration: none; }
 
 /* קישור חזרה ממסכי ההתחברות אל דף הנחיתה. עד שנוסף, מי שלחץ "פתיחת חשבון"
    נכנס למסלול חד-כיווני ונאלץ להשתמש בכפתור האחורה של הדפדפן. */
@@ -3685,7 +3695,7 @@ li.transaction-item.swipe-ready > .swipe-content {
 }
 .lp-brand svg { width: 23px; height: 23px; color: var(--color-gold-bright); }
 .lp-brand-sm { font-size: 0.97rem; color: var(--color-text); }
-.lp-brand-sm svg { color: var(--color-gold); }
+.lp-brand-sm svg { color: var(--color-gold-text); }
 
 .lp-nav-link {
     color: var(--hero-text-muted); text-decoration: none; font-size: 0.9rem;
@@ -3938,7 +3948,7 @@ li.transaction-item.swipe-ready > .swipe-content {
 }
 .lp-step-n {
     flex-shrink: 0; width: 30px; height: 30px; display: grid; place-items: center;
-    border-radius: 50%; background: var(--color-gold-dim); color: var(--color-gold);
+    border-radius: 50%; background: var(--color-gold-dim); color: var(--color-gold-text);
     font-family: var(--font-display); font-weight: 700; font-size: 0.95rem;
 }
 
@@ -3959,7 +3969,7 @@ li.transaction-item.swipe-ready > .swipe-content {
 }
 .lp-footer-links { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; font-size: 0.86rem; }
 .lp-footer-links a { color: var(--color-text-muted); text-decoration: none; }
-.lp-footer-links a:hover { color: var(--color-gold); }
+.lp-footer-links a:hover { color: var(--color-gold-text); }
 
 .lp a:focus-visible, .lp-nav-link:focus-visible {
     outline: 2px solid var(--color-gold-bright); outline-offset: 3px; border-radius: 6px;
