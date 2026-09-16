@@ -85,6 +85,34 @@ def _request_cache(key: str, loader):
     return cache[key]
 
 
+def _invalidate_family_cache(family_id: str):
+    """מפנה את המטמון-לבקשה אחרי כתיבה לשורת המשפחה.
+
+    בלי זה, קריאה שנעשית באותה בקשה *אחרי* הכתיבה מקבלת את הערך שנשלף
+    לפניה. update_family_settings שולף את ההגדרות הקיימות כדי למזג לתוכן,
+    וזה לבדו ממלא את המטמון בערך הישן — כך שהתשובה שחוזרת לדפדפן היא
+    ההגדרות שלפני השינוי.
+
+    הנזק לא נעצר בתצוגה: settings.js שומר את התשובה הזאת ומשתמש בה כדי
+    להחליט אם להציג את בורר בן המשפחה במודאל העסקה. משתמש שהדליק "שיוך
+    הוצאות" קיבל תשובה שאומרת שהוא כבוי, המודאל לא הציג בורר, והשרת —
+    שקורא בבקשה הבאה את הערך הטרי — שייך כל עסקה למי שמחובר. שיוך שקט
+    ושגוי של כסף, עד הרענון הבא.
+
+    שני מטמונים נפרדים מחזיקים את הערך: זה שכאן, ו-g.family_settings
+    ש-app.py מחזיק. שניהם נוקו כאן, אחרת הפינוי חלקי ולא מועיל."""
+    try:
+        from flask import g, has_app_context
+        if not has_app_context():
+            return
+    except ImportError:
+        return
+    cache = getattr(g, "_sf_cache", None)
+    if cache:
+        cache.pop(f"family:{family_id}", None)
+    g.pop("family_settings", None)
+
+
 # ─── Auth ─────────────────────────────────────────────────────────────────────
 
 def get_email_by_phone(normalized_phone: str):
@@ -424,6 +452,7 @@ def update_family_settings(family_id: str, patch: dict) -> bool:
         stored = (get_family(family_id) or {}).get("settings") or {}
         merged = _merge_settings(stored, patch)
         client.table("families").update({"settings": merged}).eq("id", family_id).execute()
+        _invalidate_family_cache(family_id)
         return True
     except Exception as e:
         print(f"[ERROR] update_family_settings: {e}")
@@ -1815,6 +1844,7 @@ def update_family_name(family_id: str, name: str):
         return False
     try:
         client.table("families").update({"name": name}).eq("id", family_id).execute()
+        _invalidate_family_cache(family_id)
         return True
     except Exception as e:
         print(f"[ERROR] update_family_name: {e}")
