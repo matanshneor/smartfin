@@ -821,17 +821,19 @@ def materialize_recurring(family_id: str) -> int:
     כל עסקה שסומנה כקבועה משמשת "תבנית": המופע הראשון הוא העסקה עצמה,
     ומכאן נוצרים מופעים רגילים (is_recurring=False) לפי התדירות, עד היום
     או עד תאריך הסיום. הפונקציה אידמפוטנטית — מופע שכבר קיים לא ייווצר שוב.
-    Returns the number of newly created instances."""
+    מחזירה ‎(created, ok)‎. ‎ok=False‎ פירושו שהריצה נכשלה — וזה חשוב, כי
+    הקורא מסמן "סונכרן להיום" ולא ינסה שוב עד מחר. כשל שנראה כהצלחה
+    משאיר חודש בלי משכורת ובלי הוראות קבע עד למחרת."""
     from datetime import date
 
     client = get_client()
     if not client or not family_id:
-        return 0
+        return 0, False
     try:
         templates = client.table("transactions").select("*") \
             .eq("family_id", family_id).eq("is_recurring", True).execute().data
         if not templates:
-            return 0
+            return 0, True
 
         existing = client.table("transactions") \
             .select("recurring_parent_id, date") \
@@ -900,12 +902,12 @@ def materialize_recurring(family_id: str) -> int:
             except Exception as e:
                 # כשל ייחודיות = בקשה מקבילה כבר יצרה את המופעים — תקין
                 if "uq_tx_recurring_occurrence" in str(e) or "23505" in str(e):
-                    return 0
+                    return 0, True
                 raise
-        return len(new_rows)
-    except Exception as e:
+        return len(new_rows), True
+    except Exception:
         logger.exception("materialize_recurring")
-        return 0
+        return 0, False
 
 
 def _occurrence_period(freq: str, d):
