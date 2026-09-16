@@ -772,8 +772,8 @@ def get_monthly_summary(family_id: str, year: int, month: int) -> dict:
 
 def _filter_hidden_personal_projects(rows: list, viewer_user_id: str) -> list:
     """מסנן שורות עסקה ששייכות לפרויקט אישי של בן משפחה אחר — פרטיות:
-    רק בעל הפרויקט האישי רואה את העסקאות הבודדות שבו (ראה get_category_breakdown
-    לאיך הן עדיין נכללות באגרגט הכללי של החודש עבור שאר בני המשפחה)."""
+    רק בעל הפרויקט האישי רואה את העסקאות הבודדות שבו. לסיכומים החודשיים
+    זה ממילא לא נוגע: הם מחריגים כל עסקת פרויקט (ראה _household_rows)."""
     if not viewer_user_id:
         return rows
     return [
@@ -1693,58 +1693,114 @@ def delete_project_category(cat_id: str, project_id: str, family_id: str) -> boo
 
 # ─── Analytics ───────────────────────────────────────────────────────────────
 
-def get_category_breakdown(family_id: str, year: int, month: int, type_: str = "expense",
-                           viewer_user_id: str = None) -> list:
-    """Returns totals grouped by category for a given month and transaction type
-    (expense / income / savings). Every category of the type is always included —
-    months without data for a category show 0.
+# ─── חודש אחד, שליפה אחת ──────────────────────────────────────────────────────
+#
+# עמוד החודש הריץ 12 פניות למסד, ושבע מהן קראו בדיוק את אותן שורות:
+# הסיכום, שלושה פילוחים לקטגוריה ושניים לבן משפחה — כולם תת-קבוצות של
+# העסקאות שכבר נשלפו לרשימת "כל העסקאות".
+#
+# הזמן (כ-180 מילישניות) הוא לא העיקר. העיקר הוא שכל אחת מהשבע גזרה
+# לעצמה מחדש את אותם שני כללים — החרגת עסקאות פרויקט, והסתרת פרויקט
+# אישי של בן משפחה אחר. הכלל השני נשכח פעם אחת כבר, וזה מתועד בהערה
+# בקוד: עסקת פרויקט הופיעה בתוך קטגוריה חודשית בלי להיספר בסכום שלה.
+#
+# שליפה אחת עם גזירות בשמות ברורים הופכת את סוג הבאג הזה לבלתי אפשרי:
+# אין מאיפה לשכוח את הכלל, כי הוא מיושם פעם אחת.
 
-    עסקאות המשויכות לפרויקט מוחרגות לחלוטין מהפילוח החודשי (הן מוצגות בנפרד
-    בקטע "פרויקטים החודש") — פרויקט הוא הוצאה/הכנסה חד-פעמית/הונית שמעוותת
-    את תמונת ה"חודש הרגיל". (viewer_user_id נשמר לתאימות; אינו בשימוש כעת.)"""
+def fetch_month_rows(family_id: str, year: int, month: int) -> list:
+    """כל שורות החודש, כולל עסקאות פרויקט, עם כל השיוכים.
+
+    זו השליפה שממנה נגזר כל עמוד החודש. היא מחזירה גם עסקאות פרויקט —
+    הגזירות למטה הן שמחליטות מי מתעלמת מהן ומי מציגה אותן."""
     client = get_client()
     if not client:
-        return []
+        raise DataUnavailable("fetch_month_rows: no client")
     try:
-        # All categories of this type appear every month, even with no data
-        totals: dict = {}
-        icons: dict  = {}
-        for cat in get_categories(family_id):
-            if cat.get("type") == type_:
-                totals[cat["name"]] = 0.0
-                icons[cat["name"]]  = cat.get("icon", "📦")
-
-        result = client.table("transactions") \
-            .select("amount, categories(name, icon)") \
+        return client.table("transactions") \
+            .select("*, categories(name, icon), project_categories(name, icon), "
+                    "profiles(name, workplace), projects(owner_id, name, icon)") \
             .eq("family_id", family_id) \
-            .eq("type", type_) \
-            .is_("project_id", "null") \
             .gte("date", f"{year}-{month:02d}-01") \
             .lt("date", _next_month(year, month)) \
-            .execute()
-
-        for row in result.data:
-            cat  = row.get("categories") or {}
-            name = cat.get("name", "אחר")
-            totals[name] = totals.get(name, 0) + float(row["amount"])
-            icons.setdefault(name, cat.get("icon", "📦"))
-
-        grand_total = sum(totals.values()) or 1
-        breakdown = [
-            {
-                "name": name,
-                "icon": icons[name],
-                "total": round(total, 2),
-                "pct":  round((total / grand_total) * 100),
-            }
-            for name, total in totals.items()
-        ]
-        # פעילות קודם (לפי גובה), אפסים בסוף לפי א"ב
-        breakdown.sort(key=lambda x: (-x["total"], x["name"]))
-        return breakdown
+            .order("date", desc=True) \
+            .execute().data or []
     except Exception as e:
-        logger.exception("get_category_breakdown")
-        return []
+        raise DataUnavailable("fetch_month_rows") from e
+
+
+def _household_rows(rows: list) -> list:
+    """רק עסקאות שאינן משויכות לפרויקט.
+
+    זה הכלל שכל הסיכומים החודשיים חולקים: פרויקט הוא הוצאה חד-פעמית
+    שמעוותת את תמונת ה"חודש הרגיל", ולכן הוא מוצג בנפרד. מיושם כאן
+    פעם אחת במקום בשבע שאילתות."""
+    return [r for r in rows if not r.get("project_id")]
+
+
+def summary_from_rows(rows: list) -> dict:
+    """אותו סיכום כמו get_monthly_summary, מתוך שורות שכבר בידנו."""
+    summary = _empty_summary()
+    for row in _household_rows(rows):
+        t = row["type"]
+        if t in ("income", "expense", "savings"):
+            summary[t] += float(row["amount"])
+    for k in ("income", "expense", "savings"):
+        summary[k] = round(summary[k], 2)
+    summary["balance"]   = round(summary["income"] - summary["expense"], 2)
+    summary["remaining"] = round(summary["balance"] - summary["savings"], 2)
+    total = summary["income"] or 1
+    summary["expense_pct"] = round(summary["expense"] / total * 100)
+    return summary
+
+
+def category_breakdown_from_rows(rows: list, categories: list, type_: str) -> list:
+    """סכום לכל קטגוריה מהסוג המבוקש.
+
+    כל קטגוריות הסוג מופיעות תמיד, גם בחודש שאין בו נתון עבורן — אחרת
+    קטגוריה נעלמת מהעמוד בדיוק בחודש שבו לא הוצאת בה, וזה נראה כאילו
+    נמחקה."""
+    totals = {c["name"]: 0.0 for c in categories if c.get("type") == type_}
+    icons  = {c["name"]: c.get("icon", "📦") for c in categories if c.get("type") == type_}
+
+    for row in _household_rows(rows):
+        if row["type"] != type_:
+            continue
+        cat  = row.get("categories") or {}
+        name = cat.get("name", "אחר")
+        totals[name] = totals.get(name, 0) + float(row["amount"])
+        icons.setdefault(name, cat.get("icon", "📦"))
+
+    grand = sum(totals.values()) or 1
+    out = [{"name": n, "icon": icons[n], "total": round(t, 2),
+            "pct": round(t / grand * 100)} for n, t in totals.items()]
+    out.sort(key=lambda x: (-x["total"], x["name"]))
+    return out
+
+
+def member_breakdown_from_rows(rows: list, type_: str) -> list:
+    """סכום לכל בן משפחה. נגזר רק לסוגים שהמשפחה הפעילה בהם שיוך.
+
+    מקובץ לפי user_id ולא לפי שם — כך הצבע של כל בן משפחה נשאר קבוע גם
+    אם שניים חולקים שם פרטי. עסקאות ללא בעלים נאספות יחד תחת "משותפת"."""
+    members: dict = {}
+    for row in _household_rows(rows):
+        if row["type"] != type_:
+            continue
+        uid = row.get("user_id")
+        profile = row.get("profiles")
+        name = first_name(profile["name"]) if profile and profile.get("name") else "משותפת"
+        key = uid or "__shared__"
+        if key not in members:
+            members[key] = {"user_id": uid, "name": name, "expense": 0.0}
+        members[key]["expense"] += float(row["amount"])
+    return sorted(members.values(), key=lambda x: x["expense"], reverse=True)
+
+
+def month_transactions_from_rows(rows: list, settings: dict = None,
+                                 viewer_user_id: str = None) -> list:
+    """רשימת העסקאות להצגה: כוללת פרויקטים, מסתירה פרויקט אישי של אחר."""
+    return _format_transactions(
+        _filter_hidden_personal_projects(rows, viewer_user_id), settings)
 
 
 def get_monthly_trend(family_id: str, num_months: int = 6) -> list:
@@ -1969,40 +2025,6 @@ def get_run_rate_forecasts(family_id: str, year: int, month: int, settings: dict
         logger.exception("get_run_rate_forecasts")
 
     return forecasts
-
-
-def get_member_breakdown(family_id: str, year: int, month: int, type_: str = "expense") -> list:
-    """Returns totals per family member for a given month and transaction type.
-    נקרא רק עבור סוגים שהמשפחה הפעילה בהם שיוך (ראה get_family_settings)."""
-    client = get_client()
-    if not client:
-        return []
-    try:
-        result = client.table("transactions") \
-            .select("amount, user_id, profiles(name)") \
-            .eq("family_id", family_id) \
-            .eq("type", type_) \
-            .is_("project_id", "null") \
-            .gte("date", f"{year}-{month:02d}-01") \
-            .lt("date", _next_month(year, month)) \
-            .execute()
-
-        # מקבצים לפי user_id (ולא לפי שם) כדי לשמור על הצבע הקבוע לכל בן
-        # משפחה — עסקאות משותפות (user_id=NULL) מקובצות יחד תחת "משותפת".
-        members: dict = {}
-        for row in result.data:
-            uid = row.get("user_id")
-            profile = row.get("profiles")
-            name = first_name(profile["name"]) if profile and profile.get("name") else "משותפת"
-            key = uid or "__shared__"
-            if key not in members:
-                members[key] = {"user_id": uid, "name": name, "expense": 0.0}
-            members[key]["expense"] += float(row["amount"])
-
-        return sorted(members.values(), key=lambda x: x["expense"], reverse=True)
-    except Exception as e:
-        logger.exception("get_member_breakdown")
-        return []
 
 
 # ─── Family members ───────────────────────────────────────────────────────────
