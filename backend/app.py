@@ -289,10 +289,22 @@ def family_settings():
 
 @app.context_processor
 def inject_family_settings():
-    """family_settings זמין בכל תבנית (התגיות, המודאל וקבוצת ההעדפות תלויים בו)."""
-    if "user_id" in session:
+    """family_settings זמין בכל תבנית (התגיות, המודאל וקבוצת ההעדפות תלויים בו).
+
+    זה רץ לפני **כל** render_template, כולל error.html. לכן כאן, ורק כאן,
+    כישלון שליפה לא מתפשט: אחרת תקלה במסד הייתה מפילה גם את דף השגיאה
+    שנועד לדווח עליה, והמשתמש היה מקבל מסך ריק לגמרי. התבניות כבר יודעות
+    להתמודד עם None — זה המצב של מי שלא מחובר.
+
+    זו הקלה בתצוגה בלבד. החלטות שנשענות על ההעדפות — למשל שיוך עסקה לבן
+    משפחה ב-_resolve_owner — קוראות ל-family_settings() ישירות וממשיכות
+    להיכשל בגלוי, כי שם ערך שגוי נכתב למסד."""
+    if "user_id" not in session:
+        return {"family_settings": None}
+    try:
         return {"family_settings": family_settings()}
-    return {"family_settings": None}
+    except db.DataUnavailable:
+        return {"family_settings": None}
 
 
 def _member_colors(family_id):
@@ -1467,7 +1479,16 @@ def scan_receipt_route():
     if not user["family_id"]:
         return jsonify({"error": "No family linked to account"}), 400
 
-    if db.receipt_scans_this_month(user["family_id"]) >= db.RECEIPT_MONTHLY_LIMIT:
+    try:
+        used = db.receipt_scans_this_month(user["family_id"])
+    except db.DataUnavailable:
+        # לא ידוע כמה נוצל. הכיוון הבטוח הוא לסרב: אישור כשהבדיקה נכשלה
+        # מבטל בפועל את ההגבלה על חשבון ה-OpenAI, וזו הוצאה אמיתית.
+        return jsonify({
+            "error": "לא הצלחנו לבדוק את מכסת הסריקות — נסו שוב, או הזינו ידנית.",
+        }), 503
+
+    if used >= db.RECEIPT_MONTHLY_LIMIT:
         return jsonify({
             "error": f"הגעתם למכסת הסריקות החודשית ({db.RECEIPT_MONTHLY_LIMIT}). ניתן להמשיך ולהזין ידנית.",
         }), 429
@@ -1718,8 +1739,13 @@ def join_family():
     # דורשים אישור מפורש ומחזירים את המספר כדי שה-UI יוכל להציג אותו.
     current_family = user.get("family_id")
     if current_family and not body.get("confirm"):
-        existing = db.family_transaction_count(current_family)
-        if existing:
+        try:
+            existing = db.family_transaction_count(current_family)
+        except db.DataUnavailable:
+            # לא ידוע כמה היסטוריה תיזנח. דילוג על האישור בגלל תקלה הוא
+            # בדיוק האובדן שהאישור קיים כדי למנוע, אז מבקשים אותו בכל מקרה.
+            existing = None
+        if existing is None or existing:
             return jsonify({
                 "needs_confirm": True,
                 "transaction_count": existing,
