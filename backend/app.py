@@ -578,7 +578,7 @@ def signup():
     return render_template("login.html", error=error, active_tab="signup")
 
 
-@app.route("/logout")
+@app.route("/logout", methods=["POST", "GET"])
 def logout():
     """יציאה יזומה מחזירה לדף הנחיתה, ומוחקת את כל מה שנשמר על המכשיר.
 
@@ -616,6 +616,9 @@ def reset_password():
 
 
 @app.route("/api/auth/reset", methods=["POST"])
+# לא מאומת, ומקבל טוקן שחזור מגוף הבקשה — כלומר פתוח לניחוש טוקנים.
+# ‎/api/auth/forgot‎ שלצידו כבר מוגבל ל-3 לדקה; זה נשכח.
+@limiter.limit("5 per minute")
 def reset_password_submit():
     body             = request.get_json(silent=True) or {}
     access_token     = body.get("access_token", "")
@@ -1033,8 +1036,32 @@ def add_project_route():
     return jsonify(proj), 201
 
 
+def project_access_required(f):
+    """חוסם גישה לפרויקט אישי של בן משפחה אחר.
+
+    הקריאה כבר הייתה מוגנת — ‎get_project_detail‎ ו-‎get_projects‎ מסננות
+    פרויקט אישי שאינו של הצופה. הכתיבה לא: כל שמונת המסלולים סיננו לפי
+    family_id בלבד. כלומר בן משפחה שניחש או ראה מזהה של פרויקט אישי יכול
+    היה לערוך אותו, למחוק אותו על כל עסקאותיו, או לקרוא את הקטגוריות שלו
+    — פרויקט שאסור לו אפילו לראות ברשימה.
+
+    "לא נמצא" ולא "אין הרשאה" בכוונה: פרויקט אישי הוא פרטי, והתשובה
+    אסור שתאשר שהוא קיים."""
+    @wraps(f)
+    def decorated(project_id, *args, **kwargs):
+        user = get_current_user()
+        project = db.get_project_for_transaction(project_id, user["family_id"])
+        if not project:
+            return jsonify({"error": "הפרויקט לא נמצא"}), 404
+        if project.get("owner_id") and project["owner_id"] != user["id"]:
+            return jsonify({"error": "הפרויקט לא נמצא"}), 404
+        return f(project_id, *args, **kwargs)
+    return decorated
+
+
 @app.route("/api/projects/<project_id>", methods=["PUT"])
 @login_required
+@project_access_required
 def update_project_route(project_id):
     user = get_current_user()
     body = request.get_json(silent=True) or {}
@@ -1049,6 +1076,7 @@ def update_project_route(project_id):
 
 @app.route("/api/projects/<project_id>", methods=["DELETE"])
 @login_required
+@project_access_required
 def delete_project_route(project_id):
     user = get_current_user()
     body = request.get_json(silent=True) or {}
@@ -1059,6 +1087,7 @@ def delete_project_route(project_id):
 
 @app.route("/api/projects/<project_id>/share", methods=["PUT"])
 @login_required
+@project_access_required
 def share_project_route(project_id):
     """הופך פרויקט אישי למשותף. רק הבעלים הנוכחי רשאי (נאכף ב-db.share_project)."""
     user = get_current_user()
@@ -1070,6 +1099,7 @@ def share_project_route(project_id):
 
 @app.route("/api/projects/<project_id>/unshare", methods=["PUT"])
 @login_required
+@project_access_required
 def unshare_project_route(project_id):
     """מחזיר פרויקט משותף להיות אישי. רק מי שיצר אותו במקור רשאי (נאכף ב-db.unshare_project)."""
     user = get_current_user()
@@ -1088,6 +1118,7 @@ def list_projects_route():
 
 @app.route("/api/projects/<project_id>/categories", methods=["GET"])
 @login_required
+@project_access_required
 def list_project_categories_route(project_id):
     user = get_current_user()
     type_ = request.args.get("type")
@@ -1096,6 +1127,7 @@ def list_project_categories_route(project_id):
 
 @app.route("/api/projects/<project_id>/categories", methods=["POST"])
 @login_required
+@project_access_required
 def add_project_category_route(project_id):
     user = get_current_user()
     body = request.get_json(silent=True) or {}
@@ -1115,6 +1147,7 @@ def add_project_category_route(project_id):
 
 @app.route("/api/projects/<project_id>/categories/<cat_id>", methods=["PUT"])
 @login_required
+@project_access_required
 def update_project_category_route(project_id, cat_id):
     user = get_current_user()
     body = request.get_json(silent=True) or {}
@@ -1130,6 +1163,7 @@ def update_project_category_route(project_id, cat_id):
 
 @app.route("/api/projects/<project_id>/categories/<cat_id>", methods=["DELETE"])
 @login_required
+@project_access_required
 def delete_project_category_route(project_id, cat_id):
     user = get_current_user()
     ok = db.delete_project_category(cat_id, project_id, user["family_id"])
@@ -1207,6 +1241,9 @@ def update_profile():
 
 @app.route("/api/profile/password", methods=["PUT"])
 @login_required
+# מאמת את הסיסמה הנוכחית מול Supabase, כלומר אורקל לניחוש סיסמאות למי
+# שהשיג סשן. ההגבלה על /login לא עוזרת כאן — זה מסלול אחר.
+@limiter.limit("5 per minute")
 def update_password():
     body             = request.get_json(silent=True) or {}
     current_password = body.get("current_password", "")
@@ -1233,6 +1270,9 @@ def update_password():
 
 @app.route("/api/account/reset", methods=["POST"])
 @login_required
+# אורקל סיסמה, ובנוסף פעולה הרסנית: מוחקת את כל עסקאות המשפחה.
+# מחמיר יותר — אין תרחיש לגיטימי של איפוס חוזר.
+@limiter.limit("3 per hour")
 def reset_account_route():
     """איפוס עסקאות: מוחק את כל העסקאות (הכנסות/הוצאות/חיסכון, כולל קבועות)
     לפי הבחירה — של כל המשפחה או רק של המשתמש. החשבון, הקטגוריות, הפרויקטים
@@ -1263,6 +1303,8 @@ def reset_account_route():
 
 @app.route("/api/account", methods=["DELETE"])
 @login_required
+# אורקל סיסמה, והפעולה הכי הרסנית באפליקציה — מחיקת חשבון לצמיתות.
+@limiter.limit("3 per hour")
 def delete_account_route():
     """מחיקת חשבון לצמיתות. מבחינת המשתמש הכל נמחק והמייל/טלפון משתחררים;
     בפועל הנתונים מארוכבים לארכיון הפנימי של בעל האתר (ראה מיגרציית
@@ -1301,21 +1343,38 @@ def _parse_amount(raw):
         return None, "הסכום חייב להיות מספר"
     if not math.isfinite(value) or value <= 0:
         return None, "הסכום חייב להיות מספר חיובי"
+    # העמודה היא NUMERIC(10,2) ומתפוצצת מעל 99,999,999.99. בלי הבדיקה
+    # הזאת הקלדה שגויה של תשע ספרות מגיעה ל-Postgres, נכשלת שם, וחוזרת
+    # כ"הוספת העסקה נכשלה — נסה שוב" — כך שהמשתמש מנסה שוב את אותו קלט
+    # ונכשל שוב, בלי שום רמז למה.
+    if value > 99_999_999:
+        return None, "הסכום גדול מדי"
+    # מתחת לאגורה מתעגל ל-0.00 ואז נופל על ה-CHECK של העמודה, עם אותה
+    # הודעה גנרית ואותו מבוי סתום
+    if round(value, 2) <= 0:
+        return None, "הסכום קטן מדי"
     return value, None
 
 
 def _resolve_owner(body: dict, user: dict, tx_type: str):
     """מי הבעלים של העסקה — לפי העדפות המשפחה: סוג שהשיוך כבוי בו נשמר
     תמיד כמשפחתי (NULL), גם אם הבקשה ניסתה לשלוח בעלים.
-    ערכים: uuid של בן משפחה, "shared" = משותפת (NULL), ובלי owner — המחובר."""
+    ערכים: uuid של בן משפחה, "shared" = משותפת (NULL), ובלי owner — המחובר.
+    מחזירה (user_id, error)."""
     if not family_settings().get("owner_attribution", {}).get(tx_type, False):
-        return None
+        return None, None
     owner = body.get("owner")
     if owner == "shared":
-        return None
+        return None, None
     if owner:
-        return owner
-    return user["id"]
+        # ה-uuid הגיע מהלקוח והתקבל עד היום כמו שהוא. RLS בודקת רק את
+        # family_id בשורה שנכתבת, לא את user_id, אז אפשר היה לרשום עסקה
+        # על שם מי שלא במשפחה — או לתלות הוצאה על בן הזוג. זו לא דליפת
+        # מידע אלא זיוף שיוך, וזה מספיק: הפילוח "לפי בן משפחה" מתבסס עליו.
+        if owner not in {m["id"] for m in db.get_family_members(user["family_id"])}:
+            return None, "בן המשפחה שנבחר אינו במשפחה שלך"
+        return owner, None
+    return user["id"], None
 
 
 def _apply_project_assignment(body: dict, user: dict, tx_type: str):
@@ -1325,10 +1384,22 @@ def _apply_project_assignment(body: dict, user: dict, tx_type: str):
     הפרויקט הייעודית. Returns (project_id, project_category_id, category_id, user_id, error)."""
     project_id = body.get("project_id")
     if not project_id:
-        return None, None, body.get("category_id"), _resolve_owner(body, user, tx_type), None
+        owner_id, owner_err = _resolve_owner(body, user, tx_type)
+        if owner_err:
+            return None, None, None, None, owner_err
+        category_id, cat_err = _validated_category(body.get("category_id"), user, tx_type)
+        if cat_err:
+            return None, None, None, None, cat_err
+        return None, None, category_id, owner_id, None
 
     project = db.get_project_for_transaction(project_id, user["family_id"])
     if not project:
+        return None, None, None, None, "הפרויקט לא נמצא"
+
+    # פרויקט אישי: רק הבעלים רשאי לכתוב אליו. הקריאה כבר מוסתרת מאחרים
+    # (‎_filter_hidden_personal_projects‎), אבל הכתיבה לא נבדקה — כך שבן
+    # משפחה יכול היה לרשום עסקאות לתוך פרויקט שאסור לו אפילו לראות.
+    if project.get("owner_id") and project["owner_id"] != user["id"]:
         return None, None, None, None, "הפרויקט לא נמצא"
 
     track_key = {"expense": "track_expense", "income": "track_income", "savings": "track_savings"}[tx_type]
@@ -1336,8 +1407,34 @@ def _apply_project_assignment(body: dict, user: dict, tx_type: str):
         return None, None, None, None, "הפרויקט הזה לא עוקב אחרי סוג העסקה הזה"
 
     owner_id = project.get("owner_id")
-    user_id  = owner_id if owner_id else _resolve_owner(body, user, tx_type)
-    return project_id, body.get("project_category_id"), None, user_id, None
+    if owner_id:
+        user_id, owner_err = owner_id, None
+    else:
+        user_id, owner_err = _resolve_owner(body, user, tx_type)
+    if owner_err:
+        return None, None, None, None, owner_err
+
+    # קטגוריית הפרויקט חייבת להיות של הפרויקט הזה, לא של אחר
+    project_category_id = body.get("project_category_id")
+    if project_category_id:
+        valid = {c["id"] for c in db.get_project_categories(project_id, user["family_id"])}
+        if project_category_id not in valid:
+            return None, None, None, None, "הקטגוריה אינה שייכת לפרויקט הזה"
+
+    return project_id, project_category_id, None, user_id, None
+
+
+def _validated_category(category_id, user: dict, tx_type: str):
+    """מוודא שהקטגוריה קיימת במשפחה ומתאימה לסוג העסקה.
+    מחזירה (category_id, error). ריק הוא ערך תקין — עסקה ללא קטגוריה."""
+    if not category_id:
+        return None, None
+    for cat in db.get_categories(user["family_id"]):
+        if cat["id"] == category_id:
+            if cat.get("type") != tx_type:
+                return None, "הקטגוריה אינה מתאימה לסוג העסקה"
+            return category_id, None
+    return None, "הקטגוריה לא נמצאה"
 
 
 # ─── API: Transactions ────────────────────────────────────────────────────────

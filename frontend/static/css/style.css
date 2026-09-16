@@ -2826,7 +2826,14 @@ li.project-row {
     font-weight: 600;
     font-size: 0.92rem;
     text-decoration: none;
+    /* הכפתור היה <a> והפך ל-<button> בתוך טופס POST (הגנת CSRF), אז
+       צריך את מה ש-<a> קיבל בחינם */
+    width: 100%;
+    font-family: inherit;
+    cursor: pointer;
 }
+
+.logout-form { margin: 0; }
 
 /* ─── Auth pages (dark fintech) ───────────────────────────────── */
 
