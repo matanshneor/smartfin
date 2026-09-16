@@ -8,3 +8,6 @@ openai==2.45.0
 Flask-Limiter==4.1.1
 sentry-sdk[flask]==2.48.0
 redis==8.1.0
+# מסד אזורי הזמן ל-ZoneInfo (backend/clock.py). מפורש ולא בהסתמכות על
+# המכולה: בלעדיו ZoneInfo("Asia/Jerusalem") נכשל בטעינה והאפליקציה לא עולה.
+tzdata==2026.1

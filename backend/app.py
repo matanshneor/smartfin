@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, g, make_response
 from dotenv import load_dotenv
 from functools import wraps, partial
-from datetime import datetime, timedelta
+from datetime import timedelta
 from werkzeug.middleware.proxy_fix import ProxyFix
 import json
 import math
@@ -9,6 +9,7 @@ import os
 import re
 import time
 from . import supabase_config as db
+from . import clock
 
 load_dotenv()
 
@@ -664,7 +665,7 @@ def dashboard():
         return response
 
     user      = get_current_user()
-    now       = datetime.now()
+    now       = clock.now()
     family_id = user["family_id"]
 
     if not family_id:
@@ -721,7 +722,7 @@ def dashboard():
 def month_view():
     """עמוד החודש: כל הנתונים והגרפים של חודש נתון (ברירת מחדל: הנוכחי)."""
     user      = get_current_user()
-    now       = datetime.now()
+    now       = clock.now()
     # type=int מוודא שזה מספר, לא שזה חודש קיים: ?month=99999999 הפיל את
     # העמוד ב-500 עד שהתגלה. נופלים לחודש הנוכחי במקום להתפוצץ.
     year      = request.args.get("year",  now.year,  type=int)
@@ -856,7 +857,7 @@ def months():
     family_id = user["family_id"]
     archive   = db.get_months_archive(family_id)              if family_id else []
     trend     = db.get_monthly_trend(family_id, num_months=12) if family_id else []
-    now       = datetime.now()
+    now       = clock.now()
     return render_template("months.html", active_page="months", user=user,
                            archive=archive, trend_data=trend,
                            today_year=now.year, today_month=now.month,
@@ -1859,7 +1860,7 @@ def _month_label(year: int, month: int) -> str:
     ‎_HEBREW_MONTHS[13] זרק IndexError והפיל את העמוד, ו-‎_HEBREW_MONTHS[-5]
     החזיר בשקט את אוגוסט, וזה הגרוע מבין השניים."""
     if not 1 <= month <= 12:
-        month = datetime.now().month
+        month = clock.now().month
     return f"{_HEBREW_MONTHS[month]} {year}"
 
 
