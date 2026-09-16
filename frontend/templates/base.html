@@ -26,7 +26,10 @@
         </div>
     </header>
 
-    <main class="main-content">
+    {# data-soft-reload מסמן שהעמוד בטוח להחלפה בלי ניווט: כל ההאזנות בו
+       מואצלות, ואין בו מופעי Chart.js שצריך לחבר מחדש. עמוד שלא מסמן את
+       עצמו ממשיך לקבל רענון מלא, שזו ההתנהגות הקיימת. #}
+    <main class="main-content"{% block soft_reload %}{% endblock %}>
         <div class="alert-card warning install-banner" id="installBanner" style="display:none;" role="status">
             <span class="alert-text" id="installBannerText"></span>
             <button type="button" class="btn-sm btn-primary" id="installBannerAction" style="display:none;">התקן</button>
