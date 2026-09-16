@@ -77,6 +77,24 @@ def _call_args(body, name):
     return out
 
 
+def _split_args(args):
+    """מפצל רשימת ארגומנטים לפי פסיקים שברמה העליונה בלבד — פסיק בתוך
+    אובייקט או בתוך גוף פונקציה אינו מפריד בין ארגומנטים."""
+    out, depth, current = [], 0, ""
+    for ch in args:
+        if ch in "({[":
+            depth += 1
+        elif ch in ")}]":
+            depth -= 1
+        if ch == "," and depth == 0:
+            out.append(current.strip()); current = ""
+        else:
+            current += ch
+    if current.strip():
+        out.append(current.strip())
+    return out
+
+
 def test_every_call_to_saveprefs_passes_a_way_back():
     """הבדיקה שתתפוס את המתג הבא שיתווסף: כל קריאה, בלי יוצא מן הכלל."""
     body = _read("settings.js")
@@ -85,7 +103,10 @@ def test_every_call_to_saveprefs_passes_a_way_back():
 
     assert len(calls) >= 4, f"נמצאו רק {len(calls)} קריאות — הבדיקה כנראה לא מוצאת אותן"
     for args in calls:
-        assert "function" in args, f"קריאה ל-savePrefs בלי מסלול החזרה: {args[:60]}"
+        # ארגומנט שני כלשהו: פונקציה בשורה, או שם של אחת שהועברה פנימה.
+        # מה שנבדק הוא שיש מסלול החזרה, לא איך הוא נכתב.
+        assert len(_split_args(args)) >= 2, \
+            f"קריאה ל-savePrefs בלי מסלול החזרה: {args[:60]}"
 
 
 # ─── 26: העתקה שנכשלת אומרת זאת ──────────────────────────────────────────────

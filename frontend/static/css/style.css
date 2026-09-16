@@ -2905,6 +2905,69 @@ li.project-row {
     border: 0;
 }
 
+/* עריכת התקציב בהגדרות — מוצגת רק במצב ניהול, כמו שאר הפקדים שם */
+.cat-budget-edit { display: none; }
+.managing .cat-budget-edit {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 0 2px;
+}
+
+.cat-budget-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+    cursor: pointer;
+}
+
+.cat-budget-fields {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.budget-amount {
+    width: 110px;
+    padding: 6px 10px;
+    /* 1rem: פחות מזה מזם את העמוד ב-iOS ולא מחזיר */
+    font-size: 1rem;
+}
+
+/* ─── תקציב יעד לקטגוריה ───────────────────────────────────────── */
+
+.cat-budget { padding: 2px 0 10px; }
+
+.cat-budget-track {
+    height: 5px;
+    border-radius: 99px;
+    background: var(--color-input);
+    overflow: hidden;
+}
+
+.cat-budget-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: var(--color-gold);
+    transition: width 0.3s;
+}
+
+.cat-budget-text {
+    margin: 4px 0 0;
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+}
+
+/* חריגה: אדום, ופס מלא. הפס נעצר ב-100% בחישוב, אז "מלא" הוא המצב
+   הנכון — פס שגולש החוצה לא מוסיף מידע ורק שובר את הפריסה. */
+.cat-budget.over .cat-budget-fill { background: var(--color-expense); }
+.cat-budget.over .cat-budget-text { color: var(--color-expense); font-weight: 600; }
+
 /* ─── קבוע כל חודש ─────────────────────────────────────────────── */
 
 .fixed-summary {
