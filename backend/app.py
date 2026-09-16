@@ -4,6 +4,7 @@ from functools import wraps, partial
 from datetime import timedelta
 from werkzeug.middleware.proxy_fix import ProxyFix
 import csv
+import hashlib
 import io
 import json
 import math
@@ -183,6 +184,69 @@ if _RATELIMIT_STORAGE.startswith("memory://") and not _IS_DEV:
     logger.warning("rate limiting is using in-memory storage in production — "
                    "limits are per-worker and reset on every deploy. "
                    "Set RATELIMIT_STORAGE_URI.")
+
+
+# ─── נכסים סטטיים: חתימה לפי תוכן ────────────────────────────────────────────
+#
+# כל קובץ סטטי נשלח עם "no-cache", כלומר הדפדפן חייב לשאול את השרת בכל
+# טעינת עמוד אם העותק שלו עדיין תקף. שש שאלות כאלה בכל עמוד, כולן נענות
+# "לא השתנה", וכל אחת תופסת אחד משני ה-workers. בפועל שש מתוך שבע הפניות
+# בטעינת עמוד רגילה הן שיחה על כלום.
+#
+# הסיבה היא שלכתובת אין גרסה: /static/css/style.css היא אותה כתובת בין אם
+# זה הקובץ של אתמול או של היום, אז לדפדפן אין דרך אחרת לדעת.
+#
+# הפתרון: ‎?v=<חתימה>‎ שנגזרת מתוכן הקובץ, ותוקף של שנה. הדפדפן לא שואל,
+# וכשקובץ משתנה החתימה משתנה איתו — כתובת חדשה, הורדה מחדש, אוטומטית.
+#
+# החתימה נגזרת מהתוכן ולא ממספר ידני, וזה העיקר: מספר שצריך לזכור לעדכן
+# הוא מספר שיישכח, והתוצאה היא דפדפן שמגיש קובץ ישן במשך שנה בלי שום דרך
+# לתקן מרחוק. כאן אי אפשר לשכוח.
+_ASSET_HASHES: dict = {}
+
+
+def _asset_version(filename: str) -> str:
+    """שמונה תווים מתוך חתימת התוכן של הקובץ. ריק אם הוא לא נמצא."""
+    if filename in _ASSET_HASHES:
+        return _ASSET_HASHES[filename]
+
+    path = os.path.join(app.static_folder, filename)
+    try:
+        with open(path, "rb") as f:
+            digest = hashlib.sha256(f.read()).hexdigest()[:8]
+    except OSError:
+        # קובץ שלא נמצא: לא מפילים את העמוד בגלל נכס חסר. הוא ייכשל
+        # בטעינה כמו קודם, וזה מצב שקל לראות.
+        digest = ""
+    if not _IS_DEV:
+        _ASSET_HASHES[filename] = digest
+    return digest
+
+
+@app.context_processor
+def _versioned_static():
+    """דורס את url_for עבור נכסים סטטיים בלבד.
+
+    דריסה ולא פונקציה חדשה, כדי ש-48 הקריאות הקיימות בתבניות לא ישתנו —
+    ובעיקר כדי שקריאה שתיכתב מחר תקבל את זה בלי שאיש יזכור."""
+    def versioned_url_for(endpoint, **values):
+        if endpoint == "static" and "filename" in values and "v" not in values:
+            version = _asset_version(values["filename"])
+            if version:
+                values["v"] = version
+        return url_for(endpoint, **values)
+    return {"url_for": versioned_url_for}
+
+
+@app.after_request
+def _cache_static_forever(response):
+    """שנה של מטמון, אבל רק לכתובת חתומה.
+
+    בלי החתימה זה היה מסוכן: כתובת בלי גרסה שנשמרת לשנה היא קובץ ישן
+    שאין דרך לרענן. עם חתימה, שינוי בקובץ מייצר כתובת אחרת ממילא."""
+    if request.endpoint == "static" and request.args.get("v"):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    return response
 
 
 # ─── Auth helpers ─────────────────────────────────────────────────────────────
