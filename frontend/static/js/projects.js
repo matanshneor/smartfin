@@ -89,6 +89,7 @@ document.addEventListener('click', function (e) {
             cancelText: 'השאר כרגילות',
             danger: false,
         }).then(function (deleteTransactions) {
+            if (deleteTransactions === null) return;   // נסיגה — ביטול הכל
             fetch('/api/projects/' + id, {
                 method:  'DELETE',
                 headers: { 'Content-Type': 'application/json' },
