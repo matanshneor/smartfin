@@ -83,6 +83,27 @@
 </section>
 {% endif %}
 
+{# חודש בלי אף עסקה היה מרנדר חמישה כרטיסי גרף ריקים בזה אחר זה, בלי
+   שום הסבר. משפחה חדשה נוחתת כאן ישר מהדשבורד ורואה מסך שנראה שבור.
+   כל שאר העמודים כבר מטפלים במצב הזה — זה היחיד שנשכח. #}
+{% if not month_transactions %}
+<section class="chart-card">
+    <div class="empty-state">
+        <p class="empty-icon">📅</p>
+        <p class="empty-text">{{ 'אין עדיין עסקאות החודש' if is_current else 'לא נרשמו עסקאות ב' ~ month_label }}</p>
+        <p class="empty-sub">
+            {% if is_current %}
+            הוסיפו עסקה ראשונה עם + למטה, וכאן יופיעו הגרפים: לאן הלך הכסף,
+            פילוח לפי קטגוריה, ומי הוציא מה.
+            {% else %}
+            אפשר לדפדף לחודש אחר עם החצים למעלה, או
+            <a href="{{ url_for('month_view') }}">לחזור לחודש הנוכחי</a>.
+            {% endif %}
+        </p>
+    </div>
+</section>
+{% else %}
+
 <!-- Chart 1: לאן הלך הכסף (חלוקת ההכנסות) -->
 <section class="chart-card">
     <h2 class="chart-title">לאן הלך הכסף החודש</h2>
@@ -502,10 +523,15 @@
 </section>
 {% endif %}
 
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
+{# Chart.js נטען רק כשיש מה לצייר — 70KB דחוסים שאין טעם להוריד לחודש ריק #}
+{% if month_transactions %}
 <script src="{{ url_for('static', filename='js/vendor/chart.umd.min.js') }}"></script>
+{% endif %}
+
 <script type="application/json" id="sf-view-data">
     {{ {'summary': summary_data, 'expense': expense_data, 'members': members_data} | tojson }}
 </script>
