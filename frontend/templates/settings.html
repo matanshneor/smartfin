@@ -55,6 +55,9 @@
             </div>
 
             <div class="family-name-edit" id="familyNameEdit">
+                {# בלי תווית, קורא מסך מקריא "שדה טקסט" ותו לא. הכותרת
+                   שלצד השדה קיימת חזותית אבל לא מקושרת אליו. #}
+                <label class="sr-only" for="familyNameInput">שם המשפחה</label>
                 <input class="form-input" type="text" id="familyNameInput"
                        value="{{ family.get('name', 'המשפחה שלי') }}" maxlength="50">
                 <div class="edit-actions">
@@ -158,6 +161,7 @@
                     <p class="group-row-hint">קיבלתם קוד הזמנה? הזינו אותו כאן</p>
                 </div>
                 <div class="join-family-row">
+                    <label class="sr-only" for="joinCodeInput">קוד הזמנה</label>
                     <input class="form-input invite-code-input" type="text" id="joinCodeInput"
                            maxlength="12" placeholder="קוד הזמנה" autocomplete="off"
                            autocapitalize="characters" autocorrect="off" spellcheck="false" dir="ltr">
