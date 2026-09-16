@@ -1051,12 +1051,14 @@ li.transaction-item.open.swipe-ready > .swipe-content {
     justify-content: center;
     padding: 24px;
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.2s;
+    transition: opacity 0.2s, visibility 0.2s;
 }
 
 .confirm-overlay.open {
     opacity: 1;
+    visibility: visible;
     pointer-events: auto;
 }
 
@@ -1112,6 +1114,14 @@ li.transaction-item.open.swipe-ready > .swipe-content {
 
 /* ─── Modal (bottom sheet) ────────────────────────────────────── */
 
+/* ‎visibility‎ ולא רק ‎opacity‎: שקיפות 0 מסתירה מהעין בלבד. האלמנט נשאר
+   ממוקד-לחיץ ונשאר בעץ הנגישות, וזה היה נכון לכל עמוד באפליקציה —
+   המודאל יושב ב-base.html. בפועל: לחיצה על Tab מעבר לתפריט התחתון
+   העבירה את המיקוד לתוך טופס בלתי נראה לכ-15 לחיצות, ו-VoiceOver הקריא
+   את כל טופס העסקה ("הוספת עסקה, הוצאה, הכנסה, חיסכון, סכום בשקלים…")
+   בכל מסך, לפני התוכן האמיתי.
+   ‎visibility‎ מוציא משניהם, וממשיך להתמזג עם המעבר: הוא מתחלף בקפיצה
+   בסוף המעבר, כך שהאלמנט נשאר גלוי לאורך ההיעלמות ההדרגתית. */
 .modal-overlay {
     position: fixed;
     inset: 0;
@@ -1121,12 +1131,14 @@ li.transaction-item.open.swipe-ready > .swipe-content {
     align-items: flex-end;
     justify-content: center;
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.25s;
+    transition: opacity 0.25s, visibility 0.25s;
 }
 
 .modal-overlay.open {
     opacity: 1;
+    visibility: visible;
     pointer-events: auto;
 }
 
