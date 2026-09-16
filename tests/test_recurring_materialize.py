@@ -77,7 +77,10 @@ def _run(monkeypatch, templates, instances):
     client = _FakeClient(templates, instances)
     monkeypatch.setattr(db, "get_client", lambda: client)
     monkeypatch.setattr(db, "get_categories", lambda fid: [])
-    created = db.materialize_recurring("fam-1")
+    # ‎(created, ok)‎ — הדגל השני נוסף כדי שכישלון לא ייראה כהצלחה
+    # ויסמן "סונכרן להיום" (ראו tests/test_recurring_sync.py)
+    created, ok = db.materialize_recurring("fam-1")
+    assert ok, "הריצה נכשלה — הבדיקה שלמטה תבדוק את הדבר הלא נכון"
     return created, client.inserted
 
 

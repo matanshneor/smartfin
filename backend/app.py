@@ -722,6 +722,30 @@ def onboarding_complete():
     return jsonify({"status": "ok", "categories_created": count})
 
 
+def _sync_recurring(family_id):
+    """משלים מופעים של עסקאות קבועות, פעם ביום לכל משתמש.
+
+    שני דברים תוקנו כאן ביחד.
+
+    ראשית, זה רץ רק מהדשבורד. מי שהגיע ישר לעמוד החודש — מסימנייה,
+    מהתפריט התחתון או מקישור — ראה חודש בלי המשכורת ובלי ההוראות
+    הקבועות, ולא היה שום דבר שיסביר לו למה. המספרים תוקנו רק אם במקרה
+    עבר דרך דף הבית.
+
+    שנית, הסימון "סונכרן להיום" נכתב גם כשהיצירה נכשלה — ואז הניסיון
+    הבא רק למחרת. כשל שנראה כהצלחה משאיר חודש שלם חסר.
+
+    מסומן רק אחרי הצלחה, כך שכישלון חולף נפתר בטעינת העמוד הבאה."""
+    if not family_id:
+        return
+    today_str = clock.today().isoformat()
+    if session.get("recurring_synced") == today_str:
+        return
+    _, ok = db.materialize_recurring(family_id)
+    if ok:
+        session["recurring_synced"] = today_str
+
+
 # ─── Main pages (5 עמודים: בית · החודש · השוואה · פרויקטים · הגדרות) ────────
 
 @app.route("/")
@@ -760,12 +784,8 @@ def dashboard():
             year=now.year, month=now.month, is_new_family=True,
         )
 
-    # השלמת מופעים של עסקאות קבועות — פעם ביום לכל משתמש (עלול לכתוב שורות,
-    # אז לפני מקבץ השליפות)
-    today_str = now.strftime("%Y-%m-%d")
-    if session.get("recurring_synced") != today_str:
-        db.materialize_recurring(family_id)
-        session["recurring_synced"] = today_str
+    # עלול לכתוב שורות, אז לפני מקבץ השליפות
+    _sync_recurring(family_id)
 
     # שליפות בלתי-תלויות במקביל — מכווץ ~5 קריאות רצופות ל-Supabase לזמן של ~1
     batch = _run_queries({
@@ -816,6 +836,10 @@ def month_view():
     if not 1970 <= (year or 0) <= 2100:
         year = now.year
     family_id = user["family_id"]
+
+    # לפני השליפות: בלי זה חודש שנפתח ישירות (סימנייה, תפריט, קישור)
+    # מוצג בלי המשכורת ובלי ההוראות הקבועות
+    _sync_recurring(family_id)
 
     is_current = (year == now.year and month == now.month)
 
@@ -995,6 +1019,7 @@ def months():
     """עמוד השוואה: החודש הנוכחי מול חודשים קודמים + כניסה לכל חודש."""
     user      = get_current_user()
     family_id = user["family_id"]
+    _sync_recurring(family_id)
     archive   = db.get_months_archive(family_id)              if family_id else []
     trend     = db.get_monthly_trend(family_id, num_months=12) if family_id else []
     now       = clock.now()
@@ -1573,7 +1598,7 @@ def add_transaction():
 
     # עסקה קבועה חדשה (גם רטרואקטיבית) — משלימים מיד את כל המופעים עד היום
     if payload["is_recurring"]:
-        db.materialize_recurring(user["family_id"])
+        db.materialize_recurring(user["family_id"])   # (created, ok) — כאן לא נדרש
 
     return jsonify({"status": "ok", "transaction": result}), 201
 
@@ -1627,7 +1652,7 @@ def update_transaction(tx_id):
         return jsonify({"error": "עדכון העסקה נכשל — נסה שוב"}), 500
 
     if payload["is_recurring"]:
-        db.materialize_recurring(user["family_id"])
+        db.materialize_recurring(user["family_id"])   # (created, ok) — כאן לא נדרש
 
     return jsonify({"status": "ok", "transaction": result})
 
