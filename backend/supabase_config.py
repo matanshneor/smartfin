@@ -7,6 +7,30 @@ from postgrest.exceptions import APIError
 
 from . import clock
 
+
+class DataUnavailable(Exception):
+    """השאילתה נכשלה — נזרקת במקום להחזיר ערך ריק שנראה כמו תשובה.
+
+    זו הייתה התבנית המסוכנת ביותר בקוד הזה. פונקציה שנכשלה החזירה 0,
+    רשימה ריקה או ‎False‎, והקורא לא יכול היה להבדיל בין "אין נתונים"
+    לבין "לא הצלחתי לבדוק". התוצאה היא תשובה בטוחה ושגויה על המסך:
+
+      · הסיכום החודשי נכשל  ← הדשבורד מציג ₪0 לכל התקציב. בלי סימן,
+        בלי הודעה. המשתמש מסתכל על תקציב מאופס ומאמין לו. זו התקרית
+        מאוגוסט 2026 — הסיבה הספציפית טופלה אז, ההתנהגות לא.
+      · שליפת הקטגוריות נכשלת ← הדשבורד מסיק "משפחה חדשה" ושולח אותה
+        לאשף ההרשמה; שם הבדיקה "כבר סיימת?" נכשלת גם היא ומחזירה
+        "לא", והמשפחה נתקעת בין שני מסכים.
+      · ספירת העסקאות נכשלת ← אישור נטישת המשפחה מדולג בשקט.
+      · הגדרות המשפחה נכשלות ← ברירות המחדל של שיוך חוזרות, והעסקה
+        נרשמת על שם של בן משפחה אחר.
+      · מכסת הסריקות נכשלת ← ההגבלה על חשבון ה-OpenAI מפסיקה לעבוד.
+
+    באג רגיל נראה על המסך. זה לא — ולכן אף אחד לא מדווח עליו.
+    כישלון גלוי, שאפשר לנסות שוב אחריו, עדיף על מספר שקרי. וכבונוס:
+    חריגה שלא נתפסת מגיעה ל-Sentry, בעוד ש-print נבלע בלוגים של Railway.
+    """
+
 load_dotenv()
 
 _client = None
@@ -424,8 +448,8 @@ def receipt_scans_this_month(family_id: str) -> int:
             .eq("family_id", family_id).gte("created_at", start).execute()
         return result.count or 0
     except Exception as e:
-        print(f"[ERROR] receipt_scans_this_month: {e}")
-        return 0
+        # 0 פירושו "לא נוצלה מכסה" — כלומר ההגבלה על ההוצאה מפסיקה לעבוד
+        raise DataUnavailable("receipt_scans_this_month") from e
 
 
 def record_receipt_scan(family_id: str, user_id: str):
@@ -654,8 +678,8 @@ def get_monthly_summary(family_id: str, year: int, month: int) -> dict:
         summary["expense_pct"] = round((summary["expense"] / total) * 100)
         return summary
     except Exception as e:
-        print(f"[ERROR] get_monthly_summary: {e}")
-        return _empty_summary()
+        # לא מחזירים אפסים: דשבורד של ₪0 נראה כמו תקציב ריק ולא כמו תקלה
+        raise DataUnavailable("get_monthly_summary") from e
 
 
 def _filter_hidden_personal_projects(rows: list, viewer_user_id: str) -> list:
@@ -1014,8 +1038,7 @@ def family_needs_onboarding(family_id: str) -> bool:
             .eq("family_id", family_id).limit(1).execute()
         return (result.count or 0) == 0
     except Exception as e:
-        print(f"[ERROR] family_needs_onboarding: {e}")
-        return False
+        raise DataUnavailable("family_needs_onboarding") from e
 
 
 def family_has_no_transactions(family_id: str) -> bool:
@@ -1030,8 +1053,7 @@ def family_has_no_transactions(family_id: str) -> bool:
             .eq("family_id", family_id).limit(1).execute()
         return (result.count or 0) == 0
     except Exception as e:
-        print(f"[ERROR] family_has_no_transactions: {e}")
-        return False
+        raise DataUnavailable("family_has_no_transactions") from e
 
 
 def bulk_add_categories(family_id: str, categories: list) -> tuple:
@@ -1072,8 +1094,9 @@ def _fetch_categories(family_id: str = None) -> list:
         else:
             query = query.is_("family_id", "null")
         return query.order("sort_order", nullsfirst=False).order("name").execute().data
-    except Exception:
-        return []
+    except Exception as e:
+        # רשימה ריקה נקראת בדשבורד כ"משפחה חדשה" ומפנה לאשף ההרשמה
+        raise DataUnavailable("categories") from e
 
 
 def get_categories(family_id: str = None) -> list:
@@ -1805,8 +1828,9 @@ def _fetch_family(family_id: str) -> dict:
     try:
         result = client.table("families").select("*").eq("id", family_id).single().execute()
         return result.data or {}
-    except Exception:
-        return {}
+    except Exception as e:
+        # {} מתמזג לברירות המחדל, והעסקה נרשמת על שם של בן משפחה אחר
+        raise DataUnavailable("family") from e
 
 
 def get_family(family_id: str) -> dict:
@@ -1842,8 +1866,8 @@ def family_transaction_count(family_id: str) -> int:
             .limit(1).execute()
         return result.count or 0
     except Exception as e:
-        print(f"[ERROR] family_transaction_count: {e}")
-        return 0
+        # 0 נקרא כ"אין מה לאבד" ומדלג על אישור נטישת המשפחה
+        raise DataUnavailable("family_transaction_count") from e
 
 
 def join_family_by_code(code: str):

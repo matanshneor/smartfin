@@ -70,7 +70,7 @@ def test_a_network_blip_does_not_sign_the_user_out(client_with_expiring_token, m
     monkeypatch.setattr(app_module.db, "refresh_session",
                         lambda _t: (None, "temporary failure", False))
 
-    client_with_expiring_token.get("/settings")
+    client_with_expiring_token.get("/__test/noop")
 
     with client_with_expiring_token.session_transaction() as sess:
         assert sess.get("user_id"), "בליפ רשת ניתק את המשתמש"
@@ -81,7 +81,7 @@ def test_a_rejected_refresh_token_does_sign_the_user_out(client_with_expiring_to
     monkeypatch.setattr(app_module.db, "refresh_session",
                         lambda _t: (None, "Invalid Refresh Token", True))
 
-    client_with_expiring_token.get("/settings")
+    client_with_expiring_token.get("/__test/noop")
 
     with client_with_expiring_token.session_transaction() as sess:
         assert not sess.get("user_id")
@@ -106,7 +106,7 @@ def test_a_rejection_while_the_access_token_still_works_does_not_sign_out(monkey
         monkeypatch.setattr(app_module.db, "refresh_session",
                             lambda _t: (None, "Invalid Refresh Token: Already Used", True))
 
-        response = c.get("/settings")
+        response = c.get("/__test/noop")
 
         with c.session_transaction() as sess:
             assert sess.get("user_id"), "מרוץ סיבוב טוקנים ניתק את המשתמש"
@@ -115,6 +115,19 @@ def test_a_rejection_while_the_access_token_still_works_does_not_sign_out(monkey
         # הייתה דורסת את הטוקן החדש והתקין שהבקשה האחרת כבר שמרה.
         assert not any(h[0] == "Set-Cookie" and h[1].startswith("session=")
                        for h in response.headers), "בקשה כושלת דרסה את עוגיית ה-session"
+
+
+def _noop_view():
+    """עמוד מאומת שלא נוגע במסד.
+
+    הבדיקות כאן בודקות עוגיות וטוקנים, לא נתונים. הן השתמשו ב-/settings
+    כעמוד נוח, וזה קשר אותן במקרה לשליפות אמיתיות — מאז שכישלון שליפה
+    נזרק במקום להיבלע (ראו DataUnavailable), העמוד הזה נכשל בגלוי עם
+    טוקן מזויף, וזה הצית כישלונות בבדיקות שאין להן קשר לנושא."""
+    return "ok"
+
+
+app.add_url_rule("/__test/noop", "test_noop", _noop_view)
 
 
 def _session_writing_view():
@@ -149,7 +162,7 @@ def test_a_network_blip_does_not_overwrite_the_cookie(client_with_expiring_token
     monkeypatch.setattr(app_module.db, "refresh_session",
                         lambda _t: (None, "temporary failure", False))
 
-    response = client_with_expiring_token.get("/settings")
+    response = client_with_expiring_token.get("/__test/noop")
 
     assert not any(h[0] == "Set-Cookie" and h[1].startswith("session=")
                    for h in response.headers)
@@ -161,7 +174,7 @@ def test_a_successful_refresh_stores_the_rotated_token(client_with_expiring_toke
     monkeypatch.setattr(app_module.db, "refresh_session",
                         lambda _t: (_FakeResponse(), None, False))
 
-    client_with_expiring_token.get("/settings")
+    client_with_expiring_token.get("/__test/noop")
 
     with client_with_expiring_token.session_transaction() as sess:
         assert sess["access_token"]  == "fresh-access"
