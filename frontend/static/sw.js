@@ -1,4 +1,4 @@
-const CACHE = 'smartfin-v13';
+const CACHE = 'smartfin-v14';
 
 // ה-JS עבר מ-inline בתוך ה-HTML לקבצים נפרדים, ולכן הוא סוף-סוף נהנה
 // מה-stale-while-revalidate שכבר היה כאן: עד עכשיו אותן ~1500 שורות ירדו
@@ -10,7 +10,11 @@ const PRECACHE = [
     '/static/js/transactions.js',
     '/static/js/motion.js',
     '/static/js/pwa.js',
-    '/static/js/vendor/chart.umd.min.js',
+    // ‎chart.umd.min.js‎ *לא* כאן בכוונה: 70KB דחוסים, יותר משלושה
+    // מונים מכל ה-CSS, והוא נדרש רק בשלושה עמודים. בטעינה-מראש כל
+    // משתמש הוריד אותו בהתקנת ה-Service Worker גם אם לא יפתח גרף
+    // לעולם. הוא נכנס למטמון לבד בפעם הראשונה שבאמת צריך אותו, דרך
+    // ה-stale-while-revalidate של ‎/static/‎ למטה.
 ];
 
 self.addEventListener('install', function (e) {
@@ -28,6 +32,29 @@ self.addEventListener('activate', function (e) {
     );
     self.clients.claim();
 });
+
+
+/* עמוד "אין חיבור". טוען את גיליון הסגנון מהמטמון — הוא כבר שם — כדי
+ * שזה ייראה כמו האפליקציה ולא כמו שגיאת דפדפן. כפתור הניסיון החוזר קיים
+ * כי בלעדיו הדרך היחידה קדימה היא רענון ידני, ובאפליקציה מותקנת בטלפון
+ * אין כפתור רענון על המסך. */
+function offlinePage() {
+    return new Response(
+        '<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="utf-8">' +
+        '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">' +
+        '<title>אין חיבור</title>' +
+        '<link rel="stylesheet" href="/static/css/style.css"></head>' +
+        '<body class="auth-body"><div class="auth-container">' +
+        '<div class="empty-state">' +
+        '<p class="empty-icon">📡</p>' +
+        '<p class="empty-text">אין חיבור לאינטרנט</p>' +
+        '<p class="empty-sub">המספרים שלכם מחכים ברגע שהחיבור יחזור. ' +
+        'לא מוצגים כאן נתונים ישנים, כדי שלא תסתמכו על מספר שכבר לא נכון.</p>' +
+        '<button class="submit-btn" onclick="location.reload()">נסו שוב</button>' +
+        '</div></div></body></html>',
+        { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+    );
+}
 
 self.addEventListener('fetch', function (e) {
     // Only intercept same-origin GET requests
@@ -62,16 +89,27 @@ self.addEventListener('fetch', function (e) {
         return;
     }
 
-    // עמודים שהתוכן שלהם נגזר מהעוגיות — לעולם לא מהמטמון.
-    // השורש מגיש דף נחיתה לאורח, טופס התחברות למכשיר מוכר ודשבורד למי
-    // שמחובר; ‎/login נושא את המזהה שנשמר מההתחברות הקודמת. תשובה ישנה
-    // כאן משמעותה דף שיווק למשתמש מחובר, או המייל של מישהו אחר בטופס.
-    if (url.pathname === '/' || url.pathname === '/login') {
+    // ── מה נשמר במטמון, ומה לעולם לא ──
+    //
+    // כל עמוד מאחורי ההתחברות מציג כסף או פרטים אישיים, ולכן אף אחד מהם
+    // לא מוגש מהמטמון. זה נראה כמו ויתור על אופליין וזה ההפך: משתמש
+    // בחיבור סלולרי גרוע קיבל מסך מלא ומעוצב עם "נשאר בעו״ש ₪1,270"
+    // מהביקור הקודם, אולי מלפני ימים. אנימציית הספירה אפילו רצה עליהם,
+    // אז הם נראו טריים. שום דבר לא סימן שזה ישן — והוא עלול לקבל החלטה
+    // כספית על סמך זה. הודעה ברורה שאין חיבור טובה ממספר שקרי.
+    //
+    // השורש וטופס ההתחברות מוחרגים מסיבה נוספת: התוכן שלהם נגזר מהעוגיות
+    // (דף נחיתה לאורח, דשבורד למחובר, המייל השמור בטופס).
+    //
+    // רק העמודים המשפטיים נשמרים — הם זהים לכולם ולא משתנים.
+    const CACHEABLE_PAGES = ['/privacy', '/terms'];
+
+    if (!CACHEABLE_PAGES.includes(url.pathname)) {
+        e.respondWith(fetch(e.request).catch(() => offlinePage()));
         return;
     }
 
-    // HTML pages: network-first, fall back to cache; אם אין רשת וגם אין
-    // מטמון — תשובת "אין חיבור" מסודרת במקום שגיאת דפדפן גולמית.
+    // עמודים סטטיים: מהרשת קודם, ומהמטמון כשאין רשת
     e.respondWith(
         fetch(e.request)
             .then(res => {
@@ -81,13 +119,6 @@ self.addEventListener('fetch', function (e) {
                 }
                 return res;
             })
-            .catch(() =>
-                caches.match(e.request).then(cached =>
-                    cached || new Response(
-                        '<!DOCTYPE html><html lang="he" dir="rtl"><body style="font-family:sans-serif;text-align:center;padding:40px;">אין חיבור לאינטרנט — נסה שוב כשתהיה מחובר</body></html>',
-                        { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
-                    )
-                )
-            )
+            .catch(() => caches.match(e.request).then(cached => cached || offlinePage()))
     );
 });
