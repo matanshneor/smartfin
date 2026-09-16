@@ -1,4 +1,4 @@
-const CACHE = 'smartfin-v20';
+const CACHE = 'smartfin-v21';
 
 // אין טעינה-מראש.
 //
