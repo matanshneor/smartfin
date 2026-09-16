@@ -106,13 +106,17 @@ def test_old_caches_are_purged_when_the_version_changes():
     assert "keys.filter(k => k !== CACHE)" in activate and "caches.delete" in activate
 
 
-def test_chart_js_is_not_downloaded_by_everyone_on_install():
-    """70KB דחוסים — הקובץ הכבד באפליקציה, יותר משלושה מונים מכל ה-CSS —
-    שנדרש רק בשלושה עמודים. הוא נכנס למטמון לבד בשימוש הראשון."""
+def test_nothing_is_precached_by_url_any_more():
+    """הרשימה רוקנה בכוונה, ולא מרשלנות.
+
+    מאז שכתובות הנכסים נושאות חתימת תוכן (‎?v=…‎) שנקבעת בשרת, רשימה
+    קבועה כאן לא יכולה לדעת אותה. היא הייתה מורידה כתובות בלי חתימה
+    שאף עמוד לא מבקש — הורדה כפולה של כל קובץ, ומטמון שלא נוגעים בו.
+
+    וזה ממילא מיותר: כתובת חתומה מוגשת עם תוקף של שנה, אז הדפדפן שומר
+    אותה בעצמו כבר מהביקור הראשון."""
     block = _SW[_SW.index("const PRECACHE"):_SW.index("];", _SW.index("const PRECACHE"))]
-    # בלי ההערות: השם מופיע שם בהסבר למה הוא *לא* ברשימה, ובדיקה
-    # שנופלת על הסבר היא בדיקה שמישהו ימחק במקום לתקן
     precache = re.sub(r"^\s*//.*$", "", block, flags=re.M)
 
+    assert "/static/" not in precache
     assert "chart.umd" not in precache
-    assert "/static/css/style.css" in precache, "הטעינה-מראש התרוקנה לגמרי"

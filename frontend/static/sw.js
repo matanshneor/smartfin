@@ -1,22 +1,14 @@
-const CACHE = 'smartfin-v19';
+const CACHE = 'smartfin-v20';
 
-// ה-JS עבר מ-inline בתוך ה-HTML לקבצים נפרדים, ולכן הוא סוף-סוף נהנה
-// מה-stale-while-revalidate שכבר היה כאן: עד עכשיו אותן ~1500 שורות ירדו
-// מחדש בכל מעבר בין עמודים, כי הן היו חלק מגוף ה-HTML.
-const PRECACHE = [
-    '/static/css/style.css',
-    '/static/js/auth-guard.js',
-    '/static/js/clipboard.js',
-    '/static/js/core.js',
-    '/static/js/transactions.js',
-    '/static/js/motion.js',
-    '/static/js/pwa.js',
-    // ‎chart.umd.min.js‎ *לא* כאן בכוונה: 70KB דחוסים, יותר משלושה
-    // מונים מכל ה-CSS, והוא נדרש רק בשלושה עמודים. בטעינה-מראש כל
-    // משתמש הוריד אותו בהתקנת ה-Service Worker גם אם לא יפתח גרף
-    // לעולם. הוא נכנס למטמון לבד בפעם הראשונה שבאמת צריך אותו, דרך
-    // ה-stale-while-revalidate של ‎/static/‎ למטה.
-];
+// אין טעינה-מראש.
+//
+// הכתובות של הנכסים נושאות עכשיו חתימת תוכן (‎?v=…‎) שנקבעת בשרת, ורשימה
+// קבועה כאן לא יכולה לדעת אותה — היא הייתה מורידה כתובות בלי חתימה שאף
+// עמוד לא מבקש, כלומר הורדה כפולה של כל קובץ ומטמון שלא נוגעים בו לעולם.
+//
+// וזה ממילא לא נחוץ יותר: כתובת חתומה מוגשת עם תוקף של שנה, אז הדפדפן
+// שומר אותה בעצמו כבר מהביקור הראשון. מה שמגיע לכאן נשמר בזמן אמת למטה.
+const PRECACHE = [];
 
 self.addEventListener('install', function (e) {
     e.waitUntil(
@@ -76,9 +68,15 @@ self.addEventListener('fetch', function (e) {
     // אוטומטית ברענון הבא בלי צורך בעדכון גרסת CACHE ידני בכל פעם.
     // רק תגובות תקינות נשמרות — לא שומרים 404/500 חולפים במטמון.
     if (url.pathname.startsWith('/static/')) {
+        // כתובת חתומה (‎?v=…‎) היא בהגדרה בלתי משתנה: שינוי בקובץ מייצר
+        // חתימה אחרת, כלומר כתובת אחרת. אז אם היא במטמון — זו התשובה,
+        // בלי לבדוק ברשת. כתובת בלי חתימה (למשל קובץ שנטען ידנית) ממשיכה
+        // לקבל את ההתנהגות הקודמת: מהמטמון מיד, ורענון ברקע.
+        const immutable = url.searchParams.has('v');
         e.respondWith(
             caches.open(CACHE).then(cache =>
                 cache.match(e.request).then(cached => {
+                    if (cached && immutable) return cached;
                     const network = fetch(e.request).then(res => {
                         if (res.ok) cache.put(e.request, res.clone());
                         return res;
