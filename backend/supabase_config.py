@@ -60,6 +60,42 @@ def get_client():
         return None
 
 
+def ping(timeout: float = 2.0) -> tuple:
+    """בדיקת חיים למסד: נסיעה אחת הלוך-חזור עד Postgres וחזרה.
+    מחזירה ‎(ok, detail)‎.
+
+    לא עוברת דרך הלקוח המשותף, בכוונה. הלקוח הוא סינגלטון ברמת התהליך
+    שכותרת ההרשאה שלו מוחלפת בכל בקשה (ראו set_auth_token), ובדיקת
+    הבריאות היא בקשה לא מאומתת — שאילתה דרכו הייתה רצה עם הטוקן ששרד
+    מהבקשה הקודמת ונכשלת ברגע שהוא פג. כישלון כזה נראה בדיוק כמו "המסד
+    נפל", והוא לא. בקשה נפרדת עם מפתח ה-anon בודקת את מה שנשאל.
+
+    השאילתה היא על טבלה אמיתית ולא על שורש ה-API, כדי שתשובה תקינה
+    תעיד שגם Postgres עצמו ענה ולא רק ששער ה-API חי. RLS מחזירה רשימה
+    ריקה למפתח האנונימי — וזה בסדר גמור: מה שנבדק הוא שהתשובה הגיעה,
+    לא מה היה בה.
+    """
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    if not url or not key:
+        return False, "not configured"
+    try:
+        import httpx
+        r = httpx.get(
+            f"{url.rstrip('/')}/rest/v1/families",
+            params={"select": "id", "limit": "1"},
+            headers={"apikey": key, "Authorization": f"Bearer {key}"},
+            timeout=timeout,
+        )
+    except Exception as e:
+        # בלי logger.exception: בזמן נפילה אמיתית זה נקרא כל דקה, וזה
+        # היה מציף את Sentry באלף עותקים של אותה תקלה אחת.
+        return False, type(e).__name__
+    if r.status_code == 200:
+        return True, "ok"
+    return False, f"http {r.status_code}"
+
+
 def set_auth_token(access_token: str):
     """Inject the user's JWT so RLS policies resolve auth.uid() correctly."""
     client = get_client()
