@@ -161,3 +161,46 @@ window.escapeHtml = function (s) {
     });
 })();
 
+
+
+/* ─── רענון רך ────────────────────────────────────────────────────────────────
+ *
+ * כל פעולה באפליקציה הסתיימה ב-location.reload(). הוספת עסקה עלתה בערך שתי
+ * שניות מהקשה עד מסך יציב: השהיה מכוונת של 380ms כדי שהצליל יסתיים, סבב
+ * לשרת, ניתוח מחדש של 99KB CSS ו-77KB JS, ואז אנימציית ספירה של שנייה על
+ * המספר שבדיוק רצית לראות. בדרך גם נמחקה השורה הזמנית שהקוד הספיק להציג,
+ * וגם מיקום הגלילה.
+ *
+ * מושכים את אותה כתובת ומחליפים רק את מה שהשתנה. Jinja נשאר מקור האמת
+ * היחיד — לא משכפלים כאן לוגיקת תצוגה, וזה מקור באגים שנמנע. הנפילה חזרה
+ * ל-reload מלא אומרת שבמקרה הגרוע ההתנהגות זהה להיום.
+ *
+ * האנימציות לא רצות שוב בכוונה: ספירה מ-0 אחרי עדכון גורמת למספר
+ * "לקפוץ אחורה" מול העיניים, וה-HTML הטרי ממילא מכיל כבר את הערך הסופי.
+ */
+window.softReload = function (selector) {
+    selector = selector || 'main.main-content';
+    return fetch(window.location.href, {
+        headers: { 'X-Requested-With': 'sf-soft-reload' },
+        credentials: 'same-origin',
+    })
+        .then(function (r) {
+            // 401 כבר מטופל ב-auth-guard; כל דבר אחר — נופלים לרענון מלא
+            if (!r.ok) throw new Error('soft reload got ' + r.status);
+            return r.text();
+        })
+        .then(function (html) {
+            const fresh = new DOMParser()
+                .parseFromString(html, 'text/html')
+                .querySelector(selector);
+            const current = document.querySelector(selector);
+            if (!fresh || !current) throw new Error('missing ' + selector);
+
+            current.replaceWith(fresh);
+            // מודיעים למי שצריך לחבר את עצמו מחדש (גרפים, למשל)
+            window.dispatchEvent(new CustomEvent('sf:refreshed'));
+        })
+        .catch(function () {
+            window.location.reload();
+        });
+};

@@ -659,10 +659,19 @@
             if (isNew) window.appFeedback();
 
             function finish() {
-                sessionStorage.setItem('sf_toast', editId ? 'העסקה עודכנה' : 'העסקה נוספה');
                 closeModal();
-                // שהות קצרה כדי שהצליל יסתיים לפני שהדף נטען מחדש
-                setTimeout(function () { window.location.reload(); }, isNew ? 380 : 0);
+                // רענון רך: מחליף את תוכן העמוד בלי ניווט, בלי ניתוח מחדש
+                // של ה-CSS וה-JS, ובלי לאבד את מיקום הגלילה. ההשהיה של
+                // 380ms הייתה שם רק כדי שהצליל יסתיים לפני שהדף נעלם —
+                // עכשיו הוא לא נעלם, אז היא מיותרת.
+                const message = editId ? 'העסקה עודכנה' : 'העסקה נוספה';
+                if (document.querySelector('main[data-soft-reload]')) {
+                    window.softReload().then(function () { window.showToast(message); });
+                } else {
+                    // עמוד עם גרפים או האזנות ישירות — רענון מלא, כמו קודם
+                    sessionStorage.setItem('sf_toast', message);
+                    setTimeout(function () { window.location.reload(); }, isNew ? 380 : 0);
+                }
             }
 
             const sideEffects = [];
