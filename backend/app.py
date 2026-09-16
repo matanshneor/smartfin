@@ -12,6 +12,10 @@ import re
 import time
 from . import supabase_config as db
 from . import clock
+from . import logs
+
+logs.setup()
+logger = logs.get("smartfin.app")
 
 load_dotenv()
 
@@ -176,8 +180,9 @@ limiter = Limiter(
 # מטבעו: הבקשות ממשיכות לעבוד והמגבלה פשוט לא נאכפת, כך שבלי ההתראה הזאת
 # אין שום דרך להבחין בין "מוגן" ל"נראה מוגן".
 if _RATELIMIT_STORAGE.startswith("memory://") and not _IS_DEV:
-    print("[WARNING] rate limiting is using in-memory storage in production — "
-          "limits are per-worker and reset on every deploy. Set RATELIMIT_STORAGE_URI.")
+    logger.warning("rate limiting is using in-memory storage in production — "
+                   "limits are per-worker and reset on every deploy. "
+                   "Set RATELIMIT_STORAGE_URI.")
 
 
 # ─── Auth helpers ─────────────────────────────────────────────────────────────
@@ -227,7 +232,9 @@ def _end_session(reason: str):
     ניתוק היה עד עכשיו שקט לגמרי, ולכן משתמש שהתלונן שהוא "נזרק החוצה"
     לא הותיר שום דבר לחקור אותו. ההבטחה היא להישאר מחובר עד יציאה יזומה,
     אז כל ניתוק אחר הוא אירוע שצריך להיות אפשר לראות."""
-    print(f"[AUTH] session ended: {reason}")
+    # warning ולא info: ההבטחה היא להישאר מחובר עד יציאה יזומה, אז כל
+    # ניתוק אחר הוא אירוע שצריך להיות אפשר לראות
+    logger.warning("session ended: %s", reason)
     if _sentry_dsn:
         sentry_sdk.capture_message(f"session ended: {reason}", level="warning")
     session.clear()
@@ -261,7 +268,7 @@ def inject_auth():
             # שזה בדיוק מה שקורה כשבקשה מקבילה כבר סובבה את הטוקן לפנינו.
             # הבקשה הזאת ממשיכה עם טוקן הגישה הקיים, והבאה תנסה שוב; אם
             # הדחייה אמיתית, הניתוק יקרה מעצמו כשטוקן הגישה יפוג.
-            print(f"[WARN] token refresh failed, keeping session: {err}")
+            logger.warning("token refresh failed, keeping session: %s", err)
             _do_not_rewrite_session_cookie()
 
     db.set_auth_token(token)
@@ -547,7 +554,7 @@ def signup():
                     error = "יותר מדי ניסיונות הרשמה בזמן קצר — נסה שוב בעוד כמה דקות"
                 else:
                     # לא מדליפים את השגיאה הפנימית למשתמש — רק ללוג השרת
-                    print(f"[ERROR] signup: {err}")
+                    logger.error("signup: %s", err)
                     error = "הרשמה נכשלה — נסה שוב בעוד כמה רגעים"
             else:
                 # הצטרפות למשפחה קיימת לפי קוד ההזמנה. כישלון כאן לא מבטל את
@@ -565,7 +572,7 @@ def signup():
                         db.set_auth_token(session_obj.access_token)
                     _, join_err = db.join_family_by_code(invite_code)
                     if join_err:
-                        print(f"[WARN] signup join failed for {email}: {join_err}")
+                        logger.warning("signup join failed for %s: %s", email, join_err)
                         success = (f"נרשמת בהצלחה! אבל {join_err}. "
                                    "אפשר להתחבר ולהצטרף למשפחה דרך ההגדרות.")
                 # ההרשמה לא מחברת אוטומטית, אבל היא כן הופכת את המכשיר
@@ -636,7 +643,7 @@ def reset_password_submit():
 
     ok, err = db.update_password(access_token, password)
     if not ok:
-        print(f"[ERROR] reset password: {err}")
+        logger.error("reset password: %s", err)
         return jsonify({"error": "האיפוס נכשל — נסה לבקש קישור חדש"}), 400
     return jsonify({"status": "ok"})
 
@@ -709,7 +716,7 @@ def onboarding_complete():
 
     count, err = db.bulk_add_categories(user["family_id"], categories)
     if err:
-        print(f"[ERROR] onboarding bulk_add_categories: {err}")
+        logger.error("onboarding bulk_add_categories: %s", err)
         return jsonify({"error": "שמירת הקטגוריות נכשלה — נסה שוב"}), 500
 
     return jsonify({"status": "ok", "categories_created": count})
@@ -1089,7 +1096,7 @@ def add_project_route():
     owner_id = user["id"] if is_personal else None
     proj, err = db.add_project(user["family_id"], created_by=user["id"], owner_id=owner_id, **fields)
     if err:
-        print(f"[ERROR] add_project route: {err}")
+        logger.error("add_project route: %s", err)
         return jsonify({"error": "יצירת הפרויקט נכשלה — נסה שוב"}), 500
     return jsonify(proj), 201
 
@@ -1198,7 +1205,7 @@ def add_project_category_route(project_id):
     cat, err = db.add_project_category(project_id, user["family_id"], name,
                                        body.get("icon", "📦"), type_)
     if err:
-        print(f"[ERROR] add_project_category route: {err}")
+        logger.error("add_project_category route: %s", err)
         return jsonify({"error": "הוספת הקטגוריה נכשלה — נסה שוב"}), 500
     return jsonify(cat), 201
 
@@ -1561,7 +1568,7 @@ def add_transaction():
 
     result, err = db.add_transaction(payload)
     if err:
-        print(f"[ERROR] add_transaction route: {err}")
+        logger.error("add_transaction route: %s", err)
         return jsonify({"error": "הוספת העסקה נכשלה — נסה שוב"}), 500
 
     # עסקה קבועה חדשה (גם רטרואקטיבית) — משלימים מיד את כל המופעים עד היום
@@ -1616,7 +1623,7 @@ def update_transaction(tx_id):
 
     result, err = db.update_transaction(tx_id, user["family_id"], payload)
     if err:
-        print(f"[ERROR] update_transaction route: {err}")
+        logger.error("update_transaction route: %s", err)
         return jsonify({"error": "עדכון העסקה נכשל — נסה שוב"}), 500
 
     if payload["is_recurring"]:
@@ -1650,7 +1657,7 @@ def stop_recurring_route(template_id):
     if not ok:
         if err == "not found":
             return jsonify({"error": "העסקה הקבועה לא נמצאה"}), 404
-        print(f"[ERROR] stop_recurring route: {err}")
+        logger.error("stop_recurring route: %s", err)
         return jsonify({"error": "ההסרה נכשלה — נסה שוב"}), 500
     return jsonify({"status": "ok"})
 
@@ -1678,7 +1685,7 @@ def sync_recurring_template(template_id):
         description=body.get("description"),
     )
     if err:
-        print(f"[ERROR] update_recurring_template route: {err}")
+        logger.error("update_recurring_template route: %s", err)
         return jsonify({"error": "עדכון העסקה הקבועה נכשל — נסה שוב"}), 500
     if not result:
         return jsonify({"error": "התבנית הקבועה לא נמצאה"}), 404
@@ -1779,7 +1786,7 @@ def view_receipt(tx_id):
 
     url, err = db.get_receipt_signed_url(session.get("access_token"), path)
     if err or not url:
-        print(f"[ERROR] receipt signed url: {err}")
+        logger.error("receipt signed url: %s", err)
         return render_template("error.html", code=500,
                                message="טעינת הקבלה נכשלה — נסו שוב בעוד רגע"), 500
 
@@ -1822,7 +1829,7 @@ def add_category():
         type_=body.get("type", "expense"),
     )
     if err:
-        print(f"[ERROR] add_category route: {err}")
+        logger.error("add_category route: %s", err)
         return jsonify({"error": "הוספת הקטגוריה נכשלה — נסה שוב"}), 500
     return jsonify(cat), 201
 
@@ -1860,7 +1867,7 @@ def delete_category(cat_id):
             .execute()
         return jsonify({"status": "ok"})
     except Exception as e:
-        print(f"[ERROR] delete_category route: {e}")
+        logger.exception("delete_category route")
         return jsonify({"error": "מחיקת הקטגוריה נכשלה — נסה שוב"}), 500
 
 

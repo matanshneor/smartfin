@@ -6,6 +6,9 @@ from gotrue.errors import AuthApiError, AuthRetryableError
 from postgrest.exceptions import APIError
 
 from . import clock
+from . import logs
+
+logger = logs.get("smartfin.db")
 
 
 class DataUnavailable(Exception):
@@ -45,7 +48,7 @@ def get_client():
     key = os.environ.get("SUPABASE_KEY")
 
     if not url or not key:
-        print("[WARNING] SUPABASE_URL or SUPABASE_KEY not set — running without database")
+        logger.warning("SUPABASE_URL or SUPABASE_KEY not set — running without database")
         return None
 
     try:
@@ -53,7 +56,7 @@ def get_client():
         _client = create_client(url, key)
         return _client
     except Exception as e:
-        print(f"[WARNING] Failed to connect to Supabase: {e}")
+        logger.exception("Failed to connect to Supabase")
         return None
 
 
@@ -64,7 +67,7 @@ def set_auth_token(access_token: str):
         try:
             client.postgrest.auth(access_token)
         except Exception as e:
-            print(f"[WARNING] set_auth_token: {e}")
+            logger.exception("set_auth_token")
 
 
 def _request_cache(key: str, loader):
@@ -126,7 +129,7 @@ def get_email_by_phone(normalized_phone: str):
         result = client.rpc("email_for_phone", {"p_phone": normalized_phone}).execute()
         return result.data or None
     except Exception as e:
-        print(f"[ERROR] get_email_by_phone: {e}")
+        logger.exception("get_email_by_phone")
         return None
 
 
@@ -151,7 +154,7 @@ def log_login_event(event: str = "login"):
     try:
         client.rpc("log_login_event", {"p_event": event}).execute()
     except Exception as e:
-        print(f"[WARN] log_login_event: {e}")
+        logger.exception("log_login_event")
 
 
 def reset_transactions(family_id: str, only_user_id: str = None):
@@ -168,7 +171,7 @@ def reset_transactions(family_id: str, only_user_id: str = None):
         query.execute()
         return True, None
     except Exception as e:
-        print(f"[ERROR] reset_transactions: {e}")
+        logger.exception("reset_transactions")
         return False, str(e)
 
 
@@ -182,7 +185,7 @@ def delete_my_account():
         client.rpc("delete_my_account", {}).execute()
         return True, None
     except Exception as e:
-        print(f"[ERROR] delete_my_account: {e}")
+        logger.exception("delete_my_account")
         return False, str(e)
 
 
@@ -257,10 +260,10 @@ def fetch_profile(user_id: str):
     except APIError as e:
         if (e.json() or {}).get("code") == _NO_ROWS:
             return None, True          # אין פרופיל — תשובה, לא כישלון
-        print(f"[ERROR] fetch_profile({user_id}): {e}")
+        logger.exception("fetch_profile(%s)", user_id)
         return None, False
     except Exception as e:
-        print(f"[ERROR] fetch_profile({user_id}): {e}")
+        logger.exception("fetch_profile(%s)", user_id)
         return None, False
 
 
@@ -283,7 +286,7 @@ def update_profile(user_id: str, name: str, phone: str = None, workplace: str = 
         ).eq("id", user_id).execute()
         return True, None
     except Exception as e:
-        print(f"[ERROR] update_profile: {e}")
+        logger.exception("update_profile")
         if "duplicate" in str(e).lower() and "phone" in str(e).lower():
             return False, "מספר הטלפון כבר רשום למשתמש אחר"
         return False, None
@@ -327,7 +330,7 @@ def update_workplace_history(user_id: str, family_id: str, new_workplace: str,
             .in_("category_id", salary_cat_ids) \
             .gte("date", month_start).execute()
     except Exception as e:
-        print(f"[ERROR] update_workplace_history: {e}")
+        logger.exception("update_workplace_history")
 
 
 def update_password(access_token: str, new_password: str):
@@ -408,7 +411,7 @@ def ensure_family(user_id: str, family_name: str = "המשפחה שלי"):
         # השליפה נכשלה. אסור להסיק מזה שאין משפחה: יצירת משפחה כאן דורסת
         # את השיוך הקיים ומנתקת את המשתמש מכל ההיסטוריה שלו לצמיתות.
         # כישלון גלוי, שממנו אפשר להתאושש בניסיון הבא, עדיף בהרבה.
-        print(f"[ERROR] ensure_family({user_id}): profile read failed — refusing to create a family")
+        logger.error("ensure_family(%s): profile read failed — refusing to create a family", user_id)
         return None
     if profile and profile.get("family_id"):
         return profile["family_id"]
@@ -417,7 +420,7 @@ def ensure_family(user_id: str, family_name: str = "המשפחה שלי"):
         result = client.rpc("create_own_family", {"p_name": family_name}).execute()
         return result.data or None
     except Exception as e:
-        print(f"[ERROR] ensure_family: {e}")
+        logger.exception("ensure_family")
         return None
 
 
@@ -462,7 +465,7 @@ def update_family_settings(family_id: str, patch: dict) -> bool:
         _invalidate_family_cache(family_id)
         return True
     except Exception as e:
-        print(f"[ERROR] update_family_settings: {e}")
+        logger.exception("update_family_settings")
         return False
 
 
@@ -498,7 +501,7 @@ def record_receipt_scan(family_id: str, user_id: str):
             {"family_id": family_id, "user_id": user_id}, returning="minimal"
         ).execute()
     except Exception as e:
-        print(f"[ERROR] record_receipt_scan: {e}")
+        logger.exception("record_receipt_scan")
 
 
 def upload_receipt(access_token: str, family_id: str, image_bytes: bytes, content_type: str):
@@ -580,7 +583,7 @@ def delete_receipt(access_token: str, path: str):
             timeout=10,
         )
     except Exception as e:
-        print(f"[ERROR] delete_receipt: {e}")
+        logger.exception("delete_receipt")
 
 
 def get_transaction_receipt_path(transaction_id: str, family_id: str):
@@ -679,7 +682,7 @@ def scan_receipt(image_bytes: bytes, content_type: str, category_names: list):
             }, None
         return None, "לא הצלחתי לקרוא את הקבלה — נסה שוב או הזן ידנית"
     except Exception as e:
-        print(f"[ERROR] scan_receipt: {e}")
+        logger.exception("scan_receipt")
         return None, "שגיאה בסריקת הקבלה — נסה שוב"
 
 
@@ -756,7 +759,7 @@ def get_recent_transactions(family_id: str, limit: int = 5, settings: dict = Non
         rows = _filter_hidden_personal_projects(result.data, viewer_user_id)[:limit]
         return _format_transactions(rows, settings)
     except Exception as e:
-        print(f"[ERROR] get_recent_transactions: {e}")
+        logger.exception("get_recent_transactions")
         return []
 
 
@@ -778,7 +781,7 @@ def get_month_transactions(family_id: str, year: int, month: int, settings: dict
         rows = _filter_hidden_personal_projects(result.data, viewer_user_id)
         return _format_transactions(rows, settings)
     except Exception as e:
-        print(f"[ERROR] get_month_transactions: {e}")
+        logger.exception("get_month_transactions")
         return []
 
 
@@ -808,7 +811,7 @@ def get_recurring_transactions(family_id: str, settings: dict = None) -> list:
             .execute()
         return _format_transactions(result.data, settings)
     except Exception as e:
-        print(f"[ERROR] get_recurring_transactions: {e}")
+        logger.exception("get_recurring_transactions")
         return []
 
 
@@ -901,7 +904,7 @@ def materialize_recurring(family_id: str) -> int:
                 raise
         return len(new_rows)
     except Exception as e:
-        print(f"[ERROR] materialize_recurring: {e}")
+        logger.exception("materialize_recurring")
         return 0
 
 
@@ -1028,7 +1031,7 @@ def remove_family_member(user_id: str, keep_transactions: bool = True):
                    {"p_user_id": user_id, "p_keep_transactions": keep_transactions}).execute()
         return True, None
     except Exception as e:
-        print(f"[ERROR] remove_family_member: {e}")
+        logger.exception("remove_family_member")
         return False, str(e)
 
 
@@ -1043,7 +1046,7 @@ def leave_family(keep_transactions: bool = True):
                             {"p_keep_transactions": keep_transactions}).execute()
         return (result.data or None), None
     except Exception as e:
-        print(f"[ERROR] leave_family: {e}")
+        logger.exception("leave_family")
         return None, str(e)
 
 
@@ -1058,7 +1061,7 @@ def rotate_invite_code():
         _invalidate_family_cache(get_my_family_id() or "")
         return (result.data or None), None
     except Exception as e:
-        print(f"[ERROR] rotate_invite_code: {e}")
+        logger.exception("rotate_invite_code")
         return None, str(e)
 
 
@@ -1101,7 +1104,7 @@ def stop_recurring(transaction_id: str, family_id: str):
             return False, "not found"
         return True, None
     except Exception as e:
-        print(f"[ERROR] stop_recurring: {e}")
+        logger.exception("stop_recurring")
         return False, str(e)
 
 
@@ -1213,7 +1216,7 @@ def update_category(cat_id: str, family_id: str, name: str, icon: str):
             .execute()
         return True
     except Exception as e:
-        print(f"[ERROR] update_category: {e}")
+        logger.exception("update_category")
         return False
 
 
@@ -1245,7 +1248,7 @@ def reorder_categories(family_id: str, type_: str, ordered_ids: list) -> bool:
                 .eq("id", cat_id).eq("family_id", family_id).eq("type", type_).execute()
         return True
     except Exception as e:
-        print(f"[ERROR] reorder_categories: {e}")
+        logger.exception("reorder_categories")
         return False
 
 
@@ -1285,7 +1288,7 @@ def get_projects(family_id: str, viewer_user_id: str) -> list:
             })
         return out
     except Exception as e:
-        print(f"[ERROR] get_projects: {e}")
+        logger.exception("get_projects")
         return []
 
 
@@ -1360,7 +1363,7 @@ def update_project(project_id: str, family_id: str, name: str, budget_target: fl
             _seed_project_categories(project_id, family_id, newly_enabled)
         return True
     except Exception as e:
-        print(f"[ERROR] update_project: {e}")
+        logger.exception("update_project")
         return False
 
 
@@ -1427,7 +1430,7 @@ def delete_project(project_id: str, family_id: str, delete_transactions: bool = 
             .eq("id", project_id).eq("family_id", family_id).execute()
         return True
     except Exception as e:
-        print(f"[ERROR] delete_project: {e}")
+        logger.exception("delete_project")
         return False
 
 
@@ -1508,7 +1511,7 @@ def get_project_detail(project_id: str, family_id: str, viewer_user_id: str) -> 
             "transactions": transactions,
         }
     except Exception as e:
-        print(f"[ERROR] get_project_detail: {e}")
+        logger.exception("get_project_detail")
         return None
 
 
@@ -1533,7 +1536,7 @@ def _seed_project_categories(project_id: str, family_id: str, types: list):
         } for c in family_cats]
         client.table("project_categories").insert(rows).execute()
     except Exception as e:
-        print(f"[ERROR] _seed_project_categories: {e}")
+        logger.exception("_seed_project_categories")
 
 
 def get_project_categories(project_id: str, family_id: str, type_: str = None) -> list:
@@ -1547,7 +1550,7 @@ def get_project_categories(project_id: str, family_id: str, type_: str = None) -
             query = query.eq("type", type_)
         return query.order("name").execute().data
     except Exception as e:
-        print(f"[ERROR] get_project_categories: {e}")
+        logger.exception("get_project_categories")
         return []
 
 
@@ -1574,7 +1577,7 @@ def update_project_category(cat_id: str, project_id: str, family_id: str, name: 
             .eq("id", cat_id).eq("project_id", project_id).eq("family_id", family_id).execute()
         return True
     except Exception as e:
-        print(f"[ERROR] update_project_category: {e}")
+        logger.exception("update_project_category")
         return False
 
 
@@ -1587,7 +1590,7 @@ def delete_project_category(cat_id: str, project_id: str, family_id: str) -> boo
             .eq("id", cat_id).eq("project_id", project_id).eq("family_id", family_id).execute()
         return True
     except Exception as e:
-        print(f"[ERROR] delete_project_category: {e}")
+        logger.exception("delete_project_category")
         return False
 
 
@@ -1643,7 +1646,7 @@ def get_category_breakdown(family_id: str, year: int, month: int, type_: str = "
         breakdown.sort(key=lambda x: (-x["total"], x["name"]))
         return breakdown
     except Exception as e:
-        print(f"[ERROR] get_category_breakdown: {e}")
+        logger.exception("get_category_breakdown")
         return []
 
 
@@ -1701,7 +1704,7 @@ def get_monthly_trend(family_id: str, num_months: int = 6) -> list:
             })
         return trend
     except Exception as e:
-        print(f"[ERROR] get_monthly_trend: {e}")
+        logger.exception("get_monthly_trend")
         return []
 
 
@@ -1794,7 +1797,7 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
                     "text": f'{icons[name]} ההוצאה על {name} (₪{total:,.0f}) גבוהה ב-{pct}% מהממוצע (₪{avg:,.0f})',
                 })
     except Exception as e:
-        print(f"[ERROR] get_anomalies: {e}")
+        logger.exception("get_anomalies")
 
     return alerts
 
@@ -1842,7 +1845,7 @@ def get_run_rate_forecasts(family_id: str, year: int, month: int, settings: dict
                     "text": f'🔮 בקצב הנוכחי, קטגוריית {icons[name]} {name} צפויה לחרוג ב-₪{(projected - avg):,.0f} מהממוצע (₪{avg:,.0f}) עד סוף החודש',
                 })
     except Exception as e:
-        print(f"[ERROR] get_run_rate_forecasts: {e}")
+        logger.exception("get_run_rate_forecasts")
 
     return forecasts
 
@@ -1877,7 +1880,7 @@ def get_member_breakdown(family_id: str, year: int, month: int, type_: str = "ex
 
         return sorted(members.values(), key=lambda x: x["expense"], reverse=True)
     except Exception as e:
-        print(f"[ERROR] get_member_breakdown: {e}")
+        logger.exception("get_member_breakdown")
         return []
 
 
@@ -1895,7 +1898,7 @@ def _fetch_family_members(family_id: str) -> list:
             m["name"] = first_name(m.get("name", ""))
         return members
     except Exception as e:
-        print(f"[ERROR] get_family_members: {e}")
+        logger.exception("get_family_members")
         return []
 
 
@@ -1913,7 +1916,7 @@ def update_family_name(family_id: str, name: str):
         _invalidate_family_cache(family_id)
         return True
     except Exception as e:
-        print(f"[ERROR] update_family_name: {e}")
+        logger.exception("update_family_name")
         return False
 
 
@@ -1944,7 +1947,7 @@ def family_name_for_code(code: str):
         result = client.rpc("family_name_for_code", {"p_code": code}).execute()
         return result.data or None
     except Exception as e:
-        print(f"[ERROR] family_name_for_code: {e}")
+        logger.exception("family_name_for_code")
         return None
 
 
@@ -1988,7 +1991,7 @@ def join_family_by_code(code: str):
             return None, "קוד ההזמנה לא נמצא — בדקו שהועתק במלואו"
         return family_id, None
     except Exception as e:
-        print(f"[ERROR] join_family_by_code: {e}")
+        logger.exception("join_family_by_code")
         return None, "ההצטרפות נכשלה — נסו שוב בעוד כמה רגעים"
 
 
@@ -2003,7 +2006,7 @@ def get_months_archive(family_id: str) -> list:
         result = client.rpc("get_months_archive", {"p_family_id": family_id}).execute()
         return result.data or []
     except Exception as e:
-        print(f"[ERROR] get_months_archive: {e}")
+        logger.exception("get_months_archive")
         return []
 
 
