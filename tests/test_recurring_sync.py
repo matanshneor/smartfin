@@ -29,6 +29,7 @@ def client(monkeypatch):
         ("get_categories", []), ("get_family_members", []),
         ("family_has_no_transactions", False), ("get_recent_transactions", []),
         ("get_months_archive", []), ("get_monthly_trend", []),
+        ("fetch_month_rows", []),
         ("get_month_transactions", []), ("get_category_breakdown", []),
         ("get_member_breakdown", []), ("get_anomalies", []),
         ("get_run_rate_forecasts", []), ("get_project_month_summary",

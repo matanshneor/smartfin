@@ -921,24 +921,32 @@ def month_view():
             project_month={"expense": 0, "income": 0, "savings": 0, "transactions": []},
         )
 
-    # שלב 1 — שליפות בלתי-תלויות + מקדימות, במקביל (6 קריאות → זמן של ~1)
+    # שלב 1 — שליפות בלתי-תלויות. שורות החודש נשלפות **פעם אחת**, וכל
+    # הסיכומים נגזרים מהן: הסיכום, שלושת הפילוחים לקטגוריה, שני הפילוחים
+    # לבן משפחה ורשימת העסקאות היו שבע שאילתות על אותן שורות בדיוק.
+    #
+    # החיסכון בזמן (כ-180ms) הוא הצד הפחות חשוב. העיקר הוא שכל אחת מהשבע
+    # גזרה לעצמה מחדש את אותם שני כללים — החרגת עסקאות פרויקט, והסתרת
+    # פרויקט אישי של בן משפחה אחר — והכלל השני כבר נשכח פעם אחת (ראו
+    # ההערה על התאמת קטגוריות לפי שם, למטה). עכשיו הוא מיושם פעם אחת.
     p1 = _run_queries({
-        "settings": partial(db.get_family_settings, family_id),
-        "summary":  partial(db.get_monthly_summary, family_id, year, month),
-        "members":  partial(db.get_family_members, family_id),
-        "expense":  partial(db.get_category_breakdown, family_id, year, month, "expense", user["id"]),
-        "income":   partial(db.get_category_breakdown, family_id, year, month, "income", user["id"]),
-        "savings":  partial(db.get_category_breakdown, family_id, year, month, "savings", user["id"]),
+        "settings":   partial(db.get_family_settings, family_id),
+        "members":    partial(db.get_family_members, family_id),
+        "categories": partial(db.get_categories, family_id),
+        "rows":       partial(db.fetch_month_rows, family_id, year, month),
         # רצועת החודשים בראש העמוד — RPC אחד שמחזיר את כל החודשים עם נתונים
-        "archive":  partial(db.get_months_archive, family_id),
+        "archive":    partial(db.get_months_archive, family_id),
     })
-    settings_         = p1["settings"]
-    summary           = p1["summary"]
+    settings_ = p1["settings"]
+    rows      = p1["rows"]
+
+    summary = db.summary_from_rows(rows)
     # תקציבי הקטגוריות נוספים לפילוח ההוצאות: הפס מודד מול ההחלטה של
     # המשפחה במקום מול סך ההוצאות החודש
-    expense_breakdown = db.apply_budgets(p1["expense"], settings_)
-    income_breakdown  = p1["income"]
-    savings_breakdown = p1["savings"]
+    expense_breakdown = db.apply_budgets(
+        db.category_breakdown_from_rows(rows, p1["categories"], "expense"), settings_)
+    income_breakdown  = db.category_breakdown_from_rows(rows, p1["categories"], "income")
+    savings_breakdown = db.category_breakdown_from_rows(rows, p1["categories"], "savings")
 
     # רצועת החודשים: מהישן לחדש (ה-RPC מחזיר מהחדש לישן), ותמיד כוללת את
     # החודש הנצפה — גם אם אין בו עסקאות ולכן הוא לא חוזר מה-RPC
@@ -954,7 +962,6 @@ def month_view():
         "anomalies":    partial(db.get_anomalies, family_id, year, month, summary, settings_,
                                 skip_categories=[r["name"] for r in expense_breakdown
                                                  if r.get("budget")]),
-        "transactions": partial(db.get_month_transactions, family_id, year, month, settings_, user["id"]),
     }
     if is_current:
         p2_tasks["run_rate"] = partial(db.get_run_rate_forecasts, family_id, year, month, settings_)
@@ -962,8 +969,6 @@ def month_view():
         # ולחודש שעבר הוא היה משהו אחר שאין לנו דרך לשחזר
         p2_tasks["recurring"] = partial(db.get_recurring_transactions, family_id,
                                         settings=settings_)
-    for t in active_types:
-        p2_tasks[f"mb_{t}"] = partial(db.get_member_breakdown, family_id, year, month, t)
     p2 = _run_queries(p2_tasks)
 
     anomalies = db.budget_alerts(expense_breakdown) + list(p2["anomalies"])
@@ -971,7 +976,7 @@ def month_view():
     if is_current:
         anomalies += p2["run_rate"]
         fixed = db.summarise_recurring(p2["recurring"])
-    month_transactions = p2["transactions"]
+    month_transactions = db.month_transactions_from_rows(rows, settings_, user["id"])
 
     # פעילות פרויקטים החודש — מוחרגת מהמאזן/הגרפים, ומוצגת בנפרד. נגזרת
     # מהעסקאות שכבר נשלפו (שכוללות גם עסקאות פרויקט), בלי שליפה נוספת.
@@ -998,12 +1003,14 @@ def month_view():
     mcolors = _member_colors(family_id)
     member_breakdowns = []
     for t in active_types:
-        rows = p2[f"mb_{t}"]
-        for r in rows:
+        # ‎mb‎ ולא ‎rows‎: ‎rows‎ הוא שורות החודש, ודריסה שלו כאן הייתה
+        # מרעילה את כל מה שנגזר ממנו בהמשך
+        mb = db.member_breakdown_from_rows(rows, t)
+        for r in mb:
             idx = mcolors.get(r.get("user_id"))
             r["color"] = _OWNER_HEX.get(idx, _SHARED_HEX) if idx is not None else _SHARED_HEX
-        if rows:
-            member_breakdowns.append({"type": t, "label": _type_labels[t], "rows": rows})
+        if mb:
+            member_breakdowns.append({"type": t, "label": _type_labels[t], "rows": mb})
 
     return render_template(
         "month.html",
