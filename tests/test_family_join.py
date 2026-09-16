@@ -11,11 +11,36 @@
 הקבועים. כל בדיקה שמזיזה משתמש בין משפחות מחזירה אותו למקומו ב-finally,
 גם אם היא נכשלת.
 """
+import json
+import re
+import subprocess
 import uuid
+from pathlib import Path
 
 import pytest
 
 from backend import supabase_config as db
+
+_BACKEND = Path(__file__).resolve().parent.parent / "backend"
+
+
+def _privileged(sql: str):
+    """מריצה SQL בהרשאות בעלים, דרך ה-CLI המקושר.
+
+    נדרש להקמת המצב בלבד. מאז מיגרציה 20260916100000 סשן מאומת לא יכול
+    ליצור משפחה או לשנות את השיוך של עצמו — זו בדיוק ההגנה שנוספה, והיא
+    מה שמנעה ממשתמש להעביר את עצמו למשפחה אחרת ולקרוא את הכספים שלה.
+    הבדיקות האלה צריכות בכל זאת להעמיד משפחה זמנית, ולכן הן עושות את זה
+    מחוץ למודל ההרשאות של האפליקציה במקום להחליש אותו.
+
+    מה שנבדק — join_family_by_code — רץ כרגיל דרך הלקוח המאומת."""
+    out = subprocess.run(
+        ["supabase", "db", "query", sql, "--linked"],
+        cwd=_BACKEND, capture_output=True, text=True, timeout=60,
+    )
+    if out.returncode != 0:
+        raise RuntimeError(f"הקמת מצב נכשלה: {out.stderr[:300]}")
+    return out.stdout
 
 
 def _profile_family(user_id):
@@ -34,7 +59,7 @@ def _dispose_temp_family(client, user_id, temp_id, home_code):
     הסדר כאן קריטי: ה-RLS על transactions מתיר מחיקה רק בתוך המשפחה של
     המשתמש, אז המעבר חייב לקרות לפני המחיקה — אחרת היא נכשלת בשקט
     והמשפחה שורדת עם תנועה יתומה."""
-    client.table("profiles").update({"family_id": temp_id}).eq("id", user_id).execute()
+    _privileged(f"update public.profiles set family_id='{temp_id}' where id='{user_id}';")
     client.table("transactions").delete().eq("family_id", temp_id).execute()
     db.join_family_by_code(home_code)
 
@@ -125,15 +150,13 @@ def test_join_moves_the_user_and_deletes_the_family_left_behind(family_a, family
     temp_code = "TST" + uuid.uuid4().hex[:3].upper()
     original  = family_a["family_id"]
 
-    client.table("families").insert(
-        {"id": temp_id, "name": "משפחה זמנית לבדיקה", "invite_code": temp_code},
-        returning="minimal",
-    ).execute()
+    _privileged(f"insert into public.families(id,name,invite_code) "
+                f"values ('{temp_id}','משפחה זמנית לבדיקה','{temp_code}');")
 
     try:
         # מעבירים ישירות, כדי שהמעבר-בחזרה יהיה זה שנבדק
-        client.table("profiles").update({"family_id": temp_id}) \
-              .eq("id", family_a["user_id"]).execute()
+        _privileged(f"update public.profiles set family_id='{temp_id}' "
+                    f"where id='{family_a['user_id']}';")
         assert _profile_family(family_a["user_id"]) == temp_id
 
         family_id, err = db.join_family_by_code(family_a_code)
@@ -152,8 +175,8 @@ def test_join_moves_the_user_and_deletes_the_family_left_behind(family_a, family
         # אם ה-RPC כבר מחק את המשפחה הזמנית — הניקוי הזה פשוט לא ימצא מה לעשות.
         if db.family_name_for_code(temp_code) is not None:
             _dispose_temp_family(client, family_a["user_id"], temp_id, family_a_code)
-        client.table("profiles").update({"family_id": original}) \
-              .eq("id", family_a["user_id"]).execute()
+        _privileged(f"update public.profiles set family_id='{original}' "
+                    f"where id='{family_a['user_id']}';")
 
 
 def test_join_keeps_a_family_that_still_holds_transactions(family_a, family_a_code):
@@ -166,14 +189,12 @@ def test_join_keeps_a_family_that_still_holds_transactions(family_a, family_a_co
     temp_code = "TST" + uuid.uuid4().hex[:3].upper()
     original  = family_a["family_id"]
 
-    client.table("families").insert(
-        {"id": temp_id, "name": "משפחה זמנית עם היסטוריה", "invite_code": temp_code},
-        returning="minimal",
-    ).execute()
+    _privileged(f"insert into public.families(id,name,invite_code) "
+                f"values ('{temp_id}','משפחה זמנית עם היסטוריה','{temp_code}');")
 
     try:
-        client.table("profiles").update({"family_id": temp_id}) \
-              .eq("id", family_a["user_id"]).execute()
+        _privileged(f"update public.profiles set family_id='{temp_id}' "
+                    f"where id='{family_a['user_id']}';")
 
         client.table("transactions").insert(
             {"family_id": temp_id, "amount": 1, "type": "expense",
@@ -189,5 +210,5 @@ def test_join_keeps_a_family_that_still_holds_transactions(family_a, family_a_co
             "משפחה עם תנועות נמחקה — זה איבוד נתונים, לא ניקוי"
     finally:
         _dispose_temp_family(client, family_a["user_id"], temp_id, family_a_code)
-        client.table("profiles").update({"family_id": original}) \
-              .eq("id", family_a["user_id"]).execute()
+        _privileged(f"update public.profiles set family_id='{original}' "
+                    f"where id='{family_a['user_id']}';")
