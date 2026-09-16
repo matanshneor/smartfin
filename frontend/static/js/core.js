@@ -137,7 +137,11 @@ window.escapeHtml = function (s) {
         yesBtn.classList.toggle('confirm-yes-neutral', opts.danger === false);
         confirmLastFocused = document.activeElement;
         overlay.classList.add('open');
-        noBtn.focus(); // ברירת מחדל בטוחה — לא הכפתור ההרסני
+        // בפריים הבא: הדיאלוג מוסתר ב-visibility כשהוא סגור, ואי אפשר
+        // למקד אלמנט בתוך אב מוסתר
+        requestAnimationFrame(function () {
+            noBtn.focus(); // ברירת מחדל בטוחה — לא הכפתור ההרסני
+        });
         return new Promise(function (resolve) { resolver = resolve; });
     };
 

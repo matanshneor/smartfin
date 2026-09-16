@@ -198,7 +198,10 @@
         modalLastFocused = document.activeElement;
         overlay.classList.add('open');
         document.body.style.overflow = 'hidden';
-        txAmount.focus();
+        // בפריים הבא: המודאל מוסתר ב-visibility כשהוא סגור (כדי שלא יהיה
+        // ב-tab order ובקורא המסך), ואי אפשר למקד אלמנט בתוך אב מוסתר.
+        // המיקוד באותו פריים שבו נוספה המחלקה היה נבלע בשקט.
+        requestAnimationFrame(function () { txAmount.focus(); });
     }
 
     // כל האלמנטים הניתנים למיקוד בתוך המודאל הפתוח כרגע — מחושב כל פעם
