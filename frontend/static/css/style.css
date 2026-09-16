@@ -2835,6 +2835,17 @@ li.project-row {
 
 .logout-form { margin: 0; }
 
+/* כותרת עם פעולה בצידה (למשל "כל העסקאות" + ייצוא) */
+.chart-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.chart-title-row .chart-title { margin-bottom: 0; }
+.export-link { text-decoration: none; white-space: nowrap; }
+
 /* ─── Auth pages (dark fintech) ───────────────────────────────── */
 
 .auth-body {

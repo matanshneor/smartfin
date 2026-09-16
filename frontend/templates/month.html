@@ -450,7 +450,16 @@
 <!-- כל העסקאות של החודש -->
 {% if month_transactions %}
 <section class="chart-card">
-    <h2 class="chart-title">כל העסקאות</h2>
+    <div class="chart-title-row">
+        <h2 class="chart-title">כל העסקאות</h2>
+        {# קישור ולא fetch: הדפדפן מוריד את הקובץ בעצמו. ה-Service Worker
+           לא מיירט אותו כי הוא לא ‎/static/‎ ולא ‎/api/‎. #}
+        {% if month_transactions %}
+        <a class="btn-sm btn-ghost export-link"
+           href="{{ url_for('month_csv', year=year, month=month) }}"
+           download>ייצוא CSV</a>
+        {% endif %}
+    </div>
     <ul class="legend-list">
         <li class="legend-item-wrap">
             <div class="legend-item clickable all-tx-header" role="button" tabindex="0" aria-expanded="false">

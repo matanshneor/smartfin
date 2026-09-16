@@ -3,6 +3,8 @@ from dotenv import load_dotenv
 from functools import wraps, partial
 from datetime import timedelta
 from werkzeug.middleware.proxy_fix import ProxyFix
+import csv
+import io
 import json
 import math
 import os
@@ -922,6 +924,62 @@ def month_view():
         expense_data=[c for c in expense_breakdown if c.get("total", 0) > 0],
         members_data=member_breakdowns,
     )
+
+
+@app.route("/month.csv")
+@login_required
+def month_csv():
+    """ייצוא עסקאות החודש כ-CSV.
+
+    נתונים שאפשר להוציא הם נתונים שאפשר לבטוח בהם, וזו התשובה הזולה
+    ביותר ל"מה קורה אם ארצה לעזוב". גם כל שיחה עם רואה חשבון מתחילה כאן.
+
+    שני פרטים שקובעים אם הקובץ באמת נפתח נכון בעברית:
+    · BOM בתחילת הקובץ — בלעדיו אקסל מפרש UTF-8 כקידוד מקומי, וכל
+      התיאורים והקטגוריות הופכים לג'יבריש. זו התלונה מספר אחת על ייצוא
+      CSV בעברית, והיא נראית כמו באג באפליקציה ולא בתוכנה שפותחת.
+    · ‎\r\n‎ כסוף שורה — מה ש-Excel מצפה לו."""
+    user      = get_current_user()
+    now       = clock.now()
+    year      = request.args.get("year",  now.year,  type=int)
+    month     = request.args.get("month", now.month, type=int)
+    if not 1 <= (month or 0) <= 12:
+        month = now.month
+    if not 1970 <= (year or 0) <= 2100:
+        year = now.year
+
+    rows = []
+    if user["family_id"]:
+        # אותה שליפה שמזינה את עמוד החודש, כולל סינון פרויקט אישי של
+        # בן משפחה אחר — הייצוא לא אמור לחשוף מה שהמסך מסתיר
+        rows = db.get_month_transactions(
+            user["family_id"], year, month,
+            settings=family_settings(), viewer_user_id=user["id"])
+
+    _TYPE_HE = {"expense": "הוצאה", "income": "הכנסה", "savings": "חיסכון"}
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, lineterminator="\r\n")
+    writer.writerow(["תאריך", "סוג", "סכום", "קטגוריה", "תיאור",
+                     "בן משפחה", "פרויקט", "עסקה קבועה"])
+    for tx in rows:
+        writer.writerow([
+            tx["date"],
+            _TYPE_HE.get(tx["type"], tx["type"]),
+            f'{tx["amount"]:.2f}',
+            tx.get("category_name") or "",
+            tx.get("description") or "",
+            tx.get("user_name") or "",
+            tx.get("project_name") or "",
+            "כן" if tx.get("is_recurring") or tx.get("recurring_parent_id") else "",
+        ])
+
+    response = make_response("\ufeff" + buffer.getvalue())
+    response.headers["Content-Type"] = "text/csv; charset=utf-8"
+    response.headers["Content-Disposition"] = (
+        f'attachment; filename="smartfin-{year}-{month:02d}.csv"')
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @app.route("/months")
