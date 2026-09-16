@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 from gotrue.errors import AuthApiError, AuthRetryableError
 from postgrest.exceptions import APIError
 
+from . import clock
+
 load_dotenv()
 
 _client = None
@@ -255,8 +257,7 @@ def update_workplace_history(user_id: str, family_id: str, new_workplace: str,
                 .in_("category_id", salary_cat_ids).execute()
             return
 
-        from datetime import date
-        month_start = date.today().replace(day=1).isoformat()
+        month_start = clock.today().replace(day=1).isoformat()
 
         client.table("transactions").update({"workplace": old_workplace}) \
             .eq("user_id", user_id).eq("type", "income") \
@@ -417,8 +418,7 @@ def receipt_scans_this_month(family_id: str) -> int:
     if not client or not family_id:
         return 0
     try:
-        from datetime import date
-        today = date.today()
+        today = clock.today()
         start = f"{today.year}-{today.month:02d}-01"
         result = client.table("receipt_scans").select("id", count="exact") \
             .eq("family_id", family_id).gte("created_at", start).execute()
@@ -798,7 +798,7 @@ def materialize_recurring(family_id: str) -> int:
                 workplace_by_user[uid] = (profile or {}).get("workplace")
             return workplace_by_user[uid]
 
-        today = date.today()
+        today = clock.today()
         new_rows = []
         for t in templates:
             is_salary = t.get("type") == "income" and t.get("category_id") in salary_cat_ids
@@ -1531,12 +1531,11 @@ def get_category_breakdown(family_id: str, year: int, month: int, type_: str = "
 
 def get_monthly_trend(family_id: str, num_months: int = 6) -> list:
     """Returns income/expense/savings totals for the last N months."""
-    from datetime import date
     client = get_client()
     if not client:
         return []
     try:
-        today  = date.today()
+        today  = clock.today()
         # Calculate start date (first day of N months ago)
         start_month = today.month - num_months + 1
         start_year  = today.year
@@ -1683,13 +1682,12 @@ def get_run_rate_forecasts(family_id: str, year: int, month: int, settings: dict
     שעדיין באמצעו — לא לחודשים שהסתיימו, ולא בימים הראשונים (קצב לא יציב).
     Returns a list of {"severity": "forecast", "text": str}."""
     import calendar
-    from datetime import date
 
     cfg = (settings or DEFAULT_FAMILY_SETTINGS).get("anomaly", {})
     if not cfg.get("enabled", True):
         return []
 
-    today = date.today()
+    today = clock.today()
     if (year, month) != (today.year, today.month):
         return []
     days_elapsed = today.day
