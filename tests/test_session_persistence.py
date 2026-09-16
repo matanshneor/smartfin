@@ -193,6 +193,31 @@ def test_logging_out_really_ends_the_session(client_with_expiring_token):
         assert not sess.get("refresh_token")
 
 
+def test_logging_out_works_even_while_a_refresh_is_failing(
+        client_with_expiring_token, monkeypatch):
+    """המלכודת של הקפאת העוגייה, בכיוון ההפוך.
+
+    ההקפאה נועדה לא לדרוס טוקן תקין בטוקן מת כשרענון נכשל. אבל היא חלה
+    על התגובה כולה — כולל על התגובה של /logout. מי שלחץ "התנתק" בדיוק
+    כשהרענון נכשל קיבל הודעה שיצא, ראה את עוגיות המכשיר נמחקות, ונשאר
+    מחובר לגמרי: עוגיית ה-session שלו מעולם לא נגעה, והבקשה הבאה
+    החזירה אותו לאפליקציה.
+
+    יציאה יזומה היא הדרך היחידה החוצה, אז היא חייבת לנצח כל אופטימיזציה."""
+    monkeypatch.setattr(app_module.db, "refresh_session",
+                        lambda _t: (None, "temporary failure", False))
+
+    response = client_with_expiring_token.get("/logout")
+
+    cleared = [h[1] for h in response.headers
+               if h[0] == "Set-Cookie" and h[1].startswith("session=")]
+    assert cleared, "עוגיית ה-session לא נמחקה — המשתמש נשאר מחובר"
+    assert "1970" in cleared[0]
+
+    with client_with_expiring_token.session_transaction() as sess:
+        assert not sess.get("user_id")
+
+
 # ─── זיכרון המכשיר: לא חוזרים לדף השיווק ─────────────────────────────────────
 #
 # דף הנחיתה נועד למי שלא מכיר את האפליקציה. מי שכבר התחבר מהמכשיר הזה אמור

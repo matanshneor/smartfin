@@ -1,0 +1,56 @@
+# בדיקות לפני פריסה.
+#
+# הצורך אמיתי ומיידי: דחיפה ל-main מפעילה דיפלוי אוטומטי ב-Railway, כך
+# שקוד שובר עולה לאוויר בלי שום עצירה בדרך. עד היום זה עבד כי אדם אחד
+# נוגע בקוד ומריץ בדיקות ידנית; מרגע שיש משתמשים אמיתיים זו רשת ביטחון
+# שחייבת להיות אוטומטית.
+#
+# רצות רק בדיקות היחידה (-m unit). הן לא נוגעות ב-Supabase, ולכן אין
+# צורך בשום סוד ב-GitHub — וזו החלטה ולא ויתור: מפתחות פרודקשן ב-CI הם
+# משטח תקיפה חדש, ובדיקות שמדברות עם המסד האמיתי היו גם משנות אותו.
+# בדיקות האינטגרציה ממשיכות לרוץ מקומית מול הפרויקט המקושר.
+
+name: בדיקות
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: runtime.txt
+          cache: pip
+
+      - name: התקנת תלויות
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt   # כולל -r requirements.txt
+
+      - name: בדיקות יחידה
+        # ערך דמה: האפליקציה מסרבת לעלות בלי SECRET_KEY, וזו הגנה מכוונת.
+        # אין לו שום קשר למפתח האמיתי שב-Railway.
+        env:
+          SECRET_KEY: ci-only-not-a-real-secret
+        run: python -m pytest tests/ -m unit -q
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: runtime.txt
+
+      - name: סריקת פרצות ידועות בתלויות
+        run: |
+          python -m pip install --upgrade pip pip-audit
+          pip-audit -r requirements.txt --progress-spinner off
