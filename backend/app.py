@@ -1755,18 +1755,38 @@ def scan_receipt_route():
     })
 
 
-@app.route("/api/receipts/<tx_id>", methods=["GET"])
+@app.route("/receipts/<tx_id>", methods=["GET"])
 @login_required
 def view_receipt(tx_id):
+    """מפנה לקבלה המצורפת לעסקה.
+
+    הפניה ולא JSON, וזו הנקודה כולה: קודם הסמל שלף את הכתובת ב-fetch ואז
+    קרא ל-window.open. ב-iOS זה נחסם תמיד — הדפדפן מתיר פתיחת חלון רק
+    כתוצאה ישירה מלחיצה, וההמתנה לשרת מבטלת את הקשר. אין חלון, אין שגיאה,
+    לא קורה כלום. בפועל הקבלות שנסרקו לא היו נגישות מהטלפון בכלל.
+
+    עכשיו הסמל הוא קישור רגיל, והדפדפן מנווט בעצמו — ניווט שנובע מלחיצה
+    לא נחסם. הכתובת החתומה נוצרת כאן ולא נשלחת ללקוח מראש, כך שהיא גם לא
+    יושבת ב-HTML של כל שורה עם קבלה.
+
+    ‎/receipts/‎ ולא ‎/api/receipts/‎ כי זה ניווט של הדפדפן: תחת ‎/api/‎ סשן
+    שפג היה מחזיר 401 JSON ללשונית חדשה, במקום להעביר להתחברות."""
     user = get_current_user()
     path = db.get_transaction_receipt_path(tx_id, user["family_id"])
     if not path:
-        return jsonify({"error": "לא נמצאה קבלה מצורפת"}), 404
+        return render_template("error.html", code=404,
+                               message="לא נמצאה קבלה מצורפת לעסקה הזו"), 404
+
     url, err = db.get_receipt_signed_url(session.get("access_token"), path)
-    if err:
+    if err or not url:
         print(f"[ERROR] receipt signed url: {err}")
-        return jsonify({"error": "טעינת הקבלה נכשלה — נסה שוב"}), 500
-    return jsonify({"url": url})
+        return render_template("error.html", code=500,
+                               message="טעינת הקבלה נכשלה — נסו שוב בעוד רגע"), 500
+
+    response = redirect(url)
+    # הכתובת החתומה קצרת-מועד ואישית; אסור שתישמר במטמון של proxy
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 # ─── API: Categories ──────────────────────────────────────────────────────────
