@@ -1,4 +1,4 @@
-const CACHE = 'smartfin-v16';
+const CACHE = 'smartfin-v17';
 
 // ה-JS עבר מ-inline בתוך ה-HTML לקבצים נפרדים, ולכן הוא סוף-סוף נהנה
 // מה-stale-while-revalidate שכבר היה כאן: עד עכשיו אותן ~1500 שורות ירדו
@@ -6,6 +6,7 @@ const CACHE = 'smartfin-v16';
 const PRECACHE = [
     '/static/css/style.css',
     '/static/js/auth-guard.js',
+    '/static/js/clipboard.js',
     '/static/js/core.js',
     '/static/js/transactions.js',
     '/static/js/motion.js',

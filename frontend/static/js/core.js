@@ -127,6 +127,18 @@ window.escapeHtml = function (s) {
         if (confirmLastFocused) { confirmLastFocused.focus(); confirmLastFocused = null; }
     }
 
+    /* שלוש תוצאות ולא שתיים:
+     *   true  — נבחר כפתור האישור
+     *   false — נבחר כפתור הביטול
+     *   null  — נסיגה: Escape, ✕, או לחיצה מחוץ לדיאלוג
+     *
+     * ההבחנה נחוצה כשיש שתי שאלות ברצף. במחיקת פרויקט, השאלה השנייה היא
+     * "מה לעשות עם העסקאות" — ובריחה ממנה פורשה כ"השאר אותן", כך שהפרויקט
+     * נמחק בכל זאת. מי שנבהל ולחץ מחוץ לדיאלוג התכוון לסגת, ולפרויקט אין
+     * ביטול-מחיקה.
+     *
+     * ‎null‎ נבחר במכוון כי הוא falsy: כל הקוראים הקיימים בודקים ‎if (!ok)‎
+     * וממשיכים לעבוד בלי שינוי. מי שצריך את ההבחנה בודק ‎=== null‎. */
     window.appConfirm = function (opts) {
         titleEl.textContent  = opts.title || 'לאשר את הפעולה?';
         msgEl.textContent    = opts.message || '';
@@ -148,12 +160,12 @@ window.escapeHtml = function (s) {
     yesBtn.addEventListener('click', function () { closeConfirm(true); });
     noBtn.addEventListener('click', function () { closeConfirm(false); });
     overlay.addEventListener('click', function (e) {
-        if (e.target === overlay) closeConfirm(false);
+        if (e.target === overlay) closeConfirm(null);   // נסיגה, לא "לא"
     });
 
     // Escape סוגר, Tab/Shift+Tab נשארים בתוך הדיאלוג (שני כפתורים בלבד)
     overlay.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') { closeConfirm(false); return; }
+        if (e.key === 'Escape') { closeConfirm(null); return; }   // נסיגה
         if (e.key !== 'Tab') return;
         const focusables = [yesBtn, noBtn];
         const idx = focusables.indexOf(document.activeElement);

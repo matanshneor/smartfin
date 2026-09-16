@@ -120,10 +120,12 @@ window.escapeHtml = window.escapeHtml || function (s) {
 
     // Copy invite code
     document.getElementById('copyInviteBtn').addEventListener('click', function () {
-        const code = document.getElementById('onboardingInviteCode').textContent.trim();
-        navigator.clipboard.writeText(code).then(() => {
-            this.textContent = '✓ הועתק';
-            setTimeout(() => { this.textContent = 'העתק קוד'; }, 1800);
+        const el = document.getElementById('onboardingInviteCode');
+        const btn = this;
+        window.copyToClipboard(el.textContent.trim(), el).then(function (copied) {
+            if (!copied) return;          // הודעה כבר הוצגה, והקוד מסומן
+            btn.textContent = '✓ הועתק';
+            setTimeout(function () { btn.textContent = 'העתק קוד'; }, 1800);
         });
     });
 

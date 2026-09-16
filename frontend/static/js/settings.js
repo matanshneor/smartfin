@@ -93,10 +93,12 @@ const inviteCode = document.getElementById('inviteCode');
 
 if (copyBtn && inviteCode) {
     copyBtn.addEventListener('click', function () {
-        navigator.clipboard.writeText(inviteCode.textContent.trim()).then(function () {
-            copyBtn.textContent = '✓ הועתק';
-            setTimeout(function () { copyBtn.textContent = 'העתק'; }, 2000);
-        });
+        window.copyToClipboard(inviteCode.textContent.trim(), inviteCode)
+            .then(function (copied) {
+                if (!copied) return;      // הודעה כבר הוצגה, והקוד מסומן
+                copyBtn.textContent = '✓ הועתק';
+                setTimeout(function () { copyBtn.textContent = 'העתק'; }, 2000);
+            });
     });
 }
 
@@ -731,20 +733,37 @@ const workplaceRow   = document.getElementById('workplaceRow');
 const workplaceNote  = document.getElementById('workplaceNote');
 if (!anomalyEnabled) return;
 
-function savePrefs(patch) {
+/* ‎revert‎ הוא הלב כאן. המתג מתהפך בעצמו בלחיצה, לפני שהשרת בכלל נשאל.
+ * כשהשמירה נכשלה הוצגה הודעה אדומה ל-2.6 שניות — והמתג נשאר במצב החדש.
+ * המשתמש ראה הבהוב, המסך הראה "מופעל", והוא ניווט משם בביטחון שזה נשמר.
+ * ברענון הבא זה חזר לאחור, בלי שום קשר גלוי למה שקרה.
+ *
+ * מסך שמראה מצב שלא נשמר גרוע מהודעת שגיאה: הוא לא רק לא מודיע, הוא
+ * מבטיח. */
+function savePrefs(patch, revert) {
+    function failed(message) {
+        if (revert) revert();
+        window.showToast(message, 'error');
+    }
+
     fetch('/api/family/settings', {
         method:  'PUT',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(patch),
     })
-    .then(r => r.json())
-    .then(function (data) {
-        if (data.error) { window.showToast(data.error, 'error'); return; }
+    .then(function (r) {
+        return r.json().then(function (d) { return { ok: r.ok, data: d }; });
+    })
+    .then(function (res) {
+        if (!res.ok || res.data.error) {
+            failed(res.data.error || 'שמירת ההעדפות נכשלה');
+            return;
+        }
         // המודאל הגלובלי קורא מכאן — בורר "של מי?" מתעדכן בלי רענון
-        window.SF_ATTRIBUTION = data.settings.owner_attribution;
+        window.SF_ATTRIBUTION = res.data.settings.owner_attribution;
         window.showToast('ההעדפות נשמרו');
     })
-    .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
+    .catch(function () { failed('שגיאת רשת — נסה שוב'); });
 }
 
 // דוגמה קונקרטית עם קטגוריה היפותטית של ₪1,000 בחודש — הופכת את שני
@@ -770,30 +789,45 @@ function updateWorkplaceState() {
 
 attrSwitches.forEach(function (sw) {
     sw.addEventListener('change', function () {
+        const box = this, was = !box.checked;
         const patch = {};
-        patch[this.dataset.prefType] = this.checked;
-        savePrefs({ owner_attribution: patch });
-        if (this.dataset.prefType === 'income') updateWorkplaceState();
+        patch[box.dataset.prefType] = box.checked;
+        savePrefs({ owner_attribution: patch }, function () {
+            box.checked = was;
+            if (box.dataset.prefType === 'income') updateWorkplaceState();
+        });
+        if (box.dataset.prefType === 'income') updateWorkplaceState();
     });
 });
 
 anomalyEnabled.addEventListener('change', function () {
-    anomalyFields.classList.toggle('off', !this.checked);
-    savePrefs({ anomaly: { enabled: this.checked } });
+    const box = this, was = !box.checked;
+    anomalyFields.classList.toggle('off', !box.checked);
+    savePrefs({ anomaly: { enabled: box.checked } }, function () {
+        box.checked = was;
+        anomalyFields.classList.toggle('off', !was);
+    });
 });
 
 [anomalyPercent, anomalyGap].forEach(function (inp) {
     inp.addEventListener('input', updateSentence);
     inp.addEventListener('change', function () {
+        // שדות מספר: הערך הקודם נשמר לפני השליחה, כי אין "הפוך" לשחזר אליו
+        const before = { pct: inp.dataset.saved || inp.defaultValue, el: inp };
         savePrefs({ anomaly: {
             percent: parseInt(anomalyPercent.value, 10) || 150,
             min_gap: parseInt(anomalyGap.value, 10) || 0,
-        }});
+        }}, function () {
+            before.el.value = before.pct;
+            updateSentence();
+        });
+        inp.dataset.saved = inp.value;
     });
 });
 
 showWorkplace.addEventListener('change', function () {
-    savePrefs({ show_workplace: this.checked });
+    const box = this, was = !box.checked;
+    savePrefs({ show_workplace: box.checked }, function () { box.checked = was; });
 });
 
 updateSentence();
@@ -888,6 +922,10 @@ document.addEventListener('click', function (e) {
             cancelText: 'השאר כרגילות',
             danger: false,
         }).then(function (deleteTransactions) {
+            // נסיגה מהשאלה השנייה = ביטול הכל. מי שלחץ מחוץ לדיאלוג או על
+            // Escape התכוון לסגת, ולא "תמחק את הפרויקט עם ברירת המחדל" —
+            // ולמחיקת פרויקט אין ביטול.
+            if (deleteTransactions === null) return;
             fetch('/api/projects/' + id, {
                 method:  'DELETE',
                 headers: { 'Content-Type': 'application/json' },
@@ -1035,6 +1073,7 @@ document.addEventListener('click', function (e) {
             confirmText: 'למחוק אותן',
             cancelText:  'להשאיר כמשותפות',
         }).then(function (wipe) {
+            if (wipe === null) return null;   // נסיגה — לא מסירים כלל
             return wipe ? WIPE : KEEP;
         });
     }
