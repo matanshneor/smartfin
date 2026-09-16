@@ -2905,6 +2905,61 @@ li.project-row {
     border: 0;
 }
 
+/* ─── קבוע כל חודש ─────────────────────────────────────────────── */
+
+.fixed-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    padding: 4px 0 14px;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 10px;
+}
+
+.fixed-figure { display: flex; flex-direction: column; gap: 2px; }
+
+.fixed-label {
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+}
+
+.fixed-amount { font-size: 1.05rem; font-weight: 700; }
+.fixed-amount.expense { color: var(--color-expense); }
+.fixed-amount.income  { color: var(--color-income); }
+.fixed-amount.savings { color: var(--color-savings); }
+
+.fixed-list { list-style: none; margin: 0; padding: 0; }
+
+.fixed-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 0;
+    font-size: 0.88rem;
+}
+
+.fixed-row-icon { flex-shrink: 0; font-size: 0.95rem; }
+
+.fixed-row-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* התדירות המקורית, כשהיא לא חודשית — בלעדיה סכום מנורמל נראה כמו טעות */
+.fixed-row-freq {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+}
+
+.fixed-row-amount { flex-shrink: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fixed-row-amount.expense { color: var(--color-expense); }
+.fixed-row-amount.income  { color: var(--color-income); }
+.fixed-row-amount.savings { color: var(--color-savings); }
+
 /* ─── Auth pages (dark fintech) ───────────────────────────────── */
 
 .auth-body {

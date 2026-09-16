@@ -104,6 +104,52 @@
 </section>
 {% else %}
 
+<!-- ההוצאות הקבועות: מה שלא משתנה, ולכן מה שאפשר לתכנן סביבו -->
+{% if fixed and fixed.rows %}
+<section class="chart-card">
+    <div class="chart-title-row">
+        <h2 class="chart-title">קבוע כל חודש</h2>
+        <a class="btn-sm btn-ghost export-link" href="{{ url_for('settings') }}#recurring">ניהול</a>
+    </div>
+
+    <div class="fixed-summary">
+        {% if fixed.expense %}
+        <div class="fixed-figure">
+            <span class="fixed-label">יוצא</span>
+            <span class="fixed-amount expense">₪{{ "{:,.0f}".format(fixed.expense) }}</span>
+        </div>
+        {% endif %}
+        {% if fixed.income %}
+        <div class="fixed-figure">
+            <span class="fixed-label">נכנס</span>
+            <span class="fixed-amount income">₪{{ "{:,.0f}".format(fixed.income) }}</span>
+        </div>
+        {% endif %}
+        {% if fixed.savings %}
+        <div class="fixed-figure">
+            <span class="fixed-label">מופרש</span>
+            <span class="fixed-amount savings">₪{{ "{:,.0f}".format(fixed.savings) }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <ul class="fixed-list">
+        {% for item in fixed.rows %}
+        <li class="fixed-row">
+            <span class="fixed-row-icon">{{ item.category_icon or '🔁' }}</span>
+            <span class="fixed-row-name">{{ item.description or item.category_name }}</span>
+            {# תדירות שאינה חודשית: מראים גם את הסכום המקורי, אחרת מספר
+               מנורמל כמו "₪1,300" על הוצאה של ₪300 בשבוע נראה כמו טעות #}
+            {% if item.per_month != 1.0 %}
+            <span class="fixed-row-freq">₪{{ "{:,.0f}".format(item.amount) }} {{ freq_labels.get(item.recurring_frequency, '') }}</span>
+            {% endif %}
+            <span class="fixed-row-amount {{ item.type }}">₪{{ "{:,.0f}".format(item.monthly_amount) }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
 <!-- Chart 1: לאן הלך הכסף (חלוקת ההכנסות) -->
 <section class="chart-card">
     <h2 class="chart-title">לאן הלך הכסף החודש</h2>
