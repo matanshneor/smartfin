@@ -239,6 +239,7 @@
         resetScanUI();
         formError.textContent = '';
         if (modalLastFocused) { modalLastFocused.focus(); modalLastFocused = null; }
+        refreshIfPending();
     }
 
     function resetForm() {
@@ -727,6 +728,38 @@
     // משוחזרת). אם לא ביטלו — reload בתום החלון כדי לרענן סיכומים (יתרה/KPI).
     let pendingDeleteReload = null;
 
+    /* הרענון בתום חלון הביטול קיים כדי לעדכן את הסיכומים (יתרה, KPI)
+     * אחרי שהשורה הוסרה. אבל הוא היה ‎location.reload()‎ שרץ בכפייה —
+     * ואם בינתיים המשתמש פתח את המודאל והתחיל להקליד, הדף נטען מחדש
+     * באמצע מילה והכול אבד. זה בדיוק הרצף שאדם עושה: מוחק עסקה שגויה,
+     * ומיד מקליד את התיקון.
+     *
+     * אז: כשמשהו פתוח לעריכה — דוחים. וכשאפשר, משתמשים ברענון הרך,
+     * שממילא לא נוגע במודאל (הוא יושב מחוץ ל-main). */
+    let refreshWhenEditingEnds = false;
+
+    function somethingIsBeingEdited() {
+        return overlay.classList.contains('open') || openInlineRow !== null;
+    }
+
+    function refreshAfterDelete() {
+        if (somethingIsBeingEdited()) {
+            refreshWhenEditingEnds = true;
+            return;
+        }
+        refreshWhenEditingEnds = false;
+        if (document.querySelector('main[data-soft-reload]')) {
+            window.softReload();
+        } else {
+            window.location.reload();
+        }
+    }
+
+    // נקרא כשמודאל או עורך-בשורה נסגרים, כדי להשלים רענון שנדחה
+    function refreshIfPending() {
+        if (refreshWhenEditingEnds && !somethingIsBeingEdited()) refreshAfterDelete();
+    }
+
     function deleteWithUndo(txData, row, onFail) {
         fetch('/api/transactions/' + txData.id, { method: 'DELETE' })
             .then(r => r.json())
@@ -737,13 +770,12 @@
                     label: 'בטל',
                     onClick: function () {
                         clearTimeout(pendingDeleteReload);
+                        refreshWhenEditingEnds = false;
                         restoreTransaction(txData);
                     },
                 });
                 clearTimeout(pendingDeleteReload);
-                pendingDeleteReload = setTimeout(function () {
-                    window.location.reload();
-                }, 6000);
+                pendingDeleteReload = setTimeout(refreshAfterDelete, 6000);
             })
             .catch(function () {
                 if (onFail) onFail('שגיאת רשת — נסה שוב');
@@ -878,6 +910,7 @@
             const inner = row.querySelector('.tx-editor-inner');
             if (inner) inner.innerHTML = '';
         }, 340);
+        refreshIfPending();
     }
 
     function openInlineEditor(row) {
