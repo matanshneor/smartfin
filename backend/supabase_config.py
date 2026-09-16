@@ -1383,20 +1383,27 @@ def get_projects(family_id: str, viewer_user_id: str) -> list:
 
 
 def _project_totals(family_id: str) -> dict:
-    """סכום כל הזמן לכל פרויקט, מפורק לפי סוג עסקה (expense/income/savings)."""
+    """סכום כל הזמן לכל פרויקט, מפורק לפי סוג עסקה (expense/income/savings).
+
+    מחושב במסד (RPC ‎project_totals‎) ולא בפייתון. הגרסה הקודמת משכה את
+    *כל* עסקאות הפרויקטים של המשפחה, מאז ומתמיד, בכל טעינה של עמוד
+    ההגדרות והפרויקטים — וחיברה אותן כאן. אצל משפחה עם טיול אחד זה כבר
+    56 שורות שנמשכות כדי לקבל מספר אחד, והמספר גדל לנצח.
+
+    ה-RPC הוא ‎security invoker‎, כך ש-RLS ממשיכה לחול ולא נפתחה פה
+    דלת לראות פרויקטים של משפחה אחרת."""
     client = get_client()
     if not client:
         return {}
-    result = client.table("transactions").select("amount, type, project_id") \
-        .eq("family_id", family_id).not_.is_("project_id", "null").execute()
-    totals: dict = {}
-    for row in result.data:
-        pid = row["project_id"]
-        totals.setdefault(pid, {"expense": 0.0, "income": 0.0, "savings": 0.0})
-        t = row["type"]
-        if t in totals[pid]:
-            totals[pid][t] += float(row["amount"])
-    return totals
+    rows = client.rpc("project_totals", {"p_family_id": family_id}).execute().data or []
+    return {
+        r["project_id"]: {
+            "expense": float(r["expense"] or 0),
+            "income":  float(r["income"] or 0),
+            "savings": float(r["savings"] or 0),
+        }
+        for r in rows
+    }
 
 
 def add_project(family_id: str, name: str, created_by: str, budget_target: float = None,

@@ -1346,8 +1346,14 @@ def settings():
     family     = db.get_family(family_id)               if family_id else {}
     recurring  = db.get_recurring_transactions(family_id, settings=family_settings()) if family_id else []
     projects   = db.get_projects(family_id, user["id"])  if family_id else []
-    profile   = db.get_profile(user["id"]) or {}
-    full_name = profile.get("name", user["name"])
+    # הפרופיל שלי כבר נמצא ברשימת החברים שנשלפה למעלה — היא מחזירה שם
+    # מלא, אימייל, טלפון ומקום עבודה לכל חבר. שליפה נוספת כאן הייתה
+    # פנייה שלמה למסד בשביל נתון שכבר ביד.
+    profile = next((m for m in members if m["id"] == user["id"]), None)
+    if profile is None:
+        # אין משפחה, או שהחבר לא חזר מהרשימה — נופלים לשליפה הישירה
+        profile = db.get_profile(user["id"]) or {}
+    full_name = profile.get("full_name") or profile.get("name") or user["name"]
     name_parts = full_name.split(" ", 1)
     account = {
         "full_name":  full_name,
