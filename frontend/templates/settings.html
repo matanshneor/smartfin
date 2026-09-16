@@ -571,7 +571,12 @@
             </div>
 
             <div class="group-divider"></div>
-            <a href="{{ url_for('logout') }}" class="logout-btn">התנתק</a>
+            {# טופס POST ולא קישור: GET /logout אפשר להפעיל מאתר אחר עם
+               ‎<img src="...">‎ ולנתק את המשתמש בלי ידיעתו. SameSite=Lax
+               מתיר בדיוק את הצורה הזאת של ניווט GET. #}
+            <form method="POST" action="{{ url_for('logout') }}" class="logout-form">
+                <button type="submit" class="logout-btn">התנתק</button>
+            </form>
 
             <div class="group-divider"></div>
 
