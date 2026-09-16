@@ -223,6 +223,23 @@
                 </span>
                 {% endif %}
             </div>
+
+            {# תקציב יעד, אם המשפחה קבעה אחד לקטגוריה הזאת. האחוז למעלה
+               מודד כמה הקטגוריה מתוך סך ההוצאות; זה מודד מול ההחלטה. #}
+            {% if item.budget %}
+            <div class="cat-budget {% if item.budget_over %}over{% endif %}">
+                <div class="cat-budget-track">
+                    <div class="cat-budget-fill" style="width: {{ item.budget_pct }}%;"></div>
+                </div>
+                <p class="cat-budget-text">
+                    {% if item.budget_over %}
+                    חריגה של ₪{{ "{:,.0f}".format(item.budget_excess) }} מתוך ₪{{ "{:,.0f}".format(item.budget) }}
+                    {% else %}
+                    נשאר ₪{{ "{:,.0f}".format(item.budget_left) }} מתוך ₪{{ "{:,.0f}".format(item.budget) }}
+                    {% endif %}
+                </p>
+            </div>
+            {% endif %}
             {% if cat_txs %}
             <ul class="cat-tx-list">
                 {% for tx in cat_txs %}

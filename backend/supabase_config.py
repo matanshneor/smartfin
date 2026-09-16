@@ -432,7 +432,56 @@ DEFAULT_FAMILY_SETTINGS = {
     "owner_attribution": {"expense": True, "income": True, "savings": False},
     "anomaly": {"enabled": True, "percent": 150, "min_gap": 300},
     "show_workplace": True,
+    # תקציב יעד לקטגוריה: ‎{"<category_id>": {"amount": 2000, "alert": true}}‎
+    # קטגוריה שאינה כאן פשוט אין לה תקציב, וזו ברירת המחדל — אף אחת לא
+    # מקבלת תקציב בלי שהמשפחה קבעה אותו.
+    #
+    # שתי החלטות נפרדות בכוונה: יש משפחות שרוצות לראות "₪1,800 מתוך
+    # ₪2,000" בלי שהאפליקציה תנדנד להן על זה.
+    "limits": {},
 }
+
+
+def category_budget(settings: dict, category_id: str) -> dict:
+    """התקציב של קטגוריה, או None אם אין לה.
+
+    מחזיר ‎{"amount": float, "alert": bool}‎."""
+    entry = ((settings or {}).get("limits") or {}).get(str(category_id))
+    if not isinstance(entry, dict):
+        return None
+    try:
+        amount = float(entry.get("amount") or 0)
+    except (TypeError, ValueError):
+        return None
+    if amount <= 0:
+        return None
+    return {"amount": amount, "alert": bool(entry.get("alert", True))}
+
+
+def apply_budgets(breakdown: list, settings: dict) -> list:
+    """מוסיף לכל שורת פילוח את מצב התקציב שלה, אם יש.
+
+    ‎budget‎ = הסכום, ‎budget_pct‎ = כמה נוצל (יכול לעבור 100),
+    ‎budget_left‎ = כמה נשאר (שלילי בחריגה), ‎budget_over‎ = האם חרג.
+
+    הפס הקיים מודד כמה הקטגוריה מתוך סך ההוצאות החודש — כלומר "מכולת
+    היא 35% מההוצאות", לא "נשאר ₪200". עם תקציב הוא מודד מול ההחלטה
+    של המשפחה, וזה מה שבאמת שואלים."""
+    out = []
+    for row in breakdown:
+        budget = category_budget(settings, row.get("category_id"))
+        row = dict(row)
+        if budget:
+            spent = float(row.get("total") or 0)
+            row["budget"]       = budget["amount"]
+            row["budget_alert"] = budget["alert"]
+            row["budget_pct"]   = min(round(spent / budget["amount"] * 100), 100)
+            row["budget_left"]  = round(budget["amount"] - spent, 2)
+            row["budget_over"]  = spent > budget["amount"]
+            # החריגה עצמה, כדי שהתצוגה לא תחשב שוב
+            row["budget_excess"] = round(max(spent - budget["amount"], 0), 2)
+        out.append(row)
+    return out
 
 
 def _merge_settings(base: dict, patch: dict) -> dict:
@@ -1798,7 +1847,7 @@ def _fetch_category_history_averages(family_id: str, year: int, month: int):
 
 
 def get_anomalies(family_id: str, year: int, month: int, summary: dict,
-                  settings: dict = None) -> list:
+                  settings: dict = None, skip_categories=None) -> list:
     """Flags unusual data for the month:
     - expense categories running above the family's threshold vs their
       3-previous-months average (percent + minimum gap from settings)
@@ -1826,7 +1875,13 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
 
     try:
         current, history, icons = _category_history_averages(family_id, year, month)
+        skip = set(skip_categories or ())
         for name, total in current.items():
+            # לקטגוריה עם תקציב יש כבר התראה משלה, מדויקת יותר. שתי
+            # התראות על אותה קטגוריה הן רעש, והן גם סותרות: "40% מעל
+            # הממוצע" ליד "בתוך התקציב" מבלבל יותר משהוא מסביר.
+            if name in skip:
+                continue
             past = history.get(name)
             if not past:
                 continue
@@ -1841,6 +1896,24 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
         logger.exception("get_anomalies")
 
     return alerts
+
+
+def budget_alerts(breakdown: list) -> list:
+    """התראות על קטגוריות שעברו את התקציב, למי שביקש להתריע.
+
+    ‎budget_alert‎ הוא החלטה נפרדת מ"יש תקציב": יש משפחות שרוצות לראות
+    "₪1,800 מתוך ₪2,000" על המסך בלי שהאפליקציה תנדנד להן על זה."""
+    out = []
+    for row in breakdown:
+        if not (row.get("budget_over") and row.get("budget_alert")):
+            continue
+        out.append({
+            "severity": "warning",
+            "text": (f'{row.get("icon") or "📦"} {row["name"]}: '
+                     f'₪{row["total"]:,.0f} מתוך תקציב של ₪{row["budget"]:,.0f} '
+                     f'— חריגה של ₪{row["budget_excess"]:,.0f}'),
+        })
+    return out
 
 
 def get_run_rate_forecasts(family_id: str, year: int, month: int, settings: dict = None) -> list:

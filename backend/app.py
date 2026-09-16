@@ -934,7 +934,9 @@ def month_view():
     })
     settings_         = p1["settings"]
     summary           = p1["summary"]
-    expense_breakdown = p1["expense"]
+    # תקציבי הקטגוריות נוספים לפילוח ההוצאות: הפס מודד מול ההחלטה של
+    # המשפחה במקום מול סך ההוצאות החודש
+    expense_breakdown = db.apply_budgets(p1["expense"], settings_)
     income_breakdown  = p1["income"]
     savings_breakdown = p1["savings"]
 
@@ -948,7 +950,10 @@ def month_view():
     # שלב 2 — שליפות שתלויות בהעדפות/בסיכום, גם הן במקביל
     active_types = [t for t in ("expense", "income", "savings") if settings_["owner_attribution"].get(t)]
     p2_tasks = {
-        "anomalies":    partial(db.get_anomalies, family_id, year, month, summary, settings_),
+        # קטגוריה עם תקציב מדלגת על התראת הממוצע — יש לה התראה מדויקת יותר
+        "anomalies":    partial(db.get_anomalies, family_id, year, month, summary, settings_,
+                                skip_categories=[r["name"] for r in expense_breakdown
+                                                 if r.get("budget")]),
         "transactions": partial(db.get_month_transactions, family_id, year, month, settings_, user["id"]),
     }
     if is_current:
@@ -961,7 +966,7 @@ def month_view():
         p2_tasks[f"mb_{t}"] = partial(db.get_member_breakdown, family_id, year, month, t)
     p2 = _run_queries(p2_tasks)
 
-    anomalies = list(p2["anomalies"])
+    anomalies = db.budget_alerts(expense_breakdown) + list(p2["anomalies"])
     fixed = None
     if is_current:
         anomalies += p2["run_rate"]
@@ -2019,6 +2024,36 @@ def update_family_settings_route():
         except (TypeError, ValueError):
             return jsonify({"error": "ערכי ההתראות חייבים להיות מספרים"}), 422
         patch["anomaly"] = out
+
+    # תקציבי קטגוריות. מגיעים מהלקוח, אז נאמתים כמו כל סכום כסף אחר,
+    # ונבדקים שהם באמת קטגוריות של המשפחה הזאת.
+    if isinstance(body.get("limits"), dict):
+        family_categories = {c["id"] for c in db.get_categories(user["family_id"])}
+        limits = dict((family_settings().get("limits") or {}))
+
+        for cat_id, entry in body["limits"].items():
+            if cat_id not in family_categories:
+                return jsonify({"error": "קטגוריה לא נמצאה"}), 422
+
+            # ‎null‎ או סכום 0 = הסרת התקציב. זו הדרך לבטל, ולא מחיקה
+            # נפרדת — כך "לא להגדיר תקציב" הוא אותו מסלול כמו "להסיר".
+            if entry is None:
+                limits.pop(cat_id, None)
+                continue
+            if not isinstance(entry, dict):
+                return jsonify({"error": "מבנה תקציב לא תקין"}), 422
+
+            amount, err = _parse_amount(entry.get("amount"))
+            if entry.get("amount") in (None, "", 0, "0"):
+                limits.pop(cat_id, None)
+                continue
+            if err:
+                return jsonify({"error": f"תקציב הקטגוריה: {err}"}), 422
+
+            limits[cat_id] = {"amount": amount, "alert": bool(entry.get("alert", True))}
+
+        # מפתח מקונן לא מתמזג לעומק, אז שולחים את המפה המלאה
+        patch["limits"] = limits
 
     if "show_workplace" in body:
         patch["show_workplace"] = bool(body["show_workplace"])

@@ -238,6 +238,31 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                             </button>
                         </div>
+
+                        {# תקציב יעד — רק להוצאות. זה מה שמגבילים; תקציב
+                           להכנסה או לחיסכון לא אומר כלום. #}
+                        {% if type_key == 'expense' %}
+                        {% set limit = (family_settings.limits or {}).get(cat.id) %}
+                        <div class="cat-budget-edit">
+                            <label class="cat-budget-toggle">
+                                <input type="checkbox" class="budget-enabled" data-id="{{ cat.id }}"
+                                       {% if limit %}checked{% endif %}>
+                                <span>תקציב חודשי</span>
+                            </label>
+                            <div class="cat-budget-fields" {% if not limit %}hidden{% endif %}>
+                                <input class="form-input budget-amount" type="number" min="1" step="1"
+                                       inputmode="decimal" placeholder="₪ לחודש"
+                                       data-id="{{ cat.id }}"
+                                       value="{{ limit.amount | round | int if limit else '' }}"
+                                       aria-label="תקציב חודשי ל{{ cat.name }}">
+                                <label class="cat-budget-toggle">
+                                    <input type="checkbox" class="budget-alert" data-id="{{ cat.id }}"
+                                           {% if not limit or limit.alert %}checked{% endif %}>
+                                    <span>התרע בחריגה</span>
+                                </label>
+                            </div>
+                        </div>
+                        {% endif %}
                     </li>
                     {% endfor %}
                 </ul>

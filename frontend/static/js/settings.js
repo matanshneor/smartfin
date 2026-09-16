@@ -1189,3 +1189,79 @@ document.addEventListener('click', function (e) {
         });
     }
 })();
+
+
+/* ─── תקציב יעד לקטגוריה ─────────────────────────────────────────────────────
+ *
+ * שתי החלטות נפרדות, בכוונה: האם יש תקציב, ואם כן — האם להתריע. יש
+ * משפחות שרוצות לראות "₪1,800 מתוך ₪2,000" על המסך בלי שהאפליקציה
+ * תנדנד להן על זה.
+ *
+ * הפס שכבר קיים בעמוד החודש מודד כמה הקטגוריה מתוך סך ההוצאות ("מכולת
+ * היא 35% מההוצאות"). תקציב מודד מול ההחלטה של המשפחה — וזו השאלה
+ * שבאמת שואלים.
+ */
+(function () {
+    const saveTimers = {};
+
+    function fieldsFor(id) {
+        const box = document.querySelector('.budget-enabled[data-id="' + id + '"]');
+        return box && box.closest('.cat-budget-edit');
+    }
+
+    function currentValues(id) {
+        const wrap  = fieldsFor(id);
+        if (!wrap) return null;
+        const on    = wrap.querySelector('.budget-enabled').checked;
+        const amt   = wrap.querySelector('.budget-amount').value.trim();
+        const alert = wrap.querySelector('.budget-alert').checked;
+        // כבוי, או בלי סכום — זו גם הדרך להסיר תקציב קיים
+        if (!on || !amt) return null;
+        return { amount: Number(amt), alert: alert };
+    }
+
+    function save(id, revert) {
+        const patch = {};
+        patch[id] = currentValues(id);
+        savePrefs({ limits: patch }, revert);
+    }
+
+    /* השהיה קצרה על הקלדה: כל תו בשדה מספר היה שולח בקשה, ו-"2000"
+     * הוא ארבע שמירות שהראשונות בהן שגויות (₪2, ₪20…). */
+    function saveSoon(id, revert) {
+        clearTimeout(saveTimers[id]);
+        saveTimers[id] = setTimeout(function () { save(id, revert); }, 600);
+    }
+
+    document.addEventListener('change', function (e) {
+        const box = e.target.closest('.budget-enabled');
+        if (box) {
+            const wrap = box.closest('.cat-budget-edit');
+            const was  = !box.checked;
+            wrap.querySelector('.cat-budget-fields').hidden = !box.checked;
+            if (box.checked) {
+                wrap.querySelector('.budget-amount').focus();
+                return;             // אין מה לשמור עד שיוזן סכום
+            }
+            save(box.dataset.id, function () {
+                box.checked = was;
+                wrap.querySelector('.cat-budget-fields').hidden = !was;
+            });
+            return;
+        }
+
+        const alertBox = e.target.closest('.budget-alert');
+        if (alertBox) {
+            const was = !alertBox.checked;
+            save(alertBox.dataset.id, function () { alertBox.checked = was; });
+        }
+    });
+
+    document.addEventListener('input', function (e) {
+        const amount = e.target.closest('.budget-amount');
+        if (!amount) return;
+        const was = amount.dataset.saved || '';
+        saveSoon(amount.dataset.id, function () { amount.value = was; });
+        amount.dataset.saved = amount.value;
+    });
+})();
