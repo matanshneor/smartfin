@@ -717,6 +717,10 @@ def get_transaction_receipt_path(transaction_id: str, family_id: str):
             .eq("id", transaction_id).eq("family_id", family_id).single().execute()
         return (result.data or {}).get("receipt_path")
     except Exception:
+        # None פירושו "אין קבלה", וכישלון שליפה נראה בדיוק כמו עסקה בלי
+        # קבלה. הכיוון בטוח (לא נמחק כלום, לא מוצג כלום), אבל בלי הרישום
+        # הזה אין שום זכר לכך שהייתה תקלה.
+        logger.exception("get_transaction_receipt_path")
         return None
 
 
@@ -1236,6 +1240,7 @@ def get_my_family_id():
     try:
         return client.rpc("get_my_family_id", {}).execute().data
     except Exception:
+        logger.exception("get_my_family_id")
         return None
 
 
@@ -1283,6 +1288,9 @@ def delete_transaction(transaction_id: str, family_id: str):
             .execute()
         return True
     except Exception:
+        # המשתמש כן רואה "מחיקה נכשלה", אז זה לא כשל שקט — אבל בלי
+        # הרישום אי אפשר לענות על "למה".
+        logger.exception("delete_transaction")
         return False
 
 
@@ -1615,6 +1623,10 @@ def get_project_for_transaction(project_id: str, family_id: str):
             .select("owner_id, track_expense, track_income, track_savings") \
             .eq("id", project_id).eq("family_id", family_id).single().execute().data
     except Exception:
+        # שני הקוראים מפרשים None כ"הפרויקט לא נמצא" ומסרבים — הכיוון
+        # הבטוח. אבל למשתמש זה נראה כאילו פרויקט קיים נעלם, וזה בדיוק
+        # הדיווח שאי אפשר לחקור בלי traceback.
+        logger.exception("get_project_for_transaction")
         return None
 
 

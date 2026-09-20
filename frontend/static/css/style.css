@@ -1047,10 +1047,15 @@ li.transaction-item.open.swipe-ready > .swipe-content {
     gap: 14px;
 }
 
+/* עד שתי שורות. ‎nowrap‎ + ‎ellipsis‎ חתכו כל הודעה ארוכה מכ-30 תווים
+   באמצע — כולל האזהרה שהקבלה נמחקה, שהיא בדיוק ההודעה שאסור לאבד. */
 .toast .toast-msg {
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    text-align: center;
 }
 
 .toast-action {

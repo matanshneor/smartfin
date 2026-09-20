@@ -765,17 +765,25 @@
     }
 
     function deleteWithUndo(txData, row, onFail) {
+        // תמונת הקבלה נמחקת מהאחסון יחד עם העסקה, ולכן "בטל" מחזיר את
+        // העסקה בלבד — הקובץ כבר לא קיים. זה היה קורה בשקט: המשתמש לחץ
+        // "בטל", ראה את העסקה חוזרת, והקבלה פשוט לא הייתה שם יותר.
+        // אומרים את זה מראש, ורק כשבאמת הייתה קבלה.
+        const hadReceipt = !!(row && row.querySelector('.receipt-badge'));
         fetch('/api/transactions/' + txData.id, { method: 'DELETE' })
             .then(r => r.json())
             .then(function (d) {
                 if (d.status !== 'ok') { if (onFail) onFail('מחיקה נכשלה'); return; }
                 if (row) row.remove();
-                window.showToast('העסקה נמחקה', null, {
+                window.showToast(hadReceipt
+                    ? 'העסקה נמחקה. הקבלה המצורפת נמחקה איתה ולא תחזור'
+                    : 'העסקה נמחקה', null, {
                     label: 'בטל',
                     onClick: function () {
                         clearTimeout(pendingDeleteReload);
                         refreshWhenEditingEnds = false;
-                        restoreTransaction(txData);
+                        restoreTransaction(Object.assign({}, txData,
+                                                         { hadReceipt: hadReceipt }));
                     },
                 });
                 clearTimeout(pendingDeleteReload);
@@ -809,7 +817,10 @@
         .then(r => r.json())
         .then(function (data) {
             if (data.error) { window.showToast(data.error, 'error'); return; }
-            sessionStorage.setItem('sf_toast', 'העסקה שוחזרה');
+            // ‎receipt_path‎ נשלח ‎null‎ במכוון: הקובץ נמחק מהאחסון ברגע
+            // המחיקה, וכתובת לקובץ שאינו קיים הייתה מייצרת תג 📎 שבור.
+            sessionStorage.setItem('sf_toast',
+                txData.hadReceipt ? 'העסקה שוחזרה — בלי הקבלה' : 'העסקה שוחזרה');
             window.location.reload();
         })
         .catch(function () { window.showToast('שחזור נכשל — נסה שוב', 'error'); });

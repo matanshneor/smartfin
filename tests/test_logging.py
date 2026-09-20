@@ -104,3 +104,54 @@ def test_noisy_libraries_are_quietened():
     src = (_BACKEND / "logs.py").read_text(encoding="utf-8")
 
     assert "httpx" in src and "logging.WARNING" in src
+
+
+# ─── כשל שקט שמחזיר ערך שקרי ────────────────────────────────────────────────
+
+# שתי בליעות שמותר להן להיות שקטות, ולמה:
+#   _invalidate_family_cache — ‎except ImportError‎ סביב ייבוא של flask.
+#     אין הקשר בקשה, אין מה לפנות. זו זרימת בקרה, לא כשל.
+#   category_budget — ‎except (TypeError, ValueError)‎ על המרת ערך מתוך
+#     ההגדרות. "אין תקציב לקטגוריה" היא תשובה נכונה לערך פגום, לא תקלה.
+_MAY_STAY_SILENT = {"_invalidate_family_cache", "category_budget"}
+
+
+def _enclosing_function(tree, node):
+    best = None
+    for n in ast.walk(tree):
+        if isinstance(n, ast.FunctionDef) and n.lineno <= node.lineno <= (n.end_lineno or 0):
+            if best is None or n.lineno > best.lineno:
+                best = n
+    return best.name if best else "?"
+
+
+def test_no_failure_returns_a_falsy_answer_without_leaving_a_trace():
+    """זו התבנית המסוכנת ביותר בקובץ הזה, וכבר עלתה ביוקר.
+
+    פונקציה שנכשלת ומחזירה ‎None‎/‎False‎ נראית לקורא בדיוק כמו "אין
+    נתון". גם כשהכיוון בטוח — לסרב, לא לאשר — המשתמש רואה משהו מבלבל
+    ("הפרויקט לא נמצא", "אין קבלה"), ולמפתח אין שום דרך לחקור את זה
+    אחר כך: הרשומה פשוט לא קיימת.
+    """
+    tree = ast.parse((_BACKEND / "supabase_config.py").read_text(encoding="utf-8"))
+    falsy = {None, False, 0, "", ()}
+    offenders = []
+
+    for handler in ast.walk(tree):
+        if not isinstance(handler, ast.ExceptHandler):
+            continue
+        body = ast.unparse(ast.Module(body=handler.body, type_ignores=[]))
+        if "logger." in body or "raise" in body:
+            continue
+        for n in ast.walk(ast.Module(body=handler.body, type_ignores=[])):
+            if not isinstance(n, ast.Return):
+                continue
+            v = n.value
+            if v is None or (isinstance(v, ast.Constant) and v.value in falsy):
+                name = _enclosing_function(tree, handler)
+                if name not in _MAY_STAY_SILENT:
+                    offenders.append(f"{name} (שורה {handler.lineno})")
+
+    assert not offenders, (
+        "בליעה שמחזירה ערך שקרי בלי לוג: " + ", ".join(sorted(set(offenders)))
+    )
