@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pytest
 
+from backend import app as app_module
 from backend.app import app, limiter
 
 pytestmark = pytest.mark.unit
@@ -22,8 +23,13 @@ _ROOT = Path(__file__).resolve().parent.parent
 
 
 @pytest.fixture
-def anon():
+def anon(monkeypatch):
     app.config["TESTING"] = True
+    # מה שנבדק כאן הוא ההתנהגות אחרי כישלון וחסימת קצב, לא ההתחברות
+    # עצמה. בלי הזיוף הזה כל ריצה שלחה 12 ניסיונות התחברות אמיתיים
+    # ל-Supabase של הייצור — ושרפה את מכסת ההתחברויות של בדיקות אחרות.
+    monkeypatch.setattr(app_module.db, "sign_in", lambda e, p: (None, "invalid"))
+    monkeypatch.setattr(app_module.db, "get_email_by_phone", lambda p: None)
     return app.test_client()
 
 

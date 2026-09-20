@@ -13,6 +13,7 @@ import re
 
 import pytest
 
+from backend import app as app_module
 from backend.app import app
 
 pytestmark = pytest.mark.unit
@@ -27,8 +28,12 @@ def anon():
 
 
 @pytest.fixture
-def signed_in():
+def signed_in(monkeypatch):
     app.config["TESTING"] = True
+    # מה שנבדק כאן הוא איזה עמוד מוגש, לא מה יש בו. בלי הזיוף הזה
+    # הבדיקה שלפה קטגוריות מהמסד האמיתי.
+    monkeypatch.setattr(app_module.db, "get_categories", lambda *a, **k: [])
+    monkeypatch.setattr(app_module.db, "ensure_family", lambda *a, **k: None)
     with app.test_client() as c:
         with c.session_transaction() as sess:
             sess["user_id"]        = "00000000-0000-0000-0000-000000000000"

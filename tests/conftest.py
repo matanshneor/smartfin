@@ -63,6 +63,31 @@ def pytest_configure(config):
 
 
 @pytest.fixture(autouse=True)
+def _unit_tests_cannot_reach_supabase(request, monkeypatch):
+    """אוכף את מה שהסימון ‎unit‎ הבטיח — ולא אכף.
+
+    הסימון תיעד "לא נוגעת ב-Supabase", אבל שום דבר לא מנע את זה. בדיקה
+    שהסתמכה על ולידציה בשרת כדי לא להגיע ל-‎db.sign_up‎ פשוט הגיעה אליו
+    ברגע שהוולידציה הוסרה — למשל בבדיקת מוטציה — **ויצרה חשבון אמיתי
+    במסד הייצור**. זה קרה, ב-20 בספטמבר 2026, עם ‎israel@gmail‎.
+
+    הכשל היה גם שקט לחלוטין: הבדיקה עברה. אז מכאן ‎get_client‎ מסרבת
+    לעבוד בבדיקות יחידה, וכל נגיעה ברשת נכשלת בקול עם ההסבר."""
+    if "unit" not in request.keywords:
+        yield
+        return
+
+    def _refuse():
+        raise AssertionError(
+            "בדיקת יחידה ניסתה לפנות ל-Supabase האמיתי. או שחסר "
+            "monkeypatch על הפונקציה שנקראה, או שהבדיקה הזאת אינה unit."
+        )
+
+    monkeypatch.setattr(db, "get_client", _refuse)
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _start_authenticated_as_family_a(request):
     """כל בדיקה מתחילה עם ה-client מאומת כמשפחה א' כברירת מחדל — בדיקות
     שצריכות להחליף הקשר (למשל לבדוק גישה חוצת-משפחה) עושות זאת בעצמן.

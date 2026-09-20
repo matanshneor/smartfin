@@ -21,6 +21,18 @@ from backend.app import app
 pytestmark = pytest.mark.unit
 
 
+@pytest.fixture(autouse=True)
+def _no_real_refresh(monkeypatch):
+    """ברירת מחדל: הרענון לא זמין, ובאופן לא-קטלני.
+
+    בלי זה כל בקשה בקובץ הזה פנתה ל-GoTrue האמיתי עם טוקן מזויף —
+    קריאת רשת אמיתית לייצור, בתוך בדיקה שמסומנת ‎unit‎. בדיקה שבודקת
+    התנהגות רענון ספציפית דורסת את זה בעצמה."""
+    monkeypatch.setattr(app_module.db, "refresh_session",
+                        lambda _t: (None, "unit test", False))
+    monkeypatch.setattr(app_module.db, "set_auth_token", lambda _t: None)
+
+
 # ─── הגדרות העוגייה ──────────────────────────────────────────────────────────
 
 def test_the_session_lasts_effectively_forever():
