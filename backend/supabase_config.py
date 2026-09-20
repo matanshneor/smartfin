@@ -557,7 +557,46 @@ def update_family_settings(family_id: str, patch: dict) -> bool:
 # ─── Receipt scanning (צילום קבלה) ────────────────────────────────────────────
 
 RECEIPT_MONTHLY_LIMIT = 100
+
+# תקרה על **סך** הסריקות של כל המשפחות יחד.
+#
+# המכסה שלמעלה היא לכל משפחה, וההרשמה פתוחה — כל חשבון חדש מקבל משפחה,
+# ואיתה מכסה טרייה. כלומר לא הייתה שום תקרה על הסכום הכולל, והמסלול הזה
+# הוא היחיד באפליקציה שעולה כסף אמיתי.
+#
+# יש גם תקרת חיוב בלוח הבקרה של OpenAI (הוגדרה 20.9.2026), והיא רשת
+# הביטחון האחרונה. התקרה כאן קיימת כי היא נכשלת אחרת: בעברית, עם הצעה
+# להזין ידנית, במקום שהמפתח ייחסם ותתקבל שגיאת API סתומה שנראית כמו באג.
+#
+# המספר: משפחה פעילה מאוד צורכת ~50 בחודש, אז 2,000 הן כ-40 משפחות
+# בשימוש כבד — הרבה מעל כל שימוש אמיתי בהיקף הנוכחי, ועדיין בלם.
+RECEIPT_GLOBAL_MONTHLY_LIMIT = int(os.environ.get("RECEIPT_GLOBAL_MONTHLY_LIMIT", "2000"))
+
 _RECEIPT_MEDIA_TYPES = ("image/jpeg", "image/png", "image/webp")
+
+
+def _month_start() -> str:
+    """תחילת החודש בשעון ישראל. משותף לשתי הספירות, כדי ששתיהן
+    יתאפסו באותו רגע — השרת עצמו רץ ב-UTC."""
+    today = clock.today()
+    return f"{today.year}-{today.month:02d}-01"
+
+
+def receipt_scans_globally_this_month() -> int:
+    """כמה סריקות בוצעו החודש בכל המשפחות יחד.
+
+    דרך RPC ולא דרך שאילתה: RLS על ‎receipt_scans‎ מגבילה כל משתמש
+    למשפחה שלו, אז ספירה רגילה הייתה מחזירה את שלו בלבד — כלומר תקרה
+    שלעולם לא נחצית. הפונקציה מחזירה מספר אחד ותו לא."""
+    client = get_client()
+    if not client:
+        raise DataUnavailable("receipt_scans_globally_this_month: no client")
+    try:
+        return client.rpc("receipt_scans_global_since",
+                          {"p_since": _month_start()}).execute().data or 0
+    except Exception as e:
+        # כמו בספירה לכל משפחה: 0 פירושו "אין ניצול", כלומר ביטול ההגבלה
+        raise DataUnavailable("receipt_scans_globally_this_month") from e
 
 
 def receipt_scans_this_month(family_id: str) -> int:
@@ -566,10 +605,8 @@ def receipt_scans_this_month(family_id: str) -> int:
     if not client or not family_id:
         return 0
     try:
-        today = clock.today()
-        start = f"{today.year}-{today.month:02d}-01"
         result = client.table("receipt_scans").select("id", count="exact") \
-            .eq("family_id", family_id).gte("created_at", start).execute()
+            .eq("family_id", family_id).gte("created_at", _month_start()).execute()
         return result.count or 0
     except Exception as e:
         # 0 פירושו "לא נוצלה מכסה" — כלומר ההגבלה על ההוצאה מפסיקה לעבוד

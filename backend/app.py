@@ -1863,6 +1863,10 @@ def sync_recurring_template(template_id):
 # ─── API: Receipt scanning (צילום קבלה) ───────────────────────────────────────
 
 @app.route("/api/receipts/scan", methods=["POST"])
+# המסלול היחיד כאן שעולה כסף אמיתי, והיחיד מבין 23 המסלולים הכותבים
+# שלא הייתה עליו שום הגבלה. סריקה אחת לוקחת 2-6 שניות, אז עשר לדקה
+# לא נוגעות באף אדם — הן נוגעות בסקריפט.
+@limiter.limit("10 per minute")
 @login_required
 def scan_receipt_route():
     user = get_current_user()
@@ -1871,11 +1875,21 @@ def scan_receipt_route():
 
     try:
         used = db.receipt_scans_this_month(user["family_id"])
+        used_globally = db.receipt_scans_globally_this_month()
     except db.DataUnavailable:
         # לא ידוע כמה נוצל. הכיוון הבטוח הוא לסרב: אישור כשהבדיקה נכשלה
         # מבטל בפועל את ההגבלה על חשבון ה-OpenAI, וזו הוצאה אמיתית.
         return jsonify({
             "error": "לא הצלחנו לבדוק את מכסת הסריקות — נסו שוב, או הזינו ידנית.",
+        }), 503
+
+    # התקרה הגלובלית נבדקת לפני זו של המשפחה: כשהיא נחצית זו לא אשמתו
+    # של מי שעומד כאן, וההודעה צריכה לומר את זה ולא להאשים אותו במכסה
+    # שהוא לא ניצל.
+    if used_globally >= db.RECEIPT_GLOBAL_MONTHLY_LIMIT:
+        logger.error("סריקות קבלות: נחצתה התקרה הגלובלית (%s)", used_globally)
+        return jsonify({
+            "error": "סריקת הקבלות אינה זמינה כרגע. ניתן להזין את הפרטים ידנית.",
         }), 503
 
     if used >= db.RECEIPT_MONTHLY_LIMIT:
