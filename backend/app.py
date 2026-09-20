@@ -517,8 +517,29 @@ def _looks_like_email(value: str) -> bool:
 
 
 def _normalize_phone(raw: str) -> str:
-    """מנרמל מספר טלפון להשוואה/שמירה עקבית — ספרות בלבד (בלי מקפים/רווחים/+)."""
-    return re.sub(r"\D", "", raw or "")
+    """מנרמל מספר טלפון להשוואה/שמירה עקבית: ספרות בלבד, בצורה המקומית.
+
+    קידומת ‎+972‎ מומרת ל-‎0‎. בלי זה אותו מספר בדיוק נשמר בשתי צורות:
+    מי שנרשם עם ‎+972-54-1234567‎ נשמר כ-‎972541234567‎, ואז ההתחברות
+    שלו עם ‎054-1234567‎ לא מוצאת אותו לעולם — ושני אנשים יכלו "לתפוס"
+    את אותו מספר, כל אחד בכתיב אחר.
+    """
+    digits = re.sub(r"\D", "", raw or "")
+    if digits.startswith("972"):
+        digits = "0" + digits[3:]
+    return digits
+
+
+# מספר טלפון ישראלי: נייד (‎05X‎ ועוד שבע ספרות), קווי (‎0X‎ ועוד שבע),
+# או ‎07X‎ ועוד שבע. הבדיקה קיימת מאותה סיבה כמו זו של המייל — הטפסים
+# הם ‎novalidate‎ ובשרת לא נבדק דבר, אז ‎1‎ היה מספר תקין: הוא נשמר, הפך
+# למזהה התחברות חלופי חסר משמעות, ובגלל האינדקס הייחודי על הטלפון הוא
+# גם חסם את הערך הזה לכל שאר המשתמשים לתמיד.
+_PHONE_RE = re.compile(r"^0(5\d|7\d|[2-4689])\d{7}$")
+
+
+def _looks_like_phone(normalized: str) -> bool:
+    return bool(_PHONE_RE.match(normalized or ""))
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -616,6 +637,8 @@ def signup():
             error = "נא למלא את כל השדות"
         elif not _looks_like_email(email):
             error = "כתובת המייל אינה תקינה — בדקו שהיא מלאה, למשל israel@gmail.com"
+        elif not _looks_like_phone(phone):
+            error = "מספר הטלפון אינו תקין — למשל 050-1234567"
         elif len(password) < 6:
             error = "הסיסמה חייבת להכיל לפחות 6 תווים"
         elif password != password_confirm:
@@ -1424,6 +1447,9 @@ def update_profile():
 
     if not first_name or not last_name:
         return jsonify({"error": "נא למלא שם פרטי ושם משפחה"}), 422
+    # ריק מותר כאן (השדה אינו חובה בעריכה), אבל מה שהוקלד חייב להיות מספר
+    if phone and not _looks_like_phone(phone):
+        return jsonify({"error": "מספר הטלפון אינו תקין — למשל 050-1234567"}), 422
 
     old_profile = db.get_profile(user["id"]) or {}
     old_workplace = old_profile.get("workplace") or ""
