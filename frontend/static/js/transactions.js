@@ -305,7 +305,7 @@
                 setType('expense');
                 openModal();
             })
-            .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
+            .catch(function () { window.showToast(window.sfNetError(), 'error'); });
     }
 
     function openEditModal(tx, triggerEl) {
@@ -334,7 +334,7 @@
                 updateSubmitLabel();
                 openModal();
             })
-            .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
+            .catch(function () { window.showToast(window.sfNetError(), 'error'); });
     }
 
     fabBtn.addEventListener('click', openAddModal);
@@ -507,7 +507,7 @@
         })
         .catch(function () {
             resetScanUI();
-            formError.textContent = 'שגיאת רשת — נסה שוב או הזן ידנית';
+            formError.textContent = window.sfNetError() + '. אפשר גם להזין ידנית.';
         });
     });
 
@@ -711,10 +711,14 @@
         .catch(function () {
             if (placeholderRow) {
                 placeholderRow.remove();
-                window.showToast('שגיאת רשת — נסה שוב', 'error');
-                return;
+                // החלון כבר נסגר אופטימית, אבל מה שהוקלד עדיין בשדות —
+                // ‎closeModal‎ לא מאפס אותם. פותחים אותו בחזרה במקום
+                // להשאיר את המשתמש עם הודעת שגיאה וטופס ריק: במוסך או
+                // בחניון, "נסה שוב" פירושו היה להקליד הכול מחדש, בלי
+                // רשת, בדיוק כשהוא הכי לא רוצה.
+                openModal();
             }
-            formError.textContent = 'שגיאת רשת — נסה שוב';
+            formError.textContent = window.sfNetError();
             setSubmitBusy(false);
             updateSubmitLabel();
         });
@@ -778,7 +782,7 @@
                 pendingDeleteReload = setTimeout(refreshAfterDelete, 6000);
             })
             .catch(function () {
-                if (onFail) onFail('שגיאת רשת — נסה שוב');
+                if (onFail) onFail(window.sfNetError());
             });
     }
 
@@ -936,7 +940,7 @@
                 if (list) list.classList.add('has-open');
                 openInlineRow = row;
             })
-            .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
+            .catch(function () { window.showToast(window.sfNetError(), 'error'); });
     }
 
     let inlineEditorSeq = 0;
@@ -1092,7 +1096,7 @@
                 window.location.reload();
             })
             .catch(function () {
-                errEl.textContent = 'שגיאת רשת — נסה שוב';
+                errEl.textContent = window.sfNetError();
                 saveBtn.disabled = false;
                 saveBtn.textContent = 'שמור';
             });

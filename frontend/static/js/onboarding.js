@@ -99,7 +99,7 @@ window.escapeHtml = window.escapeHtml || function (s) {
             window.location.href = '/';
         })
         .catch(function () {
-            errorBox.textContent = 'שגיאת רשת — נסה שוב';
+            errorBox.textContent = window.sfNetError();
             btn.disabled = false;
             btn.textContent = 'הצטרפות';
         });
@@ -215,7 +215,7 @@ window.escapeHtml = window.escapeHtml || function (s) {
             window.location.href = '/';
         })
         .catch(function () {
-            errorBox.textContent = 'שגיאת רשת — נסה שוב';
+            errorBox.textContent = window.sfNetError();
             btn.disabled = false;
             btn.textContent = 'סיום והתחלה';
         });

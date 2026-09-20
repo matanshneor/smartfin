@@ -51,7 +51,7 @@
             window.location.href = '/login?reset=1';
         })
         .catch(function () {
-            errorBox.textContent = 'שגיאת רשת — נסה שוב';
+            errorBox.textContent = window.sfNetError();
             btn.disabled = false;
             btn.textContent = 'עדכן סיסמה';
         });

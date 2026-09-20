@@ -45,7 +45,7 @@ editForm.addEventListener('submit', function (e) {
         sessionStorage.setItem('sf_toast', 'הפרויקט עודכן');
         window.location.href = detailUrl;
     })
-    .catch(function () { editSubmitBtn.disabled = false; editError.textContent = 'שגיאת רשת — נסה שוב'; });
+    .catch(function () { editSubmitBtn.disabled = false; editError.textContent = window.sfNetError(); });
 });
 
 // ── הפיכת פרויקט אישי למשותף / החזרתו להיות אישי ──
@@ -67,7 +67,7 @@ if (shareBtn) {
                 if (d.error) { window.showToast(d.error, 'error'); return; }
                 window.location.reload();
             })
-            .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
+            .catch(function () { window.showToast(window.sfNetError(), 'error'); });
         });
     });
 }
@@ -87,7 +87,7 @@ if (unshareBtn) {
                 if (d.error) { window.showToast(d.error, 'error'); return; }
                 window.location.reload();
             })
-            .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
+            .catch(function () { window.showToast(window.sfNetError(), 'error'); });
         });
     });
 }
@@ -133,7 +133,7 @@ function loadCats(type) {
         })
         .catch(function () {
             catList.innerHTML = '';
-            window.showToast('שגיאת רשת — נסה שוב', 'error');
+            window.showToast(window.sfNetError(), 'error');
         });
 }
 
@@ -175,7 +175,7 @@ if (addForm) {
             document.getElementById('newProjectCatName').value = '';
             document.getElementById('newProjectCatIcon').value = '🏷';
         })
-        .catch(function () { addCatBtn.disabled = false; addError.textContent = 'שגיאת רשת — נסה שוב'; });
+        .catch(function () { addCatBtn.disabled = false; addError.textContent = window.sfNetError(); });
     });
 }
 
@@ -269,6 +269,6 @@ document.addEventListener('click', function (e) {
         row.innerHTML = catRowInnerHTML(id, icon, name);
         window.showToast('הקטגוריה עודכנה');
     })
-    .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); saveBtn.disabled = false; });
+    .catch(function () { window.showToast(window.sfNetError(), 'error'); saveBtn.disabled = false; });
 });
 })();

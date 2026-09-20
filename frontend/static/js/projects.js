@@ -64,7 +64,7 @@ form.addEventListener('submit', function (e) {
         if (data.error) { submitBtn.disabled = false; errorEl.textContent = data.error; return; }
         window.location.reload();
     })
-    .catch(function () { submitBtn.disabled = false; errorEl.textContent = 'שגיאת רשת — נסה שוב'; });
+    .catch(function () { submitBtn.disabled = false; errorEl.textContent = window.sfNetError(); });
 });
 
 document.addEventListener('click', function (e) {
@@ -106,7 +106,7 @@ document.addEventListener('click', function (e) {
                     window.showToast('המחיקה נכשלה', 'error');
                 }
             })
-            .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
+            .catch(function () { window.showToast(window.sfNetError(), 'error'); });
         });
     });
 });

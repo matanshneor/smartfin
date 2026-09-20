@@ -67,7 +67,7 @@ if (window.location.hash.includes('type=recovery')) {
             btn.textContent = 'שלח קישור איפוס';
         })
         .catch(function () {
-            forgotError.textContent = 'שגיאת רשת — נסה שוב';
+            forgotError.textContent = window.sfNetError();
             btn.disabled = false;
             btn.textContent = 'שלח קישור איפוס';
         });

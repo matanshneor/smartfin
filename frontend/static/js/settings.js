@@ -82,7 +82,7 @@ if (saveBtn) {
         })
         .catch(function () {
             saveBtn.disabled = false;
-            window.showToast('שגיאת רשת — נסה שוב', 'error');
+            window.showToast(window.sfNetError(), 'error');
         });
     });
 }
@@ -160,7 +160,7 @@ if (joinBtn && joinInput) {
                 window.location.reload();
             })
             .catch(function () {
-                joinError.textContent = 'שגיאת רשת — נסו שוב';
+                joinError.textContent = window.sfNetError();
             })
             .finally(function () {
                 joinBtn.disabled = false;
@@ -198,7 +198,7 @@ document.addEventListener('click', function (e) {
                 window.showToast('ההסרה נכשלה', 'error');
             }
         })
-        .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
+        .catch(function () { window.showToast(window.sfNetError(), 'error'); });
     });
 });
 
@@ -247,7 +247,7 @@ function persistCategoryOrder(panel) {
     })
     .then(r => r.json())
     .then(function (d) { if (d.error) window.showToast('שמירת הסדר נכשלה', 'error'); })
-    .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
+    .catch(function () { window.showToast(window.sfNetError(), 'error'); });
 }
 
 document.querySelectorAll('.cat-tab-panel').forEach(updatePanelReorderState);
@@ -333,7 +333,7 @@ document.addEventListener('click', function (e) {
         updatePanelReorderState(row.closest('.cat-tab-panel'));
         window.showToast('הקטגוריה עודכנה');
     })
-    .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); saveEditBtn.disabled = false; });
+    .catch(function () { window.showToast(window.sfNetError(), 'error'); saveEditBtn.disabled = false; });
 });
 
 // ── Delete category ──
@@ -366,7 +366,7 @@ document.addEventListener('click', function (e) {
                 window.showToast('המחיקה נכשלה', 'error');
             }
         })
-        .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
+        .catch(function () { window.showToast(window.sfNetError(), 'error'); });
     });
 });
 
@@ -419,7 +419,7 @@ if (addForm) {
         })
         .catch(function () {
             addBtn.disabled = false;
-            addError.textContent = 'שגיאת רשת — נסה שוב';
+            addError.textContent = window.sfNetError();
         });
     });
 }
@@ -478,7 +478,7 @@ function submitProfile(workplaceScope) {
     })
     .catch(function () {
         saveProfileBtn.disabled = false;
-        profileError.textContent = 'שגיאת רשת — נסה שוב';
+        profileError.textContent = window.sfNetError();
     });
 }
 
@@ -587,7 +587,7 @@ if (changePasswordBtn) {
         .catch(function () {
             changePasswordBtn.disabled = false;
             changePasswordBtn.textContent = 'עדכן סיסמה';
-            pwError.textContent = 'שגיאת רשת — נסה שוב';
+            pwError.textContent = window.sfNetError();
         });
     });
 }
@@ -656,7 +656,7 @@ if (toggleResetBtn) {
             .catch(function () {
                 confirmResetBtn.disabled = false;
                 confirmResetBtn.textContent = 'אפס עסקאות';
-                resetError.textContent = 'שגיאת רשת — נסה שוב';
+                resetError.textContent = window.sfNetError();
             });
         });
     });
@@ -712,7 +712,7 @@ if (toggleDeleteBtn) {
             .catch(function () {
                 confirmDeleteBtn.disabled = false;
                 confirmDeleteBtn.textContent = 'מחק לצמיתות';
-                deleteError.textContent = 'שגיאת רשת — נסה שוב';
+                deleteError.textContent = window.sfNetError();
             });
         });
     });
@@ -763,7 +763,7 @@ function savePrefs(patch, revert) {
         window.SF_ATTRIBUTION = res.data.settings.owner_attribution;
         window.showToast('ההעדפות נשמרו');
     })
-    .catch(function () { failed('שגיאת רשת — נסה שוב'); });
+    .catch(function () { failed(window.sfNetError()); });
 }
 
 // דוגמה קונקרטית עם קטגוריה היפותטית של ₪1,000 בחודש — הופכת את שני
@@ -895,7 +895,7 @@ newForm.addEventListener('submit', function (e) {
         if (data.error) { newSubmitBtn.disabled = false; newError.textContent = data.error; return; }
         window.location.reload();
     })
-    .catch(function () { newSubmitBtn.disabled = false; newError.textContent = 'שגיאת רשת — נסה שוב'; });
+    .catch(function () { newSubmitBtn.disabled = false; newError.textContent = window.sfNetError(); });
 });
 
 // ── מחיקת פרויקט ──
@@ -942,7 +942,7 @@ document.addEventListener('click', function (e) {
                     window.showToast('המחיקה נכשלה', 'error');
                 }
             })
-            .catch(function () { window.showToast('שגיאת רשת — נסה שוב', 'error'); });
+            .catch(function () { window.showToast(window.sfNetError(), 'error'); });
         });
     });
 });
@@ -1044,7 +1044,7 @@ document.addEventListener('click', function (e) {
         if (d.error) { errorEl.textContent = d.error; saveBtn.disabled = false; return; }
         window.location.reload();
     })
-    .catch(function () { errorEl.textContent = 'שגיאת רשת — נסה שוב'; saveBtn.disabled = false; });
+    .catch(function () { errorEl.textContent = window.sfNetError(); saveBtn.disabled = false; });
 });
 })();
 
@@ -1121,7 +1121,7 @@ document.addEventListener('click', function (e) {
                 })
                 .catch(function () {
                     btn.disabled = false;
-                    window.showToast('שגיאת רשת — נסה שוב', 'error');
+                    window.showToast(window.sfNetError(), 'error');
                 });
         });
     });
@@ -1154,7 +1154,7 @@ document.addEventListener('click', function (e) {
                     })
                     .catch(function () {
                         leaveBtn.disabled = false;
-                        window.showToast('שגיאת רשת — נסה שוב', 'error');
+                        window.showToast(window.sfNetError(), 'error');
                     });
             });
         });
@@ -1183,7 +1183,7 @@ document.addEventListener('click', function (e) {
                     })
                     .catch(function () {
                         rotateBtn.disabled = false;
-                        window.showToast('שגיאת רשת — נסה שוב', 'error');
+                        window.showToast(window.sfNetError(), 'error');
                     });
             });
         });
