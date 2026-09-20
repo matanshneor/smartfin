@@ -495,6 +495,27 @@ _SHARED_HEX = "#78716C"
 
 # ─── Auth routes ──────────────────────────────────────────────────────────────
 
+# ─── בדיקת כתובת מייל ─────────────────────────────────────────────────────────
+#
+# לא RFC מלא — בדיוק מה שמונע את הטעות שקרתה בפועל: כתובת בלי סיומת.
+# לשני הטפסים יש ‎novalidate‎ (בכוונה, כדי שהשגיאות יהיו בעברית ובעיצוב
+# שלנו ולא בועית דפדפן באנגלית), ובשרת לא נבדק כלום — אז ‎israel@gmial‎
+# או ‎israel@gmail‎ נרשמו בהצלחה.
+#
+# למה זה חמור יותר משנשמע: המשתמש לא מגלה כלום ברגע ההרשמה. הוא מגלה
+# חודש אחר כך, כשהוא מנסה לאפס סיסמה והקישור נשלח לכתובת שלא קיימת.
+# אין לו מוצא, ואין שום מסלול באפליקציה לתקן כתובת. במסד יש כבר חשבון
+# כזה מיולי.
+#
+# 254 תווים הוא האורך המרבי של כתובת מייל לפי התקן.
+_EMAIL_RE = re.compile(r"^[^@\s]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$")
+
+
+def _looks_like_email(value: str) -> bool:
+    value = (value or "").strip()
+    return len(value) <= 254 and bool(_EMAIL_RE.match(value))
+
+
 def _normalize_phone(raw: str) -> str:
     """מנרמל מספר טלפון להשוואה/שמירה עקבית — ספרות בלבד (בלי מקפים/רווחים/+)."""
     return re.sub(r"\D", "", raw or "")
@@ -593,6 +614,8 @@ def signup():
 
         if not first_name or not last_name or not email or not password or not phone:
             error = "נא למלא את כל השדות"
+        elif not _looks_like_email(email):
+            error = "כתובת המייל אינה תקינה — בדקו שהיא מלאה, למשל israel@gmail.com"
         elif len(password) < 6:
             error = "הסיסמה חייבת להכיל לפחות 6 תווים"
         elif password != password_confirm:
@@ -675,6 +698,11 @@ def forgot_password():
     email = (body.get("email") or "").strip()
     if not email:
         return jsonify({"error": "נא להזין אימייל"}), 422
+    # פורמט פסול הוא לא מידע על מי רשום, ולכן מותר לומר אותו בקול —
+    # בניגוד לתשובה שלמטה, שתמיד "נשלח" כדי לא לחשוף אילו כתובות קיימות.
+    # בלי זה מי שהקליד כתובת שבורה קיבל "נשלח קישור" וחיכה לו לשווא.
+    if not _looks_like_email(email):
+        return jsonify({"error": "כתובת המייל אינה תקינה"}), 422
 
     redirect_to = request.host_url.rstrip("/") + url_for("reset_password")
     db.send_reset_email(email, redirect_to)
