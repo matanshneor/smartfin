@@ -1,22 +1,8 @@
 const SF_VIEW = window.sfData('sf-view-data');
 
+/* ═══ האינטראקטיביות של העמוד ═══
+ * לפני הגרפים ובנפרד מהם: פתיחת קטגוריה חייבת לעבוד גם בלי Chart.js. */
 (function () {
-const COLORS = [
-    '#A67C00','#3D6B54','#A04545','#44609B',
-    '#75588F','#3E7373','#9C6A3C','#8F5470'
-];
-Chart.defaults.font.family = "'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-Chart.defaults.color = '#78716C';
-Chart.defaults.animation.duration = 900;
-Chart.defaults.animation.easing = 'easeOutQuart';
-Chart.defaults.plugins.legend.display = false;
-Chart.defaults.plugins.tooltip.backgroundColor = '#1C1917';
-Chart.defaults.plugins.tooltip.titleColor = '#FAF7F0';
-Chart.defaults.plugins.tooltip.bodyColor = '#E7E0D2';
-
-// צבעי הגרף זמינים גם ל-CSS — הנקודות במקרא מרונדרות בשרת
-COLORS.forEach((c, i) =>
-    document.documentElement.style.setProperty('--chart-color-' + i, c));
 
 // ── הרחבת קטגוריה: הצגת כל העסקאות שלה בפרויקט (כמו בעמוד החודש) ──
 function toggleExpand(trigger) {
@@ -37,6 +23,14 @@ document.addEventListener('keydown', function (e) {
     if (trigger) { e.preventDefault(); toggleExpand(trigger); }
 });
 
+})();
+
+
+/* ═══ הגרפים ═══  (ראו chart-setup.js) */
+(function () {
+if (!window.sfCharts.ready) return;
+
+const COLORS    = window.sfCharts.colors;
 const breakdown = SF_VIEW.breakdown;
 ['expense', 'income', 'savings'].forEach(function (typ) {
     const items = breakdown[typ] || [];

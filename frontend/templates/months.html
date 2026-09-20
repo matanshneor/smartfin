@@ -141,6 +141,7 @@
 {% block scripts %}
 {% if archive %}
 <script src="{{ url_for('static', filename='js/vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/chart-setup.js') }}"></script>
 
 <script type="application/json" id="sf-view-data">
     {{ {'trend': trend_data} | tojson }}

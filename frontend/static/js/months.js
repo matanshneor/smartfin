@@ -1,17 +1,12 @@
 const SF_VIEW = window.sfData('sf-view-data');
 
+/* ═══ הגרף ═══  (ראו chart-setup.js)
+ * בלוק נפרד מ"הצג עוד" שלמטה: כשהספרייה לא נטענת, הכפתור עדיין עובד. */
 (function () {
-const TEXT_MUTED = '#78716C';
-const GRID_LINE  = 'rgba(28,25,23,0.07)';
+if (!window.sfCharts.ready) return;
 
-Chart.defaults.font.family = "'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-Chart.defaults.color = TEXT_MUTED;
-Chart.defaults.animation.duration = 900;
-Chart.defaults.animation.easing = 'easeOutQuart';
-Chart.defaults.plugins.legend.display = false;
-Chart.defaults.plugins.tooltip.backgroundColor = '#1C1917';
-Chart.defaults.plugins.tooltip.titleColor = '#FAF7F0';
-Chart.defaults.plugins.tooltip.bodyColor = '#E7E0D2';
+const TEXT_MUTED = window.sfCharts.muted;
+const GRID_LINE  = window.sfCharts.grid;
 
 const trendData = SF_VIEW.trend;
 
@@ -71,6 +66,12 @@ if (trendData.length > 0) {
         });
     }
 }
+
+})();
+
+
+/* ═══ האינטראקטיביות של העמוד ═══ */
+(function () {
 
 // "הצג עוד" — חושף את כל החודשים שמעבר ל-6 הראשונים (או מכווץ בחזרה)
 const moreBtn = document.getElementById('showMoreMonths');

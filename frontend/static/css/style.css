@@ -1929,6 +1929,18 @@ a.submit-btn {
     color: var(--color-text-soft);
 }
 
+/* כשספריית הגרפים לא נטענה: הקנבס מוחלף בהודעה, והמספר שהיה מרחף
+   במרכז הדונאט חוזר לזרימה הרגילה — אחרת הוא נופל על הטקסט. */
+.chart-unavailable {
+    max-width: none;
+    height: auto;
+}
+
+.chart-unavailable .doughnut-center {
+    position: static;
+    pointer-events: auto;
+}
+
 /* Legend */
 .legend-list {
     display: flex;

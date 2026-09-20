@@ -598,6 +598,9 @@
 {% if month_transactions %}
 <script src="{{ url_for('static', filename='js/vendor/chart.umd.min.js') }}"></script>
 {% endif %}
+{# מחוץ לתנאי בכוונה: בחודש ריק אין ספרייה, וזה בדיוק המקרה שבו צריך
+   מישהו שיגיד לשאר הקוד "אין גרפים" במקום שייפול עליהם #}
+<script src="{{ url_for('static', filename='js/chart-setup.js') }}"></script>
 
 <script type="application/json" id="sf-view-data">
     {{ {'summary': summary_data, 'expense': expense_data, 'members': members_data} | tojson }}

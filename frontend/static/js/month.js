@@ -1,8 +1,17 @@
 const SF_VIEW = window.sfData('sf-view-data');
 
+// "לאן הלך הכסף": כל הכסף שיצא, והחלוקה בין הוצאות לחיסכון. בלי קשר
+// להכנסות — זה מה שיצא, לא כמה נשאר. מחושב פעם אחת ברמת הקובץ כי גם
+// המקרא וגם הדונאט צריכים בדיוק את אותה רשימה, והמקרא נבנה גם כשאין
+// ספרייה לצייר בה.
+const OVERVIEW_PARTS = [
+    { label: 'הוצאות', value: (SF_VIEW.summary || {}).expense || 0, color: '#A04545' },
+    { label: 'חיסכון', value: (SF_VIEW.summary || {}).savings || 0, color: '#A67C00' },
+].filter(p => p.value > 0);
+const OVERVIEW_TOTAL = OVERVIEW_PARTS.reduce((s, p) => s + p.value, 0);
+
 // מרכוז החודש הנוכחי ברצועה בטעינה. ה"מגנט" עצמו כולו CSS — כאן רק
-// ממקמים את נקודת ההתחלה. בלוק נפרד ולפני Chart.js בכוונה: גם אם ה-CDN
-// לא נענה, הרצועה עדיין תיפתח במקום הנכון.
+// ממקמים את נקודת ההתחלה.
 (function () {
 const strip = document.getElementById('monthStrip');
 if (!strip) return;
@@ -17,25 +26,13 @@ strip.style.scrollBehavior = prev;
 })();
 
 
+/* ═══ האינטראקטיביות של העמוד ═══
+ *
+ * בלוק נפרד מהגרפים, ולפניהם, בכוונה: כל מה שכאן חייב לעבוד גם כשאין
+ * Chart.js. עד עכשיו הכול ישב יחד, והשורה הראשונה של הגרפים הפילה את
+ * השאר — כולל בחודש ריק, שבו התבנית בכלל לא טוענת את הספרייה.
+ */
 (function () {
-const COLORS = [
-    '#A67C00','#3D6B54','#A04545','#44609B',
-    '#75588F','#3E7373','#9C6A3C','#8F5470'
-];
-const TEXT_MUTED = '#78716C';
-const GRID_LINE  = 'rgba(28,25,23,0.07)';
-
-Chart.defaults.font.family = "'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-Chart.defaults.color = TEXT_MUTED;
-Chart.defaults.animation.duration = 900;
-Chart.defaults.animation.easing = 'easeOutQuart';
-Chart.defaults.plugins.legend.display = false;
-Chart.defaults.plugins.tooltip.backgroundColor = '#1C1917';
-Chart.defaults.plugins.tooltip.titleColor = '#FAF7F0';
-Chart.defaults.plugins.tooltip.bodyColor = '#E7E0D2';
-
-COLORS.forEach((c, i) =>
-    document.documentElement.style.setProperty('--chart-color-' + i, c));
 
 // ── הרחבת קטגוריה: הצגת כל העסקאות שלה בחודש ──
 function toggleExpand(trigger) {
@@ -66,19 +63,57 @@ document.addEventListener('click', function (e) {
     toggle.classList.toggle('open', shown);
 });
 
-const summary = SF_VIEW.summary;
+// ── המקרא של "לאן הלך הכסף" ──
+// נבנה כאן ולא עם הגרף: אלה המספרים עצמם (הוצאות מול חיסכון, בשקלים
+// ובאחוזים), והם השווים ביותר בכרטיס. הדונאט רק מצייר אותם.
+const legend = document.getElementById('overviewLegend');
+if (legend && OVERVIEW_TOTAL > 0) {
+    OVERVIEW_PARTS.forEach(p => {
+        const li = document.createElement('li');
+        li.className = 'legend-item';
+        li.innerHTML = `
+            <span class="legend-dot" style="background:${p.color}"></span>
+            <span class="legend-name">${p.label}</span>
+            <span class="legend-pct">${Math.round(p.value / OVERVIEW_TOTAL * 100)}%</span>
+            <span class="legend-amount">₪${p.value.toLocaleString('en-US')}</span>`;
+        legend.appendChild(li);
+    });
+}
 
-// ── 1. לאן הלך הכסף: כל הכסף שיצא (הוצאות + חיסכון) והחלוקה ביניהם ──
-// בלי קשר להכנסות — הגרף מציג מה יצא, לא כמה נשאר.
-const outTotal = summary.expense + summary.savings;
-if (outTotal > 0) {
+// ── חיפוש/סינון ברשימת "כל העסקאות" (client-side) ──
+const txSearch = document.getElementById('txSearch');
+if (txSearch) {
+    const allRows = Array.from(document.querySelectorAll('.all-tx-header + .tx-search-wrap + .cat-tx-list .cat-tx-row'));
+    const emptyMsg = document.getElementById('txSearchEmpty');
+    txSearch.addEventListener('input', function () {
+        const q = txSearch.value.trim().toLowerCase();
+        let shown = 0;
+        allRows.forEach(function (row) {
+            const desc = (row.querySelector('.cat-tx-desc') || {}).textContent || '';
+            const match = !q || desc.toLowerCase().indexOf(q) !== -1;
+            row.style.display = match ? '' : 'none';
+            if (match) shown++;
+        });
+        emptyMsg.style.display = (q && shown === 0) ? 'block' : 'none';
+    });
+}
+
+})();
+
+
+/* ═══ הגרפים ═══  (ראו chart-setup.js) */
+(function () {
+if (!window.sfCharts.ready) return;
+
+const COLORS    = window.sfCharts.colors;
+const GRID_LINE = window.sfCharts.grid;
+
+// ── 1. לאן הלך הכסף ──
+const parts = OVERVIEW_PARTS;
+if (parts.length) {
+    const outTotal = OVERVIEW_TOTAL;
     const ctx = document.getElementById('overviewChart');
-    const parts = [
-        { label: 'הוצאות', value: summary.expense, color: '#A04545' },
-        { label: 'חיסכון', value: summary.savings, color: '#A67C00' },
-    ].filter(p => p.value > 0);
-
-    if (ctx && parts.length) {
+    if (ctx) {
         new Chart(ctx, {
             type: 'doughnut',
             data: {
@@ -103,18 +138,6 @@ if (outTotal > 0) {
                     }
                 }
             }
-        });
-
-        const legend = document.getElementById('overviewLegend');
-        parts.forEach(p => {
-            const li = document.createElement('li');
-            li.className = 'legend-item';
-            li.innerHTML = `
-                <span class="legend-dot" style="background:${p.color}"></span>
-                <span class="legend-name">${p.label}</span>
-                <span class="legend-pct">${Math.round(p.value / outTotal * 100)}%</span>
-                <span class="legend-amount">₪${p.value.toLocaleString('en-US')}</span>`;
-            legend.appendChild(li);
         });
     }
 }
@@ -153,8 +176,7 @@ if (expenseData.length > 0) {
 }
 
 // ── 5. חלוקה בין בני המשפחה — גרף נפרד לכל סוג שהמשפחה הפעילה בו שיוך ──
-const membersData = SF_VIEW.members;
-membersData.forEach(function (mb) {
+SF_VIEW.members.forEach(function (mb) {
     const ctx = document.getElementById('membersChart-' + mb.type);
     if (!ctx || !mb.rows.length) return;
     new Chart(ctx, {
@@ -191,21 +213,4 @@ membersData.forEach(function (mb) {
     });
 });
 
-// ── חיפוש/סינון ברשימת "כל העסקאות" (client-side) ──
-const txSearch = document.getElementById('txSearch');
-if (txSearch) {
-    const allRows = Array.from(document.querySelectorAll('.all-tx-header + .tx-search-wrap + .cat-tx-list .cat-tx-row'));
-    const emptyMsg = document.getElementById('txSearchEmpty');
-    txSearch.addEventListener('input', function () {
-        const q = txSearch.value.trim().toLowerCase();
-        let shown = 0;
-        allRows.forEach(function (row) {
-            const desc = (row.querySelector('.cat-tx-desc') || {}).textContent || '';
-            const match = !q || desc.toLowerCase().indexOf(q) !== -1;
-            row.style.display = match ? '' : 'none';
-            if (match) shown++;
-        });
-        emptyMsg.style.display = (q && shown === 0) ? 'block' : 'none';
-    });
-}
 })();
