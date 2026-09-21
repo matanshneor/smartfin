@@ -239,3 +239,42 @@ def test_manage_mode_still_hides_the_list_management_controls():
 
     for control in (".edit-cat-btn", ".delete-cat-btn", ".cat-reorder-btns"):
         assert f"#categoriesArea:not(.managing) {control}" in css
+
+
+# ─── המבנה שמתן ביקש ────────────────────────────────────────────────────────
+
+def _budget_block():
+    """הבלוק של עריכת התקציב בתבנית.
+
+    לא חותכים ב-‎{% endif %}‎ הראשון: יש ‎{% if limit %}checked{% endif %}‎
+    בתוך התיבה עצמה, והחיתוך התרחש לפניה. תוחמים לפי סגירת ה-div."""
+    html = (_ROOT / "frontend/templates/settings.html").read_text(encoding="utf-8")
+    start = html.index('<div class="cat-budget-edit">')
+    depth, i = 0, start
+    while True:
+        if html.startswith("<div", i):
+            depth += 1
+        elif html.startswith("</div>", i):
+            depth -= 1
+            if depth == 0:
+                return html[start:i + 6]
+        i += 1
+
+
+def test_there_is_exactly_one_toggle_and_it_says_what_it_does():
+    """מתג אחד, "קביעת תקציב חודשי". לא שניים, ולא ניסוח שמשאיר את
+    המשתמש לנחש מה יקרה."""
+    block = _budget_block()
+
+    assert block.count('type="checkbox"') == 1
+    assert "קביעת תקציב חודשי" in block
+
+
+def test_turning_it_on_reveals_an_amount_box_and_a_save_button():
+    block  = _budget_block()
+    fields = block[block.index('class="cat-budget-fields"'):]
+
+    assert 'class="form-input budget-amount"' in fields
+    assert "budget-save" in fields and ">שמור<" in fields
+    # מוסתר עד שמדליקים
+    assert "{% if not limit %}hidden{% endif %}" in block
