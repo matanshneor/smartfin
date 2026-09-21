@@ -149,7 +149,11 @@
                 </div>
                 <span class="invite-code-inline" id="inviteCode">{{ family['invite_code'] }}</span>
                 <button class="btn-sm btn-ghost" id="copyCodeBtn">העתק</button>
+                {# החלפת קוד פוסלת גם הזמנות שכבר נשלחו, ולכן היא של המנהל.
+                   הכלל נאכף בשרת ממילא; ההסתרה כאן רק לא מציעה פעולה שתיכשל. #}
+                {% if user.id == family.get('manager_id') %}
                 <button class="btn-sm btn-ghost" id="rotateCodeBtn">קוד חדש</button>
+                {% endif %}
             </div>
             {% endif %}
 
@@ -226,7 +230,9 @@
                                 <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
                             </svg>
                         </button>
+                        {% if user.id == family.get('manager_id') %}
                         <button class="delete-cat-btn" data-id="{{ cat.id }}" aria-label="מחק קטגוריה">✕</button>
+                        {% endif %}
                         {% else %}
                         <span class="cat-system-badge">מובנה</span>
                         {% endif %}
@@ -618,7 +624,7 @@
                 <button class="btn-sm btn-ghost btn-danger-ghost" id="toggleResetAccountBtn">אפס חשבון</button>
             </div>
 
-            <div class="password-form" id="resetAccountForm">
+            <div class="password-form" id="resetAccountForm" data-tx-count="{{ family_tx_count }}">
                 <p class="delete-account-warning">
                     האיפוס מוחק לצמיתות את כל העסקאות — הכנסות, הוצאות וחיסכון,
                     כולל עסקאות קבועות. הקטגוריות, הפרויקטים וההגדרות נשמרים.
@@ -626,8 +632,13 @@
                 <div class="form-group">
                     <label class="form-label">מה לאפס?</label>
                     <div class="type-toggle" style="grid-template-columns: 1fr 1fr;">
+                        {% if user.id == family.get('manager_id') %}
                         <button type="button" class="toggle-btn active" id="resetScopeFamily" data-scope="family">כל עסקאות המשפחה</button>
                         <button type="button" class="toggle-btn" id="resetScopeMine" data-scope="mine">רק העסקאות שלי</button>
+                        {% else %}
+                        {# מחיקת ההיסטוריה של כל המשפחה היא של המנהל בלבד. #}
+                        <button type="button" class="toggle-btn active" id="resetScopeMine" data-scope="mine">רק העסקאות שלי</button>
+                        {% endif %}
                     </div>
                     <p class="field-hint">"רק העסקאות שלי" מוחק עסקאות שמשויכות אליך אישית — עסקאות משותפות ושל בני משפחה אחרים נשארות</p>
                 </div>

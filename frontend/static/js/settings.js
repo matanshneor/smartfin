@@ -348,7 +348,9 @@ document.addEventListener('click', function (e) {
     const catName = (row.querySelector('.cat-row-name') || {}).textContent || '';
     window.appConfirm({
         title: 'למחוק את "' + catName.trim() + '"?',
-        message: 'עסקאות קיימות בקטגוריה יוצגו כ"אחר".',
+        // הנוסח הישן ("יוצגו כאחר") היה נכון כשהפילוח קובץ לפי שם והן
+        // התמזגו בשקט לתוך קטגוריית "אחר" הקיימת. מאז הן דלי נפרד.
+        message: 'עסקאות קיימות בקטגוריה יעברו ל"ללא קטגוריה".',
         confirmText: 'מחק קטגוריה',
     }).then(function (ok) {
         if (!ok) return;
@@ -363,7 +365,7 @@ document.addEventListener('click', function (e) {
                 setTimeout(function () { row.remove(); updatePanelReorderState(panel); }, 260);
                 window.showToast('הקטגוריה נמחקה');
             } else {
-                window.showToast('המחיקה נכשלה', 'error');
+                window.showToast(d.error || 'המחיקה נכשלה', 'error');
             }
         })
         .catch(function () { window.showToast(window.sfNetError(), 'error'); });
@@ -601,13 +603,15 @@ const resetPwInput    = document.getElementById('resetAccountPassword');
 const resetError      = document.getElementById('resetAccountError');
 const scopeFamilyBtn  = document.getElementById('resetScopeFamily');
 const scopeMineBtn    = document.getElementById('resetScopeMine');
-let resetScope = 'family';
+// מי שאינו מנהל המשפחה לא מקבל את הכפתור "כל עסקאות המשפחה" בכלל,
+// אז ברירת המחדל נגזרת ממה שקיים על המסך ולא מקובעת ל-'family'.
+let resetScope = scopeFamilyBtn ? 'family' : 'mine';
 
 if (toggleResetBtn) {
-    [scopeFamilyBtn, scopeMineBtn].forEach(function (btn) {
+    [scopeFamilyBtn, scopeMineBtn].filter(Boolean).forEach(function (btn) {
         btn.addEventListener('click', function () {
-            scopeFamilyBtn.classList.toggle('active', btn === scopeFamilyBtn);
-            scopeMineBtn.classList.toggle('active', btn === scopeMineBtn);
+            if (scopeFamilyBtn) scopeFamilyBtn.classList.toggle('active', btn === scopeFamilyBtn);
+            if (scopeMineBtn)   scopeMineBtn.classList.toggle('active', btn === scopeMineBtn);
             resetScope = btn.dataset.scope;
         });
     });
@@ -627,11 +631,17 @@ if (toggleResetBtn) {
             resetError.textContent = 'נא להזין את הסיסמה הנוכחית';
             return;
         }
+        // מספר הוא מה שגורם לעצור, לא המשפט "פעולה סופית". הספירה
+        // מגיעה מהשרת עם העמוד; אם היא לא הצליחה, לא ממציאים מספר.
+        const txCount = parseInt((resetForm.dataset.txCount || ''), 10);
+        const count   = (resetScope === 'family' && !isNaN(txCount))
+            ? ' ' + txCount + ' עסקאות יימחקו.'
+            : '';
         window.appConfirm({
             title: resetScope === 'family'
                 ? 'לאפס את כל עסקאות המשפחה?'
                 : 'למחוק את כל העסקאות שלך?',
-            message: 'פעולה זו סופית ולא ניתנת לביטול.',
+            message: count + ' פעולה זו סופית ולא ניתנת לביטול.',
             confirmText: 'אפס עסקאות',
         }).then(function (ok) {
             if (!ok) return;

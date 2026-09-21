@@ -73,7 +73,9 @@ def client(monkeypatch):
                         lambda fid: [{"id": _ME, "name": "מתן", "full_name": "מתן שניאור",
                                       "email": "m@x.com", "phone": "050", "workplace": "עבודה"}])
     for fn, val in (("get_categories", []), ("get_family", {}),
-                    ("get_recurring_transactions", []), ("get_projects", [])):
+                    ("get_recurring_transactions", []), ("get_projects", []),
+                    # ספירת העסקאות שמוצגת באישור איפוס החשבון
+                    ("family_transaction_count", 0)):
         monkeypatch.setattr(app_module.db, fn, lambda *a, _v=val, **k: _v)
     monkeypatch.setattr(app_module, "family_settings",
                         lambda: dict(db.DEFAULT_FAMILY_SETTINGS))

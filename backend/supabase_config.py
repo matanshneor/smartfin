@@ -1231,6 +1231,24 @@ def leave_family(keep_transactions: bool = True):
         return None, str(e)
 
 
+def is_family_manager() -> bool:
+    """האם המשתמש המחובר הוא מנהל המשפחה שלו.
+
+    דרך RPC ולא דרך קריאה ל-families: הפונקציה נגזרת מ-‎auth.uid()‎ ולא
+    מפרמטר, כך שאי אפשר לשאול אותה על מישהו אחר. היא מחזירה בוליאני
+    בלבד — מזהה המנהל לא נחשף למי שלא אמור לראותו.
+
+    זורקת ‎DataUnavailable‎ בכישלון: "לא ידוע" חייב להיקרא כ"לא מנהל"
+    אצל הקורא, והכיוון הזה חייב להיות מפורש ולא תוצאה של ‎False‎ שקט."""
+    client = get_client()
+    if not client:
+        raise DataUnavailable("is_family_manager: no client")
+    try:
+        return bool(client.rpc("is_family_manager", {}).execute().data)
+    except Exception as e:
+        raise DataUnavailable("is_family_manager") from e
+
+
 def rotate_invite_code():
     """מחליפה את קוד ההזמנה. מחזירה (new_code, error).
     כל בן משפחה רשאי — מי שמגלה שהקוד דלף צריך לסגור אותו מיד."""

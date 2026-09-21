@@ -26,9 +26,12 @@ _FAM   = "33333333-3333-3333-3333-333333333333"
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
     app.config["TESTING"] = True
     limiter.reset()
+    # ברירת המחדל כאן היא מנהל: הבדיקות בקובץ הזה עוסקות במה שהפעולות
+    # עושות, לא במי רשאי. הבדיקות על ההרשאה עצמה יושבות בקובץ נפרד.
+    monkeypatch.setattr(app_module.db, "is_family_manager", lambda: True)
     with app.test_client() as c:
         with c.session_transaction() as sess:
             sess["user_id"]   = _ME

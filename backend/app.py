@@ -1411,6 +1411,13 @@ def settings():
     if profile is None:
         # אין משפחה, או שהחבר לא חזר מהרשימה — נופלים לשליפה הישירה
         profile = db.get_profile(user["id"]) or {}
+    # כמה עסקאות באמת עומדות להימחק. "פעולה סופית ולא ניתנת לביטול" הוא
+    # משפט; מספר הוא עובדה, והוא מה שגורם לעצור.
+    try:
+        family_tx_count = db.family_transaction_count(family_id) if family_id else 0
+    except db.DataUnavailable:
+        family_tx_count = None
+
     full_name = profile.get("full_name") or profile.get("name") or user["name"]
     name_parts = full_name.split(" ", 1)
     account = {
@@ -1423,6 +1430,7 @@ def settings():
     }
     return render_template(
         "settings.html",
+        family_tx_count=family_tx_count,
         active_page="settings",
         user=user,
         categories=categories,
@@ -1525,6 +1533,15 @@ def reset_account_route():
         return jsonify({"error": "הסיסמה שגויה"}), 403
 
     db.set_auth_token(response.session.access_token)
+
+    # איפוס כל המשפחה הוא הפעולה ההרסנית ביותר באפליקציה, והוא היה
+    # פתוח לכל חבר עם הסיסמה של עצמו בלבד. "רק שלי" נשאר פתוח — זה
+    # הכסף של מי שמבקש.
+    if scope == "family":
+        denied = _require_manager()
+        if denied:
+            return denied
+
     # ‎deleted‎ ולא ‎ok‎: אפס שורות הוא תוצאה תקינה (משפחה בלי עסקאות),
     # אז הכישלון נמדד לפי ‎err‎ בלבד. המספר מוחזר כדי שהמשתמש יראה מה
     # באמת קרה — זו הפעולה ההרסנית ביותר באפליקציה.
@@ -1622,6 +1639,26 @@ def _parse_date(raw):
     if value.year > today.year + _DATE_FUTURE_YEARS:
         return None, "התאריך רחוק מדי בעתיד"
     return value.isoformat(), None
+
+
+def _require_manager():
+    """שער לפעולות הרסניות. מחזיר ‎None‎ אם מותר, או תשובת שגיאה מוכנה.
+
+    התפקיד נוסף כדי שמישהו יהיה אחראי, אבל נאכף רק על הסרת חבר — כך
+    שכל מי שהצטרף עם קוד בן שישה תווים יכול היה למחוק את היסטוריית
+    כל המשפחה, למחוק קטגוריות ולהחליף את קוד ההזמנה.
+
+    הבדיקה נגזרת מ-‎auth.uid()‎ במסד ולא מהסשן, ולכן אי אפשר לזייף
+    אותה מהלקוח. בכישלון שליפה מסרבים — "לא ידוע אם הוא מנהל" הוא
+    לא "כן"."""
+    try:
+        if db.is_family_manager():
+            return None
+    except db.DataUnavailable:
+        return jsonify({"error": "לא הצלחנו לאמת הרשאות — נסו שוב"}), 503
+    return jsonify({
+        "error": "רק מנהל המשפחה יכול לבצע את הפעולה הזאת.",
+    }), 403
 
 
 def _resolve_owner(body: dict, user: dict, tx_type: str):
@@ -2176,17 +2213,27 @@ def update_category(cat_id):
 @app.route("/api/categories/<cat_id>", methods=["DELETE"])
 @login_required
 def delete_category(cat_id):
-    user   = get_current_user()
+    user = get_current_user()
+
+    denied = _require_manager()
+    if denied:
+        return denied
+
     client = db.get_client()
     if not client:
         return jsonify({"error": "השירות אינו זמין כרגע — נסו שוב בעוד רגע"}), 500
     try:
-        client.table("categories") \
+        # ‎.data‎ מחזיר את מה שנמחק בפועל. בלי הבדיקה הזאת המסלול ענה
+        # "נמחק" גם כשלא נגע בכלום — קטגוריה שאינה מותאמת אישית, או
+        # מזהה של משפחה אחרת.
+        result = client.table("categories") \
             .delete() \
             .eq("id", cat_id) \
             .eq("family_id", user["family_id"]) \
             .eq("is_custom", True) \
             .execute()
+        if not result.data:
+            return jsonify({"error": "הקטגוריה לא נמצאה"}), 404
         return jsonify({"status": "ok"})
     except Exception as e:
         logger.exception("delete_category route")
@@ -2388,6 +2435,10 @@ def rotate_invite_code_route():
     user = get_current_user()
     if not user["family_id"]:
         return jsonify({"error": "לא משויכת משפחה לחשבון"}), 400
+
+    denied = _require_manager()
+    if denied:
+        return denied
 
     code, err = db.rotate_invite_code()
     if err or not code:
