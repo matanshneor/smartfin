@@ -17,3 +17,7 @@ build/
 **/supabase/.branches/
 **/supabase/.temp/
 .ruff_cache/
+
+# כלי הניהול המקומי. מחזיק גישה חוצת-משפחות למסד החי, והריפו הזה
+# ציבורי. מוחרג גם כאן, גם ב-admin/.gitignore, וגם ב-hook של pre-commit.
+/admin/
