@@ -122,9 +122,12 @@ window.escapeHtml = window.escapeHtml || function (s) {
     document.getElementById('copyInviteBtn').addEventListener('click', function () {
         const el = document.getElementById('onboardingInviteCode');
         const btn = this;
-        window.copyToClipboard(el.textContent.trim(), el).then(function (copied) {
+        const famEl = document.getElementById('familyName');
+        const msg = window.sfInviteMessage(el.textContent.trim(),
+                                           famEl && famEl.value.trim());
+        window.copyToClipboard(msg, el).then(function (copied) {
             if (!copied) return;          // הודעה כבר הוצגה, והקוד מסומן
-            btn.textContent = '✓ הועתק';
+            btn.textContent = '✓ הועתקה הזמנה';
             setTimeout(function () { btn.textContent = 'העתק קוד'; }, 1800);
         });
     });

@@ -93,10 +93,13 @@ const inviteCode = document.getElementById('inviteCode');
 
 if (copyBtn && inviteCode) {
     copyBtn.addEventListener('click', function () {
-        window.copyToClipboard(inviteCode.textContent.trim(), inviteCode)
+        const famEl = document.getElementById('familyNameInput');
+        const msg = window.sfInviteMessage(inviteCode.textContent.trim(),
+                                           famEl && famEl.value.trim());
+        window.copyToClipboard(msg, inviteCode)
             .then(function (copied) {
                 if (!copied) return;      // הודעה כבר הוצגה, והקוד מסומן
-                copyBtn.textContent = '✓ הועתק';
+                copyBtn.textContent = '✓ הועתקה הזמנה';
                 setTimeout(function () { copyBtn.textContent = 'העתק'; }, 2000);
             });
     });
