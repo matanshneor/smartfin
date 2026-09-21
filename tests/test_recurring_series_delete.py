@@ -235,3 +235,38 @@ def test_no_undo_is_offered_for_either():
 
     assert "label: 'בטל'" not in block
     assert "שאר הסדרה נשארה" in block
+
+
+# ─── שתי שאלות במקום אחת ────────────────────────────────────────────────────
+
+def test_a_recurring_transaction_is_not_asked_the_generic_question_first():
+    """מתן ראה "למחוק את העסקה? / הפעולה תסיר את העסקה מכל הדוחות
+    והגרפים" — משפט שנכון לעסקה בודדת ומטעה לחלוטין כשמאחוריה סדרה.
+
+    השאלה האמיתית מגיעה אחריה, מהשרת, אבל מי שרואה שאלה מנוסחת
+    ומוחלטת מניח שזו השאלה היחידה — ולוחץ ביטול."""
+    js = _js()
+    block = js[js.index("function confirmDelete("):]
+    block = block[:block.index("function deleteWithUndo(")]
+
+    assert "txData.isRecurring || txData.recurringParentId" in block
+    assert "Promise.resolve(true)" in block
+
+
+def test_every_delete_path_goes_through_the_same_gate():
+    """שלושה מסלולי מחיקה — המודאל, העורך בשורה, וההחלקה. שלושתם
+    שאלו את השאלה הגנרית בנפרד, וכל אחד היה יכול להישאר מאחור."""
+    js = _js()
+
+    assert js.count("title: 'למחוק את העסקה?'") == 1, "נשארה שאלה גנרית מקומית"
+    assert js.count("confirmDelete(") == 4, "לא כל מסלולי המחיקה עוברים בשער"
+
+
+def test_an_ordinary_transaction_still_gets_asked():
+    """בקרת-נגד: רוב המחיקות הן של עסקה רגילה, ושם השאלה נחוצה."""
+    js = _js()
+    block = js[js.index("function confirmDelete("):]
+    block = block[:block.index("function deleteWithUndo(")]
+
+    assert "הפעולה תסיר את העסקה מכל הדוחות והגרפים" in block
+    assert "confirmText: 'מחק עסקה'" in block

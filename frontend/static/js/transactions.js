@@ -846,6 +846,27 @@
             .catch(function () { if (onFail) onFail(window.sfNetError()); });
     }
 
+    /* האישור שלפני המחיקה.
+     *
+     * לעסקה רגילה — השאלה הרגילה. לעסקה ששייכת לסדרה קבועה — **בלי
+     * שאלה כאן בכלל**, כי השרת עונה 409 ומיד אחריו נשאלת השאלה
+     * האמיתית ("רק את זו / את זו וכל הבאות").
+     *
+     * קודם שתי השאלות הופיעו בזו אחר זו, והראשונה אמרה "הפעולה תסיר
+     * את העסקה מכל הדוחות והגרפים" — משפט שנכון לעסקה בודדת ומטעה
+     * לחלוטין כשמאחוריה סדרה שלמה. מתן ראה אותה, וכצפוי הבין שזו
+     * השאלה היחידה שתהיה. */
+    function confirmDelete(txData) {
+        if (txData && (txData.isRecurring || txData.recurringParentId)) {
+            return Promise.resolve(true);
+        }
+        return window.appConfirm({
+            title: 'למחוק את העסקה?',
+            message: 'הפעולה תסיר את העסקה מכל הדוחות והגרפים.',
+            confirmText: 'מחק עסקה',
+        });
+    }
+
     function deleteWithUndo(txData, row, onFail) {
         // תמונת הקבלה נמחקת מהאחסון יחד עם העסקה, ולכן "בטל" מחזיר את
         // העסקה בלבד — הקובץ כבר לא קיים. זה היה קורה בשקט: המשתמש לחץ
@@ -935,14 +956,14 @@
     // Delete (edit mode only)
     deleteBtn.addEventListener('click', function () {
         if (!editId) return;
-        window.appConfirm({
-            title: 'למחוק את העסקה?',
-            message: 'הפעולה תסיר את העסקה מכל הדוחות והגרפים.',
-            confirmText: 'מחק עסקה',
-        }).then(function (ok) {
+        const row = document.querySelector('[data-id="' + editId + '"]');
+        // כשהשורה לא ברשימה (עריכה מהעמוד השני, למשל) — המודאל עצמו
+        // כבר יודע אם זו סדרה
+        const txData = row ? buildTxFromRow(row)
+                           : { id: editId, isRecurring: recurringCb.checked,
+                               recurringParentId: editingRecurringParentId };
+        confirmDelete(txData).then(function (ok) {
             if (!ok) return;
-            const row = document.querySelector('[data-id="' + editId + '"]');
-            const txData = row ? buildTxFromRow(row) : { id: editId };
             closeModal();
             deleteWithUndo(txData, row, function (msg) {
                 window.showToast(msg, 'error');
@@ -1217,11 +1238,7 @@
 
         // מחיקה — בדיוק אותו flow של ה-swipe: אישור, ואז מחיקה עם "בטל"
         body.querySelector('.inline-del').addEventListener('click', function () {
-            window.appConfirm({
-                title: 'למחוק את העסקה?',
-                message: 'הפעולה תסיר את העסקה מכל הדוחות והגרפים.',
-                confirmText: 'מחק עסקה',
-            }).then(function (ok) {
+            confirmDelete(tx).then(function (ok) {
                 if (!ok) return;
                 closeInlineEditor();
                 deleteWithUndo(tx, row, function (msg) { window.showToast(msg, 'error'); });
@@ -1420,13 +1437,10 @@
             const delBtn = e.target.closest('.swipe-action-delete');
             if (delBtn) {
                 const row = delBtn.closest(ROW_SELECTOR);
-                window.appConfirm({
-                    title: 'למחוק את העסקה?',
-                    message: 'הפעולה תסיר את העסקה מכל הדוחות והגרפים.',
-                    confirmText: 'מחק עסקה',
-                }).then(function (ok) {
+                const swiped = buildTxFromRow(row);
+                confirmDelete(swiped).then(function (ok) {
                     if (!ok) { closeRow(row); return; }
-                    deleteWithUndo(buildTxFromRow(row), row, function (msg) {
+                    deleteWithUndo(swiped, row, function (msg) {
                         closeRow(row);
                         window.showToast(msg, 'error');
                     });
