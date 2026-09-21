@@ -1289,6 +1289,80 @@ def stop_recurring(transaction_id: str, family_id: str):
         return False, str(e)
 
 
+def recurring_series(transaction_id: str, family_id: str):
+    """מזהה אם עסקה היא תבנית של סדרה קבועה, וכמה מופעים נוצרו ממנה.
+    מחזירה ‎(is_template, instance_count)‎, או זורקת ‎DataUnavailable‎.
+
+    נקראת לפני כל מחיקה. תבנית היא עסקה רגילה לכל דבר ומופיעה ברשימה
+    ככל עסקה אחרת — ולכן מחיקה ממנה נראית תמימה לגמרי, בעוד שהיא
+    מנתקת את כל המופעים מהתבנית ומשביתה את ההגנה מפני כפילות. בלי
+    השאלה הזאת אין דרך לדעת שצריך לשאול."""
+    client = get_client()
+    if not client:
+        raise DataUnavailable("recurring_series: no client")
+    try:
+        row = client.table("transactions").select("is_recurring") \
+            .eq("id", transaction_id).eq("family_id", family_id) \
+            .maybe_single().execute().data
+        if not row or not row.get("is_recurring"):
+            return False, 0
+        result = client.table("transactions").select("id", count="exact") \
+            .eq("family_id", family_id) \
+            .eq("recurring_parent_id", transaction_id).execute()
+        return True, (result.count or 0)
+    except Exception as e:
+        raise DataUnavailable("recurring_series") from e
+
+
+def is_recurring_instance(transaction_id: str, family_id: str) -> bool:
+    """האם העסקה היא מופע שנוצר מסדרה קבועה (ולא תבנית בפני עצמה).
+
+    אין שום אילוץ במסד שמונע מהשורה להיות גם מופע וגם תבנית, ותיבת
+    "עסקה קבועה" במודאל העריכה פעילה גם על מופע. משתמש שפותח את שכר
+    הדירה של חודש שעבר ומסמן אותה — קריאה סבירה לגמרי של "שיהיה קבוע
+    מעכשיו" — מייצר תבנית שנייה שרצה במקביל לראשונה, לתמיד."""
+    client = get_client()
+    if not client:
+        raise DataUnavailable("is_recurring_instance: no client")
+    try:
+        row = client.table("transactions").select("recurring_parent_id") \
+            .eq("id", transaction_id).eq("family_id", family_id) \
+            .maybe_single().execute().data
+        return bool(row and row.get("recurring_parent_id"))
+    except Exception as e:
+        raise DataUnavailable("is_recurring_instance") from e
+
+
+def delete_recurring_series(template_id: str, family_id: str):
+    """מוחקת תבנית קבועה **וכל המופעים שנוצרו ממנה**. מחזירה (deleted, error).
+
+    המופעים נמחקים ראשונים בכוונה: אם הם היו נשארים והתבנית נמחקת,
+    הם היו מתנתקים ממנה (‎on delete set null‎) והופכים ליתומים שאיש
+    כבר לא יכול לקשר לסדרה — בדיוק המצב שהפונקציה הזאת נועדה למנוע.
+
+    כל שורה שנמחקת מארוכבת אוטומטית ב-owner_archive דרך הטריגר (אומת:
+    מחיקת סדרה בת 4 שורות הוסיפה 4 רשומות ארכיון), אז זו פעולה הפיכה
+    על ידי בעל האתר — אבל לא על ידי המשתמש, ולכן המסלול שקורא לה
+    דורש בחירה מפורשת."""
+    client = get_client()
+    if not client:
+        return 0, "Database not configured"
+    try:
+        children = client.table("transactions").delete() \
+            .eq("family_id", family_id) \
+            .eq("recurring_parent_id", template_id) \
+            .execute().data or []
+        parent = client.table("transactions").delete() \
+            .eq("family_id", family_id).eq("id", template_id) \
+            .execute().data or []
+        if not parent:
+            return 0, "not found"
+        return len(children) + len(parent), None
+    except Exception as e:
+        logger.exception("delete_recurring_series")
+        return 0, str(e)
+
+
 def delete_transaction(transaction_id: str, family_id: str):
     client = get_client()
     if not client:

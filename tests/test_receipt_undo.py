@@ -21,8 +21,15 @@ _JS   = (_ROOT / "frontend/static/js/transactions.js").read_text(encoding="utf-8
 _CSS  = (_ROOT / "frontend/static/css/style.css").read_text(encoding="utf-8")
 
 
-def _block(start, length=1400):
-    return _JS[_JS.index(start):][:length]
+def _block(start):
+    """גוף הפונקציה, תחום לפי המבנה ולא לפי מספר תווים קסום.
+
+    הגרסה הקודמת חתכה 1400 תווים קבועים, ונשברה ברגע שנוספה לפונקציה
+    לוגיקה למעלה — בלי שהתנהגות כלשהי השתנתה. בדיקה שנשברת מריפקטור
+    מלמדת להתעלם ממנה."""
+    body = _JS[_JS.index(start) + len(start):]
+    end = body.find("\n    function ")
+    return body[:end if end != -1 else len(body)]
 
 
 # ─── אומרים את זה, ורק כשזה נכון ────────────────────────────────────────────

@@ -293,12 +293,33 @@
         });
     }
 
+    /* נועל את תיבת "עסקה קבועה" על מופע שכבר שייך לסדרה, ומסביר למה.
+     * בלי זה הסימון נראה זמין לגמרי, והלחיצה עליו — קריאה סבירה של
+     * "שיהיה קבוע מעכשיו" — הייתה מייצרת סדרה כפולה. */
+    function setRecurringLock(locked) {
+        recurringCb.disabled = locked;
+        const group = recurringCb.closest('.recurring-group');
+        if (group) group.classList.toggle('is-locked', locked);
+        let note = document.getElementById('recurringLockNote');
+        if (locked && !note && group) {
+            note = document.createElement('p');
+            note.id = 'recurringLockNote';
+            note.className = 'field-hint';
+            note.textContent = 'העסקה הזאת כבר חלק מסדרה קבועה. '
+                             + 'לשינוי הסדרה — הגדרות ← עסקאות קבועות.';
+            group.appendChild(note);
+        } else if (!locked && note) {
+            note.remove();
+        }
+    }
+
     function openAddModal() {
         editId = null;
         editingRecurringParentId = null;
         originalAmount = null;
         modalTitle.textContent = 'הוספת עסקה';
         editModeActions.style.display = 'none';
+        setRecurringLock(false);
         resetForm();
         withLoadingTrigger(fabBtn, Promise.all([loadCategories(), loadMembers(), loadProjects()]))
             .then(function () {
@@ -331,6 +352,10 @@
                     txFrequency.value = tx.recurringFrequency || 'monthly_1';
                     txEndDate.value   = tx.recurringEndDate || '';
                 }
+                // מופע שכבר נוצר מסדרה: סימון "קבועה" עליו היה מייצר
+                // תבנית שנייה שרצה במקביל לראשונה. השרת חוסם את זה
+                // ממילא — כאן פשוט לא מציעים פעולה שתיכשל.
+                setRecurringLock(!!tx.recurringParentId);
                 updateSubmitLabel();
                 openModal();
             })
@@ -764,6 +789,63 @@
         if (refreshWhenEditingEnds && !somethingIsBeingEdited()) refreshAfterDelete();
     }
 
+    /* ── מחיקת עסקה שהיא תבנית של סדרה קבועה ──
+     *
+     * שתי אפשרויות אמיתיות, ולא "כן/לא": לעצור את הסדרה ולהשאיר את
+     * הכסף שכבר נרשם, או למחוק את הכול. הדיאלוג הישן אמר רק "הפעולה
+     * תסיר את העסקה מכל הדוחות והגרפים" — אף מילה על כך שיש מאחוריה
+     * סדרה שלמה.
+     *
+     * הסדר מכוון: הפעולה הבטוחה היא כפתור האישור, וההרסנית דורשת
+     * מעבר בדיאלוג שני. נסיגה (Escape או לחיצה בחוץ) מחזירה ‎null‎
+     * ומבטלת — בשני השלבים.
+     */
+    function askAboutSeries(txData, row, instances, onFail) {
+        const total = instances + 1;
+        return window.appConfirm({
+            title:       'זו עסקה קבועה',
+            message:     instances
+                ? 'נוצרו ממנה כבר ' + instances + ' עסקאות נוספות. אפשר לעצור '
+                  + 'את הסדרה ולהשאיר אותן, או למחוק את הכול.'
+                : 'עדיין לא נוצרו ממנה עסקאות נוספות. אפשר לעצור את הסדרה '
+                  + 'ולהשאיר את העסקה הזאת, או למחוק אותה.',
+            confirmText: 'עצור את הסדרה',
+            cancelText:  'מחק הכול',
+            danger:      false,
+        }).then(function (stop) {
+            if (stop === null) return;                  // נסיגה
+            if (stop) return sendSeriesDelete(txData, row, 'stop', 0, onFail);
+
+            return window.appConfirm({
+                title:       'למחוק את כל הסדרה?',
+                message:     total + ' עסקאות יימחקו, כולל מה שכבר נרשם בחודשים '
+                             + 'קודמים. אי אפשר לבטל את זה מהאפליקציה.',
+                confirmText: 'מחק את הכול',
+            }).then(function (sure) {
+                if (sure !== true) return;
+                return sendSeriesDelete(txData, row, 'series', total, onFail);
+            });
+        });
+    }
+
+    function sendSeriesDelete(txData, row, mode, total, onFail) {
+        return fetch('/api/transactions/' + txData.id + '?mode=' + mode, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(function (d) {
+                if (d.status !== 'ok') { if (onFail) onFail(d.error || 'הפעולה נכשלה'); return; }
+                // אין כאן "בטל": בעצירה לא נמחק כלום ואין מה להחזיר,
+                // ובמחיקת סדרה מדובר בעשרות שורות — שחזור חלקי שלהן
+                // היה גרוע מהמחיקה עצמה.
+                if (mode === 'series' && row) row.remove();
+                window.showToast(mode === 'stop'
+                    ? 'הסדרה נעצרה. העסקאות שכבר נרשמו נשארו'
+                    : (d.deleted || total) + ' עסקאות נמחקו');
+                clearTimeout(pendingDeleteReload);
+                pendingDeleteReload = setTimeout(refreshAfterDelete, 2500);
+            })
+            .catch(function () { if (onFail) onFail(window.sfNetError()); });
+    }
+
     function deleteWithUndo(txData, row, onFail) {
         // תמונת הקבלה נמחקת מהאחסון יחד עם העסקה, ולכן "בטל" מחזיר את
         // העסקה בלבד — הקובץ כבר לא קיים. זה היה קורה בשקט: המשתמש לחץ
@@ -771,9 +853,16 @@
         // אומרים את זה מראש, ורק כשבאמת הייתה קבלה.
         const hadReceipt = !!(row && row.querySelector('.receipt-badge'));
         fetch('/api/transactions/' + txData.id, { method: 'DELETE' })
-            .then(r => r.json())
-            .then(function (d) {
-                if (d.status !== 'ok') { if (onFail) onFail('מחיקה נכשלה'); return; }
+            .then(r => r.json().then(d => ({ code: r.status, d: d })))
+            .then(function (res) {
+                // השרת מזהה שזו תבנית של סדרה קבועה ומסרב למחוק בלי
+                // בחירה מפורשת. עד היום זה נמחק כמו כל עסקה — ואז כל
+                // המופעים התנתקו ממנה, ו"בטל" יצר את כל החודשים מחדש.
+                if (res.code === 409 && res.d.needs_choice) {
+                    return askAboutSeries(txData, row, res.d.instances, onFail);
+                }
+                const d = res.d;
+                if (d.status !== 'ok') { if (onFail) onFail(d.error || 'מחיקה נכשלה'); return; }
                 if (row) row.remove();
                 window.showToast(hadReceipt
                     ? 'העסקה נמחקה. הקבלה המצורפת נמחקה איתה ולא תחזור'

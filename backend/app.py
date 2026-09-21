@@ -1772,6 +1772,20 @@ def update_transaction(tx_id):
     if proj_err:
         return jsonify({"error": proj_err}), 422
 
+    # מופע של סדרה לא יכול להפוך לתבנית בפני עצמה. אין אילוץ במסד שמונע
+    # את זה, והתוצאה היא שתי סדרות מקבילות שמייצרות את אותו כסף פעמיים
+    # בכל חודש, לתמיד. מי שרוצה לשנות את הסדרה עושה זאת מהתבנית עצמה.
+    if bool(body.get("is_recurring", False)):
+        try:
+            if db.is_recurring_instance(tx_id, user["family_id"]):
+                return jsonify({
+                    "error": "העסקה הזאת כבר חלק מסדרה קבועה. כדי לשנות את "
+                             "הסדרה, ערכו אותה דרך ההגדרות ← עסקאות קבועות.",
+                }), 422
+        except db.DataUnavailable:
+            # לא ידוע. סדרה כפולה היא נזק שאי אפשר לבטל; ניסיון חוזר לא.
+            return jsonify({"error": "לא הצלחנו לבדוק את הסדרה הקבועה — נסו שוב"}), 503
+
     payload = {
         "amount":      amount,
         "type":        tx_type,
@@ -1803,7 +1817,52 @@ def update_transaction(tx_id):
 @app.route("/api/transactions/<tx_id>", methods=["DELETE"])
 @login_required
 def delete_transaction(tx_id):
+    """מחיקת עסקה — ועסקה קבועה היא לא עסקה אחת.
+
+    תבנית של סדרה קבועה היא שורה רגילה לכל דבר ומופיעה ברשימה ככל
+    עסקה אחרת, אז מחיקה ממנה נראית תמימה. בפועל היא מנתקת את כל
+    המופעים מהתבנית, וברגע שהם מנותקים המנוע כבר לא רואה שהוא יצר
+    אותם — כך שיצירה מחדש של אותה הוראת קבע מייצרת את כל החודשים
+    שוב. כפתור "בטל" עושה בדיוק את זה, אוטומטית.
+
+    לכן תבנית לא נמחקת בלי בחירה מפורשת: ‎mode=stop‎ עוצר את הסדרה
+    ומשאיר את הכסף, ‎mode=series‎ מוחק את הכול. בלי ‎mode‎ מוחזר 409
+    עם מספר המופעים, כדי שהשאלה תוצג עם המספר האמיתי — אותו דפוס
+    של ‎/api/family/join‎."""
     user = get_current_user()
+    mode = request.args.get("mode")
+
+    try:
+        is_template, instances = db.recurring_series(tx_id, user["family_id"])
+    except db.DataUnavailable:
+        # לא ידוע אם יש סדרה מאחורי השורה. מחיקה עיוורת כאן היא בדיוק
+        # הנזק שאי אפשר לבטל, אז מסרבים.
+        return jsonify({"error": "לא הצלחנו לבדוק אם זו עסקה קבועה — נסו שוב"}), 503
+
+    if is_template and mode not in ("stop", "series"):
+        return jsonify({
+            "needs_choice": True,
+            "instances":    instances,
+        }), 409
+
+    if is_template and mode == "stop":
+        ok, err = db.stop_recurring(tx_id, user["family_id"])
+        if not ok:
+            if err == "not found":
+                return jsonify({"error": "העסקה לא נמצאה"}), 404
+            logger.error("delete_transaction stop: %s", err)
+            return jsonify({"error": "עצירת הסדרה נכשלה — נסו שוב"}), 500
+        return jsonify({"status": "ok", "stopped": True})
+
+    if is_template and mode == "series":
+        deleted, err = db.delete_recurring_series(tx_id, user["family_id"])
+        if err:
+            if err == "not found":
+                return jsonify({"error": "העסקה לא נמצאה"}), 404
+            logger.error("delete_recurring_series route: %s", err)
+            return jsonify({"error": "מחיקת הסדרה נכשלה — נסו שוב"}), 500
+        return jsonify({"status": "ok", "deleted": deleted})
+
     receipt_path = db.get_transaction_receipt_path(tx_id, user["family_id"])
     ok = db.delete_transaction(tx_id, user["family_id"])
     if ok and receipt_path:
