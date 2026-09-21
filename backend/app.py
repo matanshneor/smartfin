@@ -841,10 +841,31 @@ def onboarding():
         return redirect(url_for("dashboard"))
 
     family = db.get_family(user["family_id"])
+
+    # מי שהצטרף למשפחה שעוד לא סיימה את ההגדרה נוחת כאן, כי "צריך
+    # אשף" נמדד לפי היעדר קטגוריות. עד עכשיו הוא ראה את מסך הפתיחה
+    # ("משפחה חדשה או הצטרפות?") — שנראה בדיוק ככישלון, והמוצא
+    # המתבקש בו הוא "פותחים משפחה חדשה", כלומר פיצול המשפחה לשתיים.
+    #
+    # אם יש במשפחה עוד מישהו, ההצטרפות הצליחה ואין מה להגדיר: מי
+    # שפתח את המשפחה עוד לא סיים. זה מה שצריך להיאמר.
+    #
+    # ורק למי שאינו המנהל. מי שפתח את המשפחה ונכנס אליו חבר באמצע
+    # האשף חייב להמשיך לראות את האשף — אחרת ההצטרפות נועלת אותו
+    # מחוץ להגדרה, ואף אחד מהשניים לא יכול להתקדם.
+    try:
+        others = [m for m in db.get_family_members(user["family_id"])
+                  if m.get("id") != user["id"]]
+    except db.DataUnavailable:
+        others = []
+    if family.get("manager_id") == user["id"]:
+        others = []
+
     return render_template(
         "onboarding.html",
         user=user,
         family=family,
+        waiting_for=others[0].get("name") if others else None,
         default_categories=_DEFAULT_CATEGORIES,
     )
 

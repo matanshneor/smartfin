@@ -3239,7 +3239,11 @@ li.project-row {
    "מוסתר" לברירת המחדל, כך שאי אפשר לשכוח אותו בשלב שיתווסף בעתיד.
    ה-JS ממשיך לנהל את המעברים עם style.display, שגובר על שניהם. */
 .onboarding-step { display: none; }
-.onboarding-step#step0 { display: block; }
+/* שני מסכי-פתיחה, ושניהם בלעדיים בתבנית: מי שהגיע לאשף רואה את step0,
+   ומי שהצטרף למשפחה שעוד לא סיימה רואה את stepWaiting במקומו. בלי
+   השורה השנייה מסך ההמתנה מרונדר ולא נראה — עמוד ריק לגמרי. */
+.onboarding-step#step0,
+.onboarding-step#stepWaiting { display: block; }
 
 .onboarding-sub {
     font-size: 0.85rem;

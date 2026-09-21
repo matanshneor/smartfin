@@ -7,20 +7,29 @@ window.escapeHtml = window.escapeHtml || function (s) {
 (function () {
     const errorBox = document.getElementById('onboardingError');
     const steps    = { 1: document.getElementById('step1'), 2: document.getElementById('step2'),
-                       3: document.getElementById('step3'), 4: document.getElementById('step4') };
+                       3: document.getElementById('step3') };
     const dots     = { 1: document.getElementById('dotStep1'), 2: document.getElementById('dotStep2'),
-                       3: document.getElementById('dotStep3'), 4: document.getElementById('dotStep4') };
+                       3: document.getElementById('dotStep3') };
+    // מסך ההזמנה אינו שלב באשף אלא מה שמוצג אחריו — ראו את ההערה
+    // בתבנית: קוד הזמנה לפני שהמשפחה מוגדרת שלח אנשים חזרה לאשף.
+    const stepInvite = document.getElementById('stepInvite');
 
     const step0    = document.getElementById('step0');
     const stepJoin = document.getElementById('stepJoin');
     const dotsBar  = document.getElementById('onboardingDots');
+
+    // מסך "הצטרפתם בהצלחה" מוגש במקום האשף כולו, ואין בו אף אחד
+    // מהאלמנטים שלמטה. בלי היציאה הזאת הקובץ נופל על הראשון שחסר,
+    // ואיתו כל מה שאחריו — בדיוק כמו שקרה ב-core.js.
+    if (!step0) return;
 
     function goToStep(n) {
         errorBox.textContent = '';
         step0.style.display    = 'none';
         stepJoin.style.display = 'none';
         dotsBar.style.display  = 'flex';
-        [1, 2, 3, 4].forEach(function (i) {
+        stepInvite.style.display = 'none';
+        [1, 2, 3].forEach(function (i) {
             steps[i].style.display = i === n ? 'block' : 'none';
             dots[i].classList.toggle('active', i <= n);
         });
@@ -28,7 +37,8 @@ window.escapeHtml = window.escapeHtml || function (s) {
 
     function showChoice(which) {
         errorBox.textContent = '';
-        [1, 2, 3, 4].forEach(function (i) { steps[i].style.display = 'none'; });
+        [1, 2, 3].forEach(function (i) { steps[i].style.display = 'none'; });
+        stepInvite.style.display = 'none';
         dotsBar.style.display  = 'none';
         step0.style.display    = which === 'start' ? 'block' : 'none';
         stepJoin.style.display = which === 'join'  ? 'block' : 'none';
@@ -105,6 +115,10 @@ window.escapeHtml = window.escapeHtml || function (s) {
         });
     });
 
+    document.getElementById('finishOnboardingBtn').addEventListener('click', function () {
+        window.location.href = '/';
+    });
+
     document.getElementById('toStep2Btn').addEventListener('click', function () {
         if (!document.getElementById('familyName').value.trim()) {
             errorBox.textContent = 'נא להזין שם למשפחה';
@@ -115,8 +129,6 @@ window.escapeHtml = window.escapeHtml || function (s) {
     document.getElementById('backTo1Btn').addEventListener('click', () => goToStep(1));
     document.getElementById('toStep3Btn').addEventListener('click', () => goToStep(3));
     document.getElementById('backTo2Btn').addEventListener('click', () => goToStep(2));
-    document.getElementById('toStep4Btn').addEventListener('click', () => goToStep(4));
-    document.getElementById('backTo3Btn').addEventListener('click', () => goToStep(3));
 
     // Copy invite code
     document.getElementById('copyInviteBtn').addEventListener('click', function () {
@@ -215,7 +227,11 @@ window.escapeHtml = window.escapeHtml || function (s) {
                 btn.textContent = 'סיום והתחלה';
                 return;
             }
-            window.location.href = '/';
+            // כאן, ורק כאן, המשפחה מוגדרת: יש לה שם, קטגוריות ושיוך.
+            // עכשיו יש טעם להזמין — הקוד מוצג אחרי הסיום, לא באמצע.
+            [1, 2, 3].forEach(function (i) { steps[i].style.display = 'none'; });
+            dotsBar.style.display = 'none';
+            stepInvite.style.display = 'block';
         })
         .catch(function () {
             errorBox.textContent = window.sfNetError();

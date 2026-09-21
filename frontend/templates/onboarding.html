@@ -27,7 +27,7 @@
                 </svg>
             </div>
             <h1 class="auth-app-name">SmartFin</h1>
-            <p class="auth-tagline">בואו נגדיר את המשפחה שלכם</p>
+            <p class="auth-tagline">{% if waiting_for %}אתם בפנים{% else %}בואו נגדיר את המשפחה שלכם{% endif %}</p>
         </div>
 
         <div class="auth-form-card onboarding-card">
@@ -38,8 +38,6 @@
                 <span class="step-dot" id="dotStep2">2</span>
                 <span class="step-line"></span>
                 <span class="step-dot" id="dotStep3">3</span>
-                <span class="step-line"></span>
-                <span class="step-dot" id="dotStep4">4</span>
             </div>
 
             <div class="form-error" id="onboardingError" role="alert"></div>
@@ -48,6 +46,23 @@
                  בלי המסך הזה היה נרטיב יחיד ("אתה בעלים של משפחה חדשה"),
                  ומי שקיבל קוד הזמנה לא מצא שום דרך להשתמש בו ופתח משפחה
                  כפולה בלי לדעת. -->
+            {# הצטרפת למשפחה שעדיין באמצע ההגדרה. ההצטרפות הצליחה —
+               פשוט אין עדיין קטגוריות, וזה מה שהאפליקציה מודדת. בלי
+               המסך הזה נראה כאן מסך הפתיחה, שנקרא ככישלון ומציע
+               "פותחים משפחה חדשה" — כלומר פיצול המשפחה לשתיים. #}
+            {% if waiting_for %}
+            <section class="onboarding-step" id="stepWaiting">
+                <h2 class="auth-form-title">הצטרפתם בהצלחה</h2>
+                <p class="onboarding-sub">
+                    אתם במשפחה של {{ waiting_for }}, ו{{ waiting_for }} עדיין באמצע ההגדרה
+                    הראשונית. ברגע שזה יסתיים תראו כאן את התקציב המשותף — אין מה
+                    לעשות בינתיים.
+                </p>
+                <div class="onboarding-actions">
+                    <button type="button" class="submit-btn" onclick="location.reload()">רענון</button>
+                </div>
+            </section>
+            {% else %}
             <section class="onboarding-step" id="step0">
                 <h2 class="auth-form-title">ברוכים הבאים ל-SmartFin</h2>
                 <p class="onboarding-sub">איך תרצו להתחיל?</p>
@@ -93,6 +108,8 @@
             </section>
 
             <!-- Step 1: שם המשפחה -->
+            {% endif %}
+
             <section class="onboarding-step" id="step1" style="display:none;">
                 <h2 class="auth-form-title">איך קוראים למשפחה שלכם?</h2>
                 <p class="onboarding-sub">השם הזה יופיע בראש דף ההגדרות ובכל האתר</p>
@@ -110,27 +127,33 @@
             </section>
 
             <!-- Step 2: קוד הזמנה -->
-            <section class="onboarding-step" id="step2" style="display:none;">
-                <h2 class="auth-form-title">הזמינו בני משפחה</h2>
+            {# ההזמנה היא המסך האחרון, ולא שלב 2 כמו קודם.
+               הקוד הוצג באמצע האשף, לפני שנוצרו הקטגוריות — ומי שקיבל
+               אותו והצטרף מיד נחת בעצמו על האשף (האפליקציה מזהה
+               "משפחה לא מוגדרת" לפי היעדר קטגוריות), בלי שום הסבר.
+               זה נראה ככישלון, והמוצא המתבקש — "פותחים משפחה חדשה" —
+               פיצל את המשפחה לשתיים. אין הזמנה לפני שיש למה להזמין. #}
+            <section class="onboarding-step" id="stepInvite" style="display:none;">
+                <h2 class="auth-form-title">הכול מוכן</h2>
                 <p class="onboarding-sub">
-                    כל בן משפחה שנרשם עם הקוד הזה יצטרף אוטומטית למשפחה שלכם ויוכל להזין ולראות את אותם הנתונים.
-                    אפשר גם לדלג ולשתף את הקוד מאוחר יותר דרך ההגדרות.
+                    המשפחה שלכם מוגדרת. אפשר להזמין עכשיו בני משפחה — כל מי שנרשם עם
+                    הקוד הזה יצטרף אליכם ויראה את אותם הנתונים — או לעשות זאת מאוחר
+                    יותר דרך ההגדרות.
                 </p>
 
                 <div class="settings-card invite-code-card">
                     <p class="invite-code-label">קוד ההזמנה שלכם</p>
                     <p class="invite-code-value" id="onboardingInviteCode">{{ family.get('invite_code', '') }}</p>
-                    <button type="button" class="btn-sm btn-ghost" id="copyInviteBtn">העתק קוד</button>
+                    <button type="button" class="btn-sm btn-ghost" id="copyInviteBtn">העתק הזמנה</button>
                 </div>
 
                 <div class="onboarding-actions">
-                    <button type="button" class="btn-sm btn-ghost" id="backTo1Btn">חזרה</button>
-                    <button type="button" class="submit-btn" id="toStep3Btn">המשך</button>
+                    <button type="button" class="submit-btn" id="finishOnboardingBtn">לאפליקציה</button>
                 </div>
             </section>
 
             <!-- Step 3: איך תרצו לעקוב? (שיוך עסקאות לבני משפחה) -->
-            <section class="onboarding-step" id="step3" style="display:none;">
+            <section class="onboarding-step" id="step2" style="display:none;">
                 <h2 class="auth-form-title">איך תרצו לעקוב?</h2>
                 <p class="onboarding-sub">
                     בסוגי העסקאות שתפעילו תוכלו לסמן "של מי" כל עסקה — ולראות חלוקה בין בני
@@ -168,13 +191,13 @@
                 </ul>
 
                 <div class="onboarding-actions">
-                    <button type="button" class="btn-sm btn-ghost" id="backTo2Btn">חזרה</button>
-                    <button type="button" class="submit-btn" id="toStep4Btn">המשך</button>
+                    <button type="button" class="btn-sm btn-ghost" id="backTo1Btn">חזרה</button>
+                    <button type="button" class="submit-btn" id="toStep3Btn">המשך</button>
                 </div>
             </section>
 
             <!-- Step 4: קטגוריות -->
-            <section class="onboarding-step" id="step4" style="display:none;">
+            <section class="onboarding-step" id="step3" style="display:none;">
                 <h2 class="auth-form-title">בחרו את הקטגוריות שלכם</h2>
                 <p class="onboarding-sub">
                     הצענו סט בסיסי לפי סוג — אפשר להסיר מה שלא רלוונטי, לשנות שם או אייקון, ולהוסיף קטגוריות משלכם.
@@ -207,7 +230,7 @@
                 {% endfor %}
 
                 <div class="onboarding-actions">
-                    <button type="button" class="btn-sm btn-ghost" id="backTo3Btn">חזרה</button>
+                    <button type="button" class="btn-sm btn-ghost" id="backTo2Btn">חזרה</button>
                     <button type="button" class="submit-btn" id="finishBtn">סיום והתחלה</button>
                 </div>
             </section>
