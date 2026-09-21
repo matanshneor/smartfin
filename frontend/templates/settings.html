@@ -252,10 +252,14 @@
                         {% if type_key == 'expense' %}
                         {% set limit = (family_settings.limits or {}).get(cat.id) %}
                         <div class="cat-budget-edit">
-                            <label class="cat-budget-toggle">
+                            {# אותו מתג בדיוק כמו בשאר ההגדרות (pref-switch),
+                               ולא תיבת סימון: זו הדלקה/כיבוי של אפשרות. #}
+                            <span class="cat-budget-label">קביעת תקציב חודשי</span>
+                            <label class="pref-switch">
                                 <input type="checkbox" class="budget-enabled" data-id="{{ cat.id }}"
-                                       {% if limit %}checked{% endif %}>
-                                <span>קביעת תקציב חודשי</span>
+                                       {% if limit %}checked{% endif %}
+                                       aria-label="קביעת תקציב חודשי ל{{ cat.name }}">
+                                <span class="pref-slider"></span>
                             </label>
                             {# השמירה מפורשת ולא אוטומטית: סכום נכתב ספרה-ספרה,
                                ושמירה על כל הקשה שומרת גם את "2" ואת "20" בדרך

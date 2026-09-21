@@ -270,6 +270,24 @@ def test_there_is_exactly_one_toggle_and_it_says_what_it_does():
     assert "קביעת תקציב חודשי" in block
 
 
+def test_it_is_a_switch_and_not_a_tick_box():
+    """מתג הדלקה/כיבוי, כמו כל שאר ההגדרות באפליקציה — ולא תיבת וי.
+    ‎pref-switch‎ הוא הרכיב הקיים; בנייה של עוד אחד הייתה מייצרת שני
+    מתגים שנראים אחרת באותו מסך."""
+    block = _budget_block()
+
+    assert 'class="pref-switch"' in block
+    assert 'class="pref-slider"' in block
+
+
+def test_the_switch_reuses_the_existing_component():
+    """בקרת-נגד: הסגנון מגיע מהרכיב המשותף, לא מהעתקה מקומית."""
+    css = _css()
+
+    assert ".pref-switch input:checked + .pref-slider" in css
+    assert ".cat-budget-toggle" not in css, "נשאר רכיב מקומי מיותר"
+
+
 def test_turning_it_on_reveals_an_amount_box_and_a_save_button():
     block  = _budget_block()
     fields = block[block.index('class="cat-budget-fields"'):]

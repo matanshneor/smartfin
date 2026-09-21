@@ -2973,13 +2973,11 @@ li.project-row {
     padding: 6px 0 2px;
 }
 
-.cat-budget-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.78rem;
-    color: var(--color-text-muted);
-    cursor: pointer;
+.cat-budget-label {
+    font-size: 0.82rem;
+    color: var(--color-text-soft);
+    /* דוחף את המתג לקצה השני של השורה, כמו בשאר ההגדרות */
+    margin-inline-end: auto;
 }
 
 .cat-budget-fields {
