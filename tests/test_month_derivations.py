@@ -19,12 +19,25 @@ _ME  = "11111111-1111-1111-1111-111111111111"
 _YOU = "22222222-2222-2222-2222-222222222222"
 
 
+# הפילוח מקובץ לפי **מזהה** קטגוריה, לא לפי שם — אז שורה חייבת לשאת
+# ‎category_id‎ בדיוק כמו שהשליפה האמיתית מחזירה אותו.
+_CAT_IDS = {
+    "סופר":   "c0000000-0000-0000-0000-000000000001",
+    "דלק":    "c0000000-0000-0000-0000-000000000002",
+    "חשמל":   "c0000000-0000-0000-0000-000000000003",
+    "משכורת": "c0000000-0000-0000-0000-000000000004",
+    "קרן":    "c0000000-0000-0000-0000-000000000005",
+    "שיפוץ":  "c0000000-0000-0000-0000-000000000006",
+}
+
+
 def _row(type_, amount, *, cat=None, user=None, name=None, project=None):
     return {
         "id": f"{type_}-{amount}", "type": type_, "amount": amount,
         "date": "2026-09-10", "note": "",
         "user_id": user,
         "project_id": "p1" if project else None,
+        "category_id": _CAT_IDS.get(cat),
         "categories": {"name": cat, "icon": "🧾"} if cat else None,
         "project_categories": None,
         "profiles": {"name": name, "workplace": None} if name else None,
@@ -44,10 +57,10 @@ ROWS = [
 ]
 
 CATEGORIES = [
-    {"name": "סופר", "icon": "🛒", "type": "expense"},
-    {"name": "דלק",  "icon": "⛽", "type": "expense"},
-    {"name": "חשמל", "icon": "💡", "type": "expense"},   # ללא הוצאה החודש
-    {"name": "משכורת", "icon": "💰", "type": "income"},
+    {"id": _CAT_IDS["סופר"],   "name": "סופר", "icon": "🛒", "type": "expense"},
+    {"id": _CAT_IDS["דלק"],    "name": "דלק",  "icon": "⛽", "type": "expense"},
+    {"id": _CAT_IDS["חשמל"],   "name": "חשמל", "icon": "💡", "type": "expense"},   # ללא הוצאה החודש
+    {"id": _CAT_IDS["משכורת"], "name": "משכורת", "icon": "💰", "type": "income"},
 ]
 
 

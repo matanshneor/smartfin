@@ -24,8 +24,29 @@ def _settings(amount=2000, alert=True):
     return {"limits": {_CAT: {"amount": amount, "alert": alert}}}
 
 
-def _rows(total):
-    return [{"category_id": _CAT, "name": "מכולת", "icon": "🛒", "total": total}]
+_CATEGORIES = [{"id": _CAT, "name": "מכולת", "icon": "🛒", "type": "expense"}]
+
+
+def _tx(amount, category_id=_CAT, name="מכולת"):
+    return {"type": "expense", "amount": amount, "project_id": None,
+            "user_id": None, "category_id": category_id,
+            "categories": {"name": name, "icon": "🛒"},
+            "profiles": None, "projects": None}
+
+
+def _rows(total, categories=None, txs=None):
+    """שורות הפילוח כפי שהקוד האמיתי מייצר אותן.
+
+    **זה מה שהסתיר את הבאג במשך שבוע.** הגרסה הקודמת בנתה כאן dict
+    בכתב יד עם ‎category_id‎ — מפתח ש-‎category_breakdown_from_rows‎ לא
+    ייצרה בכלל. הבדיקות עברו על נתון מומצא, בעוד שבאפליקציה האמיתית
+    ‎apply_budgets‎ חיפשה מזהה ולא מצאה אותו אף פעם, ולכן שום תקציב לא
+    הוחל, שום פס לא הוצג ושום התראת חריגה לא נורתה — מהיום שהתכונה
+    שוחררה. עכשיו הכול עובר דרך היצרן האמיתי."""
+    return db.category_breakdown_from_rows(
+        txs if txs is not None else [_tx(total)],
+        categories if categories is not None else _CATEGORIES,
+        "expense")
 
 
 # ─── החישוב ──────────────────────────────────────────────────────────────────
@@ -171,3 +192,76 @@ def test_a_nonsense_amount_is_refused(client, bad):
 
     assert c.put("/api/family/settings",
                  json={"limits": {_CAT: {"amount": bad}}}).status_code == 422
+
+
+# ─── החיווט: שהתקציב באמת מגיע מהעסקאות עד המסך ─────────────────────────────
+
+def test_the_breakdown_carries_the_id_the_budget_is_stored_under():
+    """הבדיקה שהייתה חסרה. תקציב שמור לפי מזהה קטגוריה; אם שורת הפילוח
+    לא נושאת מזהה, החיפוש נכשל בשקט וכל התכונה מתה."""
+    row = db.category_breakdown_from_rows([_tx(800)], _CATEGORIES, "expense")[0]
+
+    assert row["category_id"] == _CAT
+
+
+def test_a_real_overspend_produces_a_real_alert():
+    """מקצה לקצה על הנתיב האמיתי: עסקה → פילוח → תקציב → התראה."""
+    breakdown = db.apply_budgets(_rows(800), {"limits": {_CAT: {"amount": 500, "alert": True}}})
+
+    assert breakdown[0]["budget_over"] is True
+    alerts = db.budget_alerts(breakdown)
+    assert len(alerts) == 1
+    assert "מכולת" in alerts[0]["text"]
+
+
+def test_a_category_that_was_deleted_does_not_merge_into_another():
+    """עסקה שאיבדה את הקטגוריה שלה נספרה בעבר לתוך "אחר" הקיימת, כי
+    הקיבוץ היה לפי שם. הסכום החודשי נשאר נכון והפילוח הפך לשקרי."""
+    cats = [{"id": _CAT, "name": "אחר", "icon": "📦", "type": "expense"}]
+    orphan = _tx(300, category_id=None, name=None)
+    orphan["categories"] = None
+
+    out = db.category_breakdown_from_rows([_tx(100), orphan], cats, "expense")
+    by_name = {r["name"]: r["total"] for r in out}
+
+    assert by_name == {"אחר": 100.0, "ללא קטגוריה": 300.0}
+
+
+def test_two_categories_with_the_same_name_stay_apart():
+    """אין במסד אילוץ ייחודיות על שם קטגוריה. קיבוץ לפי שם איחד אותן."""
+    other = "22222222-2222-2222-2222-222222222222"
+    cats = [{"id": _CAT,  "name": "מכולת", "icon": "🛒", "type": "expense"},
+            {"id": other, "name": "מכולת", "icon": "🛒", "type": "expense"}]
+
+    out = db.category_breakdown_from_rows(
+        [_tx(100), _tx(250, category_id=other)], cats, "expense")
+
+    assert sorted(r["total"] for r in out) == [100.0, 250.0]
+
+
+# ─── הסרת תקציב חייבת להימחק ────────────────────────────────────────────────
+
+def test_removing_a_budget_actually_removes_it():
+    """‎.update()‎ יכולה רק להוסיף או לדרוס, לעולם לא למחוק — אז הסרה
+    לא נשמרה מעולם. המסך הראה כבוי, השרת החזיק."""
+    stored = {"limits": {"A": {"amount": 500}, "B": {"amount": 300}}}
+
+    merged = db._merge_settings(stored, {"limits": {"B": {"amount": 300}}})
+
+    assert merged["limits"] == {"B": {"amount": 300}}
+
+
+def test_removing_the_last_budget_leaves_an_empty_map():
+    merged = db._merge_settings({"limits": {"A": {"amount": 500}}}, {"limits": {}})
+
+    assert merged["limits"] == {}
+
+
+def test_the_other_nested_settings_still_merge():
+    """בקרת-נגד: ‎owner_attribution‎ ו-‎anomaly‎ הן רשומות עם שדות קבועים,
+    ועדכון חלקי שלהן לא אמור למחוק את השאר."""
+    stored = {"owner_attribution": {"expense": True, "income": True, "savings": False}}
+
+    merged = db._merge_settings(stored, {"owner_attribution": {"income": False}})
+
+    assert merged["owner_attribution"] == {"expense": True, "income": False, "savings": False}

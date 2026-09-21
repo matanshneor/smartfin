@@ -2133,7 +2133,9 @@ def update_family_settings_route():
 
             limits[cat_id] = {"amount": amount, "alert": bool(entry.get("alert", True))}
 
-        # מפתח מקונן לא מתמזג לעומק, אז שולחים את המפה המלאה
+        # המפה המלאה, כי הסרה היא היעדרות ממנה. ‎_merge_settings‎ מחליפה
+        # את ‎limits‎ במלואה ולא ממזגת אותה — ראו ‎_WHOLE_MAP_KEYS‎. לפני כן
+        # היא מוזגה ב-‎.update()‎, שיכולה רק להוסיף, ולכן הסרה לא נשמרה.
         patch["limits"] = limits
 
     if "show_workplace" in body:

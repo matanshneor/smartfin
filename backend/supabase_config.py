@@ -520,12 +520,25 @@ def apply_budgets(breakdown: list, settings: dict) -> list:
     return out
 
 
+# מפתחות שהערך שלהם הוא **מפה שלמה**, ולכן מוחלפים ולא מתמזגים.
+#
+# ‎limits‎ ממופה לפי מזהה קטגוריה, וכשמסירים תקציב הוא פשוט נעדר מהמפה
+# החדשה. מיזוג ב-‎.update()‎ יכול רק להוסיף או לדרוס מפתחות — לעולם לא
+# למחוק — אז ההסרה לא נשמרה מעולם: המסך הראה תקציב כבוי, והשרת המשיך
+# להחזיק אותו. שאר המפתחות המקוננים (owner_attribution, anomaly) הם
+# רשומות עם שדות קבועים ונכון להמשיך למזג אותן.
+_WHOLE_MAP_KEYS = frozenset({"limits"})
+
+
 def _merge_settings(base: dict, patch: dict) -> dict:
     """מיזוג ברמה אחת של עומק — מפתחות מקוננים (owner_attribution, anomaly)
-    מתמזגים במקום להימחק כשמעדכנים רק חלק מהם."""
+    מתמזגים במקום להימחק כשמעדכנים רק חלק מהם. ראו ‎_WHOLE_MAP_KEYS‎
+    לחריגים שמוחלפים במלואם."""
     out = {k: (dict(v) if isinstance(v, dict) else v) for k, v in base.items()}
     for k, v in (patch or {}).items():
-        if isinstance(v, dict) and isinstance(out.get(k), dict):
+        if k in _WHOLE_MAP_KEYS:
+            out[k] = dict(v) if isinstance(v, dict) else v
+        elif isinstance(v, dict) and isinstance(out.get(k), dict):
             out[k].update(v)
         else:
             out[k] = v
@@ -1838,26 +1851,47 @@ def summary_from_rows(rows: list) -> dict:
     return summary
 
 
+# הדלי של עסקאות שאיבדו את הקטגוריה שלהן (הקטגוריה נמחקה — ‎ON DELETE
+# SET NULL‎). בעבר הן התמזגו בשקט לתוך קטגוריית "אחר" של המשפחה, כי
+# הקיבוץ היה לפי שם; עכשיו הן דלי נפרד ואפשר לראות שיש כסף שצריך שיוך.
+_NO_CATEGORY = "ללא קטגוריה"
+
+
 def category_breakdown_from_rows(rows: list, categories: list, type_: str) -> list:
     """סכום לכל קטגוריה מהסוג המבוקש.
+
+    מקובץ לפי **מזהה** הקטגוריה, לא לפי שמה. שם הוא לא מפתח: אין במסד
+    אילוץ ייחודיות על שמות קטגוריות, ושתי קטגוריות שונות באותו שם היו
+    מתמזגות לשורה אחת שאיש לא ביקש. זה גם מה שהשתיק את תקציבי
+    הקטגוריות — הם שמורים לפי מזהה, והשורות שיצאו מכאן לא נשאו אותו
+    בכלל, אז ‎apply_budgets‎ חיפשה ולא מצאה **אף פעם**.
 
     כל קטגוריות הסוג מופיעות תמיד, גם בחודש שאין בו נתון עבורן — אחרת
     קטגוריה נעלמת מהעמוד בדיוק בחודש שבו לא הוצאת בה, וזה נראה כאילו
     נמחקה."""
-    totals = {c["name"]: 0.0 for c in categories if c.get("type") == type_}
-    icons  = {c["name"]: c.get("icon", "📦") for c in categories if c.get("type") == type_}
+    buckets = {c["id"]: {"category_id": c["id"], "name": c["name"],
+                         "icon": c.get("icon", "📦"), "total": 0.0}
+               for c in categories if c.get("type") == type_ and c.get("id")}
 
     for row in _household_rows(rows):
         if row["type"] != type_:
             continue
-        cat  = row.get("categories") or {}
-        name = cat.get("name", "אחר")
-        totals[name] = totals.get(name, 0) + float(row["amount"])
-        icons.setdefault(name, cat.get("icon", "📦"))
+        cat = row.get("categories") or {}
+        key = row.get("category_id")
+        if key not in buckets:
+            # קטגוריה שאינה ברשימה (נמחקה, או שייכת למשפחה אחרת דרך
+            # נתון ישן) — לוקחים את השם המוטבע בשורה עצמה
+            buckets[key] = {
+                "category_id": key,
+                "name": cat.get("name") or _NO_CATEGORY,
+                "icon": cat.get("icon") or "📦",
+                "total": 0.0,
+            }
+        buckets[key]["total"] += float(row["amount"])
 
-    grand = sum(totals.values()) or 1
-    out = [{"name": n, "icon": icons[n], "total": round(t, 2),
-            "pct": round(t / grand * 100)} for n, t in totals.items()]
+    grand = sum(b["total"] for b in buckets.values()) or 1
+    out = [{**b, "total": round(b["total"], 2),
+            "pct": round(b["total"] / grand * 100)} for b in buckets.values()]
     out.sort(key=lambda x: (-x["total"], x["name"]))
     return out
 
