@@ -278,3 +278,16 @@ def test_turning_it_on_reveals_an_amount_box_and_a_save_button():
     assert "budget-save" in fields and ">שמור<" in fields
     # מוסתר עד שמדליקים
     assert "{% if not limit %}hidden{% endif %}" in block
+
+
+def test_the_amount_box_is_hidden_until_the_toggle_is_on():
+    """‎display: flex‎ של המחבר מנצח את ‎[hidden]‎ של הדפדפן. כל עוד הבלוק
+    כולו היה מוסתר מחוץ ל"מצב ניהול" זה לא הורגש — וברגע שהוא נחשף,
+    תיבת הסכום וכפתור השמירה הופיעו לכל מי שלא הדליק כלום.
+
+    אותה מלכודת בדיוק כמו בפס "אין חיבור", שבו כבר נכתב ‎[hidden]‎ מפורש."""
+    css = _css()
+
+    assert ".cat-budget-fields[hidden] { display: none; }" in css
+    assert css.index(".cat-budget-fields {") < css.index(".cat-budget-fields[hidden]"), \
+        "הכלל המפורש חייב לבוא אחרי, אחרת הוא לא גובר"
