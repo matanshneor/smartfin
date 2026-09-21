@@ -46,7 +46,11 @@ jobs:
         # אין לו שום קשר למפתח האמיתי שב-Railway.
         env:
           SECRET_KEY: ci-only-not-a-real-secret
-        run: python -m pytest tests/ -m unit -q
+        # ‎--cov-fail-under‎ הוא רצפה, לא יעד ולא ציון: מתחת למצב הנוכחי,
+        # רק כדי שכיסוי לא ייעלם בשקט. זה בדיוק מה שקרה למסלולי הכסף —
+        # הוספה, עריכה, מחיקה ואיפוס לא נבדקו כלל בזמן ש-524 בדיקות רצו
+        # ירוקות. העלאת המספר היא החלטה מודעת, לא תופעת לוואי של רפקטור.
+        run: python -m pytest tests/ -m unit -q --cov=backend --cov-report=term --cov-fail-under=55
 
   security:
     runs-on: ubuntu-latest

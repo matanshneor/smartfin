@@ -30,13 +30,13 @@ def client(monkeypatch):
         ("family_has_no_transactions", False), ("get_recent_transactions", []),
         ("get_months_archive", []), ("get_monthly_trend", []),
         ("fetch_month_rows", []), ("get_recurring_transactions", []),
-        ("get_month_transactions", []), ("get_category_breakdown", []),
-        ("get_member_breakdown", []), ("get_anomalies", []),
-        ("get_run_rate_forecasts", []), ("get_project_month_summary",
-                                         {"transactions": [], "expense": 0, "income": 0}),
+        ("get_month_transactions", []), ("get_anomalies", []),
+        ("get_run_rate_forecasts", []),
     ]:
-        if hasattr(app_module.db, fn):
-            monkeypatch.setattr(app_module.db, fn, lambda *a, _v=val, **k: _v)
+        # בלי ‎raising=True‎ (ברירת המחדל) שם שהשתנה נבלע בשקט. שלושה
+        # שמות ברשימה הזאת כבר לא היו קיימים — הזיוף לא עשה כלום, אף
+        # אחד לא ידע, והבדיקה נשארה ירוקה מעל דפוס שבור.
+        monkeypatch.setattr(app_module.db, fn, lambda *a, _v=val, **k: _v)
     monkeypatch.setattr(app_module, "family_settings",
                         lambda: dict(_db.DEFAULT_FAMILY_SETTINGS))
     with app.test_client() as c:
