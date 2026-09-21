@@ -730,19 +730,17 @@ if (toggleDeleteBtn) {
 
 })();
 
-// ── העדפות משפחה: שמירה מיידית של כל שינוי ──
-(function () {
-const attrSwitches   = document.querySelectorAll('[data-pref-type]');
-const anomalyEnabled = document.getElementById('anomalyEnabled');
-const anomalyFields  = document.getElementById('anomalyFields');
-const anomalyPercent = document.getElementById('anomalyPercent');
-const anomalyGap     = document.getElementById('anomalyGap');
-const anomalySentence = document.getElementById('anomalySentence');
-const showWorkplace  = document.getElementById('showWorkplace');
-const workplaceRow   = document.getElementById('workplaceRow');
-const workplaceNote  = document.getElementById('workplaceNote');
-if (!anomalyEnabled) return;
-
+/* ‎savePrefs‎ יושב כאן, ברמת הקובץ, ולא בתוך אחד הבלוקים.
+ *
+ * הוא היה מוגדר בתוך הבלוק של "העדפות משפחה", וקוד תקציבי הקטגוריות
+ * יושב בבלוק אחר לגמרי — שני תחומים נפרדים. כלומר כל ניסיון לשמור
+ * תקציב זרק ‎ReferenceError: savePrefs is not defined‎, בתוך ‎setTimeout‎
+ * שאף אחד לא צופה בו: בלי הודעה, בלי שגיאה על המסך, בלי כלום. שדה
+ * התקציב פשוט לא עשה שום דבר, אף פעם.
+ *
+ * הבדיקות לא תפסו את זה כי הן חיפשו את המחרוזת ‎savePrefs({ limits:‎
+ * בקוד המקור — והיא הייתה שם. נוכחות בטקסט אינה נגישות בתחום.
+ */
 /* ‎revert‎ הוא הלב כאן. המתג מתהפך בעצמו בלחיצה, לפני שהשרת בכלל נשאל.
  * כשהשמירה נכשלה הוצגה הודעה אדומה ל-2.6 שניות — והמתג נשאר במצב החדש.
  * המשתמש ראה הבהוב, המסך הראה "מופעל", והוא ניווט משם בביטחון שזה נשמר.
@@ -775,6 +773,20 @@ function savePrefs(patch, revert) {
     })
     .catch(function () { failed(window.sfNetError()); });
 }
+
+
+// ── העדפות משפחה: שמירה מיידית של כל שינוי ──
+(function () {
+const attrSwitches   = document.querySelectorAll('[data-pref-type]');
+const anomalyEnabled = document.getElementById('anomalyEnabled');
+const anomalyFields  = document.getElementById('anomalyFields');
+const anomalyPercent = document.getElementById('anomalyPercent');
+const anomalyGap     = document.getElementById('anomalyGap');
+const anomalySentence = document.getElementById('anomalySentence');
+const showWorkplace  = document.getElementById('showWorkplace');
+const workplaceRow   = document.getElementById('workplaceRow');
+const workplaceNote  = document.getElementById('workplaceNote');
+if (!anomalyEnabled) return;
 
 // דוגמה קונקרטית עם קטגוריה היפותטית של ₪1,000 בחודש — הופכת את שני
 // התנאים המופשטים (אחוז + פער) למספר שקלים מוחשי אחד שקל להבין.

@@ -60,9 +60,20 @@ def test_every_switch_passes_a_way_back(control, anchor):
     assert "checked = was" in block, f"{control} לא חוזר אחורה בכישלון"
 
 
+def _strip_comments(js):
+    """הערות החוצה לפני כל סריקת קוד.
+
+    הערה שמכילה קריאה לדוגמה נספרה כקריאה אמיתית, ומחפש הסוגריים רץ
+    ממנה עד סוף הקובץ ובלע הכול. זה קרה בפועל: הערה שמסבירה באג
+    שברה את הבדיקה שאמורה למצוא אותו."""
+    js = re.sub(r"/\*.*?\*/", "", js, flags=re.S)
+    return re.sub(r"^\s*//.*$", "", js, flags=re.M)
+
+
 def _call_args(body, name):
     """הארגומנטים של כל קריאה ל-name, לפי התאמת סוגריים אמיתית.
     רגקס לא מספיק — חלק מהקריאות רב-שורתיות ומכילות סוגריים מקוננים."""
+    body = _strip_comments(body)
     out = []
     needle = name + "("
     i = body.find(needle)
