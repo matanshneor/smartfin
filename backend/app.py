@@ -516,6 +516,42 @@ def _looks_like_email(value: str) -> bool:
     return len(value) <= 254 and bool(_EMAIL_RE.match(value))
 
 
+def _login_error(err: str) -> str:
+    """ממפה כשל התחברות להודעה שאומרת מה קרה.
+
+    כל כשל הוצג כ"אימייל/טלפון או סיסמה שגויים" — גם כשהסיסמה נכונה
+    לגמרי. ‎db.sign_in‎ תופסת כל חריגה ומחזירה את הטקסט שלה, אז הגבלת
+    קצב של Supabase, מייל שלא אומת ותקלת חיבור כולם נראו זהים.
+
+    המקרה שהופך את זה מאי-נוחות למלכודת: אם אימות מייל יופעל אי-פעם
+    בפרויקט, **כל משתמש חדש ננעל לצמיתות** — הוא נרשם, מקבל "כעת ניתן
+    להתחבר", ומקבל "סיסמה שגויה" לנצח. גם "שכחתי סיסמה" לא יעזור, כי
+    הסיסמה מעולם לא הייתה הבעיה.
+
+    צד ההרשמה ממפה חמש שגיאות שונות בקפידה; כאן היה אפס."""
+    text = (err or "").lower()
+    if "email not confirmed" in text or "not confirmed" in text:
+        return ("החשבון עדיין לא אומת. בדקו את תיבת המייל — נשלח אליכם "
+                "קישור אישור, וייתכן שהוא בספאם.")
+    if "rate limit" in text or "too many" in text:
+        return "יותר מדי ניסיונות בזמן קצר — נסו שוב בעוד כמה דקות"
+    if "not configured" in text or "connection" in text or "timeout" in text:
+        return "השירות אינו זמין כרגע — נסו שוב בעוד רגע"
+    return "אימייל/טלפון או סיסמה שגויים"
+
+
+def _signup_form():
+    """השדות שהוקלדו בטופס ההרשמה, כדי להחזיר אותם עם השגיאה.
+    בלי הסיסמאות — אין סיבה שהן ישבו ב-HTML של תשובה."""
+    return {
+        "first_name":  request.form.get("first_name", "").strip(),
+        "last_name":   request.form.get("last_name", "").strip(),
+        "email":       request.form.get("email", "").strip(),
+        "phone":       request.form.get("phone", "").strip(),
+        "invite_code": request.form.get("invite_code", "").strip(),
+    }
+
+
 def _normalize_phone(raw: str) -> str:
     """מנרמל מספר טלפון להשוואה/שמירה עקבית: ספרות בלבד, בצורה המקומית.
 
@@ -564,7 +600,7 @@ def login():
 
         response, err = db.sign_in(email, password) if email else (None, "not found")
         if err:
-            error = "אימייל/טלפון או סיסמה שגויים"
+            error = _login_error(err)
         else:
             user = response.user
             # Set JWT before querying profiles (RLS requires auth.uid())
@@ -694,7 +730,17 @@ def signup():
                                                   remembered_identifier=email)),
                     email)
 
-    return render_template("login.html", error=error, active_tab="signup")
+    # מה שהוקלד חוזר עם השגיאה.
+    #
+    # עד היום כל שגיאת הרשמה — מייל לא תקין, סיסמאות שלא תואמות, מייל
+    # שכבר קיים — מחקה את כל ששת השדות, **כולל קוד ההזמנה**. מי שקיבל
+    # קוד בוואטסאפ והקליד סיסמה קצרה מדי נשאר בלי הקוד ובלי הפרטים,
+    # וצריך לחזור לשיחה ולחפש. זה ההפך הגמור מצד ההתחברות, ששומר את
+    # המזהה במפורש "כדי שלא יצטרך להקליד שוב אחרי טעות בסיסמה".
+    #
+    # הסיסמאות לא חוזרות, במכוון: אין סיבה שסיסמה תשב ב-HTML של תשובה.
+    return render_template("login.html", error=error, active_tab="signup",
+                           signup=_signup_form()), 422 if error else 200
 
 
 @app.route("/logout", methods=["POST", "GET"])
@@ -2639,6 +2685,8 @@ def too_many_requests(e):
             "login.html", error=msg,
             active_tab="signup" if request.path == "/signup" else "login",
             remembered_identifier=_remembered_identifier(),
+            # גם כאן: מי שנחסם אחרי לחיצה כפולה לא צריך להקליד הכול מחדש
+            signup=_signup_form() if request.path == "/signup" else None,
         ), 429
 
     return render_template("error.html", code=429, message=msg), 429

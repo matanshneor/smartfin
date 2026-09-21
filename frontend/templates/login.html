@@ -117,11 +117,13 @@
                     <div class="form-group">
                         <label class="form-label" for="first_name">שם פרטי</label>
                         <input class="form-input" type="text" id="first_name" name="first_name"
+                               value="{{ signup.first_name if signup else '' }}"
                                placeholder="ישראל" required autocomplete="given-name">
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="last_name">שם משפחה</label>
                         <input class="form-input" type="text" id="last_name" name="last_name"
+                               value="{{ signup.last_name if signup else '' }}"
                                placeholder="ישראלי" required autocomplete="family-name">
                     </div>
                 </div>
@@ -129,6 +131,7 @@
                 <div class="form-group">
                     <label class="form-label" for="signup_email">אימייל</label>
                     <input class="form-input" type="email" id="signup_email" name="email"
+                           value="{{ signup.email if signup else '' }}"
                            placeholder="your@email.com" required autocomplete="email" inputmode="email"
                            autocapitalize="none" autocorrect="off" spellcheck="false">
                 </div>
@@ -136,6 +139,7 @@
                 <div class="form-group">
                     <label class="form-label" for="phone">טלפון</label>
                     <input class="form-input" type="tel" id="phone" name="phone" required
+                           value="{{ signup.phone if signup else '' }}"
                            placeholder="050-1234567" autocomplete="tel" dir="ltr" style="text-align:right;">
                     <p class="field-hint">ישמש גם ככניסה חלופית להתחברות, לצד המייל</p>
                 </div>
@@ -155,6 +159,7 @@
                 <div class="form-group">
                     <label class="form-label" for="invite_code">קוד הזמנה (אופציונלי)</label>
                     <input class="form-input" type="text" id="invite_code" name="invite_code"
+                           value="{{ signup.invite_code if signup else '' }}"
                            placeholder="הדבק קוד אם קיבלת מבן משפחה" autocomplete="off"
                            autocapitalize="none" autocorrect="off" spellcheck="false" dir="ltr">
                     <p class="field-hint">ללא קוד – תיפתח משפחה חדשה עבורך</p>
