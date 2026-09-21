@@ -794,41 +794,36 @@
         if (refreshWhenEditingEnds && !somethingIsBeingEdited()) refreshAfterDelete();
     }
 
-    /* ── מחיקת עסקה שהיא תבנית של סדרה קבועה ──
+    /* ── מחיקת עסקה ששייכת לסדרה קבועה ──
      *
-     * שתי אפשרויות אמיתיות, ולא "כן/לא": לעצור את הסדרה ולהשאיר את
-     * הכסף שכבר נרשם, או למחוק את הכול. הדיאלוג הישן אמר רק "הפעולה
-     * תסיר את העסקה מכל הדוחות והגרפים" — אף מילה על כך שיש מאחוריה
-     * סדרה שלמה.
+     * בדיוק השאלה של יומן: "רק את זו" או "את זו וכל הבאות". אין כאן
+     * הבחנה בין "תבנית" למופע — היא פנימית לגמרי, ולמי שמוחק את שכר
+     * הדירה של מרץ לא אמור להיות אכפת אם מרץ הוא במקרה החודש שבו
+     * הסדרה נפתחה.
      *
-     * הסדר מכוון: הפעולה הבטוחה היא כפתור האישור, וההרסנית דורשת
-     * מעבר בדיאלוג שני. נסיגה (Escape או לחיצה בחוץ) מחזירה ‎null‎
-     * ומבטלת — בשני השלבים.
+     * הבטוחה היא כפתור האישור; ההרסנית עוברת אישור שני עם המספר.
+     * נסיגה (Escape או לחיצה בחוץ) מחזירה ‎null‎ ומבטלת — בשני השלבים.
      */
-    function askAboutSeries(txData, row, instances, onFail) {
-        const total = instances + 1;
+    function askAboutSeries(txData, row, later, onFail) {
         return window.appConfirm({
-            title:       'זו עסקה קבועה',
-            message:     instances
-                ? 'נוצרו ממנה כבר ' + instances + ' עסקאות נוספות. אפשר לעצור '
-                  + 'את הסדרה ולהשאיר אותן, או למחוק את הכול.'
-                : 'עדיין לא נוצרו ממנה עסקאות נוספות. אפשר לעצור את הסדרה '
-                  + 'ולהשאיר את העסקה הזאת, או למחוק אותה.',
-            confirmText: 'עצור את הסדרה',
-            cancelText:  'מחק הכול',
+            title:       'העסקה הזאת חוזרת',
+            message:     'אפשר למחוק רק את המופע הזה, או אותו וכל הבאים '
+                         + 'אחריו (' + later + ' בסך הכול).',
+            confirmText: 'רק את זו',
+            cancelText:  'את זו וכל הבאות',
             danger:      false,
-        }).then(function (stop) {
-            if (stop === null) return;                  // נסיגה
-            if (stop) return sendSeriesDelete(txData, row, 'stop', 0, onFail);
+        }).then(function (onlyThis) {
+            if (onlyThis === null) return;                 // נסיגה
+            if (onlyThis) return sendSeriesDelete(txData, row, 'one', 1, onFail);
 
             return window.appConfirm({
-                title:       'למחוק את כל הסדרה?',
-                message:     total + ' עסקאות יימחקו, כולל מה שכבר נרשם בחודשים '
-                             + 'קודמים. אי אפשר לבטל את זה מהאפליקציה.',
-                confirmText: 'מחק את הכול',
+                title:       'למחוק את זו וכל הבאות?',
+                message:     later + ' עסקאות יימחקו, והסדרה תיעצר כאן. '
+                             + 'מה שנרשם בחודשים קודמים יישאר.',
+                confirmText: 'מחק ' + later,
             }).then(function (sure) {
                 if (sure !== true) return;
-                return sendSeriesDelete(txData, row, 'series', total, onFail);
+                return sendSeriesDelete(txData, row, 'later', later, onFail);
             });
         });
     }
@@ -837,14 +832,14 @@
         return fetch('/api/transactions/' + txData.id + '?mode=' + mode, { method: 'DELETE' })
             .then(r => r.json())
             .then(function (d) {
-                if (d.status !== 'ok') { if (onFail) onFail(d.error || 'הפעולה נכשלה'); return; }
-                // אין כאן "בטל": בעצירה לא נמחק כלום ואין מה להחזיר,
-                // ובמחיקת סדרה מדובר בעשרות שורות — שחזור חלקי שלהן
-                // היה גרוע מהמחיקה עצמה.
-                if (mode === 'series' && row) row.remove();
-                window.showToast(mode === 'stop'
-                    ? 'הסדרה נעצרה. העסקאות שכבר נרשמו נשארו'
-                    : (d.deleted || total) + ' עסקאות נמחקו');
+                if (d.status !== 'ok') { if (onFail) onFail(d.error || 'המחיקה נכשלה'); return; }
+                if (row) row.remove();
+                // אין כאן "בטל": שחזור של מופע בודד היה מחזיר גם את
+                // הדילוג שנרשם עליו, ושל סדרה שלמה — עשרות שורות.
+                const n = d.deleted || total;
+                window.showToast(mode === 'one'
+                    ? 'העסקה נמחקה. שאר הסדרה נשארה'
+                    : n + ' עסקאות נמחקו, והסדרה נעצרה');
                 clearTimeout(pendingDeleteReload);
                 pendingDeleteReload = setTimeout(refreshAfterDelete, 2500);
             })
@@ -860,11 +855,10 @@
         fetch('/api/transactions/' + txData.id, { method: 'DELETE' })
             .then(r => r.json().then(d => ({ code: r.status, d: d })))
             .then(function (res) {
-                // השרת מזהה שזו תבנית של סדרה קבועה ומסרב למחוק בלי
-                // בחירה מפורשת. עד היום זה נמחק כמו כל עסקה — ואז כל
-                // המופעים התנתקו ממנה, ו"בטל" יצר את כל החודשים מחדש.
+                // השרת מזהה שהעסקה שייכת לסדרה קבועה ומסרב למחוק בלי
+                // בחירה מפורשת — "רק את זו" או "את זו וכל הבאות".
                 if (res.code === 409 && res.d.needs_choice) {
-                    return askAboutSeries(txData, row, res.d.instances, onFail);
+                    return askAboutSeries(txData, row, res.d.later, onFail);
                 }
                 const d = res.d;
                 if (d.status !== 'ok') { if (onFail) onFail(d.error || 'מחיקה נכשלה'); return; }

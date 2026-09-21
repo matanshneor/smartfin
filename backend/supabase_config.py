@@ -1053,6 +1053,11 @@ def materialize_recurring(family_id: str) -> int:
             # בלי זה תבנית שנפתחה ב-5 בינואר ועברה ל"ה-15 לחודש" מקבלת
             # מופע שני בינואר, לצד השורה המקורית.
             seen.add(date.fromisoformat(str(t["date"])))
+            # מופעים שהמשתמש מחק במכוון. בלעדיהם המנוע רואה חור ומשלים
+            # אותו — כלומר מחיקה של מופע בודד מתבטלת מעצמה למחרת, ומי
+            # שביטל מנוי לחודש אחד רואה אותו חוזר בלי הסבר.
+            for skipped in (t.get("recurring_skips") or []):
+                seen.add(date.fromisoformat(str(skipped)))
             for d in _recurring_occurrences(t, today):
                 if _already_materialized(freq, d, seen):
                     continue
@@ -1308,29 +1313,43 @@ def stop_recurring(transaction_id: str, family_id: str):
         return False, str(e)
 
 
-def recurring_series(transaction_id: str, family_id: str):
-    """מזהה אם עסקה היא תבנית של סדרה קבועה, וכמה מופעים נוצרו ממנה.
-    מחזירה ‎(is_template, instance_count)‎, או זורקת ‎DataUnavailable‎.
+def recurring_occurrence(transaction_id: str, family_id: str):
+    """מה העסקה הזאת בתוך סדרה קבועה. מחזירה ‎(info, ok)‎ או זורקת.
 
-    נקראת לפני כל מחיקה. תבנית היא עסקה רגילה לכל דבר ומופיעה ברשימה
-    ככל עסקה אחרת — ולכן מחיקה ממנה נראית תמימה לגמרי, בעוד שהיא
-    מנתקת את כל המופעים מהתבנית ומשביתה את ההגנה מפני כפילות. בלי
-    השאלה הזאת אין דרך לדעת שצריך לשאול."""
+    ‎info‎ הוא ‎None‎ לעסקה רגילה, או ‎{"template_id", "date", "later"}‎ —
+    מזהה התבנית, תאריך המופע הזה, וכמה מופעים יש ממנו והלאה (כולל).
+
+    אין כאן הבחנה בין "תבנית" ל"מופע", וזו ההחלטה: ההבחנה הזאת היא
+    פנימית לגמרי — שורת התבנית היא עסקה רגילה לכל דבר שבמקרה גם
+    מגדירה את הסדרה. למשתמש שמוחק את שכר הדירה של מרץ לא אמור להיות
+    אכפת אם מרץ הוא במקרה החודש שבו הסדרה נפתחה."""
     client = get_client()
     if not client:
-        raise DataUnavailable("recurring_series: no client")
+        raise DataUnavailable("recurring_occurrence: no client")
     try:
-        row = client.table("transactions").select("is_recurring") \
+        row = client.table("transactions") \
+            .select("id, date, is_recurring, recurring_parent_id") \
             .eq("id", transaction_id).eq("family_id", family_id) \
             .maybe_single().execute().data
-        if not row or not row.get("is_recurring"):
-            return False, 0
-        result = client.table("transactions").select("id", count="exact") \
+        if not row:
+            return None, True
+        template_id = row["id"] if row.get("is_recurring") else row.get("recurring_parent_id")
+        if not template_id:
+            return None, True
+
+        # כמה מופעים מהתאריך הזה והלאה — כולל שורת התבנית עצמה, שהיא
+        # המופע הראשון ולא נושאת recurring_parent_id
+        later = client.table("transactions").select("id", count="exact") \
             .eq("family_id", family_id) \
-            .eq("recurring_parent_id", transaction_id).execute()
-        return True, (result.count or 0)
+            .eq("recurring_parent_id", template_id) \
+            .gte("date", str(row["date"])).execute().count or 0
+        template = client.table("transactions").select("id", count="exact") \
+            .eq("family_id", family_id).eq("id", template_id) \
+            .gte("date", str(row["date"])).execute().count or 0
+        return {"template_id": template_id, "date": str(row["date"]),
+                "later": later + template}, True
     except Exception as e:
-        raise DataUnavailable("recurring_series") from e
+        raise DataUnavailable("recurring_occurrence") from e
 
 
 def transaction_type(transaction_id: str, family_id: str):
@@ -1353,10 +1372,9 @@ def transaction_type(transaction_id: str, family_id: str):
 def is_recurring_instance(transaction_id: str, family_id: str) -> bool:
     """האם העסקה היא מופע שנוצר מסדרה קבועה (ולא תבנית בפני עצמה).
 
-    אין שום אילוץ במסד שמונע מהשורה להיות גם מופע וגם תבנית, ותיבת
-    "עסקה קבועה" במודאל העריכה פעילה גם על מופע. משתמש שפותח את שכר
-    הדירה של חודש שעבר ומסמן אותה — קריאה סבירה לגמרי של "שיהיה קבוע
-    מעכשיו" — מייצר תבנית שנייה שרצה במקביל לראשונה, לתמיד."""
+    משמש רק לחסימה אחת: סימון "עסקה קבועה" על מופע קיים היה מייצר
+    תבנית שנייה שרצה במקביל לראשונה, לתמיד. במחיקה, לעומת זאת, אין
+    שום הבחנה בין תבנית למופע — ראו ‎recurring_occurrence‎."""
     client = get_client()
     if not client:
         raise DataUnavailable("is_recurring_instance: no client")
@@ -1369,33 +1387,77 @@ def is_recurring_instance(transaction_id: str, family_id: str) -> bool:
         raise DataUnavailable("is_recurring_instance") from e
 
 
-def delete_recurring_series(template_id: str, family_id: str):
-    """מוחקת תבנית קבועה **וכל המופעים שנוצרו ממנה**. מחזירה (deleted, error).
+def delete_one_occurrence(transaction_id: str, template_id: str,
+                          occurrence_date: str, family_id: str):
+    """מוחקת מופע אחד, ורושמת שדילגו עליו. מחזירה (ok, error).
 
-    המופעים נמחקים ראשונים בכוונה: אם הם היו נשארים והתבנית נמחקת,
-    הם היו מתנתקים ממנה (‎on delete set null‎) והופכים ליתומים שאיש
-    כבר לא יכול לקשר לסדרה — בדיוק המצב שהפונקציה הזאת נועדה למנוע.
+    הרישום הוא כל העניין: בלעדיו המנוע רואה חודש חסר ומשלים אותו
+    בריצה הבאה, כלומר המחיקה מתבטלת מעצמה למחרת."""
+    client = get_client()
+    if not client:
+        return False, "Database not configured"
+    try:
+        tpl = client.table("transactions").select("recurring_skips") \
+            .eq("id", template_id).eq("family_id", family_id) \
+            .maybe_single().execute().data
+        if tpl is None:
+            return False, "not found"
 
-    כל שורה שנמחקת מארוכבת אוטומטית ב-owner_archive דרך הטריגר (אומת:
-    מחיקת סדרה בת 4 שורות הוסיפה 4 רשומות ארכיון), אז זו פעולה הפיכה
-    על ידי בעל האתר — אבל לא על ידי המשתמש, ולכן המסלול שקורא לה
-    דורש בחירה מפורשת."""
+        skips = list(tpl.get("recurring_skips") or [])
+        if occurrence_date not in [str(x) for x in skips]:
+            skips.append(occurrence_date)
+
+        # הדילוג נרשם **לפני** המחיקה. בסדר ההפוך, כשל בכתיבה היה
+        # משאיר מופע מחוק בלי סימן — והוא היה חוזר מחר.
+        client.table("transactions").update({"recurring_skips": skips}) \
+            .eq("id", template_id).eq("family_id", family_id).execute()
+
+        deleted = client.table("transactions").delete() \
+            .eq("id", transaction_id).eq("family_id", family_id) \
+            .execute().data or []
+        return bool(deleted), None
+    except Exception as e:
+        logger.exception("delete_one_occurrence")
+        return False, str(e)
+
+
+def delete_occurrences_from(template_id: str, occurrence_date: str, family_id: str):
+    """מוחקת את המופע הזה וכל המאוחרים ממנו, ועוצרת את הסדרה שם.
+    מחזירה (deleted, error).
+
+    ‎recurring_end_date‎ נקבע ליום שלפני, ולא מכבים את הדגל: כך ההיסטוריה
+    שלפני התאריך נשארת סדרה מזוהה — עם הקישורים שלה ועם ההגנה מפני
+    כפילות — במקום להפוך לאוסף שורות יתומות."""
+    from datetime import date, timedelta
+
     client = get_client()
     if not client:
         return 0, "Database not configured"
     try:
-        children = client.table("transactions").delete() \
+        removed = client.table("transactions").delete() \
             .eq("family_id", family_id) \
             .eq("recurring_parent_id", template_id) \
-            .execute().data or []
-        parent = client.table("transactions").delete() \
-            .eq("family_id", family_id).eq("id", template_id) \
-            .execute().data or []
-        if not parent:
-            return 0, "not found"
-        return len(children) + len(parent), None
+            .gte("date", occurrence_date).execute().data or []
+
+        cutoff = date.fromisoformat(occurrence_date) - timedelta(days=1)
+        template = client.table("transactions").select("id, date") \
+            .eq("id", template_id).eq("family_id", family_id) \
+            .maybe_single().execute().data
+        if not template:
+            return len(removed), None
+
+        if str(template["date"]) >= occurrence_date:
+            # הסדרה נמחקת מתחילתה — אין מה להשאיר
+            removed += client.table("transactions").delete() \
+                .eq("id", template_id).eq("family_id", family_id) \
+                .execute().data or []
+        else:
+            client.table("transactions") \
+                .update({"recurring_end_date": cutoff.isoformat()}) \
+                .eq("id", template_id).eq("family_id", family_id).execute()
+        return len(removed), None
     except Exception as e:
-        logger.exception("delete_recurring_series")
+        logger.exception("delete_occurrences_from")
         return 0, str(e)
 
 

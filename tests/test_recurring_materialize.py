@@ -160,3 +160,47 @@ def test_weekly_templates_use_proximity_not_the_calendar_month(
     created, rows = _run(monkeypatch, [weekly], already)
 
     assert created == 0, f"מופעים שבועיים קיימים נוצרו שוב: {[r['date'] for r in rows]}"
+
+
+# ─── מופע שנמחק במכוון לא חוזר מחר ───────────────────────────────────────────
+
+def test_a_deliberately_deleted_occurrence_does_not_come_back(
+        frozen_september, monkeypatch):
+    """המנוע מחליט מה חסר לפי מה שקיים, ואין לו דרך להבחין בין "עוד
+    לא יצרתי" לבין "נמחק בכוונה" — בשני המקרים הוא רואה חור ומשלים.
+
+    מי שביטל מנוי לחודש אחד מחק את ספטמבר, ולמחרת הוא חזר. עד שנוספה
+    האפשרות "רק את זו" זה לא צץ, כי לא הייתה דרך למחוק מופע בודד
+    במכוון — ומרגע שהיא קיימת, זו תכונה שלא עובדת."""
+    tpl = dict(_salary(1), date="2026-06-01", recurring_frequency="monthly_1",
+               recurring_skips=["2026-09-01"])
+    already = [(_TEMPLATE_ID, "2026-07-01"), (_TEMPLATE_ID, "2026-08-01")]
+
+    created, rows = _run(monkeypatch, [tpl], already)
+
+    assert created == 0, f"המופע שדולג נוצר מחדש: {[r['date'] for r in rows]}"
+
+
+def test_a_month_that_was_never_created_is_still_filled_in(
+        frozen_september, monkeypatch):
+    """בקרת-נגד, והחשובה כאן: הדילוג חייב להיות ממוקד לתאריך אחד.
+    אם הוא היה עוצר את הסדרה, כל החודשים הבאים היו נעלמים בשקט."""
+    tpl = dict(_salary(1), date="2026-06-01", recurring_frequency="monthly_1",
+               recurring_skips=["2026-08-01"])
+    already = [(_TEMPLATE_ID, "2026-07-01")]
+
+    created, rows = _run(monkeypatch, [tpl], already)
+
+    dates = sorted(r["date"] for r in rows)
+    assert dates == ["2026-09-01"], f"נוצרו {dates} — ספטמבר בלבד היה אמור"
+
+
+def test_a_template_without_skips_behaves_exactly_as_before(
+        frozen_september, monkeypatch):
+    """בקרת-נגד: העמודה חדשה, וברוב השורות היא ריקה."""
+    tpl = dict(_salary(1), date="2026-07-01", recurring_frequency="monthly_1")
+    tpl.pop("recurring_skips", None)
+
+    created, rows = _run(monkeypatch, [tpl], [])
+
+    assert sorted(r["date"] for r in rows) == ["2026-08-01", "2026-09-01"]
