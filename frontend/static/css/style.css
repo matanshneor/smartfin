@@ -2656,6 +2656,8 @@ li.zero-cat-row { display: none; }
 
 .category-row {
     display: flex;
+    /* השורה עוטפת כדי שבלוק התקציב יקבל שורה משלו מתחת לשם */
+    flex-wrap: wrap;
     align-items: center;
     gap: 12px;
     padding: 10px 0;
@@ -2953,15 +2955,22 @@ li.project-row {
     border: 0;
 }
 
-/* עריכת התקציב בהגדרות — מוצגת רק במצב ניהול, כמו שאר הפקדים שם */
-.cat-budget-edit { display: none; }
-.managing .cat-budget-edit {
+/* תקציב הקטגוריה — גלוי תמיד, בלי "מצב ניהול".
+ *
+ * הוא היה מוסתר מאחורי אותו מתג שמסתיר עריכה, מחיקה וסידור — ובצדק
+ * לגביהם: אלה פעולות על הרשימה עצמה. אבל תקציב הוא לא ניהול רשימה,
+ * הוא ההגדרה שבגללה מתקינים אפליקציית תקציב מלכתחילה. להסתיר אותה
+ * מאחורי כפתור לא מתויג פירושו שרוב המשתמשים לא ידעו שהיא קיימת.
+ *
+ * ‎flex-wrap‎ על השורה הוא מה שמוריד את הבלוק לשורה משלו במקום לדחוס
+ * אותו לצד השם. */
+.cat-budget-edit {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 10px;
     width: 100%;
-    padding: 8px 0 2px;
+    padding: 6px 0 2px;
 }
 
 .cat-budget-toggle {

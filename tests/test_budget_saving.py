@@ -165,3 +165,38 @@ def test_no_function_is_called_from_outside_the_block_that_defines_it():
                 if any(x < m.start() < y for x, y in tops):
                     line = src[:m.start()].count("\n") + 1
                     pytest.fail(f"{path.name}:{line} קורא ל-{name} מחוץ לבלוק שמגדיר אותו")
+
+
+# ─── הגילוי: אי אפשר להשתמש במה שלא רואים ───────────────────────────────────
+
+def _css():
+    return (_ROOT / "frontend/static/css/style.css").read_text(encoding="utf-8")
+
+
+def test_the_budget_control_is_visible_without_manage_mode():
+    """הוא היה מוסתר מאחורי אותו מתג שמסתיר עריכה, מחיקה וסידור. לגביהם
+    זה נכון — אלה פעולות על הרשימה. תקציב הוא ההגדרה שבגללה מתקינים
+    אפליקציית תקציב, ומתן לא מצא אותה."""
+    css = _css()
+
+    assert ".cat-budget-edit { display: none; }" not in css
+    assert ".managing .cat-budget-edit" not in css
+
+
+def test_the_budget_block_gets_its_own_line():
+    """הבלוק הוא ‎width: 100%‎ בתוך שורת flex. בלי ‎flex-wrap‎ הוא נדחס
+    לצד שם הקטגוריה במקום לרדת מתחתיו."""
+    css = _css()
+    row = css[css.index(".category-row {"):]
+    row = row[:row.index("}")]
+
+    assert "flex-wrap: wrap" in row
+
+
+def test_manage_mode_still_hides_the_list_management_controls():
+    """בקרת-נגד: רק התקציב יצא מ"מצב ניהול". עריכה, מחיקה וסידור
+    נשארים מאחוריו — הם כן פעולות על הרשימה."""
+    css = _css()
+
+    for control in (".edit-cat-btn", ".delete-cat-btn", ".cat-reorder-btns"):
+        assert f"#categoriesArea:not(.managing) {control}" in css
