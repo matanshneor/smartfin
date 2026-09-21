@@ -2,15 +2,43 @@
 (function () {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // 1. Count-up: אלמנטים עם data-countup נספרים מ-0 לערך הסופי
+    /* מה הוצג בפעם הקודמת, לכל מספר בעמוד.
+     *
+     * הרענון הרך מחליף את האלמנטים עצמם, אז אי אפשר לשמור את הערך
+     * עליהם — הזיכרון הזה חי מחוץ ל-DOM. המפתח נגזר מהמחלקות ומהמיקום
+     * בקבוצה, ולא ממזהה בתבנית, כדי שזה יעבוד בלי לגעת בכל מספר. */
+    const lastShown = {};
+
+    function keyFor(el, seen) {
+        const base = el.className || 'countup';
+        seen[base] = (seen[base] || 0) + 1;
+        return base + '#' + seen[base];
+    }
+
+    /* Count-up: מהערך שהוצג קודם אל החדש.
+     *
+     * קודם זה תמיד רץ מ-0, וזה בזבז את כל הערך של האנימציה: אחרי
+     * הוצאה של ₪100 ראית מספר מטפס מאפס, במקום לראות את מה שבאמת
+     * קרה — שהיתרה ירדה ב-₪100. בטעינה ראשונה אין ערך קודם, ושם 0
+     * הוא הנכון: זה הרושם הראשון, לא עדכון. */
     function runCountUps() {
+        const seen = {};
         document.querySelectorAll('[data-countup]').forEach(function (el) {
             const target = parseFloat(el.dataset.countup);
             if (isNaN(target)) return;
             const prefix = el.dataset.prefix || '';
             const format = v => prefix + '₪' + Math.round(v).toLocaleString('en-US');
 
-            if (reduceMotion || target === 0) {
+            const key  = keyFor(el, seen);
+            const prev = lastShown[key];
+            lastShown[key] = { value: target, prefix: prefix };
+
+            // מאיפה מתחילים. היפוך סימן (עודף ↔ גירעון) מתחיל מ-0:
+            // המספר מוצג בערך מוחלט, ומעבר ישיר בין שני ערכים מוחלטים
+            // היה מציג סכומי ביניים עם הסימן ההפוך.
+            const from = (prev && prev.prefix === prefix) ? prev.value : 0;
+
+            if (reduceMotion || from === target) {
                 el.textContent = format(target);
                 return;
             }
@@ -20,7 +48,7 @@
             function tick(now) {
                 const p = Math.min((now - start) / duration, 1);
                 const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
-                el.textContent = format(target * eased);
+                el.textContent = format(from + (target - from) * eased);
                 if (p < 1) requestAnimationFrame(tick);
             }
             requestAnimationFrame(tick);
