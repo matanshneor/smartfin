@@ -926,7 +926,12 @@ def dashboard():
         if _device_is_known() and not request.args.get("intro"):
             response = redirect(url_for("login"))
         else:
-            response = make_response(render_template("landing.html"))
+            # החודש נגזר מהשעון ולא מקודד בתבנית. "ספטמבר 2026" קבוע
+            # היה נכון ליום שנכתב ושגוי מ-1 באוקטובר, ותאריך ישן בדף
+            # שיווק קורא כמו פרויקט נטוש.
+            now = clock.now()
+            response = make_response(render_template(
+                "landing.html", demo_month=_month_label(now.year, now.month)))
         # התוכן כאן תלוי במצב ההתחברות ובעוגיית המכשיר, ולכן אסור שיישמר
         # במטמון כלשהו — ו-Vary אומר את זה גם ל-proxy שבדרך.
         response.headers["Cache-Control"] = "no-store"

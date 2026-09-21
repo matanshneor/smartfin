@@ -63,7 +63,7 @@
             <div class="lp-phone">
                 <div class="lp-phone-screen">
                     <div class="lp-app-hero">
-                        <p class="lp-app-greeting">ספטמבר 2026</p>
+                        <p class="lp-app-greeting">{{ demo_month }}</p>
                         <p class="lp-app-label">נשאר בעו״ש החודש</p>
                         <p class="lp-app-amount">₪4,820</p>
                         <p class="lp-app-sub">מתוך ₪18,400 הכנסות החודש</p>
@@ -100,8 +100,14 @@
                     </svg>
                 </span>
                 <span class="lp-alert-body">
+                    {# המספרים כאן חייבים להיות אלה שהמוצר באמת יורה
+                       עליהם: ההתראה קופצת מ-50% מעל ממוצע שלושת החודשים
+                       **וגם** ₪300 מעליו. "18%" לא היה מפעיל אותה לעולם,
+                       כלומר הדגמנו רגישות שלא קיימת — ומי שנרשם בגללה
+                       היה מחכה להתראה שלא תגיע. ₪2,910 מול ממוצע של
+                       ₪1,900 הם 53% ו-₪1,010 מעליו, ושניהם עוברים. #}
                     <span class="lp-alert-title">מזון גבוה מהרגיל</span>
-                    <span class="lp-alert-text">‎18% מעל הממוצע של שלושת החודשים האחרונים</span>
+                    <span class="lp-alert-text">‎53% מעל הממוצע של שלושת החודשים האחרונים</span>
                 </span>
             </div>
         </div>
