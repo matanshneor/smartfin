@@ -196,7 +196,7 @@ def log_login_event(event: str = "login"):
 def reset_transactions(family_id: str, only_user_id: str = None):
     """איפוס עסקאות: מוחק את כל עסקאות המשפחה (כולל תבניות קבועות), או —
     אם only_user_id סופק — רק את העסקאות המשויכות לאותו משתמש. כל שורה
-    שנמחקת מארוכבת אוטומטית ב-owner_archive דרך הטריגר. Returns (ok, err)."""
+    שנמחקת מארוכבת אוטומטית ב-owner_archive דרך הטריגר. Returns (deleted, err)."""
     client = get_client()
     if not client:
         return False, "Database not configured"
@@ -204,8 +204,9 @@ def reset_transactions(family_id: str, only_user_id: str = None):
         query = client.table("transactions").delete().eq("family_id", family_id)
         if only_user_id:
             query = query.eq("user_id", only_user_id)
-        query.execute()
-        return True, None
+        # מספר השורות שנמחקו בפועל, ולא ‎True‎ קבוע: זו הפעולה ההרסנית
+        # ביותר באפליקציה, והמשתמש צריך לראות כמה באמת נמחק.
+        return len(query.execute().data or []), None
     except Exception as e:
         logger.exception("reset_transactions")
         return False, str(e)
@@ -1314,6 +1315,23 @@ def recurring_series(transaction_id: str, family_id: str):
         raise DataUnavailable("recurring_series") from e
 
 
+def transaction_type(transaction_id: str, family_id: str):
+    """סוג העסקה (‎expense‎/‎income‎/‎savings‎), או ‎None‎ אם לא נמצאה.
+
+    נדרש כדי לאמת שקטגוריה מתאימה לסוג — הסוג עצמו לא נשלח בגוף
+    הבקשה במסלול הסנכרון, והוא לא ניתן לשינוי שם ממילא."""
+    client = get_client()
+    if not client:
+        raise DataUnavailable("transaction_type: no client")
+    try:
+        row = client.table("transactions").select("type") \
+            .eq("id", transaction_id).eq("family_id", family_id) \
+            .maybe_single().execute().data
+        return (row or {}).get("type")
+    except Exception as e:
+        raise DataUnavailable("transaction_type") from e
+
+
 def is_recurring_instance(transaction_id: str, family_id: str) -> bool:
     """האם העסקה היא מופע שנוצר מסדרה קבועה (ולא תבנית בפני עצמה).
 
@@ -1368,12 +1386,16 @@ def delete_transaction(transaction_id: str, family_id: str):
     if not client:
         return False
     try:
-        client.table("transactions") \
+        # ‎.data‎ מחזיר את השורות שנמחקו בפועל (‎returning=representation‎
+        # הוא ברירת המחדל). בלי הבדיקה הזאת הפונקציה החזירה ‎True‎ גם
+        # כששום שורה לא נגעה — עסקה שבן משפחה אחר מחק לפני שנייה, או
+        # מזהה של משפחה אחרת — והמשתמש קיבל "נמחק".
+        result = client.table("transactions") \
             .delete() \
             .eq("id", transaction_id) \
             .eq("family_id", family_id) \
             .execute()
-        return True
+        return bool(result.data)
     except Exception:
         # המשתמש כן רואה "מחיקה נכשלה", אז זה לא כשל שקט — אבל בלי
         # הרישום אי אפשר לענות על "למה".

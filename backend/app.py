@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, g, make_response
 from dotenv import load_dotenv
 from functools import wraps, partial
-from datetime import timedelta
+from datetime import date, timedelta
 from werkzeug.middleware.proxy_fix import ProxyFix
 import csv
 import hashlib
@@ -1525,13 +1525,17 @@ def reset_account_route():
         return jsonify({"error": "הסיסמה שגויה"}), 403
 
     db.set_auth_token(response.session.access_token)
-    ok, err = db.reset_transactions(
+    # ‎deleted‎ ולא ‎ok‎: אפס שורות הוא תוצאה תקינה (משפחה בלי עסקאות),
+    # אז הכישלון נמדד לפי ‎err‎ בלבד. המספר מוחזר כדי שהמשתמש יראה מה
+    # באמת קרה — זו הפעולה ההרסנית ביותר באפליקציה.
+    deleted, err = db.reset_transactions(
         user["family_id"],
         only_user_id=user["id"] if scope == "mine" else None,
     )
-    if not ok:
+    if err:
+        logger.error("reset_transactions route: %s", err)
         return jsonify({"error": "האיפוס נכשל"}), 500
-    return jsonify({"status": "ok"})
+    return jsonify({"status": "ok", "deleted": deleted})
 
 
 @app.route("/api/account", methods=["DELETE"])
@@ -1587,6 +1591,37 @@ def _parse_amount(raw):
     if round(value, 2) <= 0:
         return None, "הסכום קטן מדי"
     return value, None
+
+
+# כמה שנים אחורה וקדימה עסקה עדיין הגיונית. רחב בכוונה — אנשים מזינים
+# היסטוריה מהעבר ומקדימים תשלומים לעתיד — וצר מספיק כדי לתפוס אסון.
+_DATE_PAST_YEARS   = 10
+_DATE_FUTURE_YEARS = 5
+
+
+def _parse_date(raw):
+    """פרסינג בטוח של תאריך עסקה. מחזיר (iso_string, error).
+
+    ‎date‎ עבר עד היום מגוף הבקשה אל המסד בלי שום בדיקה, ולעמודה לא היה
+    אילוץ. זה לא נשאר תיאורטי בגלל מנוע העסקאות הקבועות: תבנית עם
+    תאריך התחלה בשנת 1000 גורמת לו לייצר מופע לכל חודש מאז, עד תקרת
+    500 השורות — 500 עסקאות אמיתיות בקריאה אחת, שנכנסות לסיכומים
+    ולהשוואת החודשים לתמיד.
+
+    האילוץ במסד (‎transactions_date_sane‎) הוא הרשת האחרונה והוא רחב,
+    כי CHECK חייב להיות immutable ולא יכול לדעת מה היום. כאן אפשר."""
+    if not isinstance(raw, str):
+        return None, "התאריך חסר או אינו תקין"
+    try:
+        value = date.fromisoformat(raw.strip())
+    except ValueError:
+        return None, "התאריך אינו תקין"
+    today = clock.today()
+    if value.year < today.year - _DATE_PAST_YEARS:
+        return None, "התאריך רחוק מדי בעבר"
+    if value.year > today.year + _DATE_FUTURE_YEARS:
+        return None, "התאריך רחוק מדי בעתיד"
+    return value.isoformat(), None
 
 
 def _resolve_owner(body: dict, user: dict, tx_type: str):
@@ -1700,6 +1735,18 @@ def add_transaction():
     if amount_err:
         return jsonify({"error": amount_err}), 422
 
+    tx_date, date_err = _parse_date(body["date"])
+    if date_err:
+        return jsonify({"error": date_err}), 422
+
+    recurring_end = body.get("recurring_end_date") or None
+    if recurring_end:
+        recurring_end, end_err = _parse_date(recurring_end)
+        if end_err:
+            return jsonify({"error": f"תאריך הסיום: {end_err}"}), 422
+        if recurring_end < tx_date:
+            return jsonify({"error": "תאריך סיום הסדרה מוקדם מתאריך ההתחלה"}), 422
+
     project_id, project_category_id, category_id, owner_user_id, proj_err = \
         _apply_project_assignment(body, user, tx_type)
     if proj_err:
@@ -1718,14 +1765,14 @@ def add_transaction():
     payload = {
         "amount":      amount,
         "type":        tx_type,
-        "date":        body["date"],
+        "date":        tx_date,
         "description": body.get("description", ""),
         "category_id": category_id,
         "user_id":     owner_user_id,
         "family_id":   user["family_id"],
         "is_recurring":         bool(body.get("is_recurring", False)),
         "recurring_frequency":  body.get("recurring_frequency"),
-        "recurring_end_date":   body.get("recurring_end_date") or None,
+        "recurring_end_date":   recurring_end,
         "project_id":           project_id,
         "project_category_id":  project_category_id,
         "workplace":            workplace_snapshot,
@@ -1767,6 +1814,18 @@ def update_transaction(tx_id):
     if amount_err:
         return jsonify({"error": amount_err}), 422
 
+    tx_date, date_err = _parse_date(body["date"])
+    if date_err:
+        return jsonify({"error": date_err}), 422
+
+    recurring_end = body.get("recurring_end_date") or None
+    if recurring_end:
+        recurring_end, end_err = _parse_date(recurring_end)
+        if end_err:
+            return jsonify({"error": f"תאריך הסיום: {end_err}"}), 422
+        if recurring_end < tx_date:
+            return jsonify({"error": "תאריך סיום הסדרה מוקדם מתאריך ההתחלה"}), 422
+
     project_id, project_category_id, category_id, owner_user_id, proj_err = \
         _apply_project_assignment(body, user, tx_type)
     if proj_err:
@@ -1789,13 +1848,13 @@ def update_transaction(tx_id):
     payload = {
         "amount":      amount,
         "type":        tx_type,
-        "date":        body["date"],
+        "date":        tx_date,
         "description": body.get("description", ""),
         "category_id": category_id,
         "user_id":     owner_user_id,
         "is_recurring":         bool(body.get("is_recurring", False)),
         "recurring_frequency":  body.get("recurring_frequency"),
-        "recurring_end_date":   body.get("recurring_end_date") or None,
+        "recurring_end_date":   recurring_end,
         "project_id":           project_id,
         "project_category_id":  project_category_id,
     }
@@ -1807,6 +1866,11 @@ def update_transaction(tx_id):
     if err:
         logger.error("update_transaction route: %s", err)
         return jsonify({"error": "עדכון העסקה נכשל — נסה שוב"}), 500
+    # אף שורה לא נגעה: העסקה נמחקה בינתיים על ידי בן משפחה אחר, או
+    # שהמזהה שייך למשפחה אחרת. עד היום זה חזר כ-200 "נשמר", והמשתמש
+    # האמין שהעריכה שלו נקלטה.
+    if not result:
+        return jsonify({"error": "העסקה לא נמצאה — ייתכן שנמחקה בינתיים"}), 404
 
     if payload["is_recurring"]:
         db.materialize_recurring(user["family_id"])   # (created, ok) — כאן לא נדרש
@@ -1899,16 +1963,33 @@ def sync_recurring_template(template_id):
         return jsonify({"error": "לא מצאנו את המשפחה שלך — רעננו את הדף, ואם זה חוזר התחברו מחדש"}), 400
 
     body = request.get_json(silent=True) or {}
+
+    # זה היה המסלול הכותב היחיד שלא עבר ב-_parse_amount ולא אימת קטגוריה:
+    # ‎float()‎ חשוף קיבל ‎-5000‎ ו-‎inf‎, שנעצרו רק ב-CHECK של המסד וחזרו
+    # למשתמש כ-500 סתום; ו-‎category_id‎ נכתב בלי שום בדיקת שייכות, כך
+    # שתבנית יכלה להצביע על קטגוריה של משפחה אחרת.
     amount = body.get("amount")
-    try:
-        amount = float(amount) if amount is not None else None
-    except (TypeError, ValueError):
-        return jsonify({"error": "סכום לא תקין"}), 422
+    if amount is not None:
+        amount, amount_err = _parse_amount(amount)
+        if amount_err:
+            return jsonify({"error": amount_err}), 422
+
+    category_id = body.get("category_id")
+    if category_id is not None:
+        try:
+            tx_type = db.transaction_type(template_id, user["family_id"])
+        except db.DataUnavailable:
+            return jsonify({"error": "לא הצלחנו לאמת את הקטגוריה — נסו שוב"}), 503
+        if tx_type is None:
+            return jsonify({"error": "התבנית הקבועה לא נמצאה"}), 404
+        category_id, cat_err = _validated_category(category_id, user, tx_type)
+        if cat_err:
+            return jsonify({"error": cat_err}), 422
 
     result, err = db.update_recurring_template(
         template_id, user["family_id"],
         amount=amount,
-        category_id=body.get("category_id"),
+        category_id=category_id,
         description=body.get("description"),
     )
     if err:
