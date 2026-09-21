@@ -99,7 +99,9 @@ g.document = {
     querySelectorAll: () => [],
     // core.js מניח שרכיבי הדיאלוג קיימים ולא בודק null, אז מחזירים
     // אובייקט אדיש במקום null
-    getElementById: () => stub(),
+    getElementById: (id) => (id === 'sf-page-data'
+        ? Object.assign(stub(), { textContent: '{}' })
+        : stub()),
     createElement: () => stub(),
     addEventListener() {},
     body: { appendChild() {}, style: {} },
@@ -111,6 +113,11 @@ g.location = { href: 'http://x/', reload() { reloaded = true; } };
 g.dispatchEvent = () => {};
 g.addEventListener = () => {};
 g.matchMedia = () => ({ matches: false });
+// ‎sessionStorage‎/‎localStorage‎ קיימים כגלובלי רק מ-node 24. ב-CI רץ
+// node 22, ושם הם נעדרים — וזה מה שהפיל את הבדיקה הזאת בפעם הראשונה.
+g.sessionStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+g.localStorage   = { getItem: () => null, setItem() {}, removeItem() {} };
+g.requestAnimationFrame = (fn) => fn(0);
 g.DOMParser = class {
     parseFromString() { return { querySelector: (sel) => el(sel, freshHas.has(sel)) }; }
 };
@@ -136,7 +143,7 @@ def _run(fresh_regions):
             capture_output=True, text=True, timeout=30)
     finally:
         harness.unlink(missing_ok=True)
-    assert out.returncode == 0, out.stderr[:800]
+    assert out.returncode == 0, out.stderr
     return json.loads(out.stdout)
 
 
@@ -198,3 +205,30 @@ def test_the_empty_dashboard_really_has_no_list():
     block = index[index.index("transactions-list") - 400:index.index("transactions-list")]
 
     assert "{% if transactions %}" in block
+
+
+# ─── core.js לא נופל כשאין אחסון ────────────────────────────────────────────
+
+def test_storage_access_cannot_take_the_whole_file_down():
+    """‎sessionStorage.getItem‎ רץ בטעינת הקובץ. חריגה שם — גלישה
+    פרטית, אחסון חסום, או סביבה בלי Web Storage — הפילה את **כל**
+    core.js: אין toast, אין דיאלוג אישור, אין רענון רך.
+
+    ככה זה התגלה: ב-CI רץ node 22, שאין בו ‎sessionStorage‎ כגלובלי,
+    והבדיקות כאן נפלו על משהו שלא היה קשור אליהן."""
+    core = _read(_JS / "core.js")
+
+    for call in ("sessionStorage.getItem", "sessionStorage.removeItem",
+                 "localStorage.getItem"):
+        i = core.index(call)
+        before = core[max(0, i - 300):i]
+        assert "try {" in before, f"{call} בלי try"
+
+
+def test_the_harness_does_not_depend_on_the_node_version():
+    """הארנס עצמו מספק את מה ש-core.js נוגע בו בטעינה, כדי שהבדיקה
+    תיפול על הקוד שהיא בודקת ולא על סביבת ההרצה."""
+    src = _HARNESS
+
+    assert "g.sessionStorage" in src
+    assert "g.localStorage" in src

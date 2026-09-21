@@ -51,7 +51,9 @@ window.escapeHtml = function (s) {
     }
 
     window.appFeedback = function () {
-        if (localStorage.getItem('sf_feedback_off') === '1') return;
+        try {
+            if (localStorage.getItem('sf_feedback_off') === '1') return;
+        } catch (e) { /* אין אחסון — ברירת המחדל היא שהמשוב פעיל */ }
 
         // צליל
         try {
@@ -107,9 +109,16 @@ window.escapeHtml = function (s) {
     };
 
     // הודעה שנשמרה לפני רענון דף — מוצגת עכשיו
-    const pending = sessionStorage.getItem('sf_toast');
+    // גישה לאחסון יכולה לזרוק — גלישה פרטית, אחסון חסום, או סביבה
+    // שאין בה אותו בכלל. השורה הזאת רצה בטעינת הקובץ, אז חריגה כאן
+    // הפילה את **כל** core.js: אין toast, אין דיאלוג אישור, אין רענון
+    // רך. תופעת לוואי מועילה: ככה זה התגלה, כשהבדיקות רצו ב-node 22.
+    let pending = null;
+    try {
+        pending = sessionStorage.getItem('sf_toast');
+    } catch (e) { /* אין אחסון — ההודעה הדחויה פשוט לא תוצג */ }
     if (pending) {
-        sessionStorage.removeItem('sf_toast');
+        try { sessionStorage.removeItem('sf_toast'); } catch (e) {}
         setTimeout(function () { window.showToast(pending); }, 350);
     }
 

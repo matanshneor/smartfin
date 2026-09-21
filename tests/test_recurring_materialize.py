@@ -17,6 +17,7 @@ from datetime import date
 
 import pytest
 
+from backend import clock
 from backend import supabase_config as db
 
 pytestmark = pytest.mark.unit
@@ -62,14 +63,18 @@ def _salary(day, freq="monthly_same"):
 
 @pytest.fixture
 def frozen_september(monkeypatch):
-    """מקפיא את 'היום' על 16/09/2026, כדי שהבדיקות לא ישתנו עם הזמן."""
+    """מקפיא את 'היום' על 16/09/2026, כדי שהבדיקות לא ישתנו עם הזמן.
+
+    הגרסה הקודמת דרסה את ‎datetime.date.today‎ — ומנוע העסקאות הקבועות
+    לא קורא לו בכלל, אלא ל-‎clock.today()‎, שנגזר מ-‎datetime.now(ISRAEL)‎.
+    כלומר הזמן מעולם לא הוקפא, והבדיקות רצו מול התאריך האמיתי.
+
+    זה לא נשאר תיאורטי: הבדיקה השבועית נשענת על כך שלא חלף שבוע נוסף
+    מאז 15/09, ולכן היא עברה במשך שישה ימים ונפלה ב-CI ב-22/09 — יום
+    אחרי שנכתבה שורת הקוד שנבדקה, ובלי שום קשר אליה."""
     import datetime as _dt
-
-    class _Date(_dt.date):
-        @classmethod
-        def today(cls): return cls(2026, 9, 16)
-
-    monkeypatch.setattr(_dt, "date", _Date)
+    monkeypatch.setattr(clock, "today", lambda: _dt.date(2026, 9, 16))
+    monkeypatch.setattr(clock, "now", lambda: _dt.datetime(2026, 9, 16, 12, 0))
     yield
 
 
