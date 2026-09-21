@@ -36,15 +36,19 @@ const listeners = {};
 const CAT = 'c1';
 
 const amountEl = { classList: { contains: c => c === 'budget-amount' },
-                   dataset: { id: CAT, saved: '' }, value: '500',
-                   closest: (s) => s === '.budget-amount' ? amountEl : editEl, focus() {} };
-const enabledEl = { checked: true, dataset: { id: CAT }, closest: () => editEl,
+                   dataset: { id: CAT, saved: '' }, value: '500', focus() {},
+                   closest: (s) => s === '.budget-amount' ? amountEl
+                                 : (s === '.cat-budget-edit' ? editEl : null) };
+const enabledEl = { checked: true, dataset: { id: CAT },
+                    closest: (s) => s === '.cat-budget-edit' ? editEl : null,
                     classList: { contains: () => false } };
-const alertEl  = { checked: true, dataset: { id: CAT } };
 const fieldsEl = { hidden: false };
+const saveBtn  = { disabled: false, textContent: 'שמור', dataset: { id: CAT },
+                   closest: (s) => s === '.budget-save' ? saveBtn
+                                 : (s === '.cat-budget-edit' ? editEl : null) };
 const editEl = { querySelector: (s) => ({
     '.budget-enabled': enabledEl, '.budget-amount': amountEl,
-    '.budget-alert': alertEl, '.cat-budget-fields': fieldsEl }[s] || null) };
+    '.budget-save': saveBtn, '.cat-budget-fields': fieldsEl }[s] || null) };
 
 const stub = () => ({ style:{}, dataset:{}, textContent:'', innerHTML:'', value:'',
     checked:false, hidden:false, classList:{add(){},remove(){},toggle(){},contains:()=>false},
@@ -71,9 +75,13 @@ g.matchMedia=()=>({matches:false}); g.SF_PAGE_DATA={}; g.confirm=()=>false;
 
 (0, eval)(fs.readFileSync(process.argv[2], 'utf8'));
 
-// הקלדה בשדה הסכום
+// הקלדה בשדה הסכום, ואז לחיצה על "שמור"
 (listeners.input || []).forEach(fn => { try { fn({ target: amountEl }); }
                                         catch (e) { errors.push(String(e)); } });
+if (process.argv[3] !== 'no-click') {
+    (listeners.click || []).forEach(fn => { try { fn({ target: saveBtn }); }
+                                            catch (e) { errors.push(String(e)); } });
+}
 
 // ההשהיה לפני השמירה היא 600ms
 setTimeout(() => {
@@ -88,14 +96,15 @@ process.on('uncaughtException', (e) => {
 """
 
 
-def _run():
+def _run(click=True):
     node = shutil.which("node")
     if not node:
         pytest.skip("node לא מותקן")
     harness = _ROOT / "tests" / "_budget_harness.js"
     harness.write_text(_HARNESS, encoding="utf-8")
     try:
-        out = subprocess.run([node, str(harness), str(_JS / "settings.js")],
+        out = subprocess.run([node, str(harness), str(_JS / "settings.js"),
+                              "click" if click else "no-click"],
                              capture_output=True, text=True, timeout=30)
     finally:
         harness.unlink(missing_ok=True)
@@ -105,7 +114,7 @@ def _run():
 
 # ─── הבדיקה שהייתה חסרה ─────────────────────────────────────────────────────
 
-def test_typing_a_budget_actually_sends_it_to_the_server():
+def test_saving_a_budget_actually_sends_it_to_the_server():
     """הלב. עד היום זה זרק ReferenceError ולא יצאה שום בקשה."""
     res = _run()
 
@@ -118,12 +127,42 @@ def test_the_request_goes_to_the_right_place_with_the_right_shape():
     req = res["sent"][0]
 
     assert req["url"] == "/api/family/settings"
-    assert json.loads(req["body"]) == {"limits": {_CAT: {"amount": 500, "alert": True}}}
+    assert json.loads(req["body"]) == {"limits": {_CAT: {"amount": 500}}}
 
 
 def test_the_listener_is_registered_at_all():
     """בקרת-נגד: אם הקובץ קורס בטעינה לפני בלוק התקציב, אין מאזין."""
     assert _run()["listeners"] == 1
+
+
+# ─── שמירה מפורשת, ובלי שאלה מיותרת ─────────────────────────────────────────
+
+def test_typing_alone_saves_nothing():
+    """סכום נכתב ספרה-ספרה. שמירה על כל הקשה שומרת גם את "2" ואת "20"
+    בדרך ל-"200" — כלומר תקציב שגוי, שנשמר, שלוש פעמים."""
+    res = _run(click=False)
+
+    assert res["sent"] == [], "נשמר בלי שנלחץ שמור"
+
+
+def test_there_is_no_separate_alert_question():
+    """הייתה תיבה שנייה, "התרע בחריגה". בפועל זו הבחנה בלי הבדל: מי
+    שטרח להגדיר תקציב רוצה לדעת כשחרג ממנו."""
+    html = (_ROOT / "frontend/templates/settings.html").read_text(encoding="utf-8")
+    js   = (_JS / "settings.js").read_text(encoding="utf-8")
+
+    assert "budget-alert" not in html
+    assert "budget-alert" not in js
+
+
+def test_the_server_still_alerts_when_nothing_was_asked():
+    """מרגע שהתיבה ירדה, הברירה חייבת להיות "כן" — אחרת התקציב הופך
+    למספר על המסך בלי שום התרעה."""
+    from backend import supabase_config as db
+
+    budget = db.category_budget({"limits": {_CAT: {"amount": 500}}}, _CAT)
+
+    assert budget["alert"] is True
 
 
 # ─── הכלל, ולא המקרה ────────────────────────────────────────────────────────

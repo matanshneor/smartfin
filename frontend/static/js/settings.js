@@ -1224,66 +1224,84 @@ document.addEventListener('click', function (e) {
  * שבאמת שואלים.
  */
 (function () {
-    const saveTimers = {};
 
     function fieldsFor(id) {
         const box = document.querySelector('.budget-enabled[data-id="' + id + '"]');
         return box && box.closest('.cat-budget-edit');
     }
 
-    function currentValues(id) {
-        const wrap  = fieldsFor(id);
-        if (!wrap) return null;
-        const on    = wrap.querySelector('.budget-enabled').checked;
-        const amt   = wrap.querySelector('.budget-amount').value.trim();
-        const alert = wrap.querySelector('.budget-alert').checked;
-        // כבוי, או בלי סכום — זו גם הדרך להסיר תקציב קיים
-        if (!on || !amt) return null;
-        return { amount: Number(amt), alert: alert };
+    function amountOf(wrap) {
+        const raw = wrap.querySelector('.budget-amount').value.trim();
+        const num = Number(raw);
+        return (raw && isFinite(num) && num > 0) ? num : null;
     }
 
+    /* כפתור השמירה פעיל רק כשיש מה לשמור. כפתור שנראה זמין ולא עושה
+     * כלום מלמד להתעלם ממנו. */
+    function syncButton(wrap) {
+        const btn = wrap.querySelector('.budget-save');
+        if (btn) btn.disabled = amountOf(wrap) === null;
+    }
+
+    /* ‎alert‎ לא נשלח יותר, והשרת קובע ‎True‎ כברירת מחדל.
+     *
+     * הייתה כאן תיבה שנייה, "התרע בחריגה", כהחלטה נפרדת מ"יש תקציב".
+     * בפועל זו הבחנה בלי הבדל: מי שטרח להגדיר תקציב רוצה לדעת כשחרג
+     * ממנו — אחרת הוא רק מספר על המסך. פחות שאלות, אותה תוצאה. */
     function save(id, revert) {
+        const wrap = fieldsFor(id);
+        if (!wrap) return;
+        const on    = wrap.querySelector('.budget-enabled').checked;
+        const value = on ? amountOf(wrap) : null;
         const patch = {};
-        patch[id] = currentValues(id);
+        patch[id] = value === null ? null : { amount: value };
         savePrefs({ limits: patch }, revert);
-    }
-
-    /* השהיה קצרה על הקלדה: כל תו בשדה מספר היה שולח בקשה, ו-"2000"
-     * הוא ארבע שמירות שהראשונות בהן שגויות (₪2, ₪20…). */
-    function saveSoon(id, revert) {
-        clearTimeout(saveTimers[id]);
-        saveTimers[id] = setTimeout(function () { save(id, revert); }, 600);
     }
 
     document.addEventListener('change', function (e) {
         const box = e.target.closest('.budget-enabled');
-        if (box) {
-            const wrap = box.closest('.cat-budget-edit');
-            const was  = !box.checked;
-            wrap.querySelector('.cat-budget-fields').hidden = !box.checked;
-            if (box.checked) {
-                wrap.querySelector('.budget-amount').focus();
-                return;             // אין מה לשמור עד שיוזן סכום
-            }
-            save(box.dataset.id, function () {
-                box.checked = was;
-                wrap.querySelector('.cat-budget-fields').hidden = !was;
-            });
-            return;
+        if (!box) return;
+        const wrap = box.closest('.cat-budget-edit');
+        wrap.querySelector('.cat-budget-fields').hidden = !box.checked;
+        if (box.checked) {
+            syncButton(wrap);
+            wrap.querySelector('.budget-amount').focus();
+            return;                 // אין מה לשמור עד שיוזן סכום ויילחץ "שמור"
         }
-
-        const alertBox = e.target.closest('.budget-alert');
-        if (alertBox) {
-            const was = !alertBox.checked;
-            save(alertBox.dataset.id, function () { alertBox.checked = was; });
-        }
+        // כיבוי הוא פעולה חד-משמעית — אין מה להקליד, אז נשמר מיד
+        const was = true;
+        save(box.dataset.id, function () {
+            box.checked = was;
+            wrap.querySelector('.cat-budget-fields').hidden = !was;
+        });
     });
 
     document.addEventListener('input', function (e) {
         const amount = e.target.closest('.budget-amount');
+        if (amount) syncButton(amount.closest('.cat-budget-edit'));
+    });
+
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.budget-save');
+        if (!btn || btn.disabled) return;
+        btn.disabled = true;
+        const label = btn.textContent;
+        btn.textContent = 'שומר…';
+        save(btn.dataset.id, function () { /* השגיאה מוצגת ב-toast */ });
+        // ‎savePrefs‎ לא מחזיר הבטחה, אז משחררים אחרי שהבקשה יצאה
+        setTimeout(function () {
+            btn.textContent = label;
+            syncButton(btn.closest('.cat-budget-edit'));
+        }, 700);
+    });
+
+    // Enter בשדה הסכום = לחיצה על "שמור"
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        const amount = e.target.closest('.budget-amount');
         if (!amount) return;
-        const was = amount.dataset.saved || '';
-        saveSoon(amount.dataset.id, function () { amount.value = was; });
-        amount.dataset.saved = amount.value;
+        e.preventDefault();
+        const btn = amount.closest('.cat-budget-edit').querySelector('.budget-save');
+        if (btn && !btn.disabled) btn.click();
     });
 })();

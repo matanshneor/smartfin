@@ -257,17 +257,17 @@
                                        {% if limit %}checked{% endif %}>
                                 <span>תקציב חודשי</span>
                             </label>
+                            {# השמירה מפורשת ולא אוטומטית: סכום נכתב ספרה-ספרה,
+                               ושמירה על כל הקשה שומרת גם את "2" ואת "20" בדרך
+                               ל-"200". כפתור אומר מתי סיימת. #}
                             <div class="cat-budget-fields" {% if not limit %}hidden{% endif %}>
                                 <input class="form-input budget-amount" type="number" min="1" step="1"
                                        inputmode="decimal" placeholder="₪ לחודש"
                                        data-id="{{ cat.id }}"
                                        value="{{ limit.amount | round | int if limit else '' }}"
                                        aria-label="תקציב חודשי ל{{ cat.name }}">
-                                <label class="cat-budget-toggle">
-                                    <input type="checkbox" class="budget-alert" data-id="{{ cat.id }}"
-                                           {% if not limit or limit.alert %}checked{% endif %}>
-                                    <span>התרע בחריגה</span>
-                                </label>
+                                <button type="button" class="btn-sm btn-primary budget-save"
+                                        data-id="{{ cat.id }}" disabled>שמור</button>
                             </div>
                         </div>
                         {% endif %}
