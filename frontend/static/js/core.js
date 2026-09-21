@@ -194,8 +194,19 @@ window.escapeHtml = function (s) {
  * האנימציות לא רצות שוב בכוונה: ספירה מ-0 אחרי עדכון גורמת למספר
  * "לקפוץ אחורה" מול העיניים, וה-HTML הטרי ממילא מכיל כבר את הערך הסופי.
  */
+/* אזורי העמוד שהרענון הרך מחליף.
+ *
+ * ה-hero הוא **אח** של ‎main‎ ב-base.html, לא בן — אז רענון שהחליף רק
+ * את ‎main‎ השאיר את "נשאר בעו״ש החודש" תקוע אחרי כל הוספה ועריכה.
+ * זה המספר שכל האפליקציה קיימת בשבילו.
+ *
+ * ולמשפחה חדשה זה היה גרוע במיוחד: ה-hero מציג "לחצו על + כדי להוסיף
+ * את העסקה הראשונה שלכם ולראות כאן את היתרה שלכם", והמשפט הזה נשאר
+ * על המסך מעל העסקה שהרגע נוספה. */
+const SF_RELOAD_REGIONS = ['header.page-hero', 'main.main-content'];
+
 window.softReload = function (selector) {
-    selector = selector || 'main.main-content';
+    const regions = selector ? [selector] : SF_RELOAD_REGIONS;
     return fetch(window.location.href, {
         headers: { 'X-Requested-With': 'sf-soft-reload' },
         credentials: 'same-origin',
@@ -206,14 +217,17 @@ window.softReload = function (selector) {
             return r.text();
         })
         .then(function (html) {
-            const fresh = new DOMParser()
-                .parseFromString(html, 'text/html')
-                .querySelector(selector);
-            const current = document.querySelector(selector);
-            if (!fresh || !current) throw new Error('missing ' + selector);
+            const doc = new DOMParser().parseFromString(html, 'text/html');
 
-            current.replaceWith(fresh);
-            // מודיעים למי שצריך לחבר את עצמו מחדש (גרפים, למשל)
+            // כל האזורים נאספים לפני שנוגעים באחד מהם: החלפה חלקית —
+            // hero חדש מעל גוף ישן — גרועה מרענון מלא.
+            const pairs = regions.map(function (sel) {
+                return [document.querySelector(sel), doc.querySelector(sel)];
+            });
+            if (pairs.some(p => !p[0] || !p[1])) throw new Error('missing region');
+
+            pairs.forEach(function (pair) { pair[0].replaceWith(pair[1]); });
+            // מודיעים למי שצריך לחבר את עצמו מחדש (אנימציות, גרפים)
             window.dispatchEvent(new CustomEvent('sf:refreshed'));
         })
         .catch(function () {

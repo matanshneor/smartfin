@@ -651,13 +651,18 @@
         let placeholderRow = null;
         if (!editId && !txProject.value && window.location.pathname === '/') {
             const list = document.querySelector('.transactions-list');
+            // ‎closeModal‎ חייב להיות **בתוך** התנאי. בדשבורד ריק אין
+            // רשימה בכלל (התבנית מרנדרת אותה רק כשיש עסקאות), אז לא
+            // נוצרה שורה זמנית — אבל החלון נסגר בכל זאת, וכל הודעת
+            // שגיאה נכתבה לתוך חלון סגור שזה עתה נוקה. העסקה הראשונה
+            // בחיים של המשתמש נכשלה בלי שום סימן על המסך.
             if (list) {
                 placeholderRow = buildPlaceholderTxRow(amount);
                 list.insertBefore(placeholderRow, list.firstChild);
+                closeModal();
+                setSubmitBusy(false);
+                updateSubmitLabel();
             }
-            closeModal();
-            setSubmitBusy(false);
-            updateSubmitLabel();
         }
 
         const url    = editId ? ('/api/transactions/' + editId) : '/api/transactions';
