@@ -203,7 +203,11 @@ document.addEventListener('click', function (e) {
             } else {
                 window.showToast('המחיקה נכשלה', 'error');
             }
-        });
+        })
+        // בלי ‎.catch‎ — כל שאר המחיקות בקובץ יש להן — חיבור שנופל
+        // השאיר את השורה על המסך בלי שום הודעה, רק דחייה לא מטופלת
+        // בקונסולה. המשתמש לוחץ ✕ שוב ושוב.
+        .catch(function () { window.showToast(window.sfNetError(), 'error'); });
     });
 });
 

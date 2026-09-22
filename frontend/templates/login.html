@@ -65,7 +65,10 @@
         </div>
 
         <div class="auth-form-card">
-            <h2 class="auth-form-title">ברוך הבא</h2>
+            {# הכותרת קבועה ונשארת גם בלשונית **ההרשמה**: "ברוך הבא" בלשון
+               יחיד-זכר, למי שמעולם לא היה כאן. שאר האפליקציה מדברת
+               ברבים ("ברוכים הבאים ל-SmartFin" באשף). #}
+            <h2 class="auth-form-title">ברוכים הבאים</h2>
 
             <div class="type-toggle auth-tabs" id="authTabs" role="group" aria-label="בחר פעולה">
                 <button type="button" class="toggle-btn {% if active_tab != 'signup' %}active{% endif %}" id="tabLogin" data-tab="login">התחברות</button>

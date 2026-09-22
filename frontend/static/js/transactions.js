@@ -986,6 +986,11 @@
         recurFields.classList.remove('visible');
         txDate.value = todayStr();
         syncDateChips();
+        // ‎setType‎ ולא רק ‎updateSubmitLabel‎: כפתור הסריקה מוסתר במצב
+        // עריכה (‎!editId && type === 'expense'‎), ושכפול מנקה את ‎editId‎
+        // בלי לרענן אותו. השורה המשוכפלת היא הוצאה חדשה לגמרי — ובלי זה
+        // היא נפתחה בלי אפשרות לצלם קבלה, בלי שום סיבה נראית לעין.
+        setType(currentType);
         updateSubmitLabel();
         txAmount.focus();
         window.showToast('שכפול — עדכן ושמור');
@@ -1377,9 +1382,14 @@
             if (openRow === row) openRow = null;
         }
 
-        document.querySelectorAll(ROW_SELECTOR).forEach(function (row) {
-            if (row.dataset.id) ensureSwipeStructure(row);
-        });
+        // המבנה נבנה **בעצלתיים**, ב-‎touchstart‎ בלבד (למטה).
+        //
+        // קודם הוא נבנה לכל שורה בטעינה: ‎ensureSwipeStructure‎ מעבירה כל
+        // ילד ל-div חדש ומוסיפה שני פאנלים, ובעמוד החודש כל עסקה מופיעה
+        // פעמיים-שלוש (פירוט לפי קטגוריה, "כל העסקאות", פירוט פרויקט).
+        // חודש של 150 עסקאות היה ~350 שורות × reparent + שלוש יצירות
+        // אלמנט, סינכרונית, בטעינת העמוד — ובלי שום צורך, כי ה-‎touchstart‎
+        // בונה את מה שנוגעים בו ממילא.
 
         document.addEventListener('touchstart', function (e) {
             if (e.target.closest('.receipt-badge, .delete-recurring-btn, .swipe-action')) return;

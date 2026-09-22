@@ -167,3 +167,124 @@ def test_the_network_failure_path_still_reopens_too():
     catch_branch = chain[:catch_at][chain[:catch_at].rindex(".catch(function ()"):]
 
     assert "openModal()" in catch_branch
+
+
+# ─── ג6: אין יותר דיאלוג של הדפדפן ──────────────────────────────────────────
+
+def test_no_javascript_file_uses_the_browsers_own_confirm():
+    """האפליקציה בנתה דיאלוג משלה, והייתה קריאה אחת ל-‎confirm‎ המקומי —
+    דווקא על מעבר משפחה, שמנתק אותך מכל העסקאות שלך. ב-PWA מותקן הוא
+    מרונדר עם שם המארח מעליו, משמאל לימין ובלי עיצוב: הרגע שבו
+    האפליקציה נראית הכי פחות כמו עצמה."""
+    offenders = []
+    for f in sorted(_JS.glob("*.js")):
+        code = _strip_comments(f.read_text(encoding="utf-8"))
+        if re.search(r"(?<![.\w])confirm\s*\(", code):
+            offenders.append(f.name)
+
+    assert not offenders, f"דיאלוג דפדפן ב: {offenders}"
+
+
+def test_the_family_switch_still_asks_before_it_moves_you():
+    """בקרת-נגד: החלפת הדיאלוג לא הפכה אותה לפעולה בלי אישור."""
+    js = _strip_comments(_read("frontend/static/js/settings.js"))
+
+    assert "appConfirm" in js
+    assert "לעבור למשפחה אחרת?" in js
+
+
+# ─── ג10: פרטים קטנים שכל אחד מהם נראה כמו באג ──────────────────────────────
+
+@pytest.mark.parametrize("tpl", ["project_detail.html", "project_edit.html"])
+def test_the_back_chevron_points_the_right_way_in_rtl(tpl):
+    """קודקוד ב-x=9 פירושו חץ שמצביע שמאלה, ובעברית שמאלה היא "קדימה" —
+    שני העמודים האלה השתמשו בגליף של "הבא" בשביל "חזרה"."""
+    html = _read(f"frontend/templates/{tpl}")
+    back = html[:html.index("</a>")]
+
+    assert '"15 18 9 12 15 6"' not in back, "חץ ה'חזרה' מצביע קדימה"
+
+
+def test_the_profile_rows_do_not_grow_emoji_on_save():
+    """השרת מרנדר ‎{{ m.phone }}‎ נקי; ה-JS הוסיף "📞 " בשמירה. השורה
+    השתנתה בשמירה וחזרה לעצמה ברענון — נראה כמו באג תצוגה דווקא במסך
+    שכל תפקידו להיראות אמין."""
+    js = _strip_comments(_read("frontend/static/js/settings.js"))
+
+    assert "'📞 '" not in js and "'💼 '" not in js
+
+
+def test_the_confirm_dialog_announces_what_it_is_asking():
+    """בלי זה קורא מסך הכריז "ביטול, לחצן, דיאלוג" — כולל על "למחוק את
+    החשבון לצמיתות?"."""
+    html = _read("frontend/templates/base.html")
+    dialog = html[html.index('id="confirmOverlay"') - 200:][:400]
+
+    assert 'aria-labelledby="confirmTitle"' in dialog
+    assert 'aria-describedby="confirmMessage"' in dialog
+
+
+def test_the_copy_button_keeps_its_own_label():
+    """אחרי העתקה מוצלחת התווית שוחזרה ל-'העתק קוד' בזמן שבתבנית כתוב
+    'העתק הזמנה' — הכפתור שינה את שמו בשקט."""
+    js = _read("frontend/static/js/onboarding.js")
+    html = _read("frontend/templates/onboarding.html")
+
+    label = re.search(r'id="copyInviteBtn"[^>]*>([^<]+)<', html).group(1).strip()
+    assert f"'{label}'" in js, f"ה-JS משחזר תווית אחרת מ-{label!r}"
+
+
+def test_the_signup_tab_does_not_welcome_you_back():
+    """הכותרת קבועה ונשארת גם בלשונית ההרשמה: "ברוך הבא", לשון
+    יחיד-זכר, למי שמעולם לא היה כאן."""
+    # על התוכן המרונדר, לא על צורת התגית: הגרסה הראשונה של הבדיקה חיפשה
+    # ‎<h2>ברוך הבא</h2>‎ בזמן שבמציאות יש שם ‎class‎ — כלומר היא עברה
+    # בלי שהתיקון בכלל הוחל.
+    html = re.sub(r"\{#.*?#\}", "", _read("frontend/templates/login.html"), flags=re.S)
+
+    assert "ברוך הבא" not in html, "לשונית ההרשמה מקבלת בברכה מישהו שחוזר"
+    assert "ברוכים הבאים" in html
+
+
+def test_every_delete_chain_handles_a_dropped_connection():
+    """בלי ‎.catch‎ השורה נשארת על המסך בלי שום הודעה, והמשתמש לוחץ ✕
+    שוב ושוב."""
+    js = _strip_comments(_read("frontend/static/js/project-edit.js"))
+    block = js[js.index("/categories/' + id, { method: 'DELETE' }"):]
+    block = block[:block.index("\n});")]
+
+    assert ".catch(" in block
+
+
+def test_local_storage_is_never_touched_unguarded():
+    """‎core.js‎ כבר נפל ככה פעם: ב-Safari עם עוגיות חסומות הקריאה
+    **זורקת**, ובשורה הראשונה של IIFE היא הורגת את כל הקובץ."""
+    offenders = []
+    for f in sorted(_JS.glob("*.js")):
+        code = _strip_comments(f.read_text(encoding="utf-8"))
+        for m in re.finditer(r"localStorage\.(getItem|setItem|removeItem)", code):
+            window = code[max(0, m.start() - 260):m.start()]
+            if "try" not in window:
+                offenders.append(f"{f.name}:{code[:m.start()].count(chr(10)) + 1}")
+
+    assert not offenders, f"גישה לא מוגנת ל-localStorage: {offenders}"
+
+
+def test_duplicating_a_transaction_restores_the_scan_button():
+    """כפתור הסריקה מוסתר במצב עריכה, ושכפול מנקה את ‎editId‎ בלי לרענן
+    אותו — השורה המשוכפלת נפתחה בלי אפשרות לצלם קבלה."""
+    js = _strip_comments(_read("frontend/static/js/transactions.js"))
+    block = js[js.index("duplicateBtn.addEventListener"):]
+    block = block[:block.index("\n    });")]
+
+    assert "setType(" in block
+
+
+def test_swipe_structure_is_built_lazily():
+    """בעמוד החודש כל עסקה מופיעה פעמיים-שלוש, אז חודש של 150 עסקאות
+    היה ~350 reparent סינכרוניים בטעינה — ובלי צורך, כי ‎touchstart‎
+    בונה ממילא את מה שנוגעים בו."""
+    js = _strip_comments(_read("frontend/static/js/transactions.js"))
+
+    assert "querySelectorAll(ROW_SELECTOR).forEach" not in js, \
+        "המבנה עדיין נבנה לכל שורה בטעינת העמוד"

@@ -8,7 +8,13 @@ if ('serviceWorker' in navigator) {
 
 (function () {
     const DISMISS_KEY = 'sf_install_dismissed';
-    if (localStorage.getItem(DISMISS_KEY)) return;
+    // ‎try/catch‎: זו הגישה האחרונה בריפו ל-‎localStorage‎ שלא הייתה
+    // מוגנת. ב-Safari עם עוגיות חסומות, בגלישה פרטית או ב-Lockdown
+    // Mode הקריאה **זורקת** — וכאן, בשורה הראשונה של ה-IIFE, היא
+    // הורגת את כל הקובץ. אותה נפילה בדיוק שקרתה ל-core.js.
+    try {
+        if (localStorage.getItem(DISMISS_KEY)) return;
+    } catch (e) { /* אין אחסון — מציגים את ההצעה, במקום לא כלום */ }
 
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches
         || window.navigator.standalone === true;
@@ -22,7 +28,9 @@ if ('serviceWorker' in navigator) {
 
     function dismiss() {
         banner.style.display = 'none';
-        localStorage.setItem(DISMISS_KEY, '1');
+        try {
+            localStorage.setItem(DISMISS_KEY, '1');
+        } catch (e) { /* לא נזכר — הבאנר יחזור, וזה עדיף על קריסה */ }
     }
     closeBtn.addEventListener('click', dismiss);
 

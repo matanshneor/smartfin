@@ -144,13 +144,22 @@ if (joinBtn && joinInput) {
                     const howMany = (typeof n === 'number')
                         ? `יש ${n} תנועות`
                         : 'יש תנועות קיימות';
-                    const ok = confirm(
-                        `למשפחה הנוכחית שלכם ${howMany}.\n\n` +
-                        'מעבר למשפחה אחרת מנתק אתכם מהן — הן יישארו במשפחה הישנה ' +
-                        'ולא תוכלו לראות אותן יותר.\n\nלהמשיך?'
-                    );
-                    if (!ok) return null;
-                    return send(true);
+                    // ‎appConfirm‎ ולא ‎confirm‎ המקומי. זו הייתה הקריאה
+                    // היחידה בכל האפליקציה לדיאלוג של הדפדפן — ודווקא על
+                    // השאלה המסוכנת ביותר במוצר. ב-PWA מותקן הוא מרונדר
+                    // עם שם המארח מעליו ("smartfin… אומר"), משמאל לימין
+                    // ובלי שום עיצוב: הרגע שבו האפליקציה נראית הכי פחות
+                    // כמו עצמה הוא הרגע שבו המשתמש הכי צריך לבטוח בה.
+                    return window.appConfirm({
+                        title: 'לעבור למשפחה אחרת?',
+                        message: `למשפחה הנוכחית שלכם ${howMany}. מעבר למשפחה אחרת ` +
+                                 'מנתק אתכם מהן — הן יישארו במשפחה הישנה ולא תוכלו ' +
+                                 'לראות אותן יותר.',
+                        confirmText: 'עבור למשפחה החדשה',
+                    }).then(function (ok) {
+                        if (!ok) return null;
+                        return send(true);
+                    });
                 }
                 return res;
             })
@@ -442,11 +451,14 @@ function submitProfile(workplaceScope) {
         accountNameDisplay.textContent = d.full_name;
 
         const phoneDisplay = document.getElementById('accountPhoneDisplay');
-        phoneDisplay.textContent = d.phone ? '📞 ' + d.phone : '';
+        // בלי אימוג'י: השרת מרנדר ‎{{ m.phone }}‎ נקי, אז השורה קיבלה
+        // "📞 050-…" בשמירה וחזרה ל-"050-…" ברענון — נראה כמו באג תצוגה
+        // דווקא במסך שכל תפקידו להיראות אמין.
+        phoneDisplay.textContent = d.phone || '';
         phoneDisplay.style.display = d.phone ? '' : 'none';
 
         const workplaceDisplay = document.getElementById('accountWorkplaceDisplay');
-        workplaceDisplay.textContent = d.workplace ? '💼 ' + d.workplace : '';
+        workplaceDisplay.textContent = d.workplace || '';
         workplaceDisplay.style.display = d.workplace ? '' : 'none';
 
         profileEdit.classList.remove('visible');

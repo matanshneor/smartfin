@@ -6,7 +6,10 @@
 <div class="hero-top">
     <div>
         <a href="{{ url_for('projects') }}" class="stats-nav-btn" aria-label="חזרה לפרויקטים" style="margin-inline-end:10px;">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{# קודקוד ב-x=15: החץ מצביע ימינה. בעברית ימינה היא
+                   "אחורה" — הגלגל הקודם היה הגלגל של "הבא".
+                   month.html ו-login.html עשו את זה נכון. #}
+                <polyline points="9 18 15 12 9 6"/></svg>
         </a>
         <h1 class="hero-title">
             {{ project.icon or ('🔒' if project.is_personal else '🎯') }} {{ project.name }}

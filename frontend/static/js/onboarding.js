@@ -150,7 +150,7 @@ window.escapeHtml = window.escapeHtml || function (s) {
         window.copyToClipboard(msg, el).then(function (copied) {
             if (!copied) return;          // הודעה כבר הוצגה, והקוד מסומן
             btn.textContent = '✓ הועתקה הזמנה';
-            setTimeout(function () { btn.textContent = 'העתק קוד'; }, 1800);
+            setTimeout(function () { btn.textContent = 'העתק הזמנה'; }, 1800);
         });
     });
 

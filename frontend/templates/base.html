@@ -245,7 +245,11 @@
     <div class="toast" id="appToast" role="status" aria-live="polite"></div>
 
     <!-- דיאלוג אישור מעוצב (מחליף את confirm של הדפדפן) -->
-    <div class="confirm-overlay" id="confirmOverlay" role="alertdialog" aria-modal="true">
+    {# ‎aria-labelledby/describedby‎: בלעדיהם קורא מסך הכריז "ביטול, לחצן,
+   דיאלוג" ולא אמר על **מה** שואלים — כולל על "למחוק את החשבון
+   לצמיתות?". מודאל העסקה עשה את זה נכון; זה לא. #}
+<div class="confirm-overlay" id="confirmOverlay" role="alertdialog" aria-modal="true"
+     aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
         <div class="confirm-card">
             <p class="confirm-title" id="confirmTitle"></p>
             <p class="confirm-message" id="confirmMessage"></p>
