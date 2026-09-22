@@ -553,14 +553,24 @@ def get_family_settings(family_id: str) -> dict:
 
 
 def update_family_settings(family_id: str, patch: dict) -> bool:
-    """ממזג עדכון חלקי לתוך ההגדרות השמורות של המשפחה."""
+    """ממזג עדכון חלקי לתוך ההגדרות השמורות של המשפחה.
+
+    המיזוג נעשה **במסד**, במשפט אחד עם ‎for update‎, ולא כאן. קודם זה היה
+    קרא-מזג-כתוב בלי שום נעילה: ארבעה workers, שורה אחת, ושני בני משפחה
+    ששמרו הגדרות באותה שנייה דרסו זה את זה. מי שקבע תקציב וקיבל "נשמר"
+    ראה אותו נעלם ברענון הבא, ובלי שום סימן שמשהו קרה.
+
+    הסמנטיקה זהה ל-‎_merge_settings‎ (עומק אחד + ‎_WHOLE_MAP_KEYS‎), והיא
+    נשלחת לפונקציה כדי ששני המימושים לא יוכלו להיפרד בשקט."""
     client = get_client()
     if not client or not family_id:
         return False
     try:
-        stored = (get_family(family_id) or {}).get("settings") or {}
-        merged = _merge_settings(stored, patch)
-        client.table("families").update({"settings": merged}).eq("id", family_id).execute()
+        client.rpc("merge_family_settings", {
+            "p_family_id":  family_id,
+            "p_patch":      patch or {},
+            "p_whole_keys": sorted(_WHOLE_MAP_KEYS),
+        }).execute()
         _invalidate_family_cache(family_id)
         return True
     except Exception as e:
@@ -900,7 +910,7 @@ def get_recent_transactions(family_id: str, limit: int = 5, settings: dict = Non
         return _format_transactions(rows, settings)
     except Exception as e:
         logger.exception("get_recent_transactions")
-        return []
+        raise DataUnavailable("get_recent_transactions") from e
 
 
 def get_month_transactions(family_id: str, year: int, month: int, settings: dict = None,
@@ -922,7 +932,7 @@ def get_month_transactions(family_id: str, year: int, month: int, settings: dict
         return _format_transactions(rows, settings)
     except Exception as e:
         logger.exception("get_month_transactions")
-        return []
+        raise DataUnavailable("get_month_transactions") from e
 
 
 def add_transaction(data: dict):
@@ -952,7 +962,7 @@ def get_recurring_transactions(family_id: str, settings: dict = None) -> list:
         return _format_transactions(result.data, settings)
     except Exception as e:
         logger.exception("get_recurring_transactions")
-        return []
+        raise DataUnavailable("get_recurring_transactions") from e
 
 
 # כמה פעמים בחודש מתרחשת כל תדירות. שבועי הוא 52/12 ולא 4, ודו-שבועי
@@ -1568,12 +1578,15 @@ def update_category(cat_id: str, family_id: str, name: str, icon: str):
     if not client:
         return False
     try:
-        client.table("categories") \
+        result = client.table("categories") \
             .update({"name": name, "icon": icon}) \
             .eq("id", cat_id) \
             .eq("family_id", family_id) \
             .execute()
-        return True
+        # ‎.data‎ מחזיר את השורות שנגעו בפועל. בלי הבדיקה הזאת "נשמר"
+        # נאמר גם כששום שורה לא התאימה — למשל כשבן משפחה אחר מחק את
+        # הפריט שנייה קודם, או כשהמזהה שייך למשפחה אחרת.
+        return bool(result.data)
     except Exception as e:
         logger.exception("update_category")
         return False
@@ -1648,7 +1661,7 @@ def get_projects(family_id: str, viewer_user_id: str) -> list:
         return out
     except Exception as e:
         logger.exception("get_projects")
-        return []
+        raise DataUnavailable("get_projects") from e
 
 
 def _project_totals(family_id: str) -> dict:
@@ -1719,11 +1732,14 @@ def update_project(project_id: str, family_id: str, name: str, budget_target: fl
             ) if after and not before
         ]
 
-        client.table("projects").update({
+        result = client.table("projects").update({
             "name": name, "budget_target": budget_target, "description": description,
             "icon": icon, "track_expense": track_expense, "track_income": track_income,
             "track_savings": track_savings,
         }).eq("id", project_id).eq("family_id", family_id).execute()
+        # ראו update_category
+        if not result.data:
+            return False
 
         if newly_enabled:
             _seed_project_categories(project_id, family_id, newly_enabled)
@@ -1778,7 +1794,7 @@ def unshare_project(project_id: str, family_id: str, user_id: str):
         return False, str(e)
 
 
-def delete_project(project_id: str, family_id: str, delete_transactions: bool = False) -> bool:
+def delete_project(project_id: str, family_id: str, delete_transactions: bool = False):
     """מוחק את הפרויקט (וקטגוריותיו הייעודיות, ON DELETE CASCADE).
 
     delete_transactions=False (ברירת מחדל): העסקאות ששויכו אליו לא נמחקות —
@@ -1787,17 +1803,22 @@ def delete_project(project_id: str, family_id: str, delete_transactions: bool = 
     מחיקת הפרויקט עצמו."""
     client = get_client()
     if not client:
-        return False
+        return False, 0
     try:
+        wiped = 0
         if delete_transactions:
-            client.table("transactions").delete() \
+            gone = client.table("transactions").delete() \
                 .eq("project_id", project_id).eq("family_id", family_id).execute()
-        client.table("projects").delete() \
+            wiped = len(gone.data or [])
+        result = client.table("projects").delete() \
             .eq("id", project_id).eq("family_id", family_id).execute()
-        return True
+        # ‎(ok, wiped)‎ ולא ‎True‎: זו הפעולה ההרסנית ביותר שכל חבר יכול
+        # לעשות בלי סיסמה ובלי הרשאת מנהל, והמשתמש צריך לראות כמה עסקאות
+        # באמת נעלמו — בדיוק כמו באיפוס העסקאות.
+        return bool(result.data), wiped
     except Exception as e:
         logger.exception("delete_project")
-        return False
+        return False, 0
 
 
 def get_project_for_transaction(project_id: str, family_id: str):
@@ -1882,7 +1903,7 @@ def get_project_detail(project_id: str, family_id: str, viewer_user_id: str) -> 
         }
     except Exception as e:
         logger.exception("get_project_detail")
-        return None
+        raise DataUnavailable("get_project_detail") from e
 
 
 # ─── Project categories (ייעודיות לכל פרויקט, נפרדות מקטגוריות המשפחה) ────────
@@ -1921,7 +1942,7 @@ def get_project_categories(project_id: str, family_id: str, type_: str = None) -
         return query.order("name").execute().data
     except Exception as e:
         logger.exception("get_project_categories")
-        return []
+        raise DataUnavailable("get_project_categories") from e
 
 
 def add_project_category(project_id: str, family_id: str, name: str, icon: str, type_: str):
@@ -1943,9 +1964,12 @@ def update_project_category(cat_id: str, project_id: str, family_id: str, name: 
     if not client:
         return False
     try:
-        client.table("project_categories").update({"name": name, "icon": icon}) \
+        result = client.table("project_categories").update({"name": name, "icon": icon}) \
             .eq("id", cat_id).eq("project_id", project_id).eq("family_id", family_id).execute()
-        return True
+        # ‎.data‎ מחזיר את השורות שנגעו בפועל. בלי הבדיקה הזאת "נשמר"
+        # נאמר גם כששום שורה לא התאימה — למשל כשבן משפחה אחר מחק את
+        # הפריט שנייה קודם, או כשהמזהה שייך למשפחה אחרת.
+        return bool(result.data)
     except Exception as e:
         logger.exception("update_project_category")
         return False
@@ -1956,9 +1980,12 @@ def delete_project_category(cat_id: str, project_id: str, family_id: str) -> boo
     if not client:
         return False
     try:
-        client.table("project_categories").delete() \
+        result = client.table("project_categories").delete() \
             .eq("id", cat_id).eq("project_id", project_id).eq("family_id", family_id).execute()
-        return True
+        # ‎.data‎ מחזיר את השורות שנגעו בפועל. בלי הבדיקה הזאת "נשמר"
+        # נאמר גם כששום שורה לא התאימה — למשל כשבן משפחה אחר מחק את
+        # הפריט שנייה קודם, או כשהמזהה שייך למשפחה אחרת.
+        return bool(result.data)
     except Exception as e:
         logger.exception("delete_project_category")
         return False
@@ -2194,7 +2221,7 @@ def get_monthly_trend(family_id: str, num_months: int = 6) -> list:
         return trend
     except Exception as e:
         logger.exception("get_monthly_trend")
-        return []
+        raise DataUnavailable("get_monthly_trend") from e
 
 
 def _category_history_averages(family_id: str, year: int, month: int):
@@ -2381,7 +2408,7 @@ def _fetch_family_members(family_id: str) -> list:
         return members
     except Exception as e:
         logger.exception("get_family_members")
-        return []
+        raise DataUnavailable("_fetch_family_members") from e
 
 
 def get_family_members(family_id: str) -> list:
@@ -2394,9 +2421,10 @@ def update_family_name(family_id: str, name: str):
     if not client:
         return False
     try:
-        client.table("families").update({"name": name}).eq("id", family_id).execute()
+        result = client.table("families").update({"name": name}).eq("id", family_id).execute()
         _invalidate_family_cache(family_id)
-        return True
+        # ראו update_category: "נשמר" על שום שורה הוא שקר קטן שמצטבר.
+        return bool(result.data)
     except Exception as e:
         logger.exception("update_family_name")
         return False
@@ -2489,7 +2517,7 @@ def get_months_archive(family_id: str) -> list:
         return result.data or []
     except Exception as e:
         logger.exception("get_months_archive")
-        return []
+        raise DataUnavailable("get_months_archive") from e
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────

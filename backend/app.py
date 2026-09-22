@@ -1397,8 +1397,15 @@ def delete_project_route(project_id):
     user = get_current_user()
     body = request.get_json(silent=True) or {}
     delete_transactions = bool(body.get("delete_transactions"))
-    ok = db.delete_project(project_id, user["family_id"], delete_transactions=delete_transactions)
-    return jsonify({"status": "ok" if ok else "error"}), 200 if ok else 500
+    ok, wiped = db.delete_project(project_id, user["family_id"],
+                                  delete_transactions=delete_transactions)
+    if not ok:
+        # שום שורה לא נגעה: הפרויקט כבר נמחק על ידי בן משפחה אחר, או
+        # שהמזהה אינו של המשפחה הזאת. "נמחק" על כלום הוא שקר.
+        return jsonify({"error": "הפרויקט לא נמצא — ייתכן שנמחק בינתיים"}), 404
+    # ‎deleted‎ מוחזר כדי שהמשתמש יראה כמה עסקאות באמת נעלמו, בדיוק כמו
+    # באיפוס העסקאות. "מחק גם עסקאות" לא נשא שום מספר.
+    return jsonify({"status": "ok", "deleted": wiped})
 
 
 @app.route("/api/projects/<project_id>/share", methods=["PUT"])
@@ -2736,6 +2743,24 @@ def too_many_requests(e):
         ), 429
 
     return render_template("error.html", code=429, message=msg), 429
+
+
+@app.errorhandler(db.DataUnavailable)
+def data_unavailable(e):
+    """שליפה שנכשלה מגיעה לכאן, ולא מוצגת כ"אין לך נתונים".
+
+    עשרה שולפים החזירו ‎[]‎ בכשל. משפחה עם שנתיים היסטוריה ראתה "אין
+    היסטוריה", ‎₪11,000‎ של הוצאות קבועות נעלמו מעמוד החודש, ומי
+    ש-‎get_family_members‎ נכשל עבורו קיבל "בן המשפחה שנבחר אינו במשפחה
+    שלך" על כל ניסיון להוסיף עסקה — שגיאה שמאשימה אותו בתקלה שלנו.
+
+    אפס מדומה נראה בדיוק כמו אפס אמיתי, וכל האפליקציה היא מספרים. אז
+    עדיף מסך שאומר "לא הצלחנו לטעון" על מסך שמשקר בשקט."""
+    logger.error("DataUnavailable: %s", e)
+    msg = "לא הצלחנו לטעון את הנתונים כרגע. נסו לרענן בעוד רגע."
+    if _is_api_request():
+        return jsonify({"error": msg}), 503
+    return render_template("error.html", code=503, message=msg), 503
 
 
 @app.errorhandler(500)
