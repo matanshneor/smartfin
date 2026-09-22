@@ -4220,3 +4220,16 @@ li.transaction-item.swipe-ready > .swipe-content {
     }
     .lp-section { padding-top: 92px; }
 }
+
+/* ─── יצירת קשר בתחתית ההגדרות ────────────────────────────────────
+   מחוץ לכל האקורדיונים ותמיד גלויה: זה ערוץ התמיכה היחיד, ומדיניות
+   הפרטיות מבטיחה שהוא יהיה נגיש באפליקציה. */
+.settings-contact {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 28px 16px calc(24px + env(safe-area-inset-bottom));
+    text-align: center;
+}
+.settings-contact-label { margin: 0; font-size: 13px; color: var(--color-text-muted); }

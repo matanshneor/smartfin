@@ -1448,49 +1448,58 @@
             }
         });
     })();
-})();
 
-// ── Delete recurring transaction ──
-document.addEventListener('click', function (e) {
-    const btn = e.target.closest('.delete-recurring-btn');
-    if (!btn) return;
-    const id  = btn.dataset.id;
-    const row = btn.closest('.recurring-row, .fixed-row');
-    if (!id || !row) return;
+    /* ── ה-✕ על עסקה קבועה ──────────────────────────────────────────────
+     *
+     * שני מקומות, שתי משמעויות, ובכוונה:
+     *
+     * **בעמוד החודש** ✕ נראה כמו מחיקה, ולכן הוא מוחק — ושואל את אותה
+     * שאלה שנשאלת בכל מקום אחר באפליקציה: "רק את זו" או "את זו וכל
+     * הבאות". קודם הוא קרא ל-‎/api/recurring‎, שעוצר את הסדרה ומשאיר את
+     * ההיסטוריה: פעולה סבירה לגמרי, אבל לא זו שהכפתור מבטיח.
+     *
+     * **בהגדרות** הוא נשאר "הסרה" — עצירת הסדרה בלי למחוק שום כסף.
+     * זו פעולה אמיתית שצריך שתהיה איפשהו, ו"עסקאות קבועות" בהגדרות הוא
+     * המקום שבו מנהלים את הסדרה עצמה ולא חודש מסוים.
+     */
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.delete-recurring-btn');
+        if (!btn) return;
+        const row = btn.closest('.recurring-row, .fixed-row');
+        if (!row || !row.dataset.id) return;
 
-    window.appConfirm({
-        title: 'להסיר את העסקה הקבועה?',
-        message: 'מופעים חדשים יפסיקו להיווצר. כל מה שכבר נרשם — כולל העסקה הראשונה — יישאר בהיסטוריה.',
-        confirmText: 'הסר',
-    }).then(function (ok) {
-        if (!ok) return;
-        // ‎/api/recurring‎ ולא ‎/api/transactions‎: זה עוצר את הסדרה ולא מוחק
-        // שורה. שורת התבנית היא העסקה הראשונה בסדרה, ומחיקתה הייתה מוציאה
-        // כסף אמיתי מההיסטוריה — בדיוק מה שההודעה למעלה מבטיחה שלא יקרה.
-        fetch('/api/recurring/' + id, { method: 'DELETE' })
-        .then(r => r.json())
-        .then(function (d) {
-            if (d.status === 'ok') {
-                row.style.transition = 'opacity 0.25s';
-                row.style.opacity = '0';
-                // הסכומים שמעל הרשימה ("יוצא", "נכנס", "מופרש") נגזרים
-                // מהשורות, אז הסרת שורה בלבד משאירה אותם על הערך הישן.
-                //
-                // אבל ‎softReload‎ מחליף את ‎main‎ כולו, וזה בטוח רק בעמוד
-                // שהצהיר על עצמו ככזה — שתי הקריאות האחרות בקובץ בודקות
-                // בדיוק את זה. בלי הבדיקה, מחיקה בעמוד החודש השאירה את
-                // מופעי Chart.js מחוברים ל-canvas מנותק ואת החיפוש וכפתור
-                // הניהול בלי מאזינים: כל הגרפים נעלמו באמצע הפעולה.
-                const canSwap = !!document.querySelector('main[data-soft-reload]');
-                setTimeout(function () {
-                    row.remove();
-                    if (canSwap && window.softReload) window.softReload();
-                }, 260);
-                window.showToast('העסקה הקבועה הוסרה');
-            } else {
-                window.showToast('ההסרה נכשלה', 'error');
-            }
-        })
-        .catch(function () { window.showToast(window.sfNetError(), 'error'); });
+        // בעמוד החודש: מחיקה אמיתית, עם השאלה על הסדרה.
+        if (row.closest('#fixedList')) {
+            deleteWithUndo(buildTxFromRow(row), row, function (msg) {
+                window.showToast(msg || 'המחיקה נכשלה', 'error');
+            });
+            return;
+        }
+
+        // בהגדרות: עצירת הסדרה.
+        window.appConfirm({
+            title: 'להסיר את העסקה הקבועה?',
+            message: 'מופעים חדשים יפסיקו להיווצר. כל מה שכבר נרשם — כולל העסקה הראשונה — יישאר בהיסטוריה.',
+            confirmText: 'הסר',
+        }).then(function (ok) {
+            if (!ok) return;
+            // ‎/api/recurring‎ ולא ‎/api/transactions‎: זה עוצר את הסדרה ולא מוחק
+            // שורה. שורת התבנית היא העסקה הראשונה בסדרה, ומחיקתה הייתה מוציאה
+            // כסף אמיתי מההיסטוריה — בדיוק מה שההודעה למעלה מבטיחה שלא יקרה.
+            fetch('/api/recurring/' + row.dataset.id, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(function (d) {
+                if (d.status === 'ok') {
+                    row.style.transition = 'opacity 0.25s';
+                    row.style.opacity = '0';
+                    setTimeout(function () { row.remove(); }, 260);
+                    window.showToast('העסקה הקבועה הוסרה');
+                } else {
+                    window.showToast('ההסרה נכשלה', 'error');
+                }
+            })
+            .catch(function () { window.showToast(window.sfNetError(), 'error'); });
+        });
     });
-});
+
+})();

@@ -50,7 +50,22 @@ def test_a_signed_in_user_finds_it_where_things_break():
     settings = _read("settings.html")
 
     assert f"mailto:{_ADDRESS}" in settings
-    assert "יצירת קשר" in settings
+
+
+def test_contact_is_not_buried_inside_a_collapsed_group():
+    """הייתה בתוך "אבטחה וחשבון", מעל שינוי סיסמה ומחיקת חשבון: אקורדיון
+    סגור שאף אחד לא פותח כדי לבקש עזרה. הבדיקה מודדת את זה על המבנה —
+    הקישור חייב לשבת מחוץ לכל ‎settings-group-body‎."""
+    settings = _read("settings.html")
+    link_at = settings.index(f"mailto:{_ADDRESS}")
+
+    before = settings[:link_at]
+    opened = before.count('class="settings-group-body"')
+    closed = before.count("</section>")
+
+    assert opened <= closed, (
+        "הקישור יושב בתוך קבוצה מתקפלת — מי שצריך עזרה לא יפתח אותה"
+    )
 
 
 # ─── לא לחשוף לבוטים בעמודים הפתוחים ────────────────────────────────────────

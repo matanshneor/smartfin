@@ -182,10 +182,33 @@ def test_the_delete_handler_lives_in_exactly_one_file():
     assert owners == ["transactions.js"], f"המטפל נמצא ב: {owners}"
 
 
-def test_removing_a_row_on_the_month_page_refreshes_the_totals():
-    """הסכומים שמעל הרשימה נגזרים מהשורות. הסרת שורה בלבד הייתה
-    משאירה אותם על הערך הישן."""
+def test_the_x_on_the_month_page_asks_about_the_series():
+    """בקשה של מתן, וגם תיקון: ✕ נראה כמו מחיקה ועשה משהו אחר — עצר את
+    הסדרה והשאיר את ההיסטוריה. עכשיו הוא מוחק, ושואל את אותה שאלה
+    שנשאלת בכל מקום אחר: "רק את זו" או "את זו וכל הבאות"."""
     js = (_JS / "transactions.js").read_text(encoding="utf-8")
-    block = js[js.index("delete-recurring-btn"):]
+    block = js[js.index("const btn = e.target.closest('.delete-recurring-btn');"):]
+    month = block[block.index("#fixedList"):block.index("בהגדרות: עצירת הסדרה")]
 
-    assert "softReload" in block, "המספרים נשארים תקועים אחרי הסרה"
+    assert "deleteWithUndo" in month, "✕ בעמוד החודש לא עובר במסלול המחיקה"
+    assert "/api/recurring/" not in month, "✕ בעמוד החודש עדיין עוצר במקום למחוק"
+
+
+def test_the_x_in_settings_still_stops_the_series_without_deleting():
+    """בקרת-נגד. "עצירה בלי למחוק" היא פעולה אמיתית שצריך שתהיה איפשהו,
+    וההגדרות הן המקום שבו מנהלים את הסדרה ולא חודש מסוים."""
+    js = (_JS / "transactions.js").read_text(encoding="utf-8")
+    block = js[js.index("בהגדרות: עצירת הסדרה"):]
+
+    assert "/api/recurring/" in block
+    assert "deleteWithUndo" not in block
+
+
+def test_removing_a_row_on_the_month_page_refreshes_the_totals():
+    """הסכומים שמעל הרשימה נגזרים מהשורות, אז הסרת שורה בלבד משאירה
+    אותם על הערך הישן. ‎deleteWithUndo‎ מרענן בעצמו אחרי חלון ה"בטל"."""
+    js = (_JS / "transactions.js").read_text(encoding="utf-8")
+    block = js[js.index("function deleteWithUndo"):]
+    block = block[:block.index("\n    function ")]
+
+    assert "refreshAfterDelete" in block, "המספרים נשארים תקועים אחרי מחיקה"

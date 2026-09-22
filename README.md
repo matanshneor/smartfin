@@ -26,7 +26,7 @@ SmartFin/
 │   ├── app.py                  # all 56 routes: pages, API, auth, hardening
 │   ├── clock.py                # Asia/Jerusalem — every "today" in the app comes from here
 │   ├── supabase_config.py      # data layer: queries, auth, analytics, recurring engine
-│   └── supabase/migrations/    # source of truth for the database schema (41 migrations)
+│   └── supabase/migrations/    # source of truth for the database schema (42 migrations)
 ├── frontend/
 │   ├── templates/              # base, index, month, months, settings, projects,
 │   │                           # project_detail, project_edit, login, onboarding,

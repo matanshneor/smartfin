@@ -1389,37 +1389,36 @@ def is_recurring_instance(transaction_id: str, family_id: str) -> bool:
 
 def delete_one_occurrence(transaction_id: str, template_id: str,
                           occurrence_date: str, family_id: str):
-    """מוחקת מופע אחד, ורושמת שדילגו עליו. מחזירה (ok, error).
+    """מוחקת מופע בודד מסדרה קבועה. מחזירה ‎(ok, error)‎.
 
-    הרישום הוא כל העניין: בלעדיו המנוע רואה חודש חסר ומשלים אותו
-    בריצה הבאה, כלומר המחיקה מתבטלת מעצמה למחרת."""
+    הכול קורה בפונקציית מסד אחת, ולא בשלוש קריאות מכאן, משתי סיבות:
+
+    **הסדרה שרדה בקושי.** כשהשורה הנמחקת היא התבנית עצמה,
+    ‎recurring_parent_id‎ (שהוא ‎on delete set null‎) ייתם בבת אחת את כל
+    המופעים שנוצרו ממנה. הפונקציה מעבירה את תפקיד התבנית למופע הבא
+    במקום להרוג את הסדרה.
+
+    **‎recurring_skips‎ היה read-modify-write.** שני בני משפחה שמחקו שני
+    מופעים באותה שנייה איבדו דילוג אחד, והעסקה חזרה למחרת — בדיוק הבאג
+    שהעמודה נוספה כדי למנוע. במסד זה עדכון אטומי אחד.
+
+    ‎template_id‎ ו-‎occurrence_date‎ נשארים בחתימה לטובת הקוראים, אבל
+    הפונקציה נגזרת מהשורה עצמה — ולכן אין דרך שהיא תפעל על שורה אחת
+    ותרשום דילוג על אחרת.
+    """
     client = get_client()
     if not client:
         return False, "Database not configured"
     try:
-        tpl = client.table("transactions").select("recurring_skips") \
-            .eq("id", template_id).eq("family_id", family_id) \
-            .maybe_single().execute().data
-        if tpl is None:
-            return False, "not found"
-
-        skips = list(tpl.get("recurring_skips") or [])
-        if occurrence_date not in [str(x) for x in skips]:
-            skips.append(occurrence_date)
-
-        # הדילוג נרשם **לפני** המחיקה. בסדר ההפוך, כשל בכתיבה היה
-        # משאיר מופע מחוק בלי סימן — והוא היה חוזר מחר.
-        client.table("transactions").update({"recurring_skips": skips}) \
-            .eq("id", template_id).eq("family_id", family_id).execute()
-
-        deleted = client.table("transactions").delete() \
-            .eq("id", transaction_id).eq("family_id", family_id) \
-            .execute().data or []
-        return bool(deleted), None
+        result = client.rpc("delete_recurring_occurrence", {
+            "p_tx_id":     transaction_id,
+            "p_family_id": family_id,
+        }).execute()
+        deleted = int(result.data or 0)
+        return (deleted > 0), (None if deleted else "not found")
     except Exception as e:
         logger.exception("delete_one_occurrence")
         return False, str(e)
-
 
 def delete_occurrences_from(template_id: str, occurrence_date: str, family_id: str):
     """מוחקת את המופע הזה וכל המאוחרים ממנו, ועוצרת את הסדרה שם.
