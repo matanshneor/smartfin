@@ -76,12 +76,21 @@ def test_the_month_page_offers_to_set_a_budget():
 
 def test_the_offer_only_appears_where_it_makes_sense():
     """קטגוריה שכבר יש לה תקציב לא צריכה את ההצעה, וקטגוריה בלי הוצאה
-    לא מזמינה אותה."""
+    לא מזמינה אותה.
+
+    הבדיקה נעלה קודם את המחרוזת המדויקת של התנאי, ולכן נפלה ברגע
+    שנוסף לו תנאי שלישי נכון (‎is_current‎). בודקים את השמירות עצמן,
+    לא את הניסוח שלהן."""
     html = _read("frontend/templates/month.html")
     block = html[html.index("{% if item.budget %}"):]
     block = block[:block.index("cat-budget-cta") + 200]
 
-    assert "{% elif item.category_id and item.total > 0 %}" in block
+    # ה-‎elif‎ האחרון לפני הקישור — יש עוד אחד לפניו, בתוך טקסט התקציב.
+    guard = block[block.rindex("{% elif", 0, block.index("cat-budget-cta")):]
+    guard = guard[:guard.index("%}")]
+
+    assert "item.category_id" in guard, "מוצע גם לשורות בלי קטגוריה"
+    assert "item.total > 0" in guard, "מוצע גם לקטגוריה שלא הוצאו בה כלום"
 
 
 def test_settings_lands_on_the_right_category():
