@@ -609,6 +609,20 @@
         </button>
 
         <div class="settings-group-body">
+            {# ייצוא. ‎/month.csv‎ היה הייצוא היחיד — חודש בודד, מעמוד
+               החודש — כלומר "קחו את הנתונים ולכו" היה אפשרי רק
+               חודש-חודש ביד. זו הזכות לניידות (סעיף 20), והמקום לומר
+               אותה הוא ליד מחיקת החשבון ולא מוסתר בעמוד אחר. #}
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">ייצוא הנתונים שלי</p>
+                    <p class="group-row-hint">קובץ אחד עם הפרופיל, הקטגוריות, הפרויקטים וכל העסקאות</p>
+                </div>
+                <a class="btn-sm btn-ghost" href="{{ url_for('export_account') }}">הורדה</a>
+            </div>
+
+            <div class="group-divider"></div>
+
             <div class="group-row">
                 <div class="group-row-info">
                     <p class="group-row-label">סיסמה</p>

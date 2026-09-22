@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, g, make_response
+from flask import (Flask, render_template, request, jsonify, session, redirect,
+                   url_for, g, make_response, Response)
 from dotenv import load_dotenv
 from functools import wraps, partial
 from datetime import date, datetime, timedelta
@@ -1207,6 +1208,36 @@ def month_view():
         # יתאמו למקרא (שגם הוא מסונן ל-active), ובלי פרוסות ברוחב 0.
         expense_data=[c for c in expense_breakdown if c.get("total", 0) > 0],
         members_data=member_breakdowns,
+    )
+
+
+@app.route("/account.json")
+@login_required
+@limiter.limit("5 per hour")
+def export_account():
+    """ייצוא מלא של הנתונים — סעיף 20 (ניידות) ב-GDPR.
+
+    עד עכשיו הייצוא היחיד היה ‎/month.csv‎: חודש בודד, מעמוד החודש,
+    בלי פרופיל, בלי קטגוריות ובלי פרויקטים. כלומר "קחו את הנתונים
+    ולכו" היה אפשרי רק חודש-חודש ביד, וזו לא ניידות.
+
+    JSON ולא CSV כי אלה כמה טבלאות עם קשרים ביניהן, וקובץ שטוח אחד היה
+    מאבד אותם. ‎/month.csv‎ נשאר לגיליון אלקטרוני.
+
+    ‎5 per hour‎: זו שאילתה שמושכת את כל ההיסטוריה של המשפחה.
+    """
+    user = get_current_user()
+    if not user["family_id"]:
+        return jsonify({"error": "לא מצאנו את המשפחה שלך"}), 400
+
+    data = db.export_account_data(user["family_id"], user["id"])
+
+    stamp = clock.now().strftime("%Y-%m-%d")
+    return Response(
+        json.dumps(data, ensure_ascii=False, indent=2, default=str),
+        mimetype="application/json; charset=utf-8",
+        headers={"Content-Disposition":
+                 f'attachment; filename="smartfin-{stamp}.json"'},
     )
 
 

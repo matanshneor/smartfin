@@ -324,6 +324,50 @@ def fetch_profile(user_id: str):
         return None, False
 
 
+def export_account_data(family_id: str, user_id: str) -> dict:
+    """כל מה שהאפליקציה מחזיקה על המשתמש ועל המשפחה שלו, במבנה אחד.
+
+    ‎/month.csv‎ היה הייצוא היחיד — חודש בודד, מעמוד החודש, בלי פרופיל,
+    בלי פרויקטים ובלי קטגוריות. כלומר סעיף 20 (ניידות) לא סופק בפועל:
+    אי אפשר היה לקחת את הנתונים ולעזוב בלי לייצא חודש-חודש ביד.
+
+    פרויקט אישי של בן משפחה אחר לא נכלל, בדיוק כמו בכל שאר האפליקציה:
+    ייצוא אינו עוקף פרטיות בתוך המשפחה.
+    """
+    client = get_client()
+    if not client or not family_id:
+        raise DataUnavailable("export_account_data: no client")
+
+    try:
+        transactions = client.table("transactions") \
+            .select("*, categories(name), projects(name)") \
+            .eq("family_id", family_id) \
+            .order("date", desc=True) \
+            .execute().data or []
+
+        # פרויקטים אישיים של אחרים מוסתרים גם כאן
+        visible_projects = {p["id"] for p in get_projects(family_id, user_id)}
+        transactions = [
+            t for t in transactions
+            if not t.get("project_id") or t["project_id"] in visible_projects
+        ]
+
+        return {
+            "exported_at": clock.now().isoformat(),
+            "profile":     get_profile(user_id) or {},
+            "family":      get_family(family_id) or {},
+            "members":     get_family_members(family_id),
+            "categories":  get_categories(family_id),
+            "projects":    get_projects(family_id, user_id),
+            "transactions": transactions,
+        }
+    except DataUnavailable:
+        raise
+    except Exception as e:
+        logger.exception("export_account_data")
+        raise DataUnavailable("export_account_data") from e
+
+
 def get_profile(user_id: str):
     """הצורה הנוחה, לקוראים שעבורם "אין" ו"נכשל" שקולים (הצגת שם, אווטאר).
     מי שמקבל החלטה על סמך היעדר פרופיל חייב להשתמש ב-fetch_profile."""

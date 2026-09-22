@@ -23,7 +23,7 @@ restrained charts and motion.
 ```
 SmartFin/
 ├── backend/
-│   ├── app.py                  # all 56 routes: pages, API, auth, hardening
+│   ├── app.py                  # all 57 routes: pages, API, auth, hardening
 │   ├── clock.py                # Asia/Jerusalem — every "today" in the app comes from here
 │   ├── supabase_config.py      # data layer: queries, auth, analytics, recurring engine
 │   └── supabase/migrations/    # source of truth for the database schema (48 migrations)
@@ -89,7 +89,10 @@ SmartFin/
 
 - Anomaly alert: a category exceeding its trailing three-month average
 - Per-category monthly budgets, with a progress bar and an overrun warning
-- CSV export of any month (`/month.csv`)
+- CSV export of any month (`/month.csv`), and a full account export
+  (`/account.json`) covering profile, categories, projects and every
+  transaction — the data-portability right, which one month at a time
+  did not actually serve
 - Run-rate forecast: a warning about a projected overrun before the month ends
 
 ### Families and accounts
