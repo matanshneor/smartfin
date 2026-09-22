@@ -65,6 +65,9 @@ def test_the_readme_counts_the_tests_roughly_right():
 # ─── מה שהתיעוד חייב להזכיר ─────────────────────────────────────────────────
 
 @pytest.mark.parametrize("feature,needle", [
+    ("ייצוא מלא",       "/account.json"),
+    ("תפוגת קוד הזמנה", "expire"),
+    ("שימור הארכיון",   "pg_cron"),
     ("פרויקטים",        "Projects"),
     ("סריקת קבלות",     "Receipt scanning"),
     ("תקציבי קטגוריות", "budget"),
@@ -80,6 +83,7 @@ def test_the_readme_mentions_every_major_feature(feature, needle):
 # כותרת פרק ולא מילה בודדת: "פרויקט" מופיע גם באזכורים חולפים, כך שמחיקת
 # הפרק כולו הייתה עוברת בשקט.
 @pytest.mark.parametrize("feature,heading", [
+    ("שמירה וייצוא",    "ייצוא"),
     ("פרויקטים",        "פרויקטים"),
     ("סריקת קבלות",     "סריקת קבלות"),
     ("הרשאות",          "הרשאות"),
@@ -175,3 +179,24 @@ _LANDMINES = [
 def test_the_readme_carries_the_three_landmines(name, phrases):
     missing = [p for p in phrases if p not in _README]
     assert not missing, f"האזהרה על {name} נשחקה — חסר ב-README: {missing}"
+
+
+def test_the_readme_does_not_promise_a_session_length_the_code_does_not_use():
+    """ה-README אמר 90 יום בזמן שהקוד אמר 3,650. אותו סוג פער שהקובץ
+    הזה נכתב כדי לתפוס, רק במספר שקובע כמה זמן טלפון גנוב נשאר מחובר."""
+    from backend.app import app
+
+    days = app.permanent_session_lifetime.days
+    assert f"{days}-day session" in _README, \
+        f"הקוד אומר {days} יום; ה-README אומר משהו אחר"
+
+
+@pytest.mark.parametrize("name,phrase", [
+    ("worker אסינכרוני", "--threads"),
+    ("שעון ישראל",       "clock.now_utc()"),
+    ("אפס מדומה",        "DataUnavailable"),
+])
+def test_the_spec_repeats_the_three_landmines_in_hebrew(name, phrase):
+    """אותן שלוש אזהרות שב-README, בעברית. ‎SPEC.md‎ הוא המסמך שמתן
+    קורא, ואזהרה שקיימת רק באנגלית היא אזהרה שחצי מהקוראים יפספסו."""
+    assert phrase in _SPEC, f"האזהרה על {name} חסרה ב-SPEC.md"

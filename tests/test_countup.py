@@ -49,7 +49,14 @@ let clock = 0;
 g.performance = { now: () => clock };
 // מתקדמים ברבע שנייה כל פריים: מספיק כדי לראות התקדמות אמיתית,
 // ומגיע ל-1000ms (סוף האנימציה) אחרי ארבעה.
-g.requestAnimationFrame = (fn) => { clock += 250; setTimeout(() => fn(clock), 0); };
+// ‎pending‎ סופר פריימים שטרם רצו, כדי שאפשר יהיה לחכות **לסיום**
+// האנימציה במקום לנחש כמה זמן היא לוקחת.
+let pending = 0;
+g.requestAnimationFrame = (fn) => {
+    pending++;
+    clock += 250;
+    setTimeout(() => { pending--; fn(clock); }, 0);
+};
 
 (0, eval)(fs.readFileSync(process.argv[2], 'utf8'));
 
@@ -63,7 +70,16 @@ const steps = JSON.parse(process.argv[4]);   // [[value, prefix], ...]
     frames.push('--');
     if (i === 0) handlers.DOMContentLoaded();
     else handlers['sf:refreshed']();
-    setTimeout(() => next(i + 1), 60);
+
+    // המתנה ל**ניקוז** ולא 60ms קבועים. הגרסה הקודמת הניחה שהאנימציה
+    // מספיקה להסתיים בזמן הזה; תחת עומס (הסוויטה המלאה, או CI) היא לא,
+    // והשלב הבא התחיל כשהקודם עדיין רץ — כלומר בדיקה שנופלת אחת לכמה
+    // הרצות על תזמון ולא על התנהגות. עם CI כשער פריסה זה חוסם פריסות
+    // אקראית.
+    (function drain() {
+        if (pending > 0) { setTimeout(drain, 0); return; }
+        next(i + 1);
+    })();
 })(0);
 """
 

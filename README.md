@@ -34,7 +34,7 @@ SmartFin/
 │   └── static/
 │       ├── css/style.css       # the entire stylesheet
 │       ├── sw.js, manifest.json, icons/
-├── tests/                      # 786 tests: 765 unit (no network) + 21 against the real DB
+├── tests/                      # 976 tests: 955 unit (no network) + 21 against the real DB
 ├── docs/SPEC.md                # product specification
 ├── Procfile / runtime.txt      # Railway configuration (gunicorn, Python 3.11.9)
 └── requirements.txt / requirements-dev.txt
@@ -97,7 +97,9 @@ SmartFin/
 
 ### Families and accounts
 
-- Invite code plus an onboarding flow for picking a new family's categories
+- Invite code plus an onboarding flow for picking a new family's categories. Codes
+  expire after 7 days — a valid one is full read and write over the family's whole
+  financial history — and the manager can mint a new one from settings
 - Sign in by email **or** phone · password reset · password change · profile editing
 - A family manager role. Destructive actions — deleting a category, rotating the
   invite code, wiping the family's transactions — are the manager's alone; budgets,
@@ -107,16 +109,21 @@ SmartFin/
   the role on rather than orphaning it
 - Transaction reset and permanent account deletion, backed by an internal
   owner-only archive (nothing is truly lost)
-- "Remember me": a 90-day session with automatic token refresh
+- "Remember me": a 90-day session with automatic token refresh. The window slides
+  with use, so it only ever expires an abandoned session. Changing the password
+  revokes every other device
 
 ### Hardening
 
 - `SECRET_KEY` is mandatory — the app refuses to start without it
 - Session cookies are `HttpOnly` + `SameSite=Lax`, and `Secure` outside development
 - Request bodies capped at 8 MB; uploads restricted to JPG / PNG / WebP
-- Rate limits per IP: 10/min on login, 5/min on signup, 3/min on password reset,
-  10/min on receipt scanning, and 3/hour on the two irreversible ones — resetting
-  transactions and deleting an account
+- Rate limits per IP on every write route, not only the auth ones: 10/min on
+  login, 5/min on signup, 3/min on password reset, 10/min on receipt scanning,
+  60/min on transactions, 20–30/min on categories, projects, profile and family
+  settings, and 3/hour on the two irreversible ones — resetting transactions and
+  deleting an account. They are only as good as `RATELIMIT_STORAGE_URI`: without
+  shared storage the counters are per-worker, so `/health` reports which it is
 - Amounts, dates and categories are validated on every write path, and a write
   that matched no row reports that instead of "saved"
 - `/health` (always 200, for the platform) and `/health/db` (503 when the database
@@ -152,7 +159,7 @@ flask --app backend.app run --port 8080
 
 ```bash
 pip install -r requirements-dev.txt
-python3 -m pytest tests/ -m unit -q      # 765 tests, no network, ~7s
+python3 -m pytest tests/ -m unit -q      # 955 tests, no network, ~7s
 python3 -m pytest tests/ -q              # + 21 against the real Supabase project
 ```
 
@@ -181,7 +188,9 @@ cd backend && supabase link --project-ref <REF> && supabase db push
   CRUD coverage — when adding a new write path, check the table's policies first.
 - Owner-only internal tables (RLS enabled with **no** policies, so clients
   receive `[]`): `owner_archive`, an archive of everything deleted, and
-  `login_events`, a sign-in log.
+  `login_events`, a sign-in log. Both are purged by `pg_cron` — 30 days and 90
+  days — because an archive with no retention window is not an archive, it is a
+  copy of the data the privacy policy promises to delete.
 
 ## Deploying to Railway
 
