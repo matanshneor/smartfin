@@ -1278,3 +1278,33 @@ document.addEventListener('click', function (e) {
         if (btn && !btn.disabled) btn.click();
     });
 })();
+
+// ── צליל ורטט בשמירה (העדפת מכשיר) ──
+//
+// ‎core.js‎ בודק ‎localStorage['sf_feedback_off']‎ לפני שהוא משמיע — ושום
+// דבר בכל הריפו לא כתב אליו מעולם. דלת מילוט שקיימת בקוד ולא נגישה
+// לאיש היא בדיוק אותו סוג של הבטחה שלא מתקיימת.
+//
+// מקומית ולא בהגדרות המשפחה: זו העדפה של המכשיר, לא של התקציב.
+(function () {
+    const toggle = document.getElementById('feedbackToggle');
+    if (!toggle) return;
+
+    function read() {
+        try { return localStorage.getItem('sf_feedback_off') !== '1'; }
+        catch (e) { return true; }   // אין אחסון — ברירת המחדל פעילה
+    }
+
+    toggle.checked = read();
+    toggle.addEventListener('change', function () {
+        try {
+            if (toggle.checked) localStorage.removeItem('sf_feedback_off');
+            else localStorage.setItem('sf_feedback_off', '1');
+        } catch (e) {
+            window.showToast('לא הצלחנו לשמור את ההעדפה במכשיר הזה', 'error');
+            return;
+        }
+        // מנגנים מיד כשמדליקים, כדי שהמתג יגיד מה הוא עושה
+        if (toggle.checked && window.appFeedback) window.appFeedback();
+    });
+})();

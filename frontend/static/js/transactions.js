@@ -221,6 +221,13 @@
     }
 
     function resetScanUI() {
+        // ‎txReceiptPath‎ **חייב** להתאפס כאן ולא רק ב-‎resetForm‎.
+        // ‎closeModal‎ קורא לכאן בלבד, ו-‎resetForm‎ רץ רק מ-‎openAddModal‎ —
+        // אז סריקה שננטשה (✕ במקום שמירה) השאירה את הנתיב בשדה, והעריכה
+        // הבאה של **עסקה קיימת** שלחה אותו וקיבלה קבלה של מישהו אחר.
+        // גרוע מזה: שתי שורות שמצביעות על אותו קובץ, ומחיקת אחת מוחקת
+        // את הקובץ של השנייה.
+        txReceiptPath.value = '';
         scanWrapper.classList.remove('active');
         scanBtn.disabled = false;
         scanBtn.querySelector('.scan-btn-text').textContent = 'סרוק קבלה';
@@ -668,18 +675,49 @@
         const url    = editId ? ('/api/transactions/' + editId) : '/api/transactions';
         const method = editId ? 'PUT' : 'POST';
 
-        fetch(url, {
-            method:  method,
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify(payload),
+        function send(confirmed) {
+            return fetch(url + (confirmed ? '?confirm=1' : ''), {
+                method:  method,
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(payload),
+            }).then(r => r.json().then(d => ({ code: r.status, d: d })));
+        }
+
+        send(false)
+        .then(function (res) {
+            // סדרה קבועה שתייצר עשרות שורות אחורה — כמעט תמיד טעות
+            // הקלדה בתאריך. השרת עונה 409 עם המספר האמיתי, ושואלים.
+            if (res.code === 409 && res.d.needs_confirm) {
+                if (placeholderRow) { placeholderRow.remove(); placeholderRow = null; openModal(); }
+                return window.appConfirm({
+                    title: 'ליצור ' + res.d.will_create + ' עסקאות אחורה?',
+                    message: res.d.error,
+                    confirmText: 'כן, צור',
+                }).then(function (ok) {
+                    if (!ok) {
+                        setSubmitBusy(false);
+                        updateSubmitLabel();
+                        return null;
+                    }
+                    return send(true);
+                });
+            }
+            return res;
         })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
+        .then(function (res) {
+            if (!res) return;                       // המשתמש ביטל
+            const data = res.d;
             if (data.error) {
+                // בכשל **שרת** החלון נשאר סגור, והשדות — שעדיין מלאים,
+                // כי ‎closeModal‎ לא מאפס אותם — הפכו לבלתי נגישים: הדרך
+                // היחידה חזרה היא ה-FAB, ו-‎openAddModal‎ מנקה אותם. הטוסט
+                // נעלם אחרי 2.6 שניות, והמשתמש הקליד הכול מחדש ונכשל שוב
+                // מאותה סיבה שכבר לא הייתה על המסך. זה אותו תיקון שנעשה
+                // לכשל רשת, בענף שפוספס.
                 if (placeholderRow) {
                     placeholderRow.remove();
-                    window.showToast(data.error, 'error');
-                    return;
+                    placeholderRow = null;
+                    openModal();
                 }
                 formError.textContent = data.error;
                 setSubmitBusy(false);

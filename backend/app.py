@@ -1310,7 +1310,12 @@ def _parse_project_body(body: dict):
     if not name:
         return None, "נא להזין שם לפרויקט"
 
-    budget_target, err = _parse_initial_balance({"initial_balance": body.get("budget_target")})
+    # ‎_parse_amount‎ ולא ‎float()‎ חשוף: יעד שלילי נשמר והוצג כ-‎-₪5,000‎,
+    # ו-‎1e12‎ הציף את ‎numeric(10,2)‎ וחזר כ-500 סתום — בדיוק המבוי הסתום
+    # שהפונקציה הזאת נכתבה כדי למנוע. יעד ריק הוא ערך תקין (אין יעד).
+    budget_target, err = (None, None)
+    if body.get("budget_target") not in (None, ""):
+        budget_target, err = _parse_amount(body.get("budget_target"))
     if err:
         return None, "יעד תקציב חייב להיות מספר"
 
@@ -1850,6 +1855,56 @@ def family_members():
     members = db.get_family_members(user["family_id"]) if user["family_id"] else []
     return jsonify([{"id": m["id"], "name": m["name"]} for m in members])
 
+# כמה מופעים רטרואקטיביים מותר לייצר בלי שהמשתמש יאשר במפורש.
+#
+# ‎_parse_date‎ מתיר 10 שנים אחורה, ו-‎materialize_recurring‎ רץ מיד אחרי
+# כל שמירה של תבנית. טעות הקלדה — ‎2016‎ במקום ‎2026‎ על שכר דירה של
+# ₪6,000 — ייצרה ‎~120‎ עסקאות אמיתיות בבקשה אחת, בלי אישור ובלי שום
+# מספר בתשובה. הן נכנסו לארכיון החודשים, לגרף המגמה ולייצוא ה-CSV,
+# והדרך היחידה החוצה היא "מחק את זו וכל הבאות" מהמוקדמת ביותר — משהו
+# שצריך לגלות לבד.
+#
+# שלושה הוא מספר שמכסה מילוי אחורה סביר ("שכחתי להזין את שלושת החודשים
+# האחרונים") ועוצר כל דבר שנראה כמו תאונה.
+_RETRO_WITHOUT_CONFIRM = 3
+
+
+def _retro_occurrences(body, tx_date):
+    """כמה מופעים ייווצרו רטרואקטיבית עבור התבנית שנשמרת עכשיו."""
+    from datetime import date as _date
+
+    if not body.get("is_recurring"):
+        return 0
+    template = {
+        "date": tx_date,
+        "recurring_frequency": body.get("recurring_frequency") or "monthly_1",
+        "recurring_end_date": body.get("recurring_end_date") or None,
+    }
+    try:
+        return len(db._recurring_occurrences(template, clock.today()))
+    except Exception:
+        # ספירה שנכשלה לא חוסמת שמירה לגיטימית; היא רק לא מגינה.
+        logger.exception("_retro_occurrences")
+        return 0
+
+
+# התדירויות שהמנוע יודע לייצר. ‎NULL‎ עבר את ה-CHECK של המסד, אז
+# ‎{"is_recurring": true}‎ בלי תדירות יצר תבנית חיה ש-‎_recurring_occurrences‎
+# מפרשת כ-‎monthly_1‎ ומייצרת ממנה שורות ב-1 לכל חודש — בזמן שבורר
+# התדירות בממשק מציג ריק. מחרוזת לא מוכרת נעצרה רק ב-CHECK וחזרה כ-500.
+_FREQUENCIES = ("monthly_same", "monthly_1", "monthly_15", "weekly", "biweekly")
+
+
+def _validated_frequency(body):
+    """מחזירה ‎(frequency, error)‎. רלוונטי רק לעסקה שסומנה קבועה."""
+    if not body.get("is_recurring"):
+        return None, None
+    freq = body.get("recurring_frequency")
+    if freq not in _FREQUENCIES:
+        return None, "יש לבחור כל כמה זמן העסקה חוזרת"
+    return freq, None
+
+
 @app.route("/api/transactions", methods=["POST"])
 @login_required
 def add_transaction():
@@ -1883,6 +1938,21 @@ def add_transaction():
         if recurring_end < tx_date:
             return jsonify({"error": "תאריך סיום הסדרה מוקדם מתאריך ההתחלה"}), 422
 
+
+    recurring_frequency, freq_err = _validated_frequency(body)
+    if freq_err:
+        return jsonify({"error": freq_err}), 422
+
+    # ראו ‎_RETRO_WITHOUT_CONFIRM‎: סדרה שתייצר עשרות שורות אחורה היא
+    # כמעט תמיד טעות הקלדה בתאריך, ולא בקשה.
+    retro = _retro_occurrences(body, tx_date)
+    if retro > _RETRO_WITHOUT_CONFIRM and not request.args.get("confirm"):
+        return jsonify({
+            "needs_confirm": True,
+            "will_create": retro,
+            "error": f"הסדרה הזאת תיצור {retro} עסקאות אחורה, מ-{tx_date}. "
+                     f"אם זה מה שרצית — אשרו.",
+        }), 409
     project_id, project_category_id, category_id, owner_user_id, proj_err = \
         _apply_project_assignment(body, user, tx_type)
     if proj_err:
@@ -1907,7 +1977,7 @@ def add_transaction():
         "user_id":     owner_user_id,
         "family_id":   user["family_id"],
         "is_recurring":         bool(body.get("is_recurring", False)),
-        "recurring_frequency":  body.get("recurring_frequency"),
+        "recurring_frequency":  recurring_frequency,
         "recurring_end_date":   recurring_end,
         "project_id":           project_id,
         "project_category_id":  project_category_id,
@@ -1967,6 +2037,22 @@ def update_transaction(tx_id):
     if proj_err:
         return jsonify({"error": proj_err}), 422
 
+
+    recurring_frequency, freq_err = _validated_frequency(body)
+    if freq_err:
+        return jsonify({"error": freq_err}), 422
+
+    # ראו ‎_RETRO_WITHOUT_CONFIRM‎: סדרה שתייצר עשרות שורות אחורה היא
+    # כמעט תמיד טעות הקלדה בתאריך, ולא בקשה.
+    retro = _retro_occurrences(body, tx_date)
+    if retro > _RETRO_WITHOUT_CONFIRM and not request.args.get("confirm"):
+        return jsonify({
+            "needs_confirm": True,
+            "will_create": retro,
+            "error": f"הסדרה הזאת תיצור {retro} עסקאות אחורה, מ-{tx_date}. "
+                     f"אם זה מה שרצית — אשרו.",
+        }), 409
+
     # מופע של סדרה לא יכול להפוך לתבנית בפני עצמה. אין אילוץ במסד שמונע
     # את זה, והתוצאה היא שתי סדרות מקבילות שמייצרות את אותו כסף פעמיים
     # בכל חודש, לתמיד. מי שרוצה לשנות את הסדרה עושה זאת מהתבנית עצמה.
@@ -1989,7 +2075,7 @@ def update_transaction(tx_id):
         "category_id": category_id,
         "user_id":     owner_user_id,
         "is_recurring":         bool(body.get("is_recurring", False)),
-        "recurring_frequency":  body.get("recurring_frequency"),
+        "recurring_frequency":  recurring_frequency,
         "recurring_end_date":   recurring_end,
         "project_id":           project_id,
         "project_category_id":  project_category_id,

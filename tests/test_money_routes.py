@@ -303,7 +303,8 @@ def test_an_unknown_series_state_refuses_rather_than_guesses(money, monkeypatch)
     monkeypatch.setattr(db, "is_recurring_instance", _boom)
 
     response = money.put("tx-מופע", amount="7000", type="expense",
-                         date="2026-09-01", is_recurring=True)
+                         date="2026-09-01", is_recurring=True,
+                         recurring_frequency="monthly_1")
 
     assert response.status_code == 503
     assert money.only()["is_recurring"] is False
@@ -660,3 +661,81 @@ def test_deleting_the_account_calls_the_archiving_function_and_ends_the_session(
     assert [name for name, _ in money.fake.rpcs] == ["delete_my_account"]
     with money.client.session_transaction() as sess:
         assert "user_id" not in sess, "הסשן שרד את מחיקת החשבון"
+
+
+# ═══ תדירות, יעד תקציב, ומילוי אחורה ═════════════════════════════════════════
+
+@pytest.mark.parametrize("freq", [None, "", "daily", "yearly", "MONTHLY_1"])
+def test_a_recurring_transaction_needs_a_frequency_the_engine_knows(money, freq):
+    """‎NULL‎ עבר את ה-CHECK של המסד, אז ‎{"is_recurring": true}‎ בלי
+    תדירות יצר תבנית חיה שהמנוע מפרש כ-‎monthly_1‎ ומייצר ממנה שורות
+    ב-1 לחודש — בזמן שהבורר בממשק מציג ריק."""
+    body = {"amount": "50", "type": "expense", "date": "2026-09-15",
+            "is_recurring": True}
+    if freq is not None:
+        body["recurring_frequency"] = freq
+
+    response = money.client.post("/api/transactions", json=body)
+
+    assert response.status_code == 422, f"{freq!r} התקבל"
+    assert money.transactions == []
+
+
+def test_a_known_frequency_is_accepted(money):
+    """בקרת-נגד."""
+    response = money.post(amount="7000", type="expense", date="2026-09-15",
+                          is_recurring=True, recurring_frequency="biweekly")
+
+    assert response.status_code == 201
+    assert money.only()["recurring_frequency"] == "biweekly"
+
+
+def test_a_series_that_would_backfill_months_asks_first(money):
+    """טעות הקלדה בשנה — ‎2016‎ במקום ‎2026‎ — ייצרה ‎~120‎ עסקאות אמיתיות
+    בבקשה אחת, בלי אישור ובלי מספר בתשובה."""
+    response = money.post(amount="6000", type="expense", date="2016-03-01",
+                          is_recurring=True, recurring_frequency="monthly_1")
+
+    assert response.status_code == 409
+    body = response.get_json()
+    assert body["needs_confirm"] is True
+    assert body["will_create"] > 50, "המספר לא נאמר, או שהוא לא נכון"
+    assert money.transactions == [], "נשמר לפני שנשאלה השאלה"
+
+
+def test_confirming_lets_it_through(money):
+    """מילוי אחורה מכוון הוא שימוש לגיטימי; רק צריך לומר אותו בקול."""
+    response = money.client.post("/api/transactions?confirm=1", json={
+        "amount": "6000", "type": "expense", "date": "2016-03-01",
+        "is_recurring": True, "recurring_frequency": "monthly_1"})
+
+    assert response.status_code == 201
+
+
+def test_a_short_backfill_is_not_interrupted(money):
+    """"שכחתי להזין את החודשיים האחרונים" הוא שימוש רגיל, ולא מגיע לו
+    דיאלוג."""
+    response = money.post(amount="6000", type="expense", date="2026-08-01",
+                          is_recurring=True, recurring_frequency="monthly_1")
+
+    assert response.status_code == 201
+
+
+@pytest.mark.parametrize("target", ["-5000", "0", "inf", "999999999", "nan"])
+def test_a_bad_project_budget_is_refused(money, target):
+    """‎float()‎ חשוף קיבל יעד שלילי והציג ‎-₪5,000‎ כיעד; ‎1e12‎ הציף את
+    ‎numeric(10,2)‎ וחזר כ-500 סתום."""
+    response = money.client.post("/api/projects",
+                                 json={"name": "שיפוץ", "budget_target": target})
+
+    assert response.status_code == 422, f"{target} התקבל"
+
+
+def test_a_project_without_a_budget_is_fine(money, monkeypatch):
+    """יעד ריק הוא ערך תקין — לא כל פרויקט צריך אחד."""
+    monkeypatch.setattr(db, "add_project",
+                        lambda *a, **k: ({"id": "p1", "name": "שיפוץ"}, None))
+
+    response = money.client.post("/api/projects", json={"name": "שיפוץ"})
+
+    assert response.status_code in (200, 201), response.get_json()

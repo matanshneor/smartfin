@@ -53,6 +53,12 @@ document.addEventListener('keydown', function (e) {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     const trigger = e.target.closest('.legend-item.clickable, .breakdown-main.clickable');
     if (trigger) { e.preventDefault(); toggleExpand(trigger); }
+    // ‎.zero-toggle‎ מסומן ‎role="button" tabindex="0"‎, אבל טופל ב-‎click‎
+    // בלבד — ואלמנט שאינו ‎<button>‎ לא מייצר click מ-Enter. שלוש תחנות
+    // Tab בכל עמוד חודש הכריזו על עצמן ככפתור ולא עשו כלום, ומשתמשי
+    // מקלדת פשוט לא יכלו להגיע לקטגוריות המוסתרות.
+    const zero = e.target.closest('.zero-toggle');
+    if (zero) { e.preventDefault(); zero.click(); }
 });
 
 // ── הצגת/הסתרת קטגוריות ללא פעילות ──

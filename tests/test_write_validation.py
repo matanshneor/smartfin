@@ -41,10 +41,13 @@ def client(monkeypatch):
         yield c
 
 
-def _add(client, **over):
+def _add(client, confirm=False, **over):
     body = {"amount": 100, "type": "expense", "date": "2026-09-21"}
     body.update(over)
-    return client.post("/api/transactions", json=body)
+    # ‎confirm‎ עוקף את שער המילוי-אחורה (ראו ‎_RETRO_WITHOUT_CONFIRM‎).
+    # סדרה שמתחילה חודשים אחורה מייצרת שורות אמיתיות, ולכן נשאלת שאלה.
+    url = "/api/transactions" + ("?confirm=1" if confirm else "")
+    return client.post(url, json=body)
 
 
 # ─── תאריך ──────────────────────────────────────────────────────────────────
@@ -90,7 +93,7 @@ def test_a_valid_end_date_is_accepted(client, monkeypatch):
     monkeypatch.setattr(app_module.db, "add_transaction",
                         lambda payload, **k: (saved.update(payload) or ({"id": _TX}, None)))
 
-    res = _add(client, date="2026-05-01", is_recurring=True,
+    res = _add(client, confirm=True, date="2026-05-01", is_recurring=True,
                recurring_frequency="monthly_1", recurring_end_date="2027-05-01")
 
     assert res.status_code == 201

@@ -416,6 +416,23 @@
         </button>
 
         <div class="settings-group-body">
+            {# צליל ורטט. דלת המילוט (‎sf_feedback_off‎) הייתה בקוד מאז
+               ההתחלה ושום דבר בכל הריפו לא כתב אליה — כלומר כל שמירה
+               השמיעה צליל ורטטה, בלי שום דרך לכבות. באפליקציה שמשתמשים
+               בה בקופה בסופר זה דבר שמוביל להסרה ולא לדיווח.
+
+               מקומית ולא בהגדרות המשפחה בכוונה: זו העדפה של המכשיר.
+               אבא רוצה צליל בטלפון שלו ואמא לא רוצה בשלה. #}
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">צליל ורטט בשמירה</p>
+                    <p class="group-row-hint">משוב קצר כשעסקה נכנסת. ההגדרה נשמרת במכשיר הזה בלבד</p>
+                </div>
+                <label class="pref-switch">
+                    <input type="checkbox" id="feedbackToggle">
+                    <span class="pref-slider"></span>
+                </label>
+            </div>
             <div class="group-row">
                 <div class="group-row-info">
                     <p class="group-row-label">שיוך הוצאות</p>

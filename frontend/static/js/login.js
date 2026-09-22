@@ -17,6 +17,11 @@ if (window.location.hash.includes('type=recovery')) {
         tabSignup.classList.toggle('active', isSignup);
         loginPanel.style.display  = isSignup ? 'none' : 'block';
         signupPanel.style.display = isSignup ? 'block' : 'none';
+        // מסך "שכחתי סיסמה" לא נסגר כאן, אז לחיצה על לשונית אחריו הציגה
+        // טופס איפוס **מעל** טופס ההרשמה, עם שני פקדי ניווט שחלוקים על
+        // היכן המשתמש נמצא — דווקא במסלול שמגיעים אליו כבר מתוסכלים.
+        const forgot = document.getElementById('forgotPanel');
+        if (forgot) forgot.style.display = 'none';
     }
 
     tabLogin.addEventListener('click', () => showTab('login'));

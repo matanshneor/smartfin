@@ -31,6 +31,11 @@
     </p>
     <p class="hero-sub">מתוך ₪{{ "{:,.0f}".format(summary.income) }} הכנסות החודש</p>
 
+    {# בלי הכנסות אין ממה לנצל, והפס הציג "נוצלו 0% מההכנסות" ליד מינוס
+       אדום — בדיוק המסך הראשון של כל משתמש חדש, שכמעט תמיד מזין הוצאה
+       לפני משכורת. ‎aria-valuenow="0"‎ אמר לקורא מסך את אותו דבר בקול.
+       אחוז שאי אפשר לחשב אינו אפס; הוא לא קיים. #}
+    {% if summary.income > 0 %}
     <div class="hero-bar">
         <div class="balance-bar-track" role="progressbar"
              aria-valuenow="{{ used_pct }}" aria-valuemin="0" aria-valuemax="100">
@@ -40,14 +45,16 @@
         <div class="balance-bar-legend">
             <span>נוצלו {{ used_pct }}% מההכנסות</span>
             <span>
-                {% if summary.income > 0 %}
                     חיסכון {{ ((summary.savings / summary.income) * 100) | round | int }}%
-                {% else %}
-                    חיסכון 0%
-                {% endif %}
             </span>
         </div>
     </div>
+    {% endif %}
+
+    {# ובלי הכנסות — משפט שאומר מה חסר, במקום פס ריק שנראה כמו תקלה. #}
+    {% if summary.income <= 0 %}
+    <p class="hero-sub hero-bar-empty">הוסיפו הכנסה כדי לראות כמה מהחודש כבר נוצל</p>
+    {% endif %}
 </section>
 {% endif %}
 {% endblock %}

@@ -79,3 +79,22 @@ def test_the_numbers_stay_tied_to_the_real_default():
 
     assert anomaly["percent"] == 150
     assert anomaly["min_gap"] == 300
+
+
+# ─── הסעיף השני שמוכר את אותה תכונה ─────────────────────────────────────────
+#
+# המוקאפ תוקן (הבדיקות למעלה), אבל אותה הבטחה חזרה בפסקת ההסבר שמתחתיו:
+# "קטגוריה שעברה את הממוצע... מסומנת" — משפט שנכון על 10% חריגה, ולא רק
+# על 50%+שקל. מי שקרא רק את המשפט הזה ציפה להתראה שלא תגיע.
+
+def test_the_explanation_text_does_not_repeat_the_same_lie():
+    """הבדיקה על התוכן המוצג בפועל, לא על תגובת ‎{# #}‎ שמתעדת את התיקון."""
+    visible = re.sub(r"\{#.*?#\}", "", _HTML, flags=re.S)
+    assert "שעברה את הממוצע" not in visible, \
+        "הפסקה עדיין מבטיחה התראה על כל חריגה, לא רק על 50%+שקל"
+
+
+def test_the_explanation_states_both_conditions():
+    """הכלל האמיתי הוא שני תנאים יחד: אחוז וגם סכום."""
+    section = _HTML[_HTML.index("קטגוריה שחרגה"):][:200]
+    assert "בחצי" in section or "50" in section
