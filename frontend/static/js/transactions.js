@@ -1473,13 +1473,18 @@ document.addEventListener('click', function (e) {
             if (d.status === 'ok') {
                 row.style.transition = 'opacity 0.25s';
                 row.style.opacity = '0';
-                // בעמוד החודש הסכומים שמעל הרשימה ("יוצא", "נכנס", "מופרש")
-                // נגזרים מהשורות. הסרת שורה בלבד הייתה משאירה אותם על הערך
-                // הישן — בדיוק סוג המספר השגוי שהאפליקציה קיימת כדי למנוע.
-                const inMonthList = !!row.closest('#fixedList');
+                // הסכומים שמעל הרשימה ("יוצא", "נכנס", "מופרש") נגזרים
+                // מהשורות, אז הסרת שורה בלבד משאירה אותם על הערך הישן.
+                //
+                // אבל ‎softReload‎ מחליף את ‎main‎ כולו, וזה בטוח רק בעמוד
+                // שהצהיר על עצמו ככזה — שתי הקריאות האחרות בקובץ בודקות
+                // בדיוק את זה. בלי הבדיקה, מחיקה בעמוד החודש השאירה את
+                // מופעי Chart.js מחוברים ל-canvas מנותק ואת החיפוש וכפתור
+                // הניהול בלי מאזינים: כל הגרפים נעלמו באמצע הפעולה.
+                const canSwap = !!document.querySelector('main[data-soft-reload]');
                 setTimeout(function () {
                     row.remove();
-                    if (inMonthList && window.softReload) window.softReload();
+                    if (canSwap && window.softReload) window.softReload();
                 }, 260);
                 window.showToast('העסקה הקבועה הוסרה');
             } else {

@@ -59,7 +59,10 @@
                     לעשות בינתיים.
                 </p>
                 <div class="onboarding-actions">
-                    <button type="button" class="submit-btn" onclick="location.reload()">רענון</button>
+                    {# ‎onclick‎ היה כאן, וה-CSP (‎script-src 'self'‎ בלי ‎unsafe-inline‎)
+                       חסם אותו בשקט — הכפתור היחיד במסך היחיד שאין ממנו יציאה.
+                       המאזין יושב ב-onboarding.js, לפני היציאה המוקדמת. #}
+                    <button type="button" class="submit-btn" id="waitingRefreshBtn">רענון</button>
                 </div>
             </section>
             {% else %}
@@ -234,6 +237,13 @@
                     <button type="button" class="submit-btn" id="finishBtn">סיום והתחלה</button>
                 </div>
             </section>
+
+            {# הדרך היחידה החוצה. בלעדיה מי שנרשם עם מייל שגוי, או שהצטרף
+               למשפחה הלא נכונה עם קוד שקיבל בטעות, תקוע כאן לגמרי: באשף
+               אין ניווט, אין תפריט ואין אף קישור. #}
+            <form class="onboarding-escape" method="post" action="{{ url_for('logout') }}">
+                <button type="submit" class="btn-link-quiet">התנתקות</button>
+            </form>
 
         </div>
     </div>

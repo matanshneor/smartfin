@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 
+{# העמוד בטוח להחלפה: month.js לא נקשר ישירות לאף אלמנט (הכול בהאצלה
+   מ-document), והגרפים והמקרא נצבעים מחדש ב-‎sf:refreshed‎. בלי שלושת
+   אלה רענון רך כאן השאיר canvas מנותקים וחיפוש מת. #}
+{% block soft_reload %} data-soft-reload{% endblock %}
 {% block title %}SmartFin – {{ month_label }}{% endblock %}
 
 {% block hero %}

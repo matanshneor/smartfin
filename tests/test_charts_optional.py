@@ -86,6 +86,9 @@ g.document = {
     querySelectorAll: () => [],
 };
 g.window = g;
+// דפדפן אמיתי מספק את זה, והכפיל לא — ‎month.js‎ מאזין ל-‎sf:refreshed‎
+// כדי לצייר מחדש אחרי רענון רך.
+g.addEventListener = g.addEventListener || function () {};
 g.sfData = () => ({
     summary:   { expense: 1950, savings: 8000, income: 11527 },
     expense:   [],
@@ -201,6 +204,9 @@ g.document = {
         (id === 'overviewLegend' ? { appendChild: (li) => legend.push(li.innerHTML) } : el(id)),
 };
 g.window = g;
+// דפדפן אמיתי מספק את זה, והכפיל לא — ‎month.js‎ מאזין ל-‎sf:refreshed‎
+// כדי לצייר מחדש אחרי רענון רך.
+g.addEventListener = g.addEventListener || function () {};
 g.sfData = () => ({
     summary: { expense: 1950, savings: 8000, income: 11527 },
     expense: [{ name: 'סופר', total: 650, pct: 33 }, { name: 'דלק', total: 1300, pct: 67 }],

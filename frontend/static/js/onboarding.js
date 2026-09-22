@@ -18,6 +18,16 @@ window.escapeHtml = window.escapeHtml || function (s) {
     const stepJoin = document.getElementById('stepJoin');
     const dotsBar  = document.getElementById('onboardingDots');
 
+    // מסך ההמתנה, וכפתור הרענון שלו. הוא חייב להיקשר **לפני** היציאה
+    // המוקדמת שלמטה — הוא האלמנט היחיד שקיים במסך הזה, ובלי זה הוא
+    // מת: ה-CSP חוסם ‎onclick‎, ובמסך אין שום דבר אחר ללחוץ עליו.
+    const waitingRefreshBtn = document.getElementById('waitingRefreshBtn');
+    if (waitingRefreshBtn) {
+        waitingRefreshBtn.addEventListener('click', function () {
+            window.location.reload();
+        });
+    }
+
     // מסך "הצטרפתם בהצלחה" מוגש במקום האשף כולו, ואין בו אף אחד
     // מהאלמנטים שלמטה. בלי היציאה הזאת הקובץ נופל על הראשון שחסר,
     // ואיתו כל מה שאחריו — בדיוק כמו שקרה ב-core.js.

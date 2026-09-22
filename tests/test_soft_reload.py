@@ -13,6 +13,8 @@ Chart.js או עם האזנות ישירות לא שורד החלפת DOM. לכ�
 """
 from pathlib import Path
 
+import re
+
 import pytest
 
 pytestmark = pytest.mark.unit
@@ -32,12 +34,36 @@ def test_the_dashboard_opts_in():
     assert "{% block soft_reload %} data-soft-reload{% endblock %}" in _read(_TPL / "index.html")
 
 
-@pytest.mark.parametrize("page", ["month.html", "months.html", "project_detail.html"])
-def test_pages_with_charts_do_not_opt_in(page):
-    """החלפת ה-DOM תשאיר מופעי Chart.js תלויים על אלמנטים שכבר לא קיימים,
-    והגרפים פשוט ייעלמו."""
-    assert "data-soft-reload" not in _read(_TPL / page), \
-        f"{page} מצטרף לרענון רך אבל יש בו גרפים"
+# הכלל הישן היה "עמוד עם גרפים לא מצטרף", כי החלפת ה-DOM משאירה מופעי
+# Chart.js תלויים על אלמנטים שכבר לא במסמך. זה נכון — אבל זו תוצאה ולא
+# חוק: עמוד שמצייר מחדש ב-‎sf:refreshed‎ בטוח לגמרי. עמוד החודש עשה בדיוק
+# את זה, והכלל הישן הפך אותו לכישלון.
+#
+# הכלל עכשיו מנוסח על התכונה עצמה: מי שמצטרף חייב לדעת לצייר מחדש.
+@pytest.mark.parametrize("page,script", [
+    ("month.html", "month.js"),
+    ("months.html", "months.js"),
+    ("project_detail.html", "project-detail.js"),
+])
+def test_a_page_with_charts_that_opts_in_repaints_them(page, script):
+    if "data-soft-reload" not in _read(_TPL / page):
+        pytest.skip(f"{page} אינו מצטרף לרענון רך")
+
+    js = _read(_ROOT / "frontend/static/js" / script)
+    assert "sf:refreshed" in js, (
+        f"{page} מצטרף לרענון רך אבל {script} לא מצייר מחדש — "
+        f"הגרפים יישארו על canvas מנותקים"
+    )
+
+
+def test_a_page_that_opts_in_binds_nothing_directly_to_an_element(page="month.html",
+                                                                  script="month.js"):
+    """‎softReload‎ מחליף את ‎main‎ כולו. כל ‎getElementById(...).addEventListener‎
+    שרץ בטעינה מצביע אחר כך על אלמנט מנותק, והפקד נראה חי ומת בלחיצה."""
+    js = _read(_ROOT / "frontend/static/js" / script)
+
+    direct = re.findall(r"document\.getElementById\([^)]+\)\.addEventListener", js)
+    assert not direct, f"{script} נקשר ישירות: {direct}"
 
 
 def test_the_base_template_defaults_to_not_opting_in():

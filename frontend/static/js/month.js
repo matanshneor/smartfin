@@ -66,55 +66,93 @@ document.addEventListener('click', function (e) {
 // ── המקרא של "לאן הלך הכסף" ──
 // נבנה כאן ולא עם הגרף: אלה המספרים עצמם (הוצאות מול חיסכון, בשקלים
 // ובאחוזים), והם השווים ביותר בכרטיס. הדונאט רק מצייר אותם.
-const legend = document.getElementById('overviewLegend');
-if (legend && OVERVIEW_TOTAL > 0) {
-    OVERVIEW_PARTS.forEach(p => {
+//
+// נבנה מחדש אחרי רענון רך: ה-HTML הטרי מביא ‎<ul>‎ ריק, אז בלי זה
+// הכרטיס נשאר עם דונאט ובלי המספרים שהוא מצייר.
+function buildOverviewLegend() {
+    const legend = document.getElementById('overviewLegend');
+    if (!legend) return;
+    const view = window.sfData('sf-view-data');
+    const parts = [
+        { label: 'הוצאות', value: (view.summary || {}).expense || 0, color: '#A04545' },
+        { label: 'חיסכון', value: (view.summary || {}).savings || 0, color: '#A67C00' },
+    ].filter(p => p.value > 0);
+    const total = parts.reduce((sum, p) => sum + p.value, 0);
+
+    legend.innerHTML = '';
+    if (total <= 0) return;
+    parts.forEach(p => {
         const li = document.createElement('li');
         li.className = 'legend-item';
         li.innerHTML = `
             <span class="legend-dot" style="background:${p.color}"></span>
             <span class="legend-name">${p.label}</span>
-            <span class="legend-pct">${Math.round(p.value / OVERVIEW_TOTAL * 100)}%</span>
+            <span class="legend-pct">${Math.round(p.value / total * 100)}%</span>
             <span class="legend-amount">₪${p.value.toLocaleString('en-US')}</span>`;
         legend.appendChild(li);
     });
 }
+buildOverviewLegend();
+window.addEventListener('sf:refreshed', buildOverviewLegend);
 
 // ── חיפוש/סינון ברשימת "כל העסקאות" (client-side) ──
-const txSearch = document.getElementById('txSearch');
-if (txSearch) {
-    const allRows = Array.from(document.querySelectorAll('.all-tx-header + .tx-search-wrap + .cat-tx-list .cat-tx-row'));
+//
+// בהאצלה מ-document ולא בהאזנה ישירה, ובלי לשמור את השורות מראש:
+// רענון רך מחליף את ‎main‎ כולו, וכל הפניה שנתפסה בטעינה מצביעה אחר כך
+// על אלמנטים מנותקים. החיפוש פשוט הפסיק להגיב, בלי שום סימן.
+document.addEventListener('input', function (e) {
+    if (!e.target || e.target.id !== 'txSearch') return;
+    const rows = document.querySelectorAll(
+        '.all-tx-header + .tx-search-wrap + .cat-tx-list .cat-tx-row');
     const emptyMsg = document.getElementById('txSearchEmpty');
-    txSearch.addEventListener('input', function () {
-        const q = txSearch.value.trim().toLowerCase();
-        let shown = 0;
-        allRows.forEach(function (row) {
-            const desc = (row.querySelector('.cat-tx-desc') || {}).textContent || '';
-            const match = !q || desc.toLowerCase().indexOf(q) !== -1;
-            row.style.display = match ? '' : 'none';
-            if (match) shown++;
-        });
-        emptyMsg.style.display = (q && shown === 0) ? 'block' : 'none';
+    const q = e.target.value.trim().toLowerCase();
+    let shown = 0;
+    rows.forEach(function (row) {
+        const desc = (row.querySelector('.cat-tx-desc') || {}).textContent || '';
+        const match = !q || desc.toLowerCase().indexOf(q) !== -1;
+        row.style.display = match ? '' : 'none';
+        if (match) shown++;
     });
-}
+    if (emptyMsg) emptyMsg.style.display = (q && shown === 0) ? 'block' : 'none';
+});
 
 })();
 
 
-/* ═══ הגרפים ═══  (ראו chart-setup.js) */
+/* ═══ הגרפים ═══  (ראו chart-setup.js)
+ *
+ * נצבעים מחדש אחרי רענון רך. ‎softReload‎ מחליף את ‎main‎ כולו, כלומר
+ * כל ה-canvas מוחלפים — ומופעי Chart.js הישנים נשארו מחוברים לאלמנטים
+ * מנותקים בזמן שהחדשים לא צוירו מעולם. התוצאה על המסך הייתה תוויות
+ * מרכז מרחפות מעל ריבועים ריקים, שנראית כמו קריסה של העמוד.
+ */
 (function () {
 if (!window.sfCharts.ready) return;
 
 const COLORS    = window.sfCharts.colors;
 const GRID_LINE = window.sfCharts.grid;
 
-// ── 1. לאן הלך הכסף ──
-const parts = OVERVIEW_PARTS;
+let drawn = [];
+
+function paint() {
+// מופעים קודמים נהרסים לפני הציור: ‎new Chart‎ על canvas תפוס זורק.
+drawn.forEach(function (c) { try { c.destroy(); } catch (e) {} });
+drawn = [];
+
+// נתוני התצוגה מגיעים מאי-נתונים ב-HTML, ואותו HTML הוחלף — אז
+// קוראים אותו מחדש ולא מסתמכים על מה שנקרא בטעינה.
+const view = window.sfData('sf-view-data');
+const parts = [
+    { label: 'הוצאות', value: (view.summary || {}).expense || 0, color: '#A04545' },
+    { label: 'חיסכון', value: (view.summary || {}).savings || 0, color: '#A67C00' },
+].filter(p => p.value > 0);
+const OVERVIEW_TOTAL = parts.reduce((s, p) => s + p.value, 0);
+const SF_VIEW = view;
 if (parts.length) {
     const outTotal = OVERVIEW_TOTAL;
     const ctx = document.getElementById('overviewChart');
     if (ctx) {
-        new Chart(ctx, {
+        drawn.push(new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: parts.map(p => p.label),
@@ -138,7 +176,7 @@ if (parts.length) {
                     }
                 }
             }
-        });
+        }));
     }
 }
 
@@ -147,7 +185,7 @@ const expenseData = SF_VIEW.expense;
 if (expenseData.length > 0) {
     const ctx = document.getElementById('expenseChart');
     if (ctx) {
-        new Chart(ctx, {
+        drawn.push(new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: expenseData.map(d => d.name),
@@ -171,7 +209,7 @@ if (expenseData.length > 0) {
                     }
                 }
             }
-        });
+        }));
     }
 }
 
@@ -179,7 +217,7 @@ if (expenseData.length > 0) {
 SF_VIEW.members.forEach(function (mb) {
     const ctx = document.getElementById('membersChart-' + mb.type);
     if (!ctx || !mb.rows.length) return;
-    new Chart(ctx, {
+    drawn.push(new Chart(ctx, {
         type: 'bar',
         data: {
             labels: mb.rows.map(m => m.name),
@@ -210,8 +248,15 @@ SF_VIEW.members.forEach(function (mb) {
                 }
             }
         }
-    });
+    }));
 });
+
+}   // paint
+
+paint();
+
+// רענון רך החליף את ‎main‎ — ה-canvas שעליהם ציירנו כבר לא במסמך.
+window.addEventListener('sf:refreshed', paint);
 
 })();
 
@@ -226,11 +271,9 @@ SF_VIEW.members.forEach(function (mb) {
  * לחיצה מקרית על "קבוע כל חודש" לא אמורה לפתוח עורך.
  */
 (function () {
-    const btn  = document.getElementById('fixedManageBtn');
-    const list = document.getElementById('fixedList');
-    if (!btn || !list) return;
-
-    function setManaging(on) {
+    // האצלה מ-document ולא האזנה ישירה: רענון רך מחליף את ‎main‎, ועם
+    // האזנה ישירה הכפתור שרד על המסך ומת בלחיצה.
+    function setManaging(list, btn, on) {
         list.classList.toggle('managing', on);
         btn.setAttribute('aria-expanded', String(on));
         btn.textContent = on ? 'סיום' : 'ניהול';
@@ -249,7 +292,11 @@ SF_VIEW.members.forEach(function (mb) {
         });
     }
 
-    btn.addEventListener('click', function () {
-        setManaging(!list.classList.contains('managing'));
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest && e.target.closest('#fixedManageBtn');
+        if (!btn) return;
+        const list = document.getElementById('fixedList');
+        if (!list) return;
+        setManaging(list, btn, !list.classList.contains('managing'));
     });
 })();
