@@ -906,53 +906,11 @@ newForm.addEventListener('submit', function (e) {
 });
 
 // ── מחיקת פרויקט ──
-document.addEventListener('click', function (e) {
-    const btn = e.target.closest('.delete-project-btn');
-    if (!btn) return;
-    const id  = btn.dataset.id;
-    const row = btn.closest('.project-settings-row');
-    if (!row) return;
-    const name = row.dataset.name;
-
-    window.appConfirm({
-        title: 'למחוק את "' + name + '"?',
-        message: 'ההוצאות ששויכו לפרויקט לא יימחקו — הן פשוט יחזרו להיספר תחת הקטגוריה הרגילה שלהן.',
-        confirmText: 'מחק פרויקט',
-    }).then(function (ok) {
-        if (!ok) return;
-        // שאלה שנייה ונפרדת: מה לעשות עם העסקאות עצמן. ברירת מחדל
-        // בטוחה (גם ב-Escape/לחיצה בחוץ) — להשאיר אותן כרגילות.
-        return window.appConfirm({
-            title: 'מה לעשות עם העסקאות של הפרויקט?',
-            message: 'אפשר למחוק גם את כל ההוצאות/הכנסות/חיסכון ששויכו לפרויקט, או להשאיר אותן — הן פשוט יחזרו להיספר תחת הקטגוריה הרגילה שלהן.',
-            confirmText: 'מחק גם עסקאות',
-            cancelText: 'השאר כרגילות',
-            danger: false,
-        }).then(function (deleteTransactions) {
-            // נסיגה מהשאלה השנייה = ביטול הכל. מי שלחץ מחוץ לדיאלוג או על
-            // Escape התכוון לסגת, ולא "תמחק את הפרויקט עם ברירת המחדל" —
-            // ולמחיקת פרויקט אין ביטול.
-            if (deleteTransactions === null) return;
-            fetch('/api/projects/' + id, {
-                method:  'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ delete_transactions: deleteTransactions }),
-            })
-            .then(r => r.json())
-            .then(function (d) {
-                if (d.status === 'ok') {
-                    row.style.transition = 'opacity 0.25s';
-                    row.style.opacity = '0';
-                    setTimeout(() => row.remove(), 260);
-                    window.showToast('הפרויקט נמחק');
-                } else {
-                    window.showToast('המחיקה נכשלה', 'error');
-                }
-            })
-            .catch(function () { window.showToast(window.sfNetError(), 'error'); });
-        });
-    });
-});
+// מחיקת פרויקט עברה לתוך הפרויקט עצמו (project-edit.js).
+//
+// ה-✕ ישב כאן וגם ברשימת הפרויקטים — הפעולה הבלתי הפיכה ביותר בעמוד,
+// ליד השם, בלי שום מידע על מה עומד להימחק. "ניהול מלא" מוביל לפרויקט,
+// ושם רואים את הסכומים, את העסקאות, וכמה מהן יאבדו.
 
 // ── עריכת פרויקט במקום (שם/יעד/סוגי מעקב — בעלות מנוהלת רק מעמוד הפרויקט) ──
 document.addEventListener('click', function (e) {

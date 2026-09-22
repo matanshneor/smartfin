@@ -67,47 +67,9 @@ form.addEventListener('submit', function (e) {
     .catch(function () { submitBtn.disabled = false; errorEl.textContent = window.sfNetError(); });
 });
 
-document.addEventListener('click', function (e) {
-    const btn = e.target.closest('.delete-project-btn');
-    if (!btn) return;
-    const id  = btn.dataset.id;
-    const row = btn.closest('.project-row');
-    const name = row.querySelector('.project-name').textContent.trim();
-
-    window.appConfirm({
-        title: 'למחוק את "' + name + '"?',
-        message: 'ההוצאות ששויכו לפרויקט לא יימחקו — הן פשוט יחזרו להיספר תחת הקטגוריה הרגילה שלהן.',
-        confirmText: 'מחק פרויקט',
-    }).then(function (ok) {
-        if (!ok) return;
-        // שאלה שנייה ונפרדת: מה לעשות עם העסקאות עצמן. ברירת מחדל
-        // בטוחה (גם ב-Escape/לחיצה בחוץ) — להשאיר אותן כרגילות.
-        return window.appConfirm({
-            title: 'מה לעשות עם העסקאות של הפרויקט?',
-            message: 'אפשר למחוק גם את כל ההוצאות/הכנסות/חיסכון ששויכו לפרויקט, או להשאיר אותן — הן פשוט יחזרו להיספר תחת הקטגוריה הרגילה שלהן.',
-            confirmText: 'מחק גם עסקאות',
-            cancelText: 'השאר כרגילות',
-            danger: false,
-        }).then(function (deleteTransactions) {
-            if (deleteTransactions === null) return;   // נסיגה — ביטול הכל
-            fetch('/api/projects/' + id, {
-                method:  'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ delete_transactions: deleteTransactions }),
-            })
-            .then(r => r.json())
-            .then(function (d) {
-                if (d.status === 'ok') {
-                    row.style.transition = 'opacity 0.25s';
-                    row.style.opacity = '0';
-                    setTimeout(() => row.remove(), 260);
-                    window.showToast('הפרויקט נמחק');
-                } else {
-                    window.showToast('המחיקה נכשלה', 'error');
-                }
-            })
-            .catch(function () { window.showToast(window.sfNetError(), 'error'); });
-        });
-    });
-});
+// המחיקה עברה לתוך הפרויקט (project-edit.js).
+//
+// היא ישבה כאן כ-✕ ליד כל שורה ברשימה — הפעולה הבלתי הפיכה ביותר
+// בעמוד, במרחק נגיעה אחת מהשם ובלי שום הקשר על מה עומד להימחק. מי
+// שנמצא **בתוך** הפרויקט כבר ראה את הסכומים ואת העסקאות.
 })();

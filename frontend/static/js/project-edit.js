@@ -276,3 +276,92 @@ document.addEventListener('click', function (e) {
     .catch(function () { window.showToast(window.sfNetError(), 'error'); saveBtn.disabled = false; });
 });
 })();
+
+// ── מחיקת הפרויקט ──
+//
+// עברה לכאן מ-✕ שישב ליד כל שורה ברשימת הפרויקטים: הפעולה הבלתי הפיכה
+// ביותר בעמוד, במרחק נגיעה אחת מהשם, בלי שום הקשר על מה עומד להימחק.
+// כאן המשתמש כבר ראה את הסכומים ואת העסקאות.
+//
+// ולכן גם **אין כאן ‎appConfirm‎**: האזור נפתח, מראה כמה עסקאות עומדות
+// על הפרק, ומבקש בחירה מפורשת. דיאלוג נוסף מעל זה היה שאלה שנייה על
+// מה שכבר מוצג במלואו.
+(function () {
+    const toggle = document.getElementById('toggleDeleteProjectBtn');
+    const form   = document.getElementById('deleteProjectForm');
+    const go     = document.getElementById('confirmDeleteProjectBtn');
+    const cancel = document.getElementById('cancelDeleteProjectBtn');
+    const errorEl = document.getElementById('deleteProjectError');
+    if (!toggle || !form || !go) return;
+
+    // ‎visible‎ ולא ‎open‎ — זה הקלאס ש-‎.password-form‎ כבר משתמש בו.
+    toggle.addEventListener('click', function () {
+        const open = form.classList.toggle('visible');
+        toggle.setAttribute('aria-expanded', String(open));
+    });
+
+    // בורר "מה לעשות עם העסקאות", באותו דפוס של שאר הפקדים באפליקציה.
+    let txMode = 'keep';
+    const hint = document.getElementById('projectTxModeHint');
+    form.querySelectorAll('[data-tx-mode]').forEach(function (b) {
+        b.addEventListener('click', function () {
+            txMode = b.dataset.txMode;
+            form.querySelectorAll('[data-tx-mode]').forEach(function (other) {
+                const on = other === b;
+                other.classList.toggle('active', on);
+                other.setAttribute('aria-checked', String(on));
+            });
+            // ההסבר משתנה איתו: אחרת הבחירה נראית כמו העדפה ולא כמו
+            // החלטה על כסף.
+            if (hint) {
+                hint.textContent = txMode === 'delete'
+                    ? 'העסקאות יימחקו יחד עם הפרויקט, ולא יופיעו בשום דוח'
+                    : 'העסקאות יחזרו להיספר בקטגוריה הרגילה שלהן';
+            }
+        });
+    });
+
+    if (cancel) {
+        cancel.addEventListener('click', function () {
+            form.classList.remove('visible');
+            toggle.setAttribute('aria-expanded', 'false');
+            errorEl.textContent = '';
+        });
+    }
+
+    go.addEventListener('click', function () {
+        // בפרויקט ריק אין בורר בכלל, ו-‎txMode‎ נשאר ‎keep‎ — אין מה
+        // למחוק חוץ מהפרויקט עצמו.
+        const deleteTransactions = txMode === 'delete';
+
+        go.disabled = true;
+        errorEl.textContent = '';
+
+        fetch('/api/projects/' + go.dataset.id, {
+            method:  'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ delete_transactions: deleteTransactions }),
+        })
+        .then(r => r.json().then(d => ({ ok: r.ok, d: d })))
+        .then(function (res) {
+            if (!res.ok || res.d.status !== 'ok') {
+                errorEl.textContent = res.d.error || 'המחיקה נכשלה';
+                go.disabled = false;
+                return;
+            }
+            // ‎deleted‎ הוא מספר העסקאות שנמחקו בפועל — השרת מחזיר אותו
+            // כדי שלא נצטרך להבטיח מספר שלא נבדק.
+            const wiped = res.d.deleted || 0;
+            try {
+                sessionStorage.setItem('sf_toast', wiped
+                    ? 'הפרויקט נמחק, ואיתו ' + wiped + ' עסקאות'
+                    : 'הפרויקט נמחק');
+            } catch (e) { /* אין אחסון — נוותר על הטוסט, לא על הניווט */ }
+            window.location.href = '/projects';
+        })
+        .catch(function () {
+            errorEl.textContent = window.sfNetError();
+            go.disabled = false;
+        });
+    });
+})();

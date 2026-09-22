@@ -21,7 +21,8 @@ import pytest
 
 pytestmark = pytest.mark.unit
 
-_JS = Path(__file__).resolve().parent.parent / "frontend/static/js"
+_ROOT = Path(__file__).resolve().parent.parent
+_JS = _ROOT / "frontend/static/js"
 
 
 def _read(name):
@@ -175,11 +176,39 @@ def test_existing_callers_are_unaffected():
     assert "falsy" in core[core.index("שלוש תוצאות"):core.index("window.appConfirm")]
 
 
-@pytest.mark.parametrize("path", ["settings.js", "projects.js"])
+# ‎projects.js‎ ירד מהרשימה: מחיקת פרויקט עברה לתוך הפרויקט עצמו, ואין
+# בה יותר שתי שאלות ברצף. הבחירה מה יקרה לעסקאות היא בורר בטופס שנפתח
+# ומראה כמה עסקאות עומדות על הפרק — כלומר אין "שאלה שנייה" שאפשר
+# להיסוג ממנה, ויש טופס שצריך לשלוח במפורש. הבדיקה למטה שומרת על
+# התכונה שהחליפה אותה.
+@pytest.mark.parametrize("path", ["settings.js"])
 def test_backing_out_of_the_second_question_cancels_everything(path):
     body = _read(path)
 
     assert "=== null" in body, f"{path}: נסיגה עדיין מוחקת"
+
+
+def test_deleting_a_project_defaults_to_keeping_the_money():
+    """מחיקת פרויקט אינה מחיקת ההוצאות שנרשמו בו — הן קרו. הבורר
+    שמסומן מראש חייב להיות זה שמשאיר אותן."""
+    html = (_ROOT / "frontend/templates/project_edit.html").read_text(encoding="utf-8")
+    block = html[html.index("project-danger"):]
+    active = re.search(r'class="toggle-btn active" data-tx-mode="(\w+)"', block)
+
+    assert active, "אין ברירת מחדל מסומנת — מי שילחץ מהר ימחק כסף"
+    assert active.group(1) == "keep"
+
+    # וגם ב-JS: המשתנה מתחיל מ-keep, אחרת הסימון החזותי משקר
+    js = (_ROOT / "frontend/static/js/project-edit.js").read_text(encoding="utf-8")
+    assert "let txMode = 'keep';" in js
+
+
+def test_it_says_how_many_transactions_are_at_stake():
+    """✕ ברשימה לא נשא שום מספר. בתוך הפרויקט אפשר לומר בדיוק מה יאבד."""
+    html = (_ROOT / "frontend/templates/project_edit.html").read_text(encoding="utf-8")
+    block = html[html.index("project-danger"):]
+
+    assert "tx_count" in block
 
 
 def test_backing_out_of_removing_a_family_member_cancels_too():

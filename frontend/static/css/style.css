@@ -4260,3 +4260,20 @@ li.transaction-item.swipe-ready > .swipe-content {
 @media (prefers-reduced-motion: reduce) {
     .category-row.just-landed { animation: none; background: var(--color-gold-dim); }
 }
+
+/* ─── רשימת הפרויקטים: שמות בלבד ──────────────────────────────────
+   הסכום וה-✕ עברו לתוך הפרויקט. שורה בלי סכום היא שורה בלי משקל
+   חזותי מימין, אז החץ ממלא את התפקיד הזה ומסמן שאפשר להיכנס. */
+.project-chevron {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    margin-inline-start: auto;
+    color: var(--color-text-muted);
+    opacity: 0.65;
+}
+.project-chevron svg { width: 18px; height: 18px; }
+
+/* ─── אזור המחיקה בתוך הפרויקט ────────────────────────────────── */
+.project-danger { margin-top: 18px; }
+.project-danger .group-row-label { color: var(--color-expense); }
