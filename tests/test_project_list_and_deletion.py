@@ -280,3 +280,54 @@ def test_adding_a_category_is_visibly_a_separate_thing():
     gap = re.search(r"margin-top\s*:\s*(\d+)", rule)
     assert gap and int(gap.group(1)) >= 12, "אין רווח אמיתי בין הרשימה לטופס"
     assert "border-top" in rule, "רק רווח — אין קו שמפריד בין הרשימה לטופס"
+
+
+# ─── והלשוניות נגעו בשורה הראשונה מתחתיהן ────────────────────────────────────
+#
+# ל-‎.type-toggle‎ אין ‎margin-bottom‎, ו-‎.category-row:first-child‎ מאפסת
+# את הריפוד העליון. כל אחת מהן סבירה בפני עצמה; יחד הן נותנות אפס רווח,
+# והכפתור הפעיל ("הוצאות") נצמד לשורה הראשונה כאילו הם רכיב אחד.
+# אותו דבר בדיוק בניהול הקטגוריות שבהגדרות.
+
+def _decl(css, selector, prop):
+    m = re.search(r"^" + re.escape(selector) + r"[^{]*\{([^}]*)\}", css, re.M)
+    assert m, f"אין כלל שמתחיל ב-{selector}"
+    d = re.search(rf"\b{prop}\s*:\s*([^;]+)", m.group(1))
+    return d.group(1).strip() if d else None
+
+
+def test_the_tabs_do_not_touch_the_row_below_them():
+    gap = _decl(_CSS, ".project-cat-tabs,", "margin-bottom")
+
+    assert gap and int(gap.replace("px", "")) >= 8, f"הרווח הוא {gap}"
+
+
+def test_the_settings_screen_got_the_same_fix():
+    """אותה תקלה, אותו קוד, מסך אחר. תיקון של אחד בלבד משאיר את השני
+    שבור בלי שאיש יבדוק אותו שוב."""
+    rule = re.search(r"^\.project-cat-tabs,\n\.cat-type-tabs\s*\{", _CSS, re.M)
+
+    assert rule, "רק לשוניות הפרויקט תוקנו"
+
+
+def test_the_first_row_gets_its_padding_back():
+    for area in ("#projectCategoriesArea", "#categoriesArea"):
+        pad = _decl(_CSS, f"{area} .category-row:first-child", "padding-top")
+        assert pad and int(pad.replace("px", "")) > 0, f"{area}: {pad}"
+
+
+def test_the_new_rule_actually_wins():
+    """‎.category-row:first-child { padding-top: 0 }‎ עדיין בגיליון.
+    כלל שמורכב ממחלקות בלבד לא היה מנצח אותה לפי סדר, כי הוא מוגדר
+    הרבה אחריה אבל באותה קדימות — צריך ‎#id‎."""
+    assert ".category-row:first-child { padding-top: 0; }" in _CSS, \
+        "האיפוס הוסר — הכלל החדש מיותר, והבדיקה הזאת צריכה ללכת איתו"
+
+    # כל בורר בגיליון שמחזיר ריפוד עליון לשורה הראשונה חייב לשאת ‎#id‎.
+    winners = [
+        sel for sel, body in re.findall(r"([^{}]*\.category-row:first-child[^{}]*)\{([^}]*)\}", _CSS)
+        if re.search(r"padding-top\s*:\s*[1-9]", body)
+    ]
+    assert winners, "אף כלל לא מחזיר ריפוד לשורה הראשונה"
+    for sel in winners:
+        assert "#" in sel, f"בורר בלי #id לא ינצח את האיפוס: {sel.strip()}"

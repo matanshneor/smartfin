@@ -4362,3 +4362,15 @@ body.no-fab .fab { display: none; }
 
 /* שורת המחיקה הייתה צמודה לתחתית הכרטיס. */
 .project-settings-block.project-danger { padding-bottom: 22px; }
+
+/* לשוניות "הוצאות / הכנסות / חיסכון" נגעו בשורה הראשונה מתחתיהן.
+   ל-‎.type-toggle‎ אין ‎margin-bottom‎, ו-‎.category-row:first-child‎
+   מאפסת את הריפוד העליון — שתי החלטות סבירות לבד שנפגשות לאפס רווח,
+   כך שהכפתור הפעיל ושורת הקטגוריה הראשונה נראים כמו רכיב אחד.
+   קיים גם בניהול הקטגוריות שבהגדרות, לא רק בפרויקט. */
+.project-cat-tabs,
+.cat-type-tabs { margin-bottom: 10px; }
+
+/* מזהה ה-id נחוץ כדי לנצח את ‎.category-row:first-child‎ שמאפסת. */
+#projectCategoriesArea .category-row:first-child,
+#categoriesArea .category-row:first-child { padding-top: 10px; }
