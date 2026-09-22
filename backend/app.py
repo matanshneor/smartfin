@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, g, make_response
 from dotenv import load_dotenv
 from functools import wraps, partial
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from werkzeug.middleware.proxy_fix import ProxyFix
 import csv
 import hashlib
@@ -126,7 +126,12 @@ app.secret_key = _secret
 # תאריך התפוגה קדימה בכל בקשה, כך שמשתמש פעיל לעולם לא מגיע אליו.
 # מה שמאפשר את זה בפועל הוא רענון ה-refresh token ב-inject_auth: טוקן הגישה
 # של Supabase חי כשעה, וההתחברות שורדת כי הוא מוחלף מעצמו.
-app.permanent_session_lifetime = timedelta(days=3650)
+# 90 יום, וזה גם מה ש-README אמר כל הזמן בזמן שהקוד אמר עשר שנים.
+#
+# עם ‎SESSION_REFRESH_EACH_REQUEST‎ משתמש פעיל לעולם לא מגיע לתפוגה,
+# אז המספר הזה חל בפועל רק על סשן **נטוש** — מכשיר שנמכר, טלפון שאבד,
+# או דפדפן במחשב משותף. עשר שנים פירושן שאלה לא נסגרים לעולם.
+app.permanent_session_lifetime = timedelta(days=90)
 
 # הקשחת עוגיות: העוגייה נושאת את טוקני Supabase, אז Secure חובה בפרודקשן
 # (בפיתוח מקומי על http זה היה שובר את ההתחברות — לכן מותנה).
@@ -180,10 +185,17 @@ limiter = Limiter(
 # אם נשארנו על זיכרון מקומי בפרודקשן — אומרים את זה בקול. הכישלון כאן שקט
 # מטבעו: הבקשות ממשיכות לעבוד והמגבלה פשוט לא נאכפת, כך שבלי ההתראה הזאת
 # אין שום דרך להבחין בין "מוגן" ל"נראה מוגן".
-if _RATELIMIT_STORAGE.startswith("memory://") and not _IS_DEV:
-    logger.warning("rate limiting is using in-memory storage in production — "
-                   "limits are per-worker and reset on every deploy. "
-                   "Set RATELIMIT_STORAGE_URI.")
+#
+# ‎error‎ ולא ‎warning‎: ל-Sentry, ‎warning‎ הוא פירור ולא אירוע, והלוג של
+# Railway הוא חוצץ שנמחק ואף אחד לא קורא (ראו backend/logs.py). כלומר
+# ההתראה היחידה על כך שכל ההגבלות באפליקציה נחלשו פי 4 ומתאפסות בכל
+# פריסה — לא הגיעה לשום מקום שמישהו מסתכל בו.
+RATELIMIT_IS_SHARED = not _RATELIMIT_STORAGE.startswith("memory://")
+
+if not RATELIMIT_IS_SHARED and not _IS_DEV:
+    logger.error("rate limiting is using in-memory storage in production — "
+                 "limits are per-worker and reset on every deploy. "
+                 "Set RATELIMIT_STORAGE_URI.")
 
 
 # ─── נכסים סטטיים: חתימה לפי תוכן ────────────────────────────────────────────
@@ -308,6 +320,10 @@ def _end_session(reason: str):
 def inject_auth():
     token = session.get("access_token")
     if not token:
+        # מאפסים במפורש, ולא יוצאים בשקט. הלקוח הוא סינגלטון ברמת
+        # התהליך: בלי האיפוס, בקשה אנונימית ממשיכה לשאת את ה-JWT של
+        # המשתמש הקודם שטופל באותו worker.
+        db.set_auth_token("")
         return
 
     # Supabase JWTs expire after ~1 hour; refresh ahead of expiry so a
@@ -687,13 +703,21 @@ def signup():
                 # שגיאה (גם הגבלת קצב, פורמט לא תקין וכו') הוצגה תמיד כ"האימייל
                 # כבר קיים" בטעות, מה שהטעה כשהבעיה האמיתית הייתה שונה לגמרי
                 err_lower = err.lower()
-                if "already registered" in err_lower or "already exists" in err_lower:
-                    error = "הרשמה נכשלה – האימייל כבר קיים"
-                elif ("duplicate" in err_lower and "phone" in err_lower) or "database error saving new user" in err_lower:
-                    # שגיאה זו מגיעה מ-trigger שנכשל על האינדקס הייחודי של טלפון
-                    # ב-DB — ה-Auth API של Supabase לא חושף את פרטי הקונפליקט,
-                    # רק הודעה גנרית. זו כרגע העילה היחידה שגורמת ל-trigger להיכשל.
-                    error = "הרשמה נכשלה – מספר הטלפון כבר רשום למשתמש אחר"
+                if ("already registered" in err_lower or "already exists" in err_lower
+                        or ("duplicate" in err_lower and "phone" in err_lower)
+                        or "database error saving new user" in err_lower):
+                    # הודעה אחת לשני המקרים, בכוונה.
+                    #
+                    # קודם "האימייל כבר קיים" ו"הטלפון כבר רשום" היו שתי
+                    # תשובות שונות — כלומר טופס ההרשמה ענה בוודאות על
+                    # "האם הכתובת הזאת רשומה כאן". עם ‎enable_confirmations‎
+                    # כבוי זה גם אורקל וגם דרך לתפוס כתובת של מישהו אחר
+                    # כך שהוא לא יוכל להירשם לעולם.
+                    #
+                    # ההודעה מפנה להתחברות ולאיפוס סיסמה, שהם מה שמי
+                    # שבאמת שכח שיש לו חשבון צריך ממילא.
+                    error = ("הרשמה נכשלה — ייתכן שכבר יש חשבון עם הפרטים האלה. "
+                             "נסו להתחבר, או לאפס סיסמה.")
                 elif "invalid" in err_lower and "email" in err_lower:
                     error = "הרשמה נכשלה – כתובת המייל אינה תקינה, בדוק שהזנת אותה נכון"
                 elif "rate limit" in err_lower:
@@ -743,7 +767,10 @@ def signup():
                            signup=_signup_form()), 422 if error else 200
 
 
-@app.route("/logout", methods=["POST", "GET"])
+# POST בלבד. עם ‎SameSite=Lax‎, ‎<img src=".../logout">‎ באתר אחר הוציא
+# את המבקר מהחשבון ומחק לו את עוגיות המכשיר. מטרד ולא פרצה — אבל מטרד
+# שמישהו יכול להפעיל מרחוק, ואין שום סיבה ש-GET יבצע פעולה.
+@app.route("/logout", methods=["POST"])
 def logout():
     """יציאה יזומה מחזירה לדף הנחיתה, ומוחקת את כל מה שנשמר על המכשיר.
 
@@ -1184,6 +1211,7 @@ def month_view():
 
 
 @app.route("/month.csv")
+@limiter.limit("10 per minute")
 @login_required
 def month_csv():
     """ייצוא עסקאות החודש כ-CSV.
@@ -1498,6 +1526,29 @@ def delete_project_category_route(project_id, cat_id):
     return jsonify({"status": "ok" if ok else "error"}), 200 if ok else 500
 
 
+def _invite_deadline(family):
+    """מתי קוד ההזמנה של המשפחה פג, או ‎None‎ אם אין תאריך."""
+    raw = (family or {}).get("invite_code_expires_at")
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _invite_expired(family):
+    deadline = _invite_deadline(family)
+    return bool(deadline and deadline <= clock.now_utc())
+
+
+def _invite_days_left(family):
+    deadline = _invite_deadline(family)
+    if not deadline:
+        return None
+    return max((deadline - clock.now_utc()).days, 0)
+
+
 @app.route("/settings")
 @login_required
 def settings():
@@ -1534,6 +1585,10 @@ def settings():
     }
     return render_template(
         "settings.html",
+        # תוקף קוד ההזמנה. בלי זה אין שום דרך לדעת שהקוד שאתה עומד
+        # לשלוח בוואטסאפ כבר לא יעבוד.
+        invite_expired=_invite_expired(family),
+        invite_expires_in=_invite_days_left(family),
         family_tx_count=family_tx_count,
         active_page="settings",
         user=user,
@@ -1547,6 +1602,7 @@ def settings():
 
 
 @app.route("/api/profile", methods=["PUT"])
+@limiter.limit("20 per minute")
 @login_required
 def update_profile():
     user = get_current_user()
@@ -1905,7 +1961,11 @@ def _validated_frequency(body):
     return freq, None
 
 
+# אין כאן תרחיש אנושי שמתקרב לגבול; הוא קיים כדי שסקריפט לא יוכל
+# למלא את המסד. כל מחיקה מייצרת גם שורת ‎owner_archive‎ דרך טריגר,
+# אז "הוסף-מחק-חזור" היה לולאה שמגדילה מסד של 500MB בלי שום ניקוי.
 @app.route("/api/transactions", methods=["POST"])
+@limiter.limit("60 per minute")
 @login_required
 def add_transaction():
     user = get_current_user()
@@ -2000,6 +2060,7 @@ def add_transaction():
 
 
 @app.route("/api/transactions/<tx_id>", methods=["PUT"])
+@limiter.limit("60 per minute")
 @login_required
 def update_transaction(tx_id):
     user = get_current_user()
@@ -2101,6 +2162,7 @@ def update_transaction(tx_id):
 
 
 @app.route("/api/transactions/<tx_id>", methods=["DELETE"])
+@limiter.limit("60 per minute")
 @login_required
 def delete_transaction(tx_id):
     """מחיקת עסקה — ועסקה קבועה היא לא עסקה אחת.
@@ -2151,6 +2213,7 @@ def delete_transaction(tx_id):
 
 
 @app.route("/api/recurring/<template_id>", methods=["DELETE"])
+@limiter.limit("30 per minute")
 @login_required
 def stop_recurring_route(template_id):
     """עוצר סדרה קבועה. במכוון לא מוחק את השורה: היא המופע הראשון בסדרה,
@@ -2170,6 +2233,7 @@ def stop_recurring_route(template_id):
 
 
 @app.route("/api/recurring/<template_id>/sync", methods=["PUT"])
+@limiter.limit("30 per minute")
 @login_required
 def sync_recurring_template(template_id):
     """סנכרון חכם: מעדכן את התבנית הקבועה עצמה (לא מופע בודד), כך שרק
@@ -2281,6 +2345,11 @@ def scan_receipt_route():
         session.get("access_token"), user["family_id"], image_bytes, file.mimetype or "image/jpeg"
     )
     if upload_err:
+        # השגיאה נזרקה לפח לגמרי: לא נרשמה, לא הגיעה ל-Sentry, והמכסה
+        # כבר נספרה. המשתמש רואה סריקה מוצלחת בלי תג קבלה ואין שום
+        # עקבה שמסבירה למה. הקריאה ל-OpenAI כבר שולמה, אז לא מבטלים —
+        # רק אומרים.
+        logger.error("upload_receipt נכשל אחרי סריקה מוצלחת: %s", upload_err)
         receipt_path = None
 
     category_id = None
@@ -2356,6 +2425,7 @@ def _parse_initial_balance(body: dict):
 
 
 @app.route("/api/categories", methods=["POST"])
+@limiter.limit("30 per minute")
 @login_required
 def add_category():
     user = get_current_user()
@@ -2386,6 +2456,7 @@ def add_category():
 
 
 @app.route("/api/categories/<cat_id>", methods=["PUT"])
+@limiter.limit("30 per minute")
 @login_required
 def update_category(cat_id):
     user = get_current_user()
@@ -2403,6 +2474,7 @@ def update_category(cat_id):
 # ─── API: Categories delete ───────────────────────────────────────────────────
 
 @app.route("/api/categories/<cat_id>", methods=["DELETE"])
+@limiter.limit("30 per minute")
 @login_required
 def delete_category(cat_id):
     user = get_current_user()
@@ -2450,6 +2522,7 @@ def reorder_categories_route():
 # ─── API: Family ──────────────────────────────────────────────────────────────
 
 @app.route("/api/family/settings", methods=["PUT"])
+@limiter.limit("30 per minute")
 @login_required
 def update_family_settings_route():
     """עדכון העדפות המשפחה. מקבל עדכון חלקי וממזג לתוך הקיים."""
@@ -2529,6 +2602,7 @@ def update_family_settings_route():
 
 
 @app.route("/api/family", methods=["PUT"])
+@limiter.limit("20 per minute")
 @login_required
 def update_family():
     user = get_current_user()
@@ -2743,15 +2817,26 @@ def _database_health():
         ok, detail = db.ping()
         _health_cache.update(at=now, ok=ok, detail=detail)
         if not ok:
-            logger.warning("health: database unreachable (%s)", detail)
+            # ‎error‎ ולא ‎warning‎: מסד שלא זמין הוא אירוע ב-Sentry. ברמת
+            # ‎warning‎ הוא פירור, והדרך היחידה לגלות נפילה הייתה
+            # שמשתמש יתלונן.
+            logger.error("health: database unreachable (%s)", detail)
     return _health_cache["ok"], _health_cache["detail"]
 
 
 @app.route("/health")
 def health():
     ok, detail = _database_health()
-    # תמיד 200 — אבל אומר את האמת בגוף התשובה
-    return jsonify({"status": "ok", "database": "ok" if ok else detail}), 200
+    # תמיד 200 — אבל אומר את האמת בגוף התשובה.
+    #
+    # ‎rate_limiting‎ כאן כי אי אפשר היה לדעת אחרת: ההגבלה נחלשת בשקט
+    # כשמשתנה הסביבה חסר או ש-Redis לא זמין, והבקשות ממשיכות לעבוד.
+    # עכשיו זו שאלה של ‎curl‎ אחד.
+    return jsonify({
+        "status":        "ok",
+        "database":      "ok" if ok else detail,
+        "rate_limiting": "shared" if RATELIMIT_IS_SHARED else "per-worker",
+    }), 200
 
 
 @app.route("/health/db")

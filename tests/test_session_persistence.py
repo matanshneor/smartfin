@@ -35,8 +35,30 @@ def _no_real_refresh(monkeypatch):
 
 # ─── הגדרות העוגייה ──────────────────────────────────────────────────────────
 
-def test_the_session_lasts_effectively_forever():
-    assert app.permanent_session_lifetime >= timedelta(days=365 * 5)
+def test_an_active_session_is_not_interrupted():
+    """המספר הזה חל רק על סשן **נטוש**: משתמש פעיל דוחף את התפוגה קדימה
+    בכל בקשה (הבדיקה הבאה), אז 90 יום לא מנתקים אף אחד שמשתמש.
+
+    עשר שנים פירושן שמכשיר שנמכר, טלפון שאבד או דפדפן במחשב משותף
+    נשארים מחוברים לנצח — ולמשתמש אין שום פעולה שסוגרת אותם."""
+    assert app.permanent_session_lifetime >= timedelta(days=30), \
+        "קצר מדי — מי שנכנס פעם בחודש ייזרק"
+    assert app.permanent_session_lifetime <= timedelta(days=180), \
+        "ארוך מדי — סשן נטוש לא נסגר בשום שלב"
+
+
+def test_changing_the_password_disconnects_other_devices():
+    """בלי זה שינוי סיסמה לא עשה כלום למי שכבר מחובר: הסשן מתחדש
+    מעצמו, וטוקן הרענון ממשיך להחליף את עצמו."""
+    from pathlib import Path
+    src = (Path(__file__).resolve().parent.parent
+           / "backend/supabase_config.py").read_text(encoding="utf-8")
+    fn = src[src.index("def update_password("):]
+    fn = fn[:fn.index("\ndef ")]
+
+    assert "auth/v1/logout" in fn, "שינוי סיסמה לא מנתק שום מכשיר אחר"
+    assert '"scope": "others"' in fn, \
+        "ניתוק גלובלי היה מנתק גם את מי שביצע את השינוי"
 
 
 def test_the_expiry_window_slides_with_every_request():
@@ -198,7 +220,7 @@ def test_a_successful_refresh_stores_the_rotated_token(client_with_expiring_toke
 
 def test_logging_out_really_ends_the_session(client_with_expiring_token):
     """היציאה היזומה היא הדרך היחידה החוצה, אז היא חייבת לעבוד."""
-    client_with_expiring_token.get("/logout")
+    client_with_expiring_token.post("/logout")
 
     with client_with_expiring_token.session_transaction() as sess:
         assert not sess.get("user_id")
@@ -219,7 +241,9 @@ def test_logging_out_works_even_while_a_refresh_is_failing(
     monkeypatch.setattr(app_module.db, "refresh_session",
                         lambda _t: (None, "temporary failure", False))
 
-    response = client_with_expiring_token.get("/logout")
+    # POST ולא GET: ‎<img src=".../logout">‎ באתר אחר הוציא מבקר
+    # מהחשבון שלו, כי ‎SameSite=Lax‎ שולח עוגייה בניווט GET.
+    response = client_with_expiring_token.post("/logout")
 
     cleared = [h[1] for h in response.headers
                if h[0] == "Set-Cookie" and h[1].startswith("session=")]
@@ -324,7 +348,7 @@ def test_logging_out_brings_you_back_to_the_landing_page(client_with_expiring_to
 
     זה גם מה שנותן משמעות לסימון המכשיר — אחרי היציאה הוא נמחק, ולכן
     מכשיר מסומן בלי session הוא בהכרח מקרה שבו ההתחברות נגמרה מעצמה."""
-    response = client_with_expiring_token.get("/logout")
+    response = client_with_expiring_token.post("/logout")
 
     assert response.headers["Location"].endswith("/")
 

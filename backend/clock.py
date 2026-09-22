@@ -30,6 +30,18 @@ def now() -> datetime:
     return datetime.now(ISRAEL).replace(tzinfo=None)
 
 
+def now_utc() -> datetime:
+    """הזמן הנוכחי כ-datetime **עם** אזור זמן, ב-UTC.
+
+    ‎now()‎ מחזירה נטול-אזור בכוונה, כי כל התצוגה באפליקציה עובדת כך.
+    אבל עמודות ‎timestamptz‎ מהמסד חוזרות עם היסט, והשוואה בין נטול-אזור
+    למודע-אזור מרימה ‎TypeError‎. אז לכל השוואה מול המסד — זו הפונקציה,
+    ולא ‎now()‎ עם תיקון ידני.
+    """
+    from datetime import timezone
+    return datetime.now(timezone.utc)
+
+
 def today():
     """התאריך של היום בשעון ישראל."""
     return now().date()

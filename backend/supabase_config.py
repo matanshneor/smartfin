@@ -98,12 +98,32 @@ def ping(timeout: float = 2.0) -> tuple:
 
 def set_auth_token(access_token: str):
     """Inject the user's JWT so RLS policies resolve auth.uid() correctly."""
-    client = get_client()
-    if client and access_token:
+    # ‎_client‎ ולא ‎get_client()‎: איפוס לא אמור **ליצור** לקוח. בקשה
+    # אנונימית בתהליך שעוד לא דיבר עם המסד לא נושאת שום טוקן ממילא,
+    # ויצירת לקוח בשבילה היא חיבור מיותר — ובבדיקות, פנייה אמיתית
+    # ל-Supabase מתוך בדיקת יחידה.
+    client = _client if not access_token else get_client()
+    if not client:
+        return
+    if not access_token:
+        # **חייב** לאפס, לא לצאת בשקט. הלקוח הוא סינגלטון ברמת התהליך,
+        # ו-‎inject_auth‎ יוצאת מוקדם כשאין סשן — כך שבקשה אנונימית נוחתת
+        # על worker שעדיין נושא את ה-JWT של המשתמש הקודם.
+        #
+        # היום זה לא נגיש: אף מסלול אנונימי לא פונה ל-PostgREST (‎ping‎
+        # עוקף את הסינגלטון בכוונה, והתחברות/איפוס משתמשים ב-httpx ישיר).
+        # אבל זו מלכודת שמחכה למסלול הציבורי הבא — ואותו סוג בדיוק של
+        # דליפה בין משפחות שה-Procfile מזהיר מפניה בהקשר של חוטים.
         try:
-            client.postgrest.auth(access_token)
-        except Exception as e:
-            logger.exception("set_auth_token")
+            client.postgrest.auth(os.environ.get("SUPABASE_KEY", ""))
+        except Exception:
+            logger.exception("set_auth_token: reset")
+        return
+
+    try:
+        client.postgrest.auth(access_token)
+    except Exception as e:
+        logger.exception("set_auth_token")
 
 
 def _request_cache(key: str, loader):
@@ -397,6 +417,27 @@ def update_password(access_token: str, new_password: str):
         )
         if response.status_code >= 400:
             return False, response.json().get("msg", "עדכון הסיסמה נכשל")
+
+        # מנתקים כל מכשיר **אחר**. בלי זה שינוי סיסמה לא עשה שום דבר
+        # למי שכבר מחובר: הסשן של Flask חי 90 יום ומתחדש בכל בקשה,
+        # וטוקן הרענון של Supabase ממשיך להחליף את עצמו — כלומר טלפון
+        # גנוב, עוגייה שדלפה או מכשיר שנשאר אצל מישהו נשארים מחוברים,
+        # ולמשתמש אין שום פעולה שמנתקת אותם.
+        #
+        # ‎scope=others‎ ולא ‎global‎: מי ששינה את הסיסמה לא אמור למצוא
+        # את עצמו מנותק מהמכשיר שממנו עשה זאת.
+        try:
+            httpx.post(
+                f"{url}/auth/v1/logout",
+                params={"scope": "others"},
+                headers={"apikey": key, "Authorization": f"Bearer {access_token}"},
+                timeout=10,
+            )
+        except Exception:
+            # הסיסמה כבר הוחלפה — זה החלק שחייב להצליח. ניתוק שנכשל
+            # נרשם ולא מבטל אותו.
+            logger.exception("update_password: revoke other sessions")
+
         return True, None
     except Exception as e:
         return False, str(e)
@@ -1004,6 +1045,9 @@ def summarise_recurring(rows: list, today=None) -> dict:
     return {**totals, "rows": items}
 
 
+_MAX_RECURRING_TEMPLATES = 200
+
+
 def materialize_recurring(family_id: str) -> int:
     """משלים מופעים חסרים של עסקאות קבועות עד היום (כולל רטרואקטיבית).
 
@@ -1019,8 +1063,13 @@ def materialize_recurring(family_id: str) -> int:
     if not client or not family_id:
         return 0, False
     try:
+        # ‎limit‎ על התבניות. התקרה של 500 מופעים היא **לכל תבנית**, ואף
+        # אחד לא הגביל כמה תבניות יש: 1,000 תבניות × 500 מופעים הוא
+        # ‎insert‎ אחד של חצי מיליון שורות בתוך worker אחד, ואז OOM או
+        # worker תקוע מתוך ארבעה. משפחה אמיתית מחזיקה עשרות.
         templates = client.table("transactions").select("*") \
-            .eq("family_id", family_id).eq("is_recurring", True).execute().data
+            .eq("family_id", family_id).eq("is_recurring", True) \
+            .limit(_MAX_RECURRING_TEMPLATES).execute().data
         if not templates:
             return 0, True
 
@@ -1543,6 +1592,9 @@ def family_has_no_transactions(family_id: str) -> bool:
         raise DataUnavailable("family_has_no_transactions") from e
 
 
+_MAX_CATEGORIES_PER_FAMILY = 200
+
+
 def bulk_add_categories(family_id: str, categories: list) -> tuple:
     """Inserts multiple categories at once for a family's onboarding.
     `categories` is a list of {name, icon, type} dicts. Returns (count, error).
@@ -1551,6 +1603,14 @@ def bulk_add_categories(family_id: str, categories: list) -> tuple:
     client = get_client()
     if not client:
         return 0, "Database not configured"
+    # תקרה. הרשימה הגיעה מגוף הבקשה בלי שום גבול, ועם תקרת 8MB זה
+    # ~100,000 שורות ב-‎insert‎ אחד — ובנוסף ‎_validated_category‎ סורק את
+    # הרשימה הזאת ליניארית בכל כתיבת עסקה, אז כל עסקה עתידית משלמת עליה.
+    #
+    # ‎_DEFAULT_CATEGORIES‎ הוא כמה עשרות; 200 הוא הרבה מעל כל אשף אמיתי.
+    if len(categories or []) > _MAX_CATEGORIES_PER_FAMILY:
+        return 0, "יותר מדי קטגוריות בבת אחת"
+
     counters = {"income": 0, "expense": 0, "savings": 0}
     rows = []
     for c in categories:

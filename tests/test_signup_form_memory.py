@@ -89,7 +89,10 @@ def test_an_existing_email_also_keeps_the_form(anon, monkeypatch):
 
     html = _signup(anon)
 
-    assert "האימייל כבר קיים" in html
+    # ההודעה אינה מפרטת **מה** כבר קיים: אימייל תפוס וטלפון תפוס
+    # מקבלים אותה תשובה, אחרת טופס ההרשמה עונה בוודאות על "האם
+    # הכתובת הזאת רשומה כאן".
+    assert "ייתכן שכבר יש חשבון" in html
     assert 'value="K4F2QX"' in html
 
 
@@ -155,3 +158,35 @@ def test_the_wrong_password_message_does_not_hint_which_field_was_wrong():
     """בקרת-נגד אבטחתית: הודעה שמבחינה בין "אין משתמש כזה" ל"הסיסמה
     שגויה" מאשרת למי שמנחש אילו כתובות רשומות."""
     assert _login_error("not found") == _login_error("Invalid login credentials")
+
+
+# ─── ההודעה לא הופכת את הטופס לאורקל ────────────────────────────────────────
+
+def test_a_taken_email_and_a_taken_phone_are_indistinguishable(anon, monkeypatch):
+    """הלב. שתי הודעות שונות הפכו את טופס ההרשמה לשירות שעונה על "האם
+    ל-X יש כאן חשבון" — ועם ‎enable_confirmations‎ כבוי, גם לדרך לתפוס
+    את הכתובת של מישהו אחר כך שהוא לא יוכל להירשם לעולם."""
+    monkeypatch.setattr(app_module.db, "sign_up",
+                        lambda *a, **k: (None, "User already registered"))
+    by_email = _signup(anon)
+
+    monkeypatch.setattr(app_module.db, "sign_up",
+                        lambda *a, **k: (None, "duplicate key value violates phone_unique"))
+    by_phone = _signup(anon)
+
+    def _error_line(html):
+        i = html.index("הרשמה נכשלה")
+        return html[i:i + 120]
+
+    assert _error_line(by_email) == _error_line(by_phone), \
+        "אפשר להבדיל בין אימייל תפוס לטלפון תפוס"
+
+
+def test_the_message_points_somewhere_useful(anon, monkeypatch):
+    """מי שבאמת שכח שיש לו חשבון צריך לדעת מה לעשות עכשיו."""
+    monkeypatch.setattr(app_module.db, "sign_up",
+                        lambda *a, **k: (None, "User already registered"))
+
+    html = _signup(anon)
+
+    assert "להתחבר" in html and "לאפס סיסמה" in html

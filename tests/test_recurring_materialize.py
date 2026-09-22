@@ -35,6 +35,9 @@ class _FakeClient:
     def table(self, _name):            return self
     def select(self, cols, **k):       self._select = cols; return self
     def eq(self, *a, **k):             return self
+    # תקרה על מספר התבניות שנשלפות בריצה אחת: 500 מופעים לכל תבנית
+    # היא תקרה לכל אחת, ואף אחד לא הגביל כמה תבניות יש.
+    def limit(self, *a, **k):          return self
     def execute(self):                 return self
     def insert(self, rows, **k):       self.inserted.extend(rows); return self
 

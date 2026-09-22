@@ -16,7 +16,7 @@ import io as _io
 import pytest
 
 from backend import app as app_module
-from backend.app import app
+from backend.app import app, limiter
 
 pytestmark = pytest.mark.unit
 
@@ -32,6 +32,13 @@ _ROWS = [
      "user_name": "משותף", "project_name": "טיול ליפן",
      "is_recurring": False, "recurring_parent_id": None},
 ]
+
+
+@pytest.fixture(autouse=True)
+def _fresh_limits():
+    """מוני ההגבלה חיים בזיכרון התהליך ולא פגים בתוך ריצת בדיקות. בלי
+    האיפוס, הבדיקה ה-11 בקובץ מקבלת 429 במקום מה שהיא באמת בודקת."""
+    limiter.reset()
 
 
 @pytest.fixture
