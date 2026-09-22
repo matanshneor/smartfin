@@ -117,3 +117,70 @@ def test_the_profiles_policy_is_not_the_recursive_version():
     recursive = [n for n, s in files.items()
                  if 'CREATE POLICY "profiles_family_read"' in s]
     assert recursive and all(n < "20260916105900" for n in recursive)
+
+
+# ─── ושהדחיפה מאפס בכלל מגיעה לסוף ──────────────────────────────────────────
+#
+# הבדיקות למעלה מוודאות שהתוכן שלם. הן לא בדקו שהקבצים **רצים**: תשע
+# מדיניות היו מוגדרות פעמיים, ול-‎CREATE POLICY‎ אין ‎IF NOT EXISTS‎, אז
+# ‎supabase db push‎ על מסד ריק נעצר ב-42710 על הקובץ השלישי. הפנקס היה
+# מלא, אז בפרויקט המקושר זה לא נראה — ושחזור מאסון, סביבת בדיקות ו-
+# ‎db reset‎ כולם נכשלו בשקט עד שמישהו היה צריך אותם.
+
+_POLICY = re.compile(r'create\s+policy\s+"([^"]+)"\s+on\s+([\w.]+)', re.I)
+_DROP_POLICY = re.compile(r'drop\s+policy\s+if\s+exists\s+"([^"]+)"\s+on\s+([\w.]+)', re.I)
+
+
+def test_no_policy_is_created_twice_without_being_dropped_first():
+    """אותה מדיניות בשני קבצים היא שגיאה קשה בדחיפה, לא אזהרה."""
+    seen = {}
+    offenders = []
+
+    for name in sorted(_sql()):
+        sql = _sql()[name]
+        dropped = {(m.group(1).lower(), m.group(2).lower().replace("public.", ""))
+                   for m in _DROP_POLICY.finditer(sql)}
+        for m in _POLICY.finditer(sql):
+            key = (m.group(1).lower(), m.group(2).lower().replace("public.", ""))
+            if key in seen and key not in dropped:
+                offenders.append(f'"{key[0]}" על {key[1]} — גם ב-{seen[key]} וגם ב-{name}')
+            seen[key] = name
+
+    assert not offenders, (
+        "מדיניות שנוצרת פעמיים בלי drop קודם עוצרת דחיפה מאפס:\n  "
+        + "\n  ".join(offenders)
+    )
+
+
+def test_no_function_changes_its_return_type_without_a_drop():
+    """‎create or replace function‎ לא יכולה לשנות טיפוס החזרה. על מסד
+    קיים זה לא מורגש; על מסד ריק זה עוצר את הדחיפה."""
+    # הטיפוס נלקח עד מילת המפתח שאחריו, לא עד סוף השורה: ‎returns table‎
+    # נפרס על כמה שורות, וחיתוך בשורה הראשונה משווה ‎'table ('‎ לחתימה
+    # מלאה ומדווח על שינוי שלא קרה.
+    create = re.compile(
+        r"create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?(\w+)\s*\([^)]*\)\s*"
+        r"returns\s+(.*?)\s+(?:language|as\s*\$)", re.I | re.S)
+    drop = re.compile(r"drop\s+function\s+if\s+exists\s+(?:public\.)?(\w+)", re.I)
+
+    def normalise(t):
+        t = re.sub(r"\s+", " ", t).strip().lower()
+        t = re.sub(r"\s*\(\s*", "(", t)
+        t = re.sub(r"\s*\)", ")", t)
+        # ‎int‎ ו-‎integer‎ הם אותו טיפוס ב-Postgres; הבדל כתיב אינו שינוי.
+        return re.sub(r"\bint\b", "integer", t)
+
+    signatures, offenders = {}, []
+    for name in sorted(_sql()):
+        sql = _sql()[name]
+        dropped = {m.group(1).lower() for m in drop.finditer(sql)}
+        for m in create.finditer(sql):
+            fn, ret = m.group(1).lower(), normalise(m.group(2))
+            if fn in signatures and signatures[fn] != ret and fn not in dropped:
+                offenders.append(f"{fn}: {signatures[fn]!r} → {ret!r} ב-{name}")
+            signatures[fn] = ret
+
+    assert not offenders, (
+        "פונקציה שמשנה טיפוס החזרה בלי drop עוצרת דחיפה מאפס:\n  "
+        + "\n  ".join(offenders)
+    )

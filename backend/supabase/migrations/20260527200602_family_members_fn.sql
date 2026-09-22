@@ -1,4 +1,11 @@
+/* המדיניות כאן מוגדרות גם בקובץ הסכימה הראשון. ל-‎CREATE POLICY‎ אין
+ * ‎IF NOT EXISTS‎, אז בנייה מאפס נעצרה כאן ב-42710 — הפנקס מלא, אז
+ * בפרויקט המקושר זה לא נראה, אבל שחזור מאסון, סביבת בדיקות ו-‎db reset‎
+ * כולם נכשלו. ‎drop policy if exists‎ לפני כל אחת הופך את הקובץ לניתן
+ * להרצה חוזרת בלי לשנות את התוצאה. */
+
 -- Allow family members to read each other's profiles
+drop policy if exists "profiles_family_read" on profiles;
 CREATE POLICY "profiles_family_read" ON profiles
     FOR SELECT USING (
         family_id IS NOT NULL

@@ -1,3 +1,9 @@
+/* המדיניות כאן מוגדרות גם בקובץ הסכימה הראשון. ל-‎CREATE POLICY‎ אין
+ * ‎IF NOT EXISTS‎, אז בנייה מאפס נעצרה כאן ב-42710 — הפנקס מלא, אז
+ * בפרויקט המקושר זה לא נראה, אבל שחזור מאסון, סביבת בדיקות ו-‎db reset‎
+ * כולם נכשלו. ‎drop policy if exists‎ לפני כל אחת הופך את הקובץ לניתן
+ * להרצה חוזרת בלי לשנות את התוצאה. */
+
 -- =============================================
 -- SmartFin – Supabase Schema
 -- Run this in: Supabase Dashboard → SQL Editor
@@ -91,26 +97,33 @@ ALTER TABLE categories   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: user can read/update own profile
+drop policy if exists "profiles_own" on profiles;
 CREATE POLICY "profiles_own" ON profiles
     FOR ALL USING (auth.uid() = id);
 
 -- Families: members can read their family
+drop policy if exists "families_member_read" on families;
 CREATE POLICY "families_member_read" ON families
     FOR SELECT USING (
         id IN (SELECT family_id FROM profiles WHERE id = auth.uid())
     );
 
 -- Categories: read global + own family's custom
+drop policy if exists "categories_read" on categories;
 CREATE POLICY "categories_read" ON categories
     FOR SELECT USING (
         family_id IS NULL
         OR family_id IN (SELECT family_id FROM profiles WHERE id = auth.uid())
     );
 
+drop policy if exists "categories_insert" on categories;
+
 CREATE POLICY "categories_insert" ON categories
     FOR INSERT WITH CHECK (
         family_id IN (SELECT family_id FROM profiles WHERE id = auth.uid())
     );
+
+drop policy if exists "categories_delete" on categories;
 
 CREATE POLICY "categories_delete" ON categories
     FOR DELETE USING (
@@ -119,15 +132,20 @@ CREATE POLICY "categories_delete" ON categories
     );
 
 -- Transactions: family members can read/write own family
+drop policy if exists "transactions_family_select" on transactions;
 CREATE POLICY "transactions_family_select" ON transactions
     FOR SELECT USING (
         family_id IN (SELECT family_id FROM profiles WHERE id = auth.uid())
     );
 
+drop policy if exists "transactions_family_insert" on transactions;
+
 CREATE POLICY "transactions_family_insert" ON transactions
     FOR INSERT WITH CHECK (
         family_id IN (SELECT family_id FROM profiles WHERE id = auth.uid())
     );
+
+drop policy if exists "transactions_family_delete" on transactions;
 
 CREATE POLICY "transactions_family_delete" ON transactions
     FOR DELETE USING (
