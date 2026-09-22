@@ -268,3 +268,78 @@ def test_the_screen_reader_hears_the_spending_number():
     bar = bar[:bar.index("</div>")]
 
     assert 'aria-valuenow="{{ spent_pct }}"' in bar
+
+
+# ─── 6. ושני החלקים היו באותו צבע ────────────────────────────────────────────
+#
+# הפיצול נכתב נכון והפס נראה **בדיוק כמו קודם**: ‎.spent‎ קיבל ‎#C79A18‎
+# ו-‎.saved‎ קיבל ‎#C79A18‎ ב-38% שקיפות, בגובה 8 פיקסלים. מתן הסתכל על
+# המסך ואמר "לא ראיתי שינוי", והוא צדק.
+#
+# שבע הבדיקות שמעליי כולן עברו. הן בדקו שהמרקאפ מחולק — לא שמישהו
+# יכול לראות את החלוקה. זה מה שהחלק הזה מוסיף.
+
+def _css_rule(css, selector):
+    """מיקום הכלל וגופו. מעוגן לתחילת שורה — אחרת
+    ‎.balance-bar-fill.spent‎ נמצא גם בתוך ‎.page-hero .balance-bar-fill.spent‎,
+    וכל בדיקה על הכלל הכללי נענית בטעות על ידי זה של ה-hero. מוטציה שרדה
+    בדיוק ככה."""
+    import re
+    m = re.search(r"^" + re.escape(selector) + r"\s*\{([^}]*)\}", css, re.M)
+    assert m, f"אין כלל כזה: {selector}"
+    return m.start(), m.group(1)
+
+
+def _css_decl(css, selector, prop="background"):
+    """הערך המוצהר של מאפיין בכלל CSS מסוים."""
+    import re
+    d = re.search(rf"\b{prop}\s*:\s*([^;]+)", _css_rule(css, selector)[1])
+    return d.group(1).strip() if d else None
+
+
+def test_the_two_halves_are_not_the_same_colour():
+    """הלב. אותו צבע בשני החלקים הופך את הפיצול לבלתי נראה."""
+    css = _read("frontend/static/css/style.css")
+
+    for scope in ("", ".page-hero "):
+        spent = _css_decl(css, f"{scope}.balance-bar-fill.spent")
+        saved = _css_decl(css, f"{scope}.balance-bar-fill.saved")
+        assert spent and saved
+        assert spent != saved, f"שני החלקים באותו צבע ב-{scope or 'ברירת מחדל'}"
+
+
+def test_the_legend_dots_match_their_segments():
+    """נקודה בצבע אחר מהחלק שהיא מסמנת גרועה מאין נקודה."""
+    css = _read("frontend/static/css/style.css")
+
+    for scope in ("", ".page-hero "):
+        for part in ("spent", "saved"):
+            fill = _css_decl(css, f"{scope}.balance-bar-fill.{part}")
+            key = _css_decl(css, f"{scope}.balance-bar-legend .bar-key.{part}")
+            assert fill == key, f"{scope}{part}: הפס {fill}, הנקודה {key}"
+
+
+def test_the_danger_colour_still_wins():
+    """‎.spent‎ קיבל צבע משלו אחרי שהכלל של ‎danger‎ כבר נכתב — כלומר
+    הצבע הרגיל דרס את האדום, ואזהרת החריגה נעלמה בשקט."""
+    css = _read("frontend/static/css/style.css")
+
+    for scope in ("", ".page-hero "):
+        plain = _css_rule(css, f"{scope}.balance-bar-fill.spent")[0]
+        danger = _css_rule(css, f"{scope}.balance-bar-fill.spent.danger")[0]
+        assert danger > plain, f"כלל האדום ב-{scope or 'ברירת מחדל'} מוקדם מדי ולכן מפסיד"
+
+
+def test_the_split_bar_is_tall_enough_to_read():
+    """בגובה 8 פיקסלים שני חלקים נראים כמו אחד."""
+    css = _read("frontend/static/css/style.css")
+    height = _css_decl(css, ".balance-bar-split", "height")
+
+    assert height and int(height.replace("px", "").split()[0]) >= 10
+
+
+def test_there_is_a_visible_seam_between_the_halves():
+    """גם אם הצבעים יתקרבו יום אחד, הרווח שומר על החלוקה."""
+    css = _read("frontend/static/css/style.css")
+
+    assert _css_decl(css, ".balance-bar-split", "gap")

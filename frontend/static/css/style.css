@@ -4301,19 +4301,28 @@ li.transaction-item.swipe-ready > .swipe-content {
 /* ─── הפס בדשבורד: הוצאות וחיסכון בנפרד ──────────────────────────
    קודם זה היה פס אחד שחיבר את שניהם וקרא לסכום "נוצלו" — חודש עם
    20% הוצאות ו-69% חיסכון הוצג כפס כמעט מלא. כסף שנחסך לא נוצל. */
-.balance-bar-split { display: flex; }
-.balance-bar-split .balance-bar-fill {
-    border-radius: 0;
-    flex: 0 0 auto;
+/* הגרסה הראשונה צבעה את שני החלקים באותו זהב, אחד מהם דהוי — ובגובה
+   8 פיקסלים זה נראה בדיוק כמו הפס הישן. שינוי שאי אפשר לראות אינו
+   שינוי. הצבעים כאן לקוחים מהשפה שכבר קיימת בכל האפליקציה: הוצאות
+   באדום, חיסכון בזהב. */
+.balance-bar-split {
+    display: flex;
+    gap: 3px;
+    height: 10px;   /* 8 היה דק מדי מכדי להראות חלוקה */
 }
-/* הקצוות מעוגלים, החיבור ביניהם לא — אחרת נראים שני פסים נפרדים
-   ולא חלוקה של אותו סכום. */
-.balance-bar-split .balance-bar-fill.spent  { border-radius: 99px 0 0 99px; }
-.balance-bar-split .balance-bar-fill.saved  { border-radius: 0 99px 99px 0; }
-.balance-bar-split .balance-bar-fill.spent:only-child { border-radius: 99px; }
+.balance-bar-split .balance-bar-fill {
+    flex: 0 0 auto;
+    border-radius: 99px;
+    min-width: 0;
+}
+/* המסלול הריק שמאחור אינו קישוט — הוא מה שעוד לא הוצאת ולא חסכת. */
 
-.balance-bar-fill.spent { background: var(--gradient-gold); }
-.balance-bar-fill.saved { background: var(--color-savings); opacity: 0.55; }
+.balance-bar-fill.spent { background: var(--color-expense); }
+.balance-bar-fill.saved { background: var(--color-savings); }
+
+/* האדום של החריגה חייב לנצח את הצבע הרגיל של חלק ההוצאות, ולכן הוא
+   מוגדר כאן — אחרי — ועם אותה קדימות בתוך ה-hero. */
+.balance-bar-fill.spent.danger { background: var(--gradient-danger); }
 
 /* מפתח צבע לצד כל מספר במקרא, אחרת אי אפשר לדעת איזה חלק הוא מה */
 .balance-bar-legend .bar-key {
@@ -4324,11 +4333,13 @@ li.transaction-item.swipe-ready > .swipe-content {
     margin-inline-end: 5px;
     vertical-align: baseline;
 }
-.balance-bar-legend .bar-key.spent { background: #966F00; }
-.balance-bar-legend .bar-key.saved { background: var(--color-savings); opacity: 0.55; }
+.balance-bar-legend .bar-key.spent { background: var(--color-expense); }
+.balance-bar-legend .bar-key.saved { background: var(--color-savings); }
 
-/* ב-hero הכהה הצבעים צריכים להיות בהירים יותר כדי להיראות בכלל */
-.page-hero .balance-bar-fill.spent { background: #C79A18; }
-.page-hero .balance-bar-fill.saved { background: #C79A18; opacity: 0.38; }
-.page-hero .balance-bar-legend .bar-key.spent { background: #C79A18; }
-.page-hero .balance-bar-legend .bar-key.saved { background: #C79A18; opacity: 0.38; }
+/* ב-hero הכהה צריך את הגרסאות הבהירות, אחרת שניהם נבלעים ברקע */
+.page-hero .balance-bar-fill.spent { background: var(--color-expense-light); }
+.page-hero .balance-bar-fill.spent.danger { background: var(--gradient-danger); }
+.page-hero .balance-bar-fill.saved { background: var(--color-savings-light); }
+.page-hero .balance-bar-legend .bar-key.spent { background: var(--color-expense-light); }
+.page-hero .balance-bar-legend .bar-key.saved { background: var(--color-savings-light); }
+.page-hero .balance-bar-legend { color: var(--hero-text-muted); }
