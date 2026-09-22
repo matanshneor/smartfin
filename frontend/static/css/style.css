@@ -4274,6 +4274,26 @@ li.transaction-item.swipe-ready > .swipe-content {
 }
 .project-chevron svg { width: 18px; height: 18px; }
 
+/* ─── ניהול הפרויקט: תפריט אחד מתמשך ──────────────────────────────
+   העמוד היה ארבעה ‎chart-card‎ נפרדים עם 16px ביניהם, והאחרון בסגנון
+   אחר לגמרי — מסך אחד של הגדרות שנראה כמו ארבעה שהודבקו. מיכל אחד,
+   והחלוקה נעשית בקו. */
+.project-settings {
+    background: var(--color-card);
+    border: var(--border-subtle);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+.project-settings-block { padding: 18px 16px; }
+
+/* הכותרת הראשונה כבר נושאת את הריווח של הבלוק */
+.project-settings-block > .chart-title:first-child { margin-top: 0; }
+
+/* קווי ההפרדה נמתחים לרוחב המלא, אחרת הם נראים כמו קו בתוך פסקה
+   ולא כמו גבול בין שני חלקים. */
+.project-settings > .group-divider { margin: 0; }
+
 /* ─── אזור המחיקה בתוך הפרויקט ────────────────────────────────── */
-.project-danger { margin-top: 18px; }
 .project-danger .group-row-label { color: var(--color-expense); }

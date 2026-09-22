@@ -21,8 +21,14 @@
 {# ‎transactions‎ כבר מגיע מ-‎get_project_detail‎; אין צורך בשדה נוסף מהשרת. #}
 {% set tx_count = (project.transactions or []) | length %}
 
+{# תפריט אחד מתמשך, לא ארבעה כרטיסים.
+   העמוד היה ארבעה ‎chart-card‎ נפרדים עם רווח של 16px ביניהם, והרביעי
+   (המחיקה) אפילו בסגנון אחר — כך שמסך אחד של הגדרות נראה כמו ארבעה
+   מסכים שהודבקו. עכשיו זה מיכל אחד, והחלוקה נעשית בקו הפרדה. #}
+<section class="project-settings">
+
 <!-- הגדרות הפרויקט: שם, תיאור, יעד תקציב, סוגי מעקב -->
-<section class="chart-card">
+<div class="project-settings-block">
     <h2 class="chart-title">פרטי הפרויקט</h2>
 
     <form class="add-cat-form" id="editProjectForm" novalidate style="margin-top:14px;">
@@ -70,10 +76,12 @@
             <a href="{{ url_for('project_detail', project_id=project.id) }}" class="btn-sm btn-ghost">ביטול</a>
         </div>
     </form>
-</section>
+</div>
+
+<div class="group-divider"></div>
 
 <!-- בעלות: אישי / משותף -->
-<section class="chart-card">
+<div class="project-settings-block">
     <h2 class="chart-title">בעלות</h2>
     <div class="group-row" style="margin-top:14px;">
         <div class="group-row-info">
@@ -94,10 +102,12 @@
         <button type="button" class="btn-sm btn-ghost" id="unshareProjectBtn">החזר להיות אישי</button>
         {% endif %}
     </div>
-</section>
+</div>
+
+<div class="group-divider"></div>
 
 <!-- קטגוריות ייעודיות לפרויקט -->
-<section class="chart-card">
+<div class="project-settings-block">
     <h2 class="chart-title">קטגוריות הפרויקט</h2>
 
     {% set type_labels = {'expense': 'הוצאות', 'income': 'הכנסות', 'savings': 'חיסכון'} %}
@@ -125,65 +135,67 @@
             <p class="form-error" id="addProjectCatError" role="alert"></p>
         </form>
     </div>
-</section>
+</div>
+
+<div class="group-divider"></div>
 
 {# מחיקת הפרויקט.
    הכפתור ישב קודם כ-✕ ברשימת הפרויקטים, במרחק נגיעה אחת מהשם ובלי שום
    הקשר על מה עומד להימחק. כאן, בתוך הפרויקט, כבר ראית את הסכומים ואת
    העסקאות — אתה יודע מה יאבד. #}
-<section class="settings-group open project-danger">
-    <div class="settings-group-body">
-        <div class="group-row">
-            <div class="group-row-info">
-                <p class="group-row-label">מחיקת הפרויקט</p>
-                <p class="group-row-hint">
-                    {% if tx_count %}
-                        לפרויקט יש {{ tx_count }} עסקאות
-                    {% else %}
-                        אין לפרויקט עסקאות
-                    {% endif %}
-                </p>
-            </div>
-            <button type="button" class="btn-sm btn-ghost btn-danger-ghost"
-                    id="toggleDeleteProjectBtn">מחק פרויקט</button>
-        </div>
-
-        <div class="password-form" id="deleteProjectForm">
-            <p class="delete-account-warning">
+<div class="project-settings-block project-danger">
+    <div class="group-row">
+        <div class="group-row-info">
+            <p class="group-row-label">מחיקת הפרויקט</p>
+            <p class="group-row-hint">
                 {% if tx_count %}
-                    הפרויקט יימחק, ואפשר לבחור מה יקרה ל-{{ tx_count }} העסקאות שלו.
+                    לפרויקט יש {{ tx_count }} עסקאות
                 {% else %}
-                    הפרויקט יימחק. אין לו עסקאות, אז שום כסף לא יושפע.
+                    אין לפרויקט עסקאות
                 {% endif %}
             </p>
+        </div>
+        <button type="button" class="btn-sm btn-ghost btn-danger-ghost"
+                id="toggleDeleteProjectBtn">מחק פרויקט</button>
+    </div>
 
+    <div class="password-form" id="deleteProjectForm">
+        <p class="delete-account-warning">
             {% if tx_count %}
-            {# אותו פקד מקטעים של שאר האפליקציה (‎type-toggle‎), ולא רדיו
-               חדש. ברירת המחדל שומרת את הכסף: מחיקת פרויקט אינה מחיקת
-               ההוצאות שנרשמו בו — הן קרו. #}
-            <div class="form-group">
-                <label class="form-label">מה לעשות עם העסקאות?</label>
-                <div class="type-toggle" style="grid-template-columns: 1fr 1fr;"
-                     role="radiogroup" aria-label="מה לעשות עם העסקאות">
-                    <button type="button" class="toggle-btn active" data-tx-mode="keep"
-                            role="radio" aria-checked="true">להשאיר אותן</button>
-                    <button type="button" class="toggle-btn" data-tx-mode="delete"
-                            role="radio" aria-checked="false">למחוק גם אותן</button>
-                </div>
-                <p class="group-row-hint" id="projectTxModeHint">
-                    {{ tx_count }} העסקאות יחזרו להיספר בקטגוריה הרגילה שלהן
-                </p>
-            </div>
+                הפרויקט יימחק, ואפשר לבחור מה יקרה ל-{{ tx_count }} העסקאות שלו.
+            {% else %}
+                הפרויקט יימחק. אין לו עסקאות, אז שום כסף לא יושפע.
             {% endif %}
+        </p>
 
-            <p class="form-error" id="deleteProjectError" role="alert"></p>
-            <div class="edit-actions">
-                <button class="btn-sm btn-danger" id="confirmDeleteProjectBtn"
-                        data-id="{{ project.id }}" data-name="{{ project.name }}">מחק פרויקט</button>
-                <button class="btn-sm btn-ghost" id="cancelDeleteProjectBtn">ביטול</button>
+        {% if tx_count %}
+        {# אותו פקד מקטעים של שאר האפליקציה (‎type-toggle‎), ולא רדיו
+           חדש. ברירת המחדל שומרת את הכסף: מחיקת פרויקט אינה מחיקת
+           ההוצאות שנרשמו בו — הן קרו. #}
+        <div class="form-group">
+            <label class="form-label">מה לעשות עם העסקאות?</label>
+            <div class="type-toggle" style="grid-template-columns: 1fr 1fr;"
+                 role="radiogroup" aria-label="מה לעשות עם העסקאות">
+                <button type="button" class="toggle-btn active" data-tx-mode="keep"
+                        role="radio" aria-checked="true">להשאיר אותן</button>
+                <button type="button" class="toggle-btn" data-tx-mode="delete"
+                        role="radio" aria-checked="false">למחוק גם אותן</button>
             </div>
+            <p class="group-row-hint" id="projectTxModeHint">
+                {{ tx_count }} העסקאות יחזרו להיספר בקטגוריה הרגילה שלהן
+            </p>
+        </div>
+        {% endif %}
+
+        <p class="form-error" id="deleteProjectError" role="alert"></p>
+        <div class="edit-actions">
+            <button class="btn-sm btn-danger" id="confirmDeleteProjectBtn"
+                    data-id="{{ project.id }}" data-name="{{ project.name }}">מחק פרויקט</button>
+            <button class="btn-sm btn-ghost" id="cancelDeleteProjectBtn">ביטול</button>
         </div>
     </div>
+</div>
+
 </section>
 
 {% endblock %}
