@@ -116,6 +116,33 @@ def test_no_real_account_details_are_published():
     assert "סיסמה משותפת" not in _SPEC
 
 
+# תבנית טלפון נייד ישראלי. הבדיקה הקודמת ניקתה **מיילים** בלבד, ושני
+# מספרים אמיתיים של משתמשים אמיתיים ישבו בריפו הציבורי עם ההערה
+# "מספר אמיתי מהמסד" — בזמן שיש במסד פונקציה, פתוחה ל-anon, שממירה
+# טלפון לכתובת מייל. השומר שנבנה כדי לתפוס בדיוק את זה פספס אותו.
+_ISRAELI_MOBILE = re.compile(r"\b0?5[0-9][- ]?\d{3}[- ]?\d{4}\b")
+
+# המספרים שמותר להם להופיע: כולם 1234567 / 9876543 ובבירור לא של אף אחד.
+_OBVIOUSLY_FAKE = re.compile(r"(1234567|9876543|0000000|1111111)")
+
+
+@pytest.mark.parametrize("where", ["tests", "backend", "docs", "frontend"])
+def test_no_real_phone_number_is_published(where):
+    """מספר אמיתי של משתמש ברפו ציבורי הוא חצי מהעבודה של מי שמנסה
+    להיכנס לחשבון שלו."""
+    leaked = []
+    for path in sorted((_ROOT / where).rglob("*")):
+        if not path.is_file() or path.suffix not in (".py", ".html", ".js", ".md", ".sql"):
+            continue
+        for m in _ISRAELI_MOBILE.finditer(path.read_text(encoding="utf-8", errors="ignore")):
+            # ההשוואה על הספרות בלבד: ‎54-123-4567‎ ו-‎0541234567‎ הם
+            # אותו מספר, והמפרידים משתנים לפי ההקשר.
+            if not _OBVIOUSLY_FAKE.search(re.sub(r"[- ]", "", m.group(0))):
+                leaked.append(f"{path.relative_to(_ROOT)}: {m.group(0)}")
+
+    assert not leaked, "מספרי טלפון שאינם בבירור בדויים:\n  " + "\n  ".join(leaked)
+
+
 def test_the_docs_do_not_claim_rate_limiting_is_memory_only():
     """הטענה "in-memory, auth routes only" הייתה שגויה בשני חלקיה,
     ובכיוון המסוכן: היא מתארת הגנה חלשה מהקיימת, כך שמי שקורא אותה
