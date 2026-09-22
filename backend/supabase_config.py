@@ -1090,15 +1090,35 @@ def materialize_recurring(family_id: str) -> int:
                     "workplace":           _owner_workplace(t.get("user_id")) if is_salary else None,
                 })
 
+        created = 0
         if new_rows:
             try:
                 client.table("transactions").insert(new_rows, returning="minimal").execute()
+                created = len(new_rows)
             except Exception as e:
-                # כשל ייחודיות = בקשה מקבילה כבר יצרה את המופעים — תקין
-                if "uq_tx_recurring_occurrence" in str(e) or "23505" in str(e):
-                    return 0, True
-                raise
-        return len(new_rows), True
+                # כשל ייחודיות פירושו שבקשה מקבילה כבר יצרה **חלק** מהמופעים.
+                #
+                # ‎insert‎ בודד הוא משפט אחד, אז שורה אחת מתנגשת מגלגלת אחורה
+                # את כולן. ההנחה שהסיבה היחידה היא אצווה זהה לגמרי נכונה רק
+                # בחפיפה מלאה: אם בקשה אחרת הספיקה ליצור את המשכורת ולא את
+                # שכר הדירה, שתיהן נזרקות — ו-‎_sync_recurring‎ מסמן "סונכרן
+                # להיום", כך שאף אחד לא ינסה שוב עד מחר. חודש שלם בלי שכר
+                # דירה, בלי שום סימן.
+                #
+                # אז חוזרים שורה-שורה: מה שכבר קיים מדולג, והשאר נכנס.
+                if "uq_tx_recurring_occurrence" not in str(e) and "23505" not in str(e):
+                    raise
+                for row in new_rows:
+                    try:
+                        client.table("transactions").insert(row, returning="minimal").execute()
+                        created += 1
+                    except Exception as one:
+                        if "uq_tx_recurring_occurrence" in str(one) or "23505" in str(one):
+                            continue    # מישהו אחר כבר יצר בדיוק את זה
+                        raise
+        # ‎created‎ ולא ‎len(new_rows)‎: אחרי נפילה חלקית המספרים שונים,
+        # והקורא משתמש בזה כדי להחליט אם משהו באמת נוצר.
+        return created, True
     except Exception:
         logger.exception("materialize_recurring")
         return 0, False
@@ -2186,11 +2206,15 @@ def get_monthly_trend(family_id: str, num_months: int = 6) -> list:
         # ה"חודש הרגיל", ולכן היא מוחרגת מהמאזן החודשי בכל מקום.
         # כאן זה נשכח, ולכן הגרף והטבלה באותו עמוד הציגו שני מספרים
         # סותרים לאותו חודש — הפרש בגודל הפרויקט, בלי שום הסבר על המסך.
+        # ‎lte‎ ולא רק ‎gte‎: ‎_parse_date‎ מתיר 5 שנים קדימה, ותשלום
+        # ששולם מראש לפברואר 2027 יצר עמודה ב"12 החודשים האחרונים" —
+        # גרף שמכריז על עצמו כעבר והציג עתיד.
         result = client.table("transactions") \
             .select("type, amount, date") \
             .eq("family_id", family_id) \
             .is_("project_id", "null") \
             .gte("date", start_date) \
+            .lte("date", clock.today().isoformat()) \
             .execute()
 
         # Aggregate by year+month
@@ -2234,12 +2258,18 @@ def _category_history_averages(family_id: str, year: int, month: int):
         lambda: _fetch_category_history_averages(family_id, year, month))
 
 
+# כמה חודשים אחורה נכללים בממוצע. הקבוע יושב כאן כי גם השליפה וגם
+# החישוב חייבים להסכים עליו — אחרת "ממוצע שלושת החודשים" מחושב על
+# חלון אחר ממה שנשלף.
+_HISTORY_MONTHS = 3
+
+
 def _fetch_category_history_averages(family_id: str, year: int, month: int):
     client = get_client()
     if not client:
         return {}, {}, {}
 
-    start_month, start_year = month - 3, year
+    start_month, start_year = month - _HISTORY_MONTHS, year
     while start_month <= 0:
         start_month += 12
         start_year  -= 1
@@ -2311,7 +2341,15 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
             past = history.get(name)
             if not past:
                 continue
-            avg = sum(past.values()) / len(past)
+            # מחלקים ב-3 ולא ב-‎len(past)‎, כי "ממוצע שלושת החודשים
+            # האחרונים" הוא בדיוק זה: חודש בלי הוצאה בקטגוריה הוא ₪0
+            # ולא חודש שלא קרה.
+            #
+            # ‎len(past)‎ עשה שני נזקים הפוכים: תשלום שנתי בודד (ביטוח
+            # ₪3,600 ביולי) הפך ל"ממוצע ₪3,600", וכל אוגוסט נראה תקין
+            # לנצח; ומנגד ₪50 בחודש אחד בלבד הפכו ₪400 ל"700% מעל
+            # הממוצע" — התראה על קטגוריה שאין עליה שום היסטוריה.
+            avg = sum(past.values()) / _HISTORY_MONTHS
             if avg > 0 and total > avg * ratio and total - avg >= min_gap:
                 pct = round((total / avg - 1) * 100)
                 alerts.append({

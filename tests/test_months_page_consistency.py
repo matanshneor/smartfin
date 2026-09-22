@@ -33,6 +33,9 @@ class _RecordingClient:
     def select(self, *a, **k):  return self
     def eq(self, *a, **k):      self.filters.append(("eq", a)); return self
     def gte(self, *a, **k):     return self
+    # גם ‎lte‎: לגרף המגמה יש גבול עליון (היום), אחרת תשלום ששולם מראש
+    # לשנה הבאה מופיע ב"12 החודשים האחרונים".
+    def lte(self, *a, **k):     return self
     def lt(self, *a, **k):      return self
     def is_(self, *a, **k):     self.filters.append(("is_", a)); return self
     def execute(self):          return self

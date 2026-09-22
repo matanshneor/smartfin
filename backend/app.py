@@ -2360,11 +2360,24 @@ def _parse_initial_balance(body: dict):
 def add_category():
     user = get_current_user()
     body = request.get_json(silent=True) or {}
+
+    # שני השדות עברו ישירות למסד. ‎name‎ הוא ‎TEXT NOT NULL‎ שמקבל
+    # מחרוזת ריקה, אז נוצרה קטגוריה בלי שם — שורה בפילוח החודשי שאי
+    # אפשר לזהות ואי אפשר לחפש. ו-‎type‎ לא מוכר נעצר רק ב-CHECK של
+    # המסד וחזר כ-500 סתום, אחרי שכל מסלול כתיבה אחר כבר מאמת אותו.
+    name = (body.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "נא להזין שם לקטגוריה"}), 422
+
+    type_ = body.get("type", "expense")
+    if type_ not in ("expense", "income", "savings"):
+        return jsonify({"error": "סוג הקטגוריה חייב להיות הוצאה, הכנסה או חיסכון"}), 422
+
     cat, err = db.add_custom_category(
         family_id=user["family_id"],
-        name=body.get("name", ""),
+        name=name,
         icon=body.get("icon", "📦"),
-        type_=body.get("type", "expense"),
+        type_=type_,
     )
     if err:
         logger.error("add_category route: %s", err)

@@ -139,3 +139,31 @@ def test_the_progress_bar_does_not_render_without_income():
 def test_a_message_explains_the_missing_bar_instead_of_showing_nothing():
     html = _read("frontend/templates/index.html")
     assert "הוסיפו הכנסה" in html
+
+
+# ─── ג2: כשל שרת בעסקה הראשונה לא מוחק את מה שהוקלד ──────────────────────────
+
+def test_a_server_error_reopens_the_modal_when_it_was_closed_optimistically():
+    """בכשל **רשת** החלון כבר נפתח מחדש; בכשל **שרת** זה פוספס באותה
+    נקודה בדיוק — הענף שמטפל ב-‎data.error‎. השדות לא מתאפסים אף פעם
+    (‎closeModal‎ לא נוגע בהם), אז הבעיה היחידה הייתה שאין דרך לחזור
+    אליהם מלבד ה-FAB, ש-‎openAddModal‎ מנקה."""
+    js = _strip_comments(_read("frontend/static/js/transactions.js"))
+    err_branch = js[js.index("if (data.error) {"):]
+    err_branch = err_branch[:err_branch.index("\n            }")]
+
+    assert re.search(r"if\s*\(placeholderRow\)\s*\{[^}]*openModal\(\)", err_branch, re.S), \
+        "כשל שרת לא פותח מחדש את המודאל כשהוא נסגר אופטימית"
+
+
+def test_the_network_failure_path_still_reopens_too():
+    """בקרת-נגד: התיקון הקודם (כשל רשת) לא נדרס. מעוגן מתחילת שרשרת
+    השמירה (‎send(false)‎) כי הקובץ מכיל כמה ‎.catch‎ אחרים שאינם קשורים."""
+    js = _strip_comments(_read("frontend/static/js/transactions.js"))
+    chain = js[js.index("send(false)"):]
+    # ‎sfNetError‎ מזהה בלי טעות את ה-catch החיצוני של שרשרת השמירה —
+    # יש בקובץ כמה ‎.catch‎ פנימיים אחרים (תופעות-לוואי) שלא קשורים.
+    catch_at = chain.index("sfNetError()")
+    catch_branch = chain[:catch_at][chain[:catch_at].rindex(".catch(function ()"):]
+
+    assert "openModal()" in catch_branch
