@@ -191,3 +191,80 @@ def test_the_normal_case_is_untouched():
 
     assert "נשאר בעו״ש החודש" in html
     assert "מתוך ₪{{ \"{:,.0f}\".format(summary.income) }} הכנסות החודש" in html
+
+
+# ─── 5. הפס בדשבורד ערבב חיסכון עם הוצאות ───────────────────────────────────
+#
+# ‎used_pct = (expense + savings) / income‎, והתווית הייתה "נוצלו X%".
+# חודש שבו הוצאת 20% מההכנסות וחסכת 69% הוצג כפס זהב **כמעט מלא** עם
+# "נוצלו 89%" — כלומר חודש מצוין שנראה כמו אזהרה. כסף שנחסך לא נוצל;
+# הוא עבר מקום.
+#
+# וגרוע מזה: ‎{% if used_pct > 90 %}danger{% endif %}‎ — עוד קצת חיסכון
+# והפס היה נצבע באדום. אזהרה על התנהגות טובה.
+
+def test_the_bar_does_not_add_savings_to_spending():
+    """הלב. שני הדברים ההפוכים האלה לא יכולים לחלוק מספר אחד."""
+    html = _read("frontend/templates/index.html")
+
+    assert "used_pct" not in html, "המספר המאוחד עדיין קיים"
+    assert "spent_pct" in html and "saved_pct" in html
+
+
+def test_spending_is_measured_against_income_alone():
+    html = _read("frontend/templates/index.html")
+    line = next(l for l in html.split("\n") if "set spent_pct" in l)
+
+    assert "summary.expense / summary.income" in line
+    assert "savings" not in line
+
+
+def test_the_red_warning_follows_spending_and_not_the_total():
+    """זה מה שבאמת אמור להדאיג. קודם חיסכון גדול הספיק כדי לצבוע
+    את הפס באדום."""
+    html = _read("frontend/templates/index.html")
+    spent_fill = next(l for l in html.split("\n") if "balance-bar-fill spent" in l)
+    saved_fill = next(l for l in html.split("\n") if "balance-bar-fill saved" in l)
+
+    assert "spent_pct > 90" in spent_fill and "danger" in spent_fill
+    assert "danger" not in saved_fill
+    assert "saved_pct" not in spent_fill, "החיסכון חזר לתוך תנאי האדום"
+
+
+def test_both_parts_are_drawn_separately():
+    """פס אחד בצבע אחד לא יכול להראות חלוקה."""
+    html = _read("frontend/templates/index.html")
+    bar = html[html.index("balance-bar-split"):]
+    bar = bar[:bar.index("balance-bar-legend")]
+
+    assert 'balance-bar-fill spent' in bar
+    assert 'balance-bar-fill saved' in bar
+
+
+def test_the_two_parts_cannot_overflow_the_track():
+    """אם הוצאות וחיסכון יחד עוברים 100% (אפשרי — מוציאים מחסכונות),
+    החלק השני חייב להצטמצם ולא לדחוף את הפס החוצה."""
+    html = _read("frontend/templates/index.html")
+    saved = next(l for l in html.split("\n") if 'balance-bar-fill saved' in html and "saved_pct" in l and "width" in l)
+
+    assert "100 - [spent_pct, 100] | min" in saved
+
+
+def test_the_legend_says_which_colour_is_which():
+    """שני צבעים בלי מפתח הם ניחוש."""
+    html = _read("frontend/templates/index.html")
+    legend = html[html.index("balance-bar-legend"):]
+    legend = legend[:legend.index("</div>")]
+
+    assert 'bar-key spent' in legend and 'bar-key saved' in legend
+    assert "הוצאות" in legend and "חיסכון" in legend
+    assert "נוצלו" not in legend
+
+
+def test_the_screen_reader_hears_the_spending_number():
+    """"התקדמות 89%" על חודש שהוצאת בו 20% הוא אותו שקר, בקול."""
+    html = _read("frontend/templates/index.html")
+    bar = html[html.index("balance-bar-split") - 200:]
+    bar = bar[:bar.index("</div>")]
+
+    assert 'aria-valuenow="{{ spent_pct }}"' in bar

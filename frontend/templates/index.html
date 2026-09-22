@@ -3,7 +3,14 @@
 {% block title %}SmartFin – דשבורד{% endblock %}
 
 {% block hero %}
-{% set used_pct = (((summary.expense + summary.savings) / summary.income * 100) | round | int) if summary.income > 0 else 0 %}
+{# הפס מפוצל: הוצאות וחיסכון בנפרד.
+   קודם הוא חיבר את שניהם למספר אחד וקרא לו "נוצלו" — כלומר חודש שבו
+   הוצאת 20% מההכנסות וחסכת 69% הוצג כפס זהב כמעט מלא עם המילה
+   "נוצלו 89%". כסף שנחסך לא נוצל, הוא רק עבר מקום.
+   וגרוע מזה: הפס הפך לאדום מעל 90%, כך שעוד קצת חיסכון היה צובע
+   אותו באדום — אזהרה על התנהגות טובה. #}
+{% set spent_pct = ((summary.expense / summary.income * 100) | round | int) if summary.income > 0 else 0 %}
+{% set saved_pct = ((summary.savings / summary.income * 100) | round | int) if summary.income > 0 else 0 %}
 
 <div class="hero-top">
     <div>
@@ -50,23 +57,26 @@
        אחוז שאי אפשר לחשב אינו אפס; הוא לא קיים. #}
     {% if summary.income > 0 %}
     <div class="hero-bar">
-        <div class="balance-bar-track" role="progressbar"
-             aria-valuenow="{{ used_pct }}" aria-valuemin="0" aria-valuemax="100">
-            <div class="balance-bar-fill {% if used_pct > 90 %}danger{% endif %}"
-                 style="width: {{ [used_pct, 100] | min }}%;"></div>
+        {# ‎aria-valuenow‎ הוא ההוצאות בלבד: זה המספר שקורא מסך צריך
+           לשמוע כשהוא שומע "התקדמות", וזה גם מה שהאדום מודד. #}
+        <div class="balance-bar-track balance-bar-split" role="progressbar"
+             aria-valuenow="{{ spent_pct }}" aria-valuemin="0" aria-valuemax="100"
+             aria-label="הוצאת {{ spent_pct }}% מההכנסות, וחסכת {{ saved_pct }}%">
+            <div class="balance-bar-fill spent {% if spent_pct > 90 %}danger{% endif %}"
+                 style="width: {{ [spent_pct, 100] | min }}%;"></div>
+            <div class="balance-bar-fill saved"
+                 style="width: {{ [saved_pct, 100 - [spent_pct, 100] | min] | min }}%;"></div>
         </div>
         <div class="balance-bar-legend">
-            <span>נוצלו {{ used_pct }}% מההכנסות</span>
-            <span>
-                    חיסכון {{ ((summary.savings / summary.income) * 100) | round | int }}%
-            </span>
+            <span><span class="bar-key spent"></span> הוצאות {{ spent_pct }}%</span>
+            <span><span class="bar-key saved"></span> חיסכון {{ saved_pct }}%</span>
         </div>
     </div>
     {% endif %}
 
     {# ובלי הכנסות — משפט שאומר מה חסר, במקום פס ריק שנראה כמו תקלה. #}
     {% if summary.income <= 0 %}
-    <p class="hero-sub hero-bar-empty">הוסיפו הכנסה כדי לראות כמה מהחודש כבר נוצל</p>
+    <p class="hero-sub hero-bar-empty">הוסיפו הכנסה כדי לראות איך התחלק החודש</p>
     {% endif %}
 </section>
 {% endif %}
