@@ -36,7 +36,11 @@
     const txDescription = document.getElementById('txDescription');
     const modalTitle   = document.getElementById('modalTitle');
 
-    const TYPE_LABELS = { expense: 'הוסף הוצאה', income: 'הוסף הכנסה', savings: 'הוסף חיסכון' };
+    // שם פעולה ולא ציווי, כמו רוב הכפתורים באפליקציה ("פתיחת חשבון",
+    // "יצירת פרויקט חדש", "הצטרפות"). זה גם עוקף את שאלת היחיד/רבים:
+    // הטקסט שסביב מדבר ברבים ("לחצו", "הזינו"), וכפתור בציווי יחיד-זכר
+    // לידו קרא כמו שני כותבים שונים.
+    const TYPE_LABELS = { expense: 'הוספת הוצאה', income: 'הוספת הכנסה', savings: 'הוספת חיסכון' };
     // העדפות המשפחה: לאילו סוגי עסקאות מוצג בורר "של מי?"
     // (על window כדי שעמוד ההגדרות יעדכן את המודאל מיד עם שינוי העדפה)
     window.SF_ATTRIBUTION = window.SF_PAGE_DATA.attribution || {};
@@ -187,6 +191,19 @@
     function buildProjectSelect(selectedProjectId) {
         const trackKey = { expense: 'track_expense', income: 'track_income', savings: 'track_savings' }[currentType];
         const projects = (projectsCache || []).filter(p => p[trackKey]);
+
+        // השדה מוסתר כשאין לאן לשייך.
+        //
+        // הוא ישב במקום ה**שני** במודאל, מיד אחרי הסכום, ומשפחה בלי
+        // פרויקטים ראתה תפריט נפתח עם אפשרות אחת: "ללא". זו הפעולה
+        // שאדם עושה הכי הרבה באפליקציה, והשדה הראשון שהוא פוגש בה היה
+        // שדה שלא רלוונטי לו.
+        //
+        // בורר "של מי?" ממש מתחתיו כבר עושה בדיוק את זה (ראו ‎ownerGroup‎
+        // ב-‎setType‎) — הדפוס היה קיים ולא הוחל כאן.
+        projectGroup.style.display = projects.length ? '' : 'none';
+        if (!projects.length) { txProject.value = ''; return; }
+
         txProject.innerHTML = '<option value="">ללא</option>' +
             projects.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');
         txProject.value = projects.some(p => p.id === selectedProjectId) ? selectedProjectId : '';
@@ -260,7 +277,7 @@
     }
 
     function updateSubmitLabel() {
-        if (editId) { submitLabel.textContent = 'עדכן עסקה'; return; }
+        if (editId) { submitLabel.textContent = 'שמירת השינויים'; return; }
         submitLabel.textContent = TYPE_LABELS[currentType];
     }
 
@@ -276,7 +293,6 @@
         modalSheet.classList.toggle('income-mode', type === 'income');
         modalSheet.classList.toggle('expense-mode', type === 'expense');
         modalSheet.classList.toggle('savings-mode', type === 'savings');
-        projectGroup.style.display = '';
         buildProjectSelect(selectedProjectId);
         refreshCategoryGrid(selectedCategoryId);
         // בורר "של מי?" מופיע רק בסוגים שהמשפחה הפעילה בהם שיוך (העדפות משפחה)

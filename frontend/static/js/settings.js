@@ -1320,3 +1320,53 @@ document.addEventListener('click', function (e) {
         if (toggle.checked && window.appFeedback) window.appFeedback();
     });
 })();
+
+// ── הגעה ישירה לקטגוריה מעמוד החודש ──
+//
+// עמוד החודש הוא המקום שבו אדם מבין שהוא צריך תקציב: הוא רואה ₪1,240
+// על מכולת. עד עכשיו לא הייתה משם שום הפניה לכאן, אז התכונה המרכזית
+// של האפליקציה הייתה מאחורי ארבע פעולות שצריך לדעת עליהן מראש.
+//
+// ‎#budget-<id>‎ פותח את הקבוצה, עובר ללשונית הנכונה, גולל לשורה
+// ומדגיש אותה — כדי שהעין תמצא אותה בלי לחפש.
+(function () {
+    const match = /^#budget-(.+)$/.exec(window.location.hash || '');
+    if (!match) return;
+
+    const row = document.querySelector(
+        '.category-row[data-id="' + CSS.escape(match[1]) + '"]');
+    if (!row) return;
+
+    // 1. פתיחת הקבוצה שמכילה את הקטגוריות
+    const group = row.closest('.settings-group');
+    if (group && !group.classList.contains('open')) {
+        const header = group.querySelector('.settings-group-header');
+        if (header) header.click();
+    }
+
+    // 2. מעבר ללשונית של הסוג הנכון (הוצאה/הכנסה/חיסכון)
+    const panel = row.closest('.cat-tab-panel');
+    if (panel) {
+        const tab = document.querySelector(
+            '[data-cat-tab="' + panel.dataset.tabPanel + '"]');
+        if (tab && !tab.classList.contains('active')) tab.click();
+    }
+
+    // 3. גלילה והדגשה. ‎requestAnimationFrame‎ כי הפתיחה למעלה משנה
+    //    גובה, ומיקום שנמדד לפניה שגוי.
+    requestAnimationFrame(function () {
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        row.classList.add('just-landed');
+        setTimeout(function () { row.classList.remove('just-landed'); }, 2400);
+        // אם המתג כבוי — מדליקים אותו, כי זו בדיוק הכוונה של מי שהגיע
+        // לכאן מהקישור "קביעת תקציב". אחרת הוא נוחת על שורה שנראית
+        // בדיוק כמו קודם וצריך לנחש מה לעשות.
+        const toggle = row.querySelector('.budget-enabled');
+        if (toggle && !toggle.checked) {
+            toggle.checked = true;
+            toggle.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        const amount = row.querySelector('.budget-amount');
+        if (amount) amount.focus({ preventScroll: true });
+    });
+})();

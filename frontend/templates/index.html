@@ -22,14 +22,27 @@
     <p class="hero-sub">לחצו על + כדי להוסיף את העסקה הראשונה שלכם ולראות כאן את היתרה שלכם</p>
 </section>
 {% else %}
+{# חודש בלי הכנסות אינו גירעון.
+   כמעט כל משתמש חדש מזין הוצאה לפני משכורת, ואז המסך הראשון שלו הציג
+   ‎-₪120‎ באדום גדול מתחת ל"נשאר בעו״ש החודש" — כלומר האפליקציה פותחת
+   בהודעה שמשהו לא בסדר. חשבונאית זה נכון; מה שקרה בפועל הוא שעדיין אין
+   מה להחסיר ממנו. מציגים את מה שיצא, בניטרלי, ואומרים מה חסר. #}
+{% set no_income_yet = summary.income <= 0 %}
 <section class="hero-balance" aria-label="יתרת עו&quot;ש חודשית">
-    <p class="hero-label">נשאר בעו״ש החודש</p>
-    <p class="hero-amount {% if summary.remaining < 0 %}deficit{% endif %}"
-       data-countup="{{ summary.remaining | abs | round | int }}"
-       {% if summary.remaining < 0 %}data-prefix="-"{% endif %}>
-        {% if summary.remaining < 0 %}-{% endif %}₪{{ "{:,.0f}".format(summary.remaining | abs) }}
+    <p class="hero-label">{{ 'יצא החודש' if no_income_yet else 'נשאר בעו״ש החודש' }}</p>
+    {% set shown = (summary.expense + summary.savings) if no_income_yet else summary.remaining %}
+    <p class="hero-amount {% if not no_income_yet and summary.remaining < 0 %}deficit{% endif %}"
+       data-countup="{{ shown | abs | round | int }}"
+       {% if not no_income_yet and summary.remaining < 0 %}data-prefix="-"{% endif %}>
+        {% if not no_income_yet and summary.remaining < 0 %}-{% endif %}₪{{ "{:,.0f}".format(shown | abs) }}
     </p>
-    <p class="hero-sub">מתוך ₪{{ "{:,.0f}".format(summary.income) }} הכנסות החודש</p>
+    <p class="hero-sub">
+        {%- if no_income_yet -%}
+            עדיין לא הוזנו הכנסות החודש
+        {%- else -%}
+            מתוך ₪{{ "{:,.0f}".format(summary.income) }} הכנסות החודש
+        {%- endif -%}
+    </p>
 
     {# בלי הכנסות אין ממה לנצל, והפס הציג "נוצלו 0% מההכנסות" ליד מינוס
        אדום — בדיוק המסך הראשון של כל משתמש חדש, שכמעט תמיד מזין הוצאה
@@ -154,7 +167,7 @@
     <div class="empty-state">
         <p class="empty-icon">📭</p>
         <p class="empty-text">אין עסקאות עדיין החודש</p>
-        <p class="empty-sub">לחץ על + להוספת עסקה ראשונה</p>
+        <p class="empty-sub">לחצו על + להוספת העסקה הראשונה</p>
     </div>
     {% endif %}
 </section>

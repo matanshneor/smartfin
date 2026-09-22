@@ -4233,3 +4233,30 @@ li.transaction-item.swipe-ready > .swipe-content {
     text-align: center;
 }
 .settings-contact-label { margin: 0; font-size: 13px; color: var(--color-text-muted); }
+
+/* ─── קישור "קביעת תקציב" מעמוד החודש ─────────────────────────────
+   מוצג רק על קטגוריה שהוצאה בה כסף ואין לה תקציב. זה הרגע שבו אדם
+   מבין שהוא צריך אחד — ועד עכשיו לא הייתה מהעמוד הזה שום דרך לשם. */
+.cat-budget-cta {
+    display: inline-block;
+    margin: 6px 0 2px;
+    padding: 3px 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-gold-text);
+    text-decoration: none;
+}
+.cat-budget-cta:hover { text-decoration: underline; }
+
+/* והשורה שנחתו עליה בהגדרות, כדי שהעין תמצא אותה בלי לחפש */
+.category-row.just-landed {
+    animation: sf-just-landed 2.4s ease-out;
+    border-radius: 10px;
+}
+@keyframes sf-just-landed {
+    0%, 60% { background: var(--color-gold-dim); }
+    100%    { background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .category-row.just-landed { animation: none; background: var(--color-gold-dim); }
+}
