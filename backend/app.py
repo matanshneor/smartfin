@@ -774,7 +774,25 @@ def forgot_password():
         return jsonify({"error": "כתובת המייל אינה תקינה"}), 422
 
     redirect_to = request.host_url.rstrip("/") + url_for("reset_password")
-    db.send_reset_email(email, redirect_to)
+    ok, err = db.send_reset_email(email, redirect_to)
+
+    # התוצאה נזרקה לפח. ספק המייל של Supabase מוגבל לשני מיילים בשעה
+    # לכל הפרויקט, אז השלישי בשעה קיבל "שלחנו לך קישור" ולא קיבל כלום —
+    # ואין לו שום מסלול שחזור אחר, כי גם אימות המייל כבוי. שום דבר לא
+    # נרשם, ולא היה שום סימן שזה קורה.
+    if not ok:
+        # ‎error‎ ולא ‎warning‎: זה אירוע ב-Sentry, ולא פירור שאף אחד
+        # לא רואה בחוצץ הלוגים של Railway.
+        logger.error("send_reset_email נכשל: %s", err)
+        # מגבלת קצב אצל הספק היא מצב זמני, ואומרים אותו. שאר הכשלים
+        # נשארים גנריים כדי לא לחשוף אילו כתובות רשומות.
+        transient = "rate" in str(err).lower() or "limit" in str(err).lower()
+        return jsonify({
+            "error": ("יותר מדי בקשות איפוס ברגע זה. נסו שוב בעוד כמה דקות."
+                      if transient else
+                      "לא הצלחנו לשלוח את הקישור כרגע. נסו שוב בעוד כמה דקות."),
+        }), 503
+
     # תמיד מחזירים הצלחה — לא חושפים אילו אימיילים רשומים
     return jsonify({"status": "ok"})
 

@@ -136,9 +136,67 @@ def test_a_broken_address_is_told_so_instead_of_pretending(anon, monkeypatch):
 def test_a_valid_address_still_gets_the_neutral_answer(anon, monkeypatch):
     """בקרת-נגד: הסודיות נשמרת — כתובת תקינה תמיד מקבלת "נשלח", בין אם
     היא רשומה ובין אם לא."""
-    monkeypatch.setattr(app_module.db, "send_reset_email", lambda *a, **k: None)
+    # החתימה האמיתית היא ‎(ok, error)‎. הכפיל החזיר ‎None‎, כי המסלול
+    # התעלם מהתוצאה — וזה בדיוק מה שאיפשר לכשל שליחה להיראות כהצלחה.
+    monkeypatch.setattr(app_module.db, "send_reset_email", lambda *a, **k: (True, None))
 
     res = anon.post("/api/auth/forgot", json={"email": "nobody@example.com"})
 
     assert res.status_code == 200
     assert res.get_json() == {"status": "ok"}
+
+
+# ─── כשל שליחה נאמר, ולא נבלע ────────────────────────────────────────────────
+#
+# ‎db.send_reset_email‎ בונה ‎(ok, error)‎ ואף אחד לא קרא אותו. ספק המייל
+# של Supabase מוגבל לשני מיילים **בשעה, לכל הפרויקט**, אז השלישי בשעה
+# קיבל "שלחנו לך קישור" ולא קיבל כלום. אימות מייל כבוי, אז אין לו שום
+# מסלול שחזור אחר — והחשבון שלו נעול. שום דבר לא נרשם ושום דבר לא הגיע
+# ל-Sentry.
+
+def test_a_failed_send_is_not_reported_as_sent(anon, monkeypatch):
+    """הלב: אסור להבטיח מייל שלא יצא."""
+    monkeypatch.setattr(app_module.db, "send_reset_email",
+                        lambda *a, **k: (False, "smtp down"))
+
+    res = anon.post("/api/auth/forgot", json={"email": "someone@example.com"})
+
+    assert res.status_code == 503
+    assert res.get_json().get("status") != "ok"
+
+
+def test_hitting_the_providers_limit_says_to_try_again(anon, monkeypatch):
+    """מגבלת קצב היא מצב זמני, ולמשתמש מגיע לדעת שכדאי לחכות ולא
+    שהחשבון שלו לא קיים."""
+    monkeypatch.setattr(app_module.db, "send_reset_email",
+                        lambda *a, **k: (False, "email rate limit exceeded"))
+
+    res = anon.post("/api/auth/forgot", json={"email": "someone@example.com"})
+
+    assert "בעוד כמה דקות" in res.get_json()["error"]
+
+
+def test_a_failed_send_reaches_sentry(anon, monkeypatch, caplog):
+    """‎warning‎ הוא פירור ב-Sentry ולא אירוע, ולוג של Railway נמחק ואף
+    אחד לא קורא אותו. בלי ‎error‎ אין שום דרך לדעת שזה קורה."""
+    import logging
+    monkeypatch.setattr(app_module.db, "send_reset_email",
+                        lambda *a, **k: (False, "smtp down"))
+
+    with caplog.at_level(logging.ERROR):
+        anon.post("/api/auth/forgot", json={"email": "someone@example.com"})
+
+    assert any(r.levelno >= logging.ERROR for r in caplog.records), \
+        "הכשל לא נרשם ברמה שמייצרת אירוע"
+
+
+def test_a_failure_does_not_reveal_whether_the_address_is_registered(anon, monkeypatch):
+    """בקרת-נגד: ההודעה זהה לכתובת רשומה ולכתובת שאינה, אחרת הכשל עצמו
+    הופך לאורקל."""
+    monkeypatch.setattr(app_module.db, "send_reset_email",
+                        lambda *a, **k: (False, "smtp down"))
+
+    a = anon.post("/api/auth/forgot", json={"email": "known@example.com"}).get_json()
+    b = anon.post("/api/auth/forgot", json={"email": "unknown@example.com"}).get_json()
+
+    assert a == b
