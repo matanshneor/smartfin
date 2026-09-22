@@ -257,8 +257,30 @@ def test_the_legend_says_which_colour_is_which():
     legend = legend[:legend.index("</div>")]
 
     assert 'bar-key spent' in legend and 'bar-key saved' in legend
-    assert "הוצאות" in legend and "חיסכון" in legend
     assert "נוצלו" not in legend
+
+
+def test_the_legend_says_a_percent_of_what():
+    """‏"הוצאות 20%" לא אומר אחוז ממה. השורה שמעל הפס כן אומרת
+    ("מתוך ₪11,527 הכנסות החודש"), אבל אי אפשר לדרוש ממישהו להרכיב
+    שתי שורות נפרדות בראש — וזה בדיוק מה שמתן שאל."""
+    html = _read("frontend/templates/index.html")
+    legend = html[html.index("balance-bar-legend"):]
+    legend = legend[:legend.index("</div>")]
+
+    assert "מההכנסות" in legend, "המקרא לא אומר אחוז ממה"
+
+    spent_line = next(l for l in legend.split("\n") if "spent_pct" in l)
+    assert "מההכנסות" in spent_line, "דווקא על ההוצאות — המספר שהטעה — זה חסר"
+
+
+def test_the_screen_reader_hears_the_same_sentence():
+    """קורא מסך לא רואה את השורה שמעל הפס, אז ‎aria-label‎ הוא המקום
+    היחיד שבו המכנה יכול להיאמר לו."""
+    html = _read("frontend/templates/index.html")
+    label = next(l for l in html.split("\n") if "aria-label=" in l and "spent_pct" in l)
+
+    assert "מההכנסות" in label
 
 
 def test_the_screen_reader_hears_the_spending_number():
