@@ -115,7 +115,9 @@ def test_a_non_monthly_row_also_shows_its_original_amount():
     from pathlib import Path
     html = (Path(__file__).resolve().parent.parent
             / "frontend/templates/month.html").read_text(encoding="utf-8")
-    block = html[html.index("קבוע כל חודש"):][:2000]
+    # מעוגן ברשימה ולא בכותרת: הכותרת הייתה "קבוע כל חודש", והשינוי
+    # ל"עסקאות קבועות" הפיל בדיקה שלא הייתה לה שום דעה על הכותרת.
+    block = html[html.index('class="fixed-list"'):][:3000]
 
     assert "item.per_month != 1.0" in block
     assert "item.amount" in block and "item.monthly_amount" in block

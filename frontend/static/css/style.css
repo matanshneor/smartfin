@@ -3029,6 +3029,36 @@ li.project-row {
 .cat-budget.over .cat-budget-fill { background: var(--color-expense); }
 .cat-budget.over .cat-budget-text { color: var(--color-expense); font-weight: 600; }
 
+/* ─── פרויקטים החודש ──────────────────────────────────────────── */
+
+/* שורה לכל פרויקט, באותו דפוס של הקטגוריות. הסכומים נשמרים בנפרד לפי
+   סוג ולא מקוזזים, אז שורה של פרויקט דו-כיווני מחזיקה שני מספרים. */
+.legend-amount .pm-amount { margin-inline-start: 6px; font-variant-numeric: tabular-nums; }
+.legend-amount .pm-amount:first-child { margin-inline-start: 0; }
+
+.cat-tx-more { justify-content: flex-start; padding-top: 10px; }
+.cat-tx-more a { font-size: 13px; color: var(--color-gold-text); text-decoration: none; font-weight: 600; }
+.cat-tx-more a:hover { text-decoration: underline; }
+
+/* ─── עסקאות קבועות ───────────────────────────────────────────── */
+
+/* מצב ניהול. מחוץ לו הרשימה היא תצוגה בלבד — בלי סמן, בלי hover ובלי
+   כפתור מחיקה, כדי שלחיצה מקרית לא תפתח עורך על שכר דירה. */
+.fixed-row .delete-recurring-btn { display: none; }
+.fixed-list.managing .fixed-row {
+    cursor: pointer;
+    border-radius: 10px;
+    transition: background 0.15s;
+}
+.fixed-list.managing .fixed-row:hover,
+.fixed-list.managing .fixed-row:focus-visible { background: rgba(0, 0, 0, 0.035); }
+.fixed-list.managing .fixed-row .delete-recurring-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    margin-inline-start: 8px;
+}
 /* ─── קבוע כל חודש ─────────────────────────────────────────────── */
 
 .fixed-summary {

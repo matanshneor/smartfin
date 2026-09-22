@@ -1449,3 +1449,43 @@
         });
     })();
 })();
+
+// ── Delete recurring transaction ──
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.delete-recurring-btn');
+    if (!btn) return;
+    const id  = btn.dataset.id;
+    const row = btn.closest('.recurring-row, .fixed-row');
+    if (!id || !row) return;
+
+    window.appConfirm({
+        title: 'להסיר את העסקה הקבועה?',
+        message: 'מופעים חדשים יפסיקו להיווצר. כל מה שכבר נרשם — כולל העסקה הראשונה — יישאר בהיסטוריה.',
+        confirmText: 'הסר',
+    }).then(function (ok) {
+        if (!ok) return;
+        // ‎/api/recurring‎ ולא ‎/api/transactions‎: זה עוצר את הסדרה ולא מוחק
+        // שורה. שורת התבנית היא העסקה הראשונה בסדרה, ומחיקתה הייתה מוציאה
+        // כסף אמיתי מההיסטוריה — בדיוק מה שההודעה למעלה מבטיחה שלא יקרה.
+        fetch('/api/recurring/' + id, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(function (d) {
+            if (d.status === 'ok') {
+                row.style.transition = 'opacity 0.25s';
+                row.style.opacity = '0';
+                // בעמוד החודש הסכומים שמעל הרשימה ("יוצא", "נכנס", "מופרש")
+                // נגזרים מהשורות. הסרת שורה בלבד הייתה משאירה אותם על הערך
+                // הישן — בדיוק סוג המספר השגוי שהאפליקציה קיימת כדי למנוע.
+                const inMonthList = !!row.closest('#fixedList');
+                setTimeout(function () {
+                    row.remove();
+                    if (inMonthList && window.softReload) window.softReload();
+                }, 260);
+                window.showToast('העסקה הקבועה הוסרה');
+            } else {
+                window.showToast('ההסרה נכשלה', 'error');
+            }
+        })
+        .catch(function () { window.showToast(window.sfNetError(), 'error'); });
+    });
+});

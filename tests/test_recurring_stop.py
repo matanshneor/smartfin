@@ -80,8 +80,15 @@ def test_removing_a_recurring_series_does_stop_future_occurrences(client):
 
 def test_the_dialog_no_longer_promises_something_the_code_does_not_do():
     """ההודעה והקוד חייבים להסכים; הם לא הסכימו, וזה היה כל הבאג."""
-    js = (_ROOT / "frontend/static/js/settings.js").read_text(encoding="utf-8")
-    block = js[js.index("להסיר את העסקה הקבועה?"):][:900]
+    # המטפל עבר מ-settings.js ל-transactions.js כשאותה רשימה נוספה
+    # לעמוד החודש. הבדיקה מחפשת אותו איפה שהוא — קיבוע שם הקובץ הוא
+    # שהפיל אותה, ולא שום שינוי בהתנהגות שהיא באמת שומרת עליה.
+    owners = [f for f in (_ROOT / "frontend/static/js").glob("*.js")
+              if "להסיר את העסקה הקבועה?" in f.read_text(encoding="utf-8")]
+    assert len(owners) == 1, f"הדיאלוג מופיע ב-{[f.name for f in owners]} — עותק כפול או נעלם"
+
+    js = owners[0].read_text(encoding="utf-8")
+    block = js[js.index("להסיר את העסקה הקבועה?"):][:1200]
 
     assert "/api/recurring/" in block, "עדיין קורא למסלול שמוחק את השורה"
     assert "/api/transactions/" not in block

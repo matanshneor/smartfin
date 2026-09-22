@@ -172,38 +172,8 @@ if (joinBtn && joinInput) {
     });
 }
 
-// ── Delete recurring transaction ──
-document.addEventListener('click', function (e) {
-    const btn = e.target.closest('.delete-recurring-btn');
-    if (!btn) return;
-    const id  = btn.dataset.id;
-    const row = btn.closest('.recurring-row');
-    if (!id || !row) return;
-
-    window.appConfirm({
-        title: 'להסיר את העסקה הקבועה?',
-        message: 'מופעים חדשים יפסיקו להיווצר. כל מה שכבר נרשם — כולל העסקה הראשונה — יישאר בהיסטוריה.',
-        confirmText: 'הסר',
-    }).then(function (ok) {
-        if (!ok) return;
-        // ‎/api/recurring‎ ולא ‎/api/transactions‎: זה עוצר את הסדרה ולא מוחק
-        // שורה. שורת התבנית היא העסקה הראשונה בסדרה, ומחיקתה הייתה מוציאה
-        // כסף אמיתי מההיסטוריה — בדיוק מה שההודעה למעלה מבטיחה שלא יקרה.
-        fetch('/api/recurring/' + id, { method: 'DELETE' })
-        .then(r => r.json())
-        .then(function (d) {
-            if (d.status === 'ok') {
-                row.style.transition = 'opacity 0.25s';
-                row.style.opacity = '0';
-                setTimeout(() => row.remove(), 260);
-                window.showToast('העסקה הקבועה הוסרה');
-            } else {
-                window.showToast('ההסרה נכשלה', 'error');
-            }
-        })
-        .catch(function () { window.showToast(window.sfNetError(), 'error'); });
-    });
-});
+// הסרת עסקה קבועה עברה ל-transactions.js: אותה רשימה מוצגת גם בעמוד
+// החודש, ו-settings.js לא נטען שם. עותק שני היה הופך כל תיקון לשניים.
 
 // ── סדר קטגוריות (▲▼) ──
 function catRowInnerHTML(id, icon, name, isCustom) {

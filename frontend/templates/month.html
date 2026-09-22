@@ -108,8 +108,12 @@
 {% if fixed and fixed.rows %}
 <section class="chart-card">
     <div class="chart-title-row">
-        <h2 class="chart-title">קבוע כל חודש</h2>
-        <a class="btn-sm btn-ghost export-link" href="{{ url_for('settings') }}#recurring">ניהול</a>
+        <h2 class="chart-title">עסקאות קבועות</h2>
+        {# "ניהול" פתח את ההגדרות. מי שעמד כאן וראה שכר דירה שגוי נשלח
+           לעמוד אחר, לגלול ולמצוא את אותה שורה שוב — במקום לגעת בזו
+           שמולו. עכשיו הוא פותח עריכה ומחיקה במקום. #}
+        <button type="button" class="btn-sm btn-ghost" id="fixedManageBtn"
+                aria-expanded="false" aria-controls="fixedList">ניהול</button>
     </div>
 
     <div class="fixed-summary">
@@ -133,9 +137,20 @@
         {% endif %}
     </div>
 
-    <ul class="fixed-list">
+    <ul class="fixed-list" id="fixedList">
         {% for item in fixed.rows %}
-        <li class="fixed-row">
+        {# אותן ‎data-*‎ כמו ב-settings.html: המודאל הגלובלי ב-transactions.js
+           בונה מהן את העסקה לעריכה, ואין כאן עותק שני של הלוגיקה. #}
+        <li class="fixed-row" data-id="{{ item.id }}" data-amount="{{ item.amount }}"
+            data-type="{{ item.type }}" data-category-id="{{ item.category_id or '' }}"
+            data-project-category-id="{{ item.project_category_id or '' }}"
+            data-description="{{ item.description }}" data-date="{{ item.date }}"
+            data-user-id="{{ item.user_id or '' }}"
+            data-is-recurring="{{ item.is_recurring | lower }}"
+            data-recurring-frequency="{{ item.recurring_frequency or '' }}"
+            data-recurring-end-date="{{ item.recurring_end_date or '' }}"
+            data-recurring-parent-id="{{ item.recurring_parent_id or '' }}"
+            data-project-id="{{ item.project_id or '' }}">
             <span class="fixed-row-icon">{{ item.category_icon or '🔁' }}</span>
             <span class="fixed-row-name">{{ item.description or item.category_name }}</span>
             {# תדירות שאינה חודשית: מראים גם את הסכום המקורי, אחרת מספר
@@ -144,6 +159,8 @@
             <span class="fixed-row-freq">₪{{ "{:,.0f}".format(item.amount) }} {{ freq_labels.get(item.recurring_frequency, '') }}</span>
             {% endif %}
             <span class="fixed-row-amount {{ item.type }}">₪{{ "{:,.0f}".format(item.monthly_amount) }}</span>
+            <button class="delete-recurring-btn" data-id="{{ item.id }}"
+                    tabindex="-1" aria-label="הסר את {{ item.description or item.category_name }}">✕</button>
         </li>
         {% endfor %}
     </ul>
@@ -152,7 +169,7 @@
 
 <!-- Chart 1: לאן הלך הכסף (חלוקת ההכנסות) -->
 <section class="chart-card">
-    <h2 class="chart-title">לאן הלך הכסף החודש</h2>
+    <h2 class="chart-title">הוצאות מול חיסכון</h2>
     {% if summary.expense > 0 or summary.savings > 0 %}
     <div class="doughnut-wrap">
         <canvas id="overviewChart" aria-label="לאן הלך הכסף: הוצאות מול חיסכון"></canvas>
@@ -291,26 +308,50 @@
     </ul>
 </section>
 
-<!-- פרויקטים החודש — מוחרג מהמאזן החודשי, מוצג מיד מתחת להוצאות -->
-{% if project_month.transactions %}
+<!-- פרויקטים החודש — מוחרג מהמאזן החודשי, מוצג מיד מתחת להוצאות.
+     שורה לכל פרויקט שנפתחת לעסקאות שלו: הרשימה הייתה שטוחה, וחודש עם
+     שיפוץ וטיול יחד לא אפשר להפריד ביניהם — וזו בדיוק השאלה שנשאלת. -->
+{% if project_month.projects %}
 <section class="chart-card">
     <h2 class="chart-title">פרויקטים החודש</h2>
     <p class="wealth-bucket-hint" style="margin:2px 0 12px;">עסקאות אלה משויכות לפרויקטים ואינן נכללות במאזן החודשי</p>
-    {% if project_month.expense %}<div class="pm-figure"><span>הוצאות פרויקטים</span><span class="pm-amount expense">₪{{ "{:,.0f}".format(project_month.expense) }}</span></div>{% endif %}
-    {% if project_month.income %}<div class="pm-figure"><span>הכנסות פרויקטים</span><span class="pm-amount income">₪{{ "{:,.0f}".format(project_month.income) }}</span></div>{% endif %}
-    {% if project_month.savings %}<div class="pm-figure"><span>חיסכון פרויקטים</span><span class="pm-amount savings">₪{{ "{:,.0f}".format(project_month.savings) }}</span></div>{% endif %}
-    <ul class="cat-tx-list cat-tx-list-standalone" style="margin-top:12px;">
-        {% for tx in project_month.transactions %}
-        <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
-            data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
-            data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
-            data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
-            data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
-            data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
-            <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
-            <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}</span>
-            <span class="project-tag">{{ tx.project_icon or '🎯' }} {{ tx.project_name or 'פרויקט' }}</span>
-            <span class="cat-tx-amount {{ tx.type }}">{% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ "{:,.0f}".format(tx.amount) }}</span>
+
+    <ul class="legend-list">
+        {% for proj in project_month.projects %}
+        <li class="legend-item-wrap">
+            <div class="legend-item clickable" role="button" tabindex="0" aria-expanded="false">
+                <span class="legend-icon">{{ proj.icon }}</span>
+                <span class="legend-name">{{ proj.name }}</span>
+                {# כל סוג בנפרד ולא סכום מקוזז: פרויקט עם החזר כספי היה
+                   נראה "זול יותר", ו-₪0 על פרויקט דו-כיווני מסתיר את שני
+                   הצדדים. ברוב הפרויקטים יש רק הוצאות, אז זה מספר אחד. #}
+                <span class="legend-amount">
+                    {% if proj.expense %}<span class="pm-amount expense">-₪{{ "{:,.0f}".format(proj.expense) }}</span>{% endif %}
+                    {% if proj.income %}<span class="pm-amount income">+₪{{ "{:,.0f}".format(proj.income) }}</span>{% endif %}
+                    {% if proj.savings %}<span class="pm-amount savings">₪{{ "{:,.0f}".format(proj.savings) }}</span>{% endif %}
+                </span>
+                <span class="expand-chevron" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+            </div>
+
+            <ul class="cat-tx-list">
+                {% for tx in proj.transactions %}
+                <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                    data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
+                    data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
+                    data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
+                    data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
+                    data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
+                    <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
+                    <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}</span>
+                    <span class="cat-tx-amount {{ tx.type }}">{% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ "{:,.0f}".format(tx.amount) }}</span>
+                </li>
+                {% endfor %}
+                <li class="cat-tx-row cat-tx-more">
+                    <a href="{{ url_for('project_detail', project_id=proj.project_id) }}">לעמוד הפרויקט ←</a>
+                </li>
+            </ul>
         </li>
         {% endfor %}
     </ul>

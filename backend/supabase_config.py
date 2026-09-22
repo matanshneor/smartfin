@@ -2091,6 +2091,48 @@ def member_breakdown_from_rows(rows: list, type_: str) -> list:
     return sorted(members.values(), key=lambda x: x["expense"], reverse=True)
 
 
+def project_breakdown_from_rows(rows: list) -> list:
+    """מקבצת את עסקאות הפרויקטים של החודש לפי פרויקט.
+
+    הסעיף הציג רשימה שטוחה של כל עסקאות הפרויקטים יחד, כך שבחודש עם
+    שיפוץ וטיול העין לא יכלה להפריד ביניהם — וזו בדיוק השאלה ("כמה עלה
+    לי השיפוץ החודש?"). כאן כל פרויקט הוא שורה.
+
+    מקובץ לפי **מזהה** ולא לפי שם: שני פרויקטים יכולים להיקרא אותו דבר,
+    וקיבוץ לפי שם היה מאחד להם את הכסף — אותו באג בדיוק שהיה בפילוח
+    הקטגוריות.
+
+    כל סוג נשמר בנפרד ולא מקוזז לסכום אחד: פרויקט עם החזר כספי היה מוצג
+    כ"עלה פחות", ו-₪0 על פרויקט שגם הוציא וגם קיבל הוא מספר שמסתיר את
+    שני הצדדים. המיון הוא לפי מה שיצא בפועל.
+    """
+    by_project = {}
+    for row in rows:
+        key = row.get("project_id")
+        if not key:
+            continue
+        entry = by_project.setdefault(key, {
+            "project_id":   key,
+            "name":         row.get("project_name") or "פרויקט",
+            "icon":         row.get("project_icon") or "🎯",
+            "expense": 0.0, "income": 0.0, "savings": 0.0,
+            "transactions": [],
+        })
+        if row["type"] in ("expense", "income", "savings"):
+            entry[row["type"]] += float(row["amount"])
+        entry["transactions"].append(row)
+
+    out = []
+    for entry in by_project.values():
+        for kind in ("expense", "income", "savings"):
+            entry[kind] = round(entry[kind], 2)
+        entry["outflow"] = round(entry["expense"] + entry["savings"], 2)
+        out.append(entry)
+
+    out.sort(key=lambda e: (e["outflow"], e["income"]), reverse=True)
+    return out
+
+
 def month_transactions_from_rows(rows: list, settings: dict = None,
                                  viewer_user_id: str = None) -> list:
     """רשימת העסקאות להצגה: כוללת פרויקטים, מסתירה פרויקט אישי של אחר."""

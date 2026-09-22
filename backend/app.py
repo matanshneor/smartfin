@@ -1041,7 +1041,8 @@ def month_view():
             expense_data=[], members_data=[],
             # התבנית ניגשת ל-project_month ללא תנאי. המסלול הזה נשכח כשנוספו
             # הפרויקטים, ומשתמש בלי משפחה קיבל 500 במקום העמוד הריק המיועד.
-            project_month={"expense": 0, "income": 0, "savings": 0, "transactions": []},
+            project_month={"expense": 0, "income": 0, "savings": 0,
+                           "transactions": [], "projects": []},
         )
 
     # שלב 1 — שליפות בלתי-תלויות. שורות החודש נשלפות **פעם אחת**, וכל
@@ -1109,6 +1110,7 @@ def month_view():
         "income":       round(sum(t["amount"] for t in project_txs if t["type"] == "income"), 2),
         "savings":      round(sum(t["amount"] for t in project_txs if t["type"] == "savings"), 2),
         "transactions": project_txs,
+        "projects":     db.project_breakdown_from_rows(project_txs),
     }
 
     # ומכאן — רק העסקאות הרגילות. כל שאר נתוני החודש (סיכום, פילוח קטגוריות,
