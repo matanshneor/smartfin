@@ -2,6 +2,12 @@
 
 {% block title %}SmartFin – עריכת {{ project.name }}{% endblock %}
 
+{# ה-+ הצף הוא "הוסף עסקה חדשה". במסך הגדרות אין לו משמעות, והוא ישב
+   בפינה השמאלית התחתונה — בדיוק על כפתור "מחק פרויקט", כך שהפעולה
+   המסוכנת בעמוד הוסתרה חלקית מאחורי כפתור שלא שייך לכאן.
+   האלמנט נשאר בעמוד כי ‎transactions.js‎ נקשר אליו ישירות; רק מוסתר. #}
+{% block body_class %}no-fab{% endblock %}
+
 {% block hero %}
 <div class="hero-top">
     <div>
@@ -27,7 +33,7 @@
    מסכים שהודבקו. עכשיו זה מיכל אחד, והחלוקה נעשית בקו הפרדה. #}
 <section class="project-settings">
 
-<!-- הגדרות הפרויקט: שם, תיאור, יעד תקציב, סוגי מעקב -->
+<!-- הגדרות הפרויקט: שם, תיאור, תקציב יעד, סוגי מעקב -->
 <div class="project-settings-block">
     <h2 class="chart-title">פרטי הפרויקט</h2>
 
@@ -45,12 +51,19 @@
                       placeholder="למשל: טיול משפחתי ליפן, קיץ 2026">{{ project.description or '' }}</textarea>
         </div>
         <div class="form-group">
-            <label class="form-label" for="editProjectBudget">יעד תקציב (אופציונלי)</label>
+            <label class="form-label" for="editProjectBudget">תקציב יעד (אופציונלי)</label>
             <div class="amount-input-wrap">
                 <span class="amount-currency">₪</span>
                 <input class="form-input amount-input" type="number" id="editProjectBudget" min="0" step="1"
+                       aria-describedby="budgetTargetHint"
                        value="{{ project.budget_target if project.budget_target is not none else '' }}">
             </div>
+            {# השדה עמד בלי מילת הסבר אחת: שתי מילים וקופסה לסכום, בלי
+               לומר אם מדובר בתקרה, בתחזית או בכסף שכבר הופרש. #}
+            <p class="field-hint" id="budgetTargetHint">
+                כמה תכננתם להוציא על הפרויקט. בעמוד הפרויקט יופיע פס
+                שמראה כמה מהסכום כבר נוצל. לא חוסם כלום — רק מראה איפה אתם.
+            </p>
         </div>
         <div class="form-group">
             <label class="form-label">אילו סוגי עסקאות לעקוב?</label>

@@ -205,3 +205,78 @@ def test_the_dividers_reach_the_edges():
     css = (_ROOT / "frontend/static/css/style.css").read_text(encoding="utf-8")
 
     assert ".project-settings > .group-divider { margin: 0; }" in css
+
+
+# ─── מסך ההגדרות היה צפוף, ושדה אחד בו לא הסביר את עצמו ─────────────────────
+#
+# שלושה דברים שמתן הצביע עליהם בצילום מסך:
+#
+# 1. ה-+ הצף ("הוסף עסקה חדשה") ישב בפינה השמאלית התחתונה — בדיוק על
+#    "מחק פרויקט". הפעולה הבלתי הפיכה היחידה בעמוד הייתה חצי מוסתרת
+#    מאחורי כפתור שאין לו שום משמעות במסך הגדרות.
+# 2. שורת הוספת הקטגוריה נגעה בשורה האחרונה ברשימה, כי
+#    ‎.category-row:last-child‎ מאפסת את הריפוד התחתון.
+# 3. "יעד תקציב" — שדה סכום בלי מילת הסבר אחת.
+
+_DETAIL = (_ROOT / "frontend/templates/project_detail.html").read_text(encoding="utf-8")
+_BASE = (_ROOT / "frontend/templates/base.html").read_text(encoding="utf-8")
+_CSS = (_ROOT / "frontend/static/css/style.css").read_text(encoding="utf-8")
+
+
+def _visible(html):
+    """בלי הערות. הערה בעברית שמסבירה תיקון מכילה כמעט תמיד את המילים
+    של הבאג — וכך בדיקה "עוברת" על טקסט שאף משתמש לא רואה. זה כבר קרה
+    כאן, ובפעם הזאת זה גם הפיל את הבדיקה הזאת בעצמה."""
+    return re.sub(r"\{#.*?#\}|<!--.*?-->", "", html, flags=re.S)
+
+
+def test_the_budget_field_is_called_the_same_thing_in_both_places():
+    """שם אחד לשדה. סדר מילים הפוך בין שני עמודים קורא כמו שני דברים."""
+    for name, html in (("עריכה", _EDIT), ("פרויקט", _DETAIL)):
+        shown = _visible(html)
+        assert "תקציב יעד" in shown, f"השם החדש לא מופיע ב{name}"
+        assert "יעד תקציב" not in shown, f"השם הישן עדיין מוצג ב{name}"
+
+
+def test_the_budget_field_explains_what_it_does():
+    """שדה סכום בלי הסבר משאיר את המשתמש לנחש אם זה תקרה, תחזית או
+    כסף שכבר הופרש."""
+    hint = _EDIT[_EDIT.index('id="budgetTargetHint"'):]
+    hint = hint[:hint.index("</p>")]
+    # בלי התגית ובלי הזחה — אחרת רווחים נספרים כהסבר, ו"סכום." בשורה
+    # מוזחת "עובר" את בדיקת האורך.
+    words = " ".join(hint[hint.index(">") + 1:].split()).split(" ")
+
+    assert len(words) >= 12, f"ההסבר הוא {len(words)} מילים — זה לא הסבר"
+    assert 'aria-describedby="budgetTargetHint"' in _EDIT, \
+        "ההסבר קיים אבל לא מקושר לשדה, אז קורא מסך לא ישמע אותו"
+
+
+def test_the_floating_plus_is_gone_from_the_settings_screen():
+    """הוא כיסה את כפתור המחיקה."""
+    assert "{% block body_class %}no-fab{% endblock %}" in _EDIT
+    assert "{% block body_class %}{% endblock %}" in _BASE, \
+        "ה-body אינו נושא את הבלוק, אז ה-class לעולם לא מגיע"
+    assert "body.no-fab .fab" in _CSS
+
+
+def test_the_plus_button_itself_still_exists():
+    """‎transactions.js‎ עושה ‎fabBtn.addEventListener‎ בלי שום שמירה.
+    מחיקת האלמנט מהתבנית תזרוק ותהרוג את כל שאר הקובץ — כולל את
+    חלון העסקה. מסתירים, לא מוחקים."""
+    assert 'id="fabBtn"' in _BASE
+
+    js = (_JS / "transactions.js").read_text(encoding="utf-8")
+    assert "fabBtn.addEventListener" in js, \
+        "אם זה כבר מגודר — אפשר למחוק את האלמנט, והבדיקה הזאת מיותרת"
+
+
+def test_adding_a_category_is_visibly_a_separate_thing():
+    """בלי הפרדה, "הוסף" נראה כמו כפתור של הקטגוריה האחרונה ברשימה."""
+    rule = _CSS[_CSS.index("#projectCategoriesArea .add-cat-form"):]
+    rule = rule[:rule.index("}")]
+
+    import re
+    gap = re.search(r"margin-top\s*:\s*(\d+)", rule)
+    assert gap and int(gap.group(1)) >= 12, "אין רווח אמיתי בין הרשימה לטופס"
+    assert "border-top" in rule, "רק רווח — אין קו שמפריד בין הרשימה לטופס"

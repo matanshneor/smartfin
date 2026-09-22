@@ -4343,3 +4343,22 @@ li.transaction-item.swipe-ready > .swipe-content {
 .page-hero .balance-bar-legend .bar-key.spent { background: var(--color-expense-light); }
 .page-hero .balance-bar-legend .bar-key.saved { background: var(--color-savings-light); }
 .page-hero .balance-bar-legend { color: var(--hero-text-muted); }
+
+/* ─── עמוד הגדרות הפרויקט: מקום לנשום ───────────────────────────── */
+
+/* ה-+ הצף הוא "הוסף עסקה". במסך הגדרות אין לו מה לעשות, והוא ישב
+   בפינה השמאלית התחתונה — בדיוק על "מחק פרויקט". הפעולה הבלתי הפיכה
+   בעמוד הייתה חצי מוסתרת מאחורי כפתור שלא שייך לשם. */
+body.no-fab .fab { display: none; }
+
+/* ‎.category-row:last-child‎ מאפסת את הריפוד התחתון, ומיד אחריה התחילה
+   שורת ההוספה — כך ש"הוסף" נראה כמו כפתור של הקטגוריה האחרונה ולא
+   כמו טופס נפרד. קו וקצת אוויר מפרידים בין "מה שיש" ל"להוסיף חדש". */
+#projectCategoriesArea .add-cat-form {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: var(--border-subtle);
+}
+
+/* שורת המחיקה הייתה צמודה לתחתית הכרטיס. */
+.project-settings-block.project-danger { padding-bottom: 22px; }
