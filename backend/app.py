@@ -1099,16 +1099,20 @@ def month_view():
     # גזרה לעצמה מחדש את אותם שני כללים — החרגת עסקאות פרויקט, והסתרת
     # פרויקט אישי של בן משפחה אחר — והכלל השני כבר נשכח פעם אחת (ראו
     # ההערה על התאמת קטגוריות לפי שם, למטה). עכשיו הוא מיושם פעם אחת.
-    p1 = _run_queries({
-        "settings":   partial(db.get_family_settings, family_id),
-        "members":    partial(db.get_family_members, family_id),
-        "categories": partial(db.get_categories, family_id),
-        "rows":       partial(db.fetch_month_rows, family_id, year, month),
-        # רצועת החודשים בראש העמוד — RPC אחד שמחזיר את כל החודשים עם נתונים
-        "archive":    partial(db.get_months_archive, family_id),
-    })
+    # ...וחמש השליפות שנשארו הן עכשיו נסיעה אחת. ‎_run_queries‎ מריצה
+    # ברצף (ראו ההערה שם — מקביליות על הלקוח המשותף החזירה אפסים בשקט),
+    # אז החמש שילמו זו אחרי זו ~30ms כל אחת. ‎get_month_page‎ מחזירה את
+    # חמשתן יחד; ההרכבה נשארה ב-Python ולא ירדה ל-SQL, כדי שלא יהיו שני
+    # מקורות אמת ל-‎_merge_settings‎ ולקיצור השמות.
+    p1 = db.fetch_month_page(family_id, year, month)
     settings_ = p1["settings"]
     rows      = p1["rows"]
+
+    # מוזן כאן ולא לפני ‎render_template‎ כמו קודם: שליפות שלב 2 (חריגות,
+    # קצב, הוראות קבועות) פונות בעצמן לקטגוריות ולחברי המשפחה, ועכשיו הן
+    # מקבלות אותם מהמקבץ במקום לשלוף שוב באמצע הבקשה.
+    _prime_request_cache(family_id, settings=settings_, members=p1["members"],
+                         categories=p1["categories"], family=p1["family"])
 
     summary = db.summary_from_rows(rows)
     # תקציבי הקטגוריות נוספים לפילוח ההוצאות: הפס מודד מול ההחלטה של
@@ -1165,9 +1169,6 @@ def month_view():
     # קטגוריית פרויקט ששמה זהה לקטגוריה משפחתית (למשל "אחר", שנזרעת בשתיהן)
     # גרמה לעסקת הפרויקט להופיע בתוך הקטגוריה החודשית — בלי להיספר בסכום שלה.
     month_transactions = [t for t in month_transactions if not t.get("project_id")]
-
-    # מיחזור המקבץ ל-context-processors ו-_member_colors (בלי שליפה חוזרת)
-    _prime_request_cache(family_id, settings=settings_, members=p1["members"])
 
     # גרף חלוקה בין בני משפחה לכל סוג עסקה שהמשפחה הפעילה בו שיוך
     _type_labels = {"expense": "הוצאות", "income": "הכנסות", "savings": "חיסכון"}

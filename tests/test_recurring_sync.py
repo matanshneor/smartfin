@@ -30,6 +30,10 @@ def client(monkeypatch):
         ("family_has_no_transactions", False), ("get_recent_transactions", []),
         ("get_months_archive", []), ("get_monthly_trend", []),
         ("fetch_month_rows", []), ("get_recurring_transactions", []),
+        # עמוד החודש עבר לנסיעה אחת (get_month_page); שאר העמודים עדיין
+        # קוראים לשולפים הבודדים שלמעלה, אז שניהם מזויפים כאן.
+        ("fetch_month_page", {"family": {}, "settings": dict(_db.DEFAULT_FAMILY_SETTINGS),
+                              "members": [], "categories": [], "rows": [], "archive": []}),
         ("get_month_transactions", []), ("get_anomalies", []),
         ("get_run_rate_forecasts", []),
     ]:

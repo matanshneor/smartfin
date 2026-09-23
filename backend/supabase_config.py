@@ -2131,6 +2131,53 @@ def delete_project_category(cat_id: str, project_id: str, family_id: str) -> boo
 # שליפה אחת עם גזירות בשמות ברורים הופכת את סוג הבאג הזה לבלתי אפשרי:
 # אין מאיפה לשכוח את הכלל, כי הוא מיושם פעם אחת.
 
+def fetch_month_page(family_id: str, year: int, month: int) -> dict:
+    """כל מה שעמוד החודש צריך, בנסיעה אחת למסד.
+
+    מחליפה חמש שליפות שרצו ברצף (הגדרות, חברים, קטגוריות, שורות החודש,
+    ארכיון) — ראו ההערה ב-‎_run_queries‎ ב-app.py על למה הן רצות ברצף
+    ולא במקביל, ואת המיגרציה ‎20260923120000_month_page_fn.sql‎ על למה
+    התשובה היא פחות נסיעות ולא נסיעות מקבילות.
+
+    העיבוד נשאר כאן ולא ירד ל-SQL בכוונה: ‎_merge_settings‎ וקיצור השמות
+    הם אותו קוד שכל שאר האפליקציה עוברת דרכו, ושכפול שלהם במסד היה יוצר
+    שני מקורות אמת שיכולים להיפרד בשקט.
+
+    ‎null‎ מהפונקציה = המשפחה אינה של הקורא, או שהשליפה נכשלה. שניהם
+    ‎DataUnavailable‎: אף אחד מהם אינו "משפחה בלי נתונים"."""
+    client = get_client()
+    if not client:
+        raise DataUnavailable("fetch_month_page: no client")
+    try:
+        data = client.rpc("get_month_page", {
+            "p_family_id": family_id,
+            "p_year":      year,
+            "p_month":     month,
+        }).execute().data
+    except Exception as e:
+        raise DataUnavailable("fetch_month_page") from e
+
+    if not data:
+        raise DataUnavailable("fetch_month_page: empty")
+
+    # זהה ל-‎_fetch_family_members‎: התבניות מציגות שם פרטי, והשם המלא
+    # נשמר לצדו כי יש מקומות שמראים אותו במלואו.
+    members = data.get("members") or []
+    for m in members:
+        m["full_name"] = m.get("name", "")
+        m["name"] = first_name(m.get("name", ""))
+
+    family = data.get("family") or {}
+    return {
+        "family":     family,
+        "settings":   _merge_settings(DEFAULT_FAMILY_SETTINGS, family.get("settings") or {}),
+        "members":    members,
+        "categories": data.get("categories") or [],
+        "rows":       data.get("rows") or [],
+        "archive":    data.get("archive") or [],
+    }
+
+
 def fetch_month_rows(family_id: str, year: int, month: int) -> list:
     """כל שורות החודש, כולל עסקאות פרויקט, עם כל השיוכים.
 
