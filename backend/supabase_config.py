@@ -2400,7 +2400,7 @@ def get_monthly_trend(family_id: str, num_months: int = 6) -> list:
 
 
 def _category_history_averages(family_id: str, year: int, month: int):
-    """שאילתה משותפת ל-get_anomalies ול-get_run_rate_forecasts: מחזירה
+    """השאילתה של get_anomalies: מחזירה
     (current, history, icons) — סכום החודש הנוכחי לכל קטגוריית הוצאה,
     וההיסטוריה החודשית שלה בשלושת החודשים הקודמים (לחישוב ממוצע).
     ממוטב-לבקשה: שני הקוראים רצים באותו עמוד — השאילתה רצה פעם אחת."""
@@ -2532,54 +2532,6 @@ def budget_alerts(breakdown: list) -> list:
                      f'— חריגה של ₪{row["budget_excess"]:,.0f}'),
         })
     return out
-
-
-def get_run_rate_forecasts(family_id: str, year: int, month: int, settings: dict = None) -> list:
-    """תחזית 'קצב ריצה': משליכה את קצב ההוצאה היומי של החודש-עד-כה לסוף
-    החודש, ומתריעה מראש (לפני שהחריגה קרתה בפועל) אם ההשלכה חוצה את אותו
-    סף שכבר מוגדר בהעדפות המשפחה (get_anomalies). רלוונטי רק לחודש הנוכחי
-    שעדיין באמצעו — לא לחודשים שהסתיימו, ולא בימים הראשונים (קצב לא יציב).
-    Returns a list of {"severity": "forecast", "text": str}."""
-    import calendar
-
-    cfg = (settings or DEFAULT_FAMILY_SETTINGS).get("anomaly", {})
-    if not cfg.get("enabled", True):
-        return []
-
-    today = clock.today()
-    if (year, month) != (today.year, today.month):
-        return []
-    days_elapsed = today.day
-    if days_elapsed < 3:
-        return []  # קצב מתחילת חודש רועש מדי להשליך ממנו
-    days_in_month = calendar.monthrange(year, month)[1]
-
-    ratio   = float(cfg.get("percent", 150)) / 100.0
-    min_gap = float(cfg.get("min_gap", 300))
-
-    forecasts = []
-    try:
-        current, history, icons = _category_history_averages(family_id, year, month)
-        for name, total in current.items():
-            past = history.get(name)
-            if not past:
-                continue
-            avg = sum(past.values()) / len(past)
-            if avg <= 0:
-                continue
-            # כבר חרגה בפועל — get_anomalies כבר מתריע, אין צורך בכפילות
-            if total > avg * ratio and total - avg >= min_gap:
-                continue
-            projected = (total / days_elapsed) * days_in_month
-            if projected > avg * ratio and projected - avg >= min_gap:
-                forecasts.append({
-                    "severity": "forecast",
-                    "text": f'🔮 בקצב הנוכחי, קטגוריית {icons[name]} {name} צפויה לחרוג ב-₪{(projected - avg):,.0f} מהממוצע (₪{avg:,.0f}) עד סוף החודש',
-                })
-    except Exception as e:
-        logger.exception("get_run_rate_forecasts")
-
-    return forecasts
 
 
 # ─── Family members ───────────────────────────────────────────────────────────

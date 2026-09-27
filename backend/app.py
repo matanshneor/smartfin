@@ -1138,7 +1138,6 @@ def month_view():
                                                  if r.get("budget")]),
     }
     if is_current:
-        p2_tasks["run_rate"] = partial(db.get_run_rate_forecasts, family_id, year, month, settings_)
         # רק לחודש הנוכחי: "ההוצאות הקבועות שלנו" הוא מספר של עכשיו,
         # ולחודש שעבר הוא היה משהו אחר שאין לנו דרך לשחזר
         p2_tasks["recurring"] = partial(db.get_recurring_transactions, family_id,
@@ -1148,7 +1147,6 @@ def month_view():
     anomalies = db.budget_alerts(expense_breakdown) + list(p2["anomalies"])
     fixed = None
     if is_current:
-        anomalies += p2["run_rate"]
         fixed = db.summarise_recurring(p2["recurring"])
     month_transactions = db.month_transactions_from_rows(rows, settings_, user["id"])
 

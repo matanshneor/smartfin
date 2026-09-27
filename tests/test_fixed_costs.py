@@ -129,6 +129,16 @@ def test_the_card_is_only_built_for_the_current_month():
     from pathlib import Path
     src = (Path(__file__).resolve().parent.parent
            / "backend/app.py").read_text(encoding="utf-8")
-    block = src[src.index('p2_tasks["run_rate"]'):][:600]
-
-    assert 'p2_tasks["recurring"]' in block, "הוזז מחוץ לתנאי is_current"
+    # העוגן היה שורת התחזית שישבה באותו תנאי, והתחזית הוסרה. במקומו:
+    # השורה הראשונה מעל ‎p2_tasks["recurring"]‎ שמוזחת פחות ממנה (בדילוג
+    # על הערות) חייבת להיות ‎if is_current:‎ — כלומר היא בתוך התנאי.
+    lines = src.splitlines()
+    i = next(n for n, l in enumerate(lines) if 'p2_tasks["recurring"]' in l)
+    indent = len(lines[i]) - len(lines[i].lstrip())
+    for above in reversed(lines[:i]):
+        stripped = above.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if len(above) - len(above.lstrip()) < indent:
+            break
+    assert stripped == "if is_current:", "הוזז מחוץ לתנאי is_current"

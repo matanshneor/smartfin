@@ -93,7 +93,6 @@ SmartFin/
   (`/account.json`) covering profile, categories, projects and every
   transaction — the data-portability right, which one month at a time
   did not actually serve
-- Run-rate forecast: a warning about a projected overrun before the month ends
 
 ### Families and accounts
 

@@ -54,9 +54,6 @@
     --color-savings-light: #E8C96A;
     --gradient-danger:     linear-gradient(135deg, #DC2626, #B91C1C);
     --color-primary:       #A67C00;
-    --color-forecast-bg:     #F0F3F8;
-    --color-forecast-border: #3B5FA0;
-    --color-forecast-text:   #2C4677;
 
     /* Borders & shadows */
     --border-subtle:       1px solid rgba(28, 25, 23, 0.07);
@@ -943,13 +940,6 @@ li.transaction-item.open.swipe-ready > .swipe-content {
     background: #FCEDED;
     border-inline-start-color: var(--color-expense);
     color: #8E1A1A;
-}
-
-/* תחזית קצב ריצה — אזהרה מוקדמת (עוד לא חריגה בפועל), לכן צבע רגוע יותר */
-.alert-card.forecast {
-    background: var(--color-forecast-bg);
-    border-inline-start-color: var(--color-forecast-border);
-    color: var(--color-forecast-text);
 }
 
 /* ─── FAB ─────────────────────────────────────────────────────── */
