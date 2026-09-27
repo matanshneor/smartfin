@@ -113,44 +113,23 @@ def test_the_database_itself_refuses_an_absurd_date():
 
 
 # ─── מסלול הסנכרון ──────────────────────────────────────────────────────────
+#
+# היה המסלול הכותב היחיד שלא עבר ב-‎_parse_amount‎ ולא אימת קטגוריה. הוא
+# כבר לא כותב סכום או קטגוריה בכלל — מסלול העריכה הרגיל שומר אותם, עם כל
+# הבדיקות שלו, והסנכרון רק מפצל את הסדרה (ראו test_recurring_split.py).
 
-def _sync(client, **body):
-    return client.put(f"/api/recurring/{_TX}/sync", json=body)
+def test_the_sync_route_ignores_amount_and_category(client, monkeypatch):
+    """סכום פסול וקטגוריה זרה בגוף הבקשה לא מגיעים לשום מקום."""
+    seen = []
+    monkeypatch.setattr(app_module.db, "split_recurring_series",
+                        lambda *a: (seen.append(a) or ("new", None)))
 
-
-@pytest.mark.parametrize("amount", [-5000, 0, "abc", 1e400, 999_999_999])
-def test_the_sync_route_now_validates_the_amount(client, monkeypatch, amount):
-    monkeypatch.setattr(app_module.db, "update_recurring_template",
-                        lambda *a, **k: pytest.fail(f"נכתב סכום פסול: {amount}"))
-
-    assert _sync(client, amount=amount).status_code == 422
-
-
-def test_the_sync_route_now_validates_the_category(client, monkeypatch):
-    """בלי זה תבנית יכלה להצביע על קטגוריה של משפחה אחרת, וכל מופע
-    עתידי היה נוחת בדלי "אחר"."""
-    monkeypatch.setattr(app_module.db, "transaction_type", lambda *a: "expense")
-    monkeypatch.setattr(app_module.db, "update_recurring_template",
-                        lambda *a, **k: pytest.fail("נכתבה קטגוריה זרה"))
-
-    res = _sync(client, amount=100, category_id="99999999-9999-9999-9999-999999999999")
-
-    assert res.status_code == 422
-    assert res.get_json()["error"] == "הקטגוריה לא נמצאה"
-
-
-def test_the_sync_route_still_works_for_a_valid_request(client, monkeypatch):
-    """בקרת-נגד: זו התכונה — "שינית סכום, לעדכן גם את התבנית?"."""
-    monkeypatch.setattr(app_module.db, "transaction_type", lambda *a: "expense")
-    seen = {}
-    monkeypatch.setattr(app_module.db, "update_recurring_template",
-                        lambda tid, fam, **k: (seen.update(k) or ({"id": tid}, None)))
-
-    res = _sync(client, amount=250, category_id=_CAT)
+    res = client.put(f"/api/recurring/{_TX}/sync",
+                     json={"instance_id": "inst", "amount": -5000,
+                           "category_id": "99999999-9999-9999-9999-999999999999"})
 
     assert res.status_code == 200
-    assert seen["amount"] == 250
-    assert seen["category_id"] == _CAT
+    assert seen == [(_TX, "inst", _FAM)]
 
 
 # ─── כתיבה שלא נגעה בכלום ───────────────────────────────────────────────────

@@ -1587,7 +1587,9 @@ def settings():
     categories = db.get_categories(family_id)
     members    = db.get_family_members(family_id)       if family_id else []
     family     = db.get_family(family_id)               if family_id else {}
-    recurring  = db.get_recurring_transactions(family_id, settings=family_settings()) if family_id else []
+    # רק סדרות פעילות — ראו ‎db.is_active_template‎
+    recurring  = [r for r in db.get_recurring_transactions(family_id, settings=family_settings())
+                  if db.is_active_template(r)] if family_id else []
     projects   = db.get_projects(family_id, user["id"])  if family_id else []
     # הפרופיל שלי כבר נמצא ברשימת החברים שנשלפה למעלה — היא מחזירה שם
     # מלא, אימייל, טלפון ומקום עבודה לכל חבר. שליפה נוספת כאן הייתה
@@ -2266,48 +2268,27 @@ def stop_recurring_route(template_id):
 @limiter.limit("30 per minute")
 @login_required
 def sync_recurring_template(template_id):
-    """סנכרון חכם: מעדכן את התבנית הקבועה עצמה (לא מופע בודד), כך שרק
-    מופעים עתידיים שעוד לא נוצרו ישתמשו בערך החדש."""
+    """"עדכן להבא": מפצל את הסדרה במופע שנערך (ראו ‎db.split_recurring_series‎).
+
+    המסלול כבר לא כותב סכום, קטגוריה או תיאור. מסלול העריכה הרגיל שמר
+    אותם על המופע רגע קודם — עם כל הבדיקות שלו — והפיצול רק הופך את
+    המופע הזה לתבנית. זה גם סוגר את מה שהיה כאן: מסלול כתיבה שני, עם
+    ולידציה משלו, לאותם שדות."""
     user = get_current_user()
     if not user["family_id"]:
         return jsonify({"error": "לא מצאנו את המשפחה שלך — רעננו את הדף, ואם זה חוזר התחברו מחדש"}), 400
 
     body = request.get_json(silent=True) or {}
+    instance_id = body.get("instance_id")
+    if not isinstance(instance_id, str) or not instance_id:
+        return jsonify({"error": "חסר איזה חודש נערך — רעננו את הדף ונסו שוב"}), 422
 
-    # זה היה המסלול הכותב היחיד שלא עבר ב-_parse_amount ולא אימת קטגוריה:
-    # ‎float()‎ חשוף קיבל ‎-5000‎ ו-‎inf‎, שנעצרו רק ב-CHECK של המסד וחזרו
-    # למשתמש כ-500 סתום; ו-‎category_id‎ נכתב בלי שום בדיקת שייכות, כך
-    # שתבנית יכלה להצביע על קטגוריה של משפחה אחרת.
-    amount = body.get("amount")
-    if amount is not None:
-        amount, amount_err = _parse_amount(amount)
-        if amount_err:
-            return jsonify({"error": amount_err}), 422
-
-    category_id = body.get("category_id")
-    if category_id is not None:
-        try:
-            tx_type = db.transaction_type(template_id, user["family_id"])
-        except db.DataUnavailable:
-            return jsonify({"error": "לא הצלחנו לאמת את הקטגוריה — נסו שוב"}), 503
-        if tx_type is None:
-            return jsonify({"error": "התבנית הקבועה לא נמצאה"}), 404
-        category_id, cat_err = _validated_category(category_id, user, tx_type)
-        if cat_err:
-            return jsonify({"error": cat_err}), 422
-
-    result, err = db.update_recurring_template(
-        template_id, user["family_id"],
-        amount=amount,
-        category_id=category_id,
-        description=body.get("description"),
-    )
+    new_id, err = db.split_recurring_series(template_id, instance_id, user["family_id"])
     if err:
-        logger.error("update_recurring_template route: %s", err)
-        return jsonify({"error": "עדכון העסקה הקבועה נכשל — נסה שוב"}), 500
-    if not result:
-        return jsonify({"error": "התבנית הקבועה לא נמצאה"}), 404
-    return jsonify({"status": "ok", "transaction": result})
+        return jsonify({"error": "עדכון הסכום הקבוע נכשל — נסו שוב"}), 500
+    if not new_id:
+        return jsonify({"error": "העסקה הקבועה לא נמצאה"}), 404
+    return jsonify({"status": "ok", "template_id": new_id})
 
 
 # ─── API: Receipt scanning (צילום קבלה) ───────────────────────────────────────

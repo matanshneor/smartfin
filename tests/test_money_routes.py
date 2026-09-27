@@ -455,63 +455,60 @@ def test_resetting_an_empty_family_is_not_a_failure(reset):
     assert response.get_json()["deleted"] == 0
 
 
-# ═══ עסקה קבועה — סנכרון התבנית ══════════════════════════════════════════════
+# ═══ עסקה קבועה — "עדכן להבא" ═══════════════════════════════════════════════
+#
+# המסלול עדכן את שורת התבנית — שהיא גם העסקה של החודש הראשון — וכך
+# "מהחודש הבא 5,500" כתב מחדש גם את ינואר. עכשיו הוא מפצל את הסדרה ב-SQL
+# (‎split_recurring_series‎); הלוגיקה עצמה נבדקת מול המסד האמיתי ב-
+# ‎tests/test_recurring_split.py‎. כאן: מה שהמסלול מעביר, ומה שהוא לא כותב.
 
-def test_syncing_a_template_changes_only_the_template(money):
-    """מופעים שכבר נוצרו הם היסטוריה ואסור לכתוב אותם מחדש."""
+def test_syncing_splits_the_series_and_writes_nothing_itself(money):
+    """הבדיקה שהחליפה את "משנה רק את התבנית" — שבדקה בדיוק את הבאג:
+    היא דרשה שהתבנית, כלומר ינואר, תהפוך ל-7,500."""
     _seed(money, id="תבנית", amount=7000.0, is_recurring=True)
-    _seed(money, id="מופע", amount=7000.0, is_recurring=False)
-
-    response = money.client.put("/api/recurring/תבנית/sync", json={"amount": "7500"})
-
-    assert response.status_code == 200, response.get_json()
-    rows = {r["id"]: r["amount"] for r in money.transactions}
-    assert rows["תבנית"] == 7500.0
-    assert rows["מופע"] == 7000.0, "היסטוריה נכתבה מחדש"
-
-
-@pytest.mark.parametrize("amount", ["-5000", "inf", "0", "999999999"])
-def test_the_sync_route_validates_the_amount_like_every_other_write(money, amount):
-    """זה היה המסלול הכותב היחיד עם ‎float()‎ חשוף — ‎-5000‎ ו-‎inf‎
-    עברו את פייתון ונעצרו רק ב-CHECK של המסד, שחזר כ-500 סתום."""
-    _seed(money, id="תבנית", amount=7000.0, is_recurring=True)
-
-    response = money.client.put("/api/recurring/תבנית/sync", json={"amount": amount})
-
-    assert response.status_code == 422, f"{amount} התקבל"
-    assert money.only()["amount"] == 7000.0
-
-
-def test_the_sync_route_validates_the_category_too(money, monkeypatch):
-    """‎category_id‎ נכתב בלי שום בדיקת שייכות."""
-    _seed(money, id="תבנית", amount=7000.0, is_recurring=True, type="expense")
-    monkeypatch.setattr(db, "transaction_type", lambda tx, fid: "expense")
+    _seed(money, id="מופע", amount=7500.0, is_recurring=False, recurring_parent_id="תבנית")
+    money.fake.rpc_results["split_recurring_series"] = "מופע"
 
     response = money.client.put("/api/recurring/תבנית/sync",
-                                json={"category_id": "של משפחה אחרת"})
+                                json={"instance_id": "מופע", "amount": "9999"})
+
+    assert response.status_code == 200, response.get_json()
+    assert money.fake.rpcs == [("split_recurring_series", {
+        "p_template_id": "תבנית", "p_instance_id": "מופע", "p_family_id": _FAM})]
+    assert money.fake.written("transactions") == [], "המסלול כתב בעצמו"
+    rows = {r["id"]: r["amount"] for r in money.transactions}
+    assert rows == {"תבנית": 7000.0, "מופע": 7500.0}
+
+
+@pytest.mark.parametrize("body", [{}, {"instance_id": ""}, {"instance_id": 5}, {"amount": "7500"}])
+def test_syncing_without_the_edited_month_is_refused(money, body):
+    """בלי המופע אין איפה לפצל. לשונית ישנה שעוד שולחת רק ‎amount‎ מקבלת
+    הודעה ברורה ולא כתיבה."""
+    _seed(money, id="תבנית", amount=7000.0, is_recurring=True)
+
+    response = money.client.put("/api/recurring/תבנית/sync", json=body)
 
     assert response.status_code == 422
-    assert money.only()["category_id"] == _CAT_FOOD
+    assert money.fake.rpcs == []
 
 
-def test_syncing_a_template_that_is_not_recurring_is_refused(money):
-    """המסלול נועד לתבניות. שורה רגילה שתיפול לכאן הייתה נערכת בלי
-    אף אחת מהבדיקות של מסלול העריכה הרגיל."""
-    _seed(money, id="רגילה", amount=100.0, is_recurring=False)
+def test_nothing_to_split_is_a_404(money):
+    """‎null‎ מהפונקציה: לא נמצא, לא שייך לתבנית, משפחה אחרת, או סדרה שנגמרה."""
+    money.fake.rpc_results["split_recurring_series"] = None
 
-    response = money.client.put("/api/recurring/רגילה/sync", json={"amount": "7500"})
-
-    assert response.status_code == 404
-    assert money.only()["amount"] == 100.0
-
-
-def test_syncing_cannot_reach_into_another_family(money):
-    _seed(money, id="זרה", family_id=_OTHER, amount=7000.0, is_recurring=True)
-
-    response = money.client.put("/api/recurring/זרה/sync", json={"amount": "1"})
+    response = money.client.put("/api/recurring/זרה/sync", json={"instance_id": "מופע"})
 
     assert response.status_code == 404
-    assert money.only()["amount"] == 7000.0
+
+
+def test_a_failed_split_says_so(money):
+    """כאן זה נבלע עד היום: הדפדפן בלע את הכשל, והמשתמש שמע "עודכן"."""
+    money.fake.rpc_results["split_recurring_series"] = RuntimeError("db down")
+
+    response = money.client.put("/api/recurring/תבנית/sync", json={"instance_id": "מופע"})
+
+    assert response.status_code == 500
+    assert "נכשל" in response.get_json()["error"]
 
 
 # ═══ מונה הסריקות — המסלול היחיד שעולה כסף אמיתי ═════════════════════════════

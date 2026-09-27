@@ -159,14 +159,14 @@ def test_a_server_error_reopens_the_modal_when_it_was_closed_optimistically():
 def test_the_network_failure_path_still_reopens_too():
     """בקרת-נגד: התיקון הקודם (כשל רשת) לא נדרס. מעוגן מתחילת שרשרת
     השמירה (‎send(false)‎) כי הקובץ מכיל כמה ‎.catch‎ אחרים שאינם קשורים."""
+    import re
     js = _strip_comments(_read("frontend/static/js/transactions.js"))
     chain = js[js.index("send(false)"):]
-    # ‎sfNetError‎ מזהה בלי טעות את ה-catch החיצוני של שרשרת השמירה —
-    # יש בקובץ כמה ‎.catch‎ פנימיים אחרים (תופעות-לוואי) שלא קשורים.
-    catch_at = chain.index("sfNetError()")
-    catch_branch = chain[:catch_at][chain[:catch_at].rindex(".catch(function ()"):]
-
-    assert "openModal()" in catch_branch
+    # העוגן היה "הקריאה הראשונה ל-‎sfNetError‎", וזה הפסיק להיות נכון
+    # כש"עדכן להבא" התחיל להציג כשל רשת משלו. ה-catch החיצוני מזוהה
+    # עכשיו במה שמייחד אותו: הוא מסיר את שורת הביניים ופותח את החלון.
+    assert re.search(r"\.catch\(function \(\) \{\s*if \(placeholderRow\) \{\s*"
+                     r"placeholderRow\.remove\(\);\s*openModal\(\);", chain)
 
 
 # ─── ג6: אין יותר דיאלוג של הדפדפן ──────────────────────────────────────────

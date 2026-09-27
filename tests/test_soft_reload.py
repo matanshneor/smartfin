@@ -77,7 +77,8 @@ def test_the_base_template_defaults_to_not_opting_in():
 
 def test_the_caller_falls_back_to_a_full_reload_when_not_opted_in():
     js = _read(_JS / "transactions.js")
-    block = js[js.index("function finish()"):][:900]
+    # 1200 ולא 900: ‎finish‎ גדלה כש"עדכן להבא" התחיל להחזיר הודעה משלו
+    block = js[js.index("function finish()"):][:1200]
 
     assert "main[data-soft-reload]" in block, "הרענון הרך רץ בלי לבדוק הצטרפות"
     assert "window.location.reload()" in block, "אין נפילה חזרה לרענון מלא"

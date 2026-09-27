@@ -746,15 +746,20 @@
             const isNew = !editId;
             if (isNew) window.appFeedback();
 
+            // מה שפעולת-המשך (למטה) רוצה שהמשתמש יידע, במקום ההודעה הרגילה
+            let followUp = null;
+
             function finish() {
                 closeModal();
                 // רענון רך: מחליף את תוכן העמוד בלי ניווט, בלי ניתוח מחדש
                 // של ה-CSS וה-JS, ובלי לאבד את מיקום הגלילה. ההשהיה של
                 // 380ms הייתה שם רק כדי שהצליל יסתיים לפני שהדף נעלם —
                 // עכשיו הוא לא נעלם, אז היא מיותרת.
-                const message = editId ? 'העסקה עודכנה' : 'העסקה נוספה';
+                const message = followUp ? followUp.text : (editId ? 'העסקה עודכנה' : 'העסקה נוספה');
                 if (document.querySelector('main[data-soft-reload]')) {
-                    window.softReload().then(function () { window.showToast(message); });
+                    window.softReload().then(function () {
+                        window.showToast(message, followUp && followUp.error ? 'error' : undefined);
+                    });
                 } else {
                     // עמוד עם גרפים או האזנות ישירות — רענון מלא, כמו קודם
                     sessionStorage.setItem('sf_toast', message);
@@ -766,24 +771,41 @@
 
             // סנכרון חכם: אם עורכים מופע שנוצר מעסקה קבועה ושינו את הסכום —
             // מציעים לעדכן גם את התבנית, כדי שמופעים עתידיים ישתמשו בו
+            //
+            // "להבא" מפצל את הסדרה במופע הזה (ראו ‎split_recurring_series‎):
+            // החודשים הקודמים לא משתנים. שני המזהים נלכדים לפני שאלת האישור
+            // ולא נקראים אחריה: פתיחת עסקה אחרת מחליפה אותם, והשאלה מחכה למשתמש.
             if (editingRecurringParentId && amount !== originalAmount) {
+                const templateId = editingRecurringParentId;
+                const instanceId = editId;
                 sideEffects.push(function () {
                     return window.appConfirm({
-                        title: 'לעדכן גם את העסקה הקבועה?',
-                        message: 'שמנו לב ששינית את הסכום. האם לעדכן גם את התבנית הקבועה כדי שהחודשים הבאים ישתמשו בסכום החדש?',
+                        title: 'לעדכן גם את החודשים הבאים?',
+                        message: 'שינית את הסכום. להמשיך איתו גם בחודשים הבאים? החודשים שכבר עברו יישארו כמו שהם.',
                         confirmText: 'עדכן להבא',
                         danger: false,
                     }).then(function (ok) {
                         if (!ok) return;
-                        return fetch('/api/recurring/' + editingRecurringParentId + '/sync', {
+                        const failed = function (why) {
+                            followUp = { error: true,
+                                         text: 'העסקה עודכנה, אבל הסכום לחודשים הבאים לא השתנה — ' + why };
+                        };
+                        return fetch('/api/recurring/' + templateId + '/sync', {
                             method:  'PUT',
                             headers: { 'Content-Type': 'application/json' },
-                            body:    JSON.stringify({
-                                amount:      amount,
-                                category_id: payload.category_id,
-                                description: payload.description,
-                            }),
-                        }).catch(function () {});
+                            body:    JSON.stringify({ instance_id: instanceId }),
+                        }).then(function (r) {
+                            if (r.ok) {
+                                followUp = { text: 'העסקה עודכנה, והסכום החדש ימשיך מהחודש הזה' };
+                                return;
+                            }
+                            return r.json().then(function (d) { failed((d && d.error) || 'נסו שוב'); },
+                                                 function () { failed('נסו שוב'); });
+                        }, function () {
+                            // כאן כשל נבלע עד היום בשקט: המשתמש ענה "עדכן להבא",
+                            // שמע "העסקה עודכנה", והחודש הבא נוצר בסכום הישן.
+                            failed(window.sfNetError());
+                        });
                     });
                 });
             }

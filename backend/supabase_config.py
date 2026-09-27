@@ -1058,6 +1058,16 @@ _PER_MONTH = {
 }
 
 
+def is_active_template(row: dict, today=None) -> bool:
+    """תבנית שתאריך הסיום שלה עבר כבר לא קבועה.
+
+    כלל אחד לשני המסכים שמציגים "עסקאות קבועות". עד היום רק עמוד החודש
+    סינן, וההגדרות הציגו גם סדרות שנגמרו — תחת הכותרת "N עסקאות חוזרות
+    פעילות". אחרי "עדכן להבא" זה היה מציג את שכר הדירה פעמיים."""
+    end = row.get("recurring_end_date")
+    return not (end and str(end) < (today or clock.today()).isoformat())
+
+
 def summarise_recurring(rows: list, today=None) -> dict:
     """מסכם את העסקאות הקבועות לתמונה חודשית.
 
@@ -1076,8 +1086,7 @@ def summarise_recurring(rows: list, today=None) -> dict:
     items = []
 
     for row in rows:
-        end = row.get("recurring_end_date")
-        if end and str(end) < today.isoformat():
+        if not is_active_template(row, today):
             continue
         per_month = _PER_MONTH.get(row.get("recurring_frequency") or "monthly_1", 1.0)
         monthly = float(row["amount"]) * per_month
@@ -1295,34 +1304,27 @@ def update_transaction(transaction_id: str, family_id: str, data: dict):
         return None, str(e)
 
 
-def update_recurring_template(template_id: str, family_id: str, amount: float = None,
-                              category_id: str = None, description: str = None):
-    """סנכרון חכם: מעדכן רק את התבנית הקבועה עצמה (לא נוגע ב-date/type/תדירות),
-    כדי שרק מופעים עתידיים שעוד לא נוצרו ישתמשו בערך החדש — היסטוריה לא נכתבת מחדש.
-    Returns (updated_row, error)."""
+def split_recurring_series(template_id: str, instance_id: str, family_id: str):
+    """"עדכן להבא": מפצלת את הסדרה במופע שנערך. מחזירה (new_template_id, error).
+
+    עד היום זה עדכן את שורת התבנית — אבל התבנית היא גם העסקה של החודש
+    הראשון, אז "מהחודש הבא 5,500" הפך גם את ינואר ל-5,500. הפיצול עצמו,
+    ולמה הוא נראה כך, מתועד במיגרציה ‎20260927120000_split_recurring_series‎.
+
+    ‎(None, None)‎ = אין מה לפצל (המופע לא נמצא, לא של התבנית הזאת או של
+    משפחה אחרת, או שהסדרה כבר נגמרה לפניו). המסלול מחזיר על זה 404."""
     client = get_client()
     if not client:
         return None, "Database not configured"
-
-    patch = {}
-    if amount is not None:
-        patch["amount"] = amount
-    if category_id is not None:
-        patch["category_id"] = category_id
-    if description is not None:
-        patch["description"] = description
-    if not patch:
-        return None, "אין שדות לעדכון"
-
     try:
-        result = client.table("transactions") \
-            .update(patch) \
-            .eq("id", template_id) \
-            .eq("family_id", family_id) \
-            .eq("is_recurring", True) \
-            .execute()
-        return (result.data[0] if result.data else None), None
+        new_id = client.rpc("split_recurring_series", {
+            "p_template_id": template_id,
+            "p_instance_id": instance_id,
+            "p_family_id":   family_id,
+        }).execute().data
+        return (new_id or None), None
     except Exception as e:
+        logger.exception("split_recurring_series")
         return None, str(e)
 
 
