@@ -207,3 +207,41 @@ def test_a_template_without_skips_behaves_exactly_as_before(
     created, rows = _run(monkeypatch, [tpl], [])
 
     assert sorted(r["date"] for r in rows) == ["2026-08-01", "2026-09-01"]
+
+
+# ─── עסקה קבועה בתוך פרויקט ─────────────────────────────────────────────────
+#
+# המופע העתיק מהתבנית סכום, סוג, קטגוריה ומשתמש — אבל לא את הפרויקט. ועסקת
+# פרויקט נשמרת בלי ‎category_id‎ משפחתי. כלומר מהחודש השני כל תשלום לקבלן
+# נחת בהוצאות הבית כ"ללא קטגוריה", והפרויקט נתקע על התשלום הראשון. ואם
+# הפרויקט אישי — התשלומים נחשפו לכל המשפחה.
+
+_PROJECT = "33333333-3333-3333-3333-333333333333"
+_PROJECT_CAT = "44444444-4444-4444-4444-444444444444"
+
+
+def _contractor():
+    return {
+        "id": _TEMPLATE_ID, "amount": 2000, "type": "expense",
+        "date": "2026-07-01", "description": "קבלן",
+        "category_id": None, "user_id": None,
+        "project_id": _PROJECT, "project_category_id": _PROJECT_CAT,
+        "recurring_frequency": "monthly_1", "recurring_end_date": None,
+    }
+
+
+def test_an_occurrence_stays_in_its_project(frozen_september, monkeypatch):
+    created, rows = _run(monkeypatch, [_contractor()], [])
+
+    assert [r["date"] for r in rows] == ["2026-08-01", "2026-09-01"]
+    for r in rows:
+        assert r["project_id"] == _PROJECT, f"{r['date']} נחת בהוצאות הבית"
+        assert r["project_category_id"] == _PROJECT_CAT
+
+
+def test_a_household_occurrence_stays_out_of_projects(frozen_september, monkeypatch):
+    """בקרת-נגד: תבנית בלי פרויקט לא מקבלת פרויקט מאיפשהו."""
+    created, rows = _run(monkeypatch, [_salary(5)], [])
+
+    assert rows and all(r.get("project_id") is None for r in rows)
+    assert all(r.get("project_category_id") is None for r in rows)

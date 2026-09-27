@@ -1182,6 +1182,10 @@ def materialize_recurring(family_id: str) -> int:
                     "date":                d.isoformat(),
                     "description":         t.get("description") or "",
                     "category_id":         t.get("category_id"),
+                    # בלי אלה, מהחודש השני כל תשלום בתוך פרויקט נחת בהוצאות
+                    # הבית כ"ללא קטגוריה" — לעסקת פרויקט אין קטגוריה משפחתית
+                    "project_id":          t.get("project_id"),
+                    "project_category_id": t.get("project_category_id"),
                     "user_id":             t.get("user_id"),
                     "family_id":           family_id,
                     "is_recurring":        False,
