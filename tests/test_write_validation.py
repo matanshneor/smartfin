@@ -27,6 +27,8 @@ _CAT = "44444444-4444-4444-4444-444444444444"
 
 @pytest.fixture
 def client(monkeypatch):
+    # העסקה אינה בפרויקט אישי של מישהו אחר (ראו tx_visible_required)
+    monkeypatch.setattr(app_module.db, "personal_project_owner", lambda *a: None)
     app.config["TESTING"] = True
     monkeypatch.setattr(app_module.db, "get_categories",
                         lambda *a, **k: [{"id": _CAT, "name": "מכולת", "type": "expense"}])

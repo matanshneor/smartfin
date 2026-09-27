@@ -45,6 +45,8 @@ class _FakeClient:
 
 @pytest.fixture
 def client(monkeypatch):
+    # העסקה אינה בפרויקט אישי של מישהו אחר (ראו tx_visible_required)
+    monkeypatch.setattr(app_module.db, "personal_project_owner", lambda *a: None)
     app.config["TESTING"] = True
     fake = _FakeClient()
     monkeypatch.setattr(db, "get_client", lambda: fake)

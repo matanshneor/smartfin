@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 
 from dotenv import load_dotenv
@@ -969,6 +970,33 @@ def _filter_hidden_personal_projects(rows: list, viewer_user_id: str) -> list:
     ]
 
 
+_UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$")
+
+
+def personal_project_owner(tx_id: str, family_id: str):
+    """בעל הפרויקט האישי שהעסקה יושבת בו, או ‎None‎ (משפחתית, פרויקט
+    משותף, או שהעסקה לא קיימת — אז המסלול עצמו יחזיר 404).
+
+    הבסיס של ‎tx_visible_required‎ ב-app.py. RLS לא עוזרת כאן: היא
+    מפרידה בין משפחות, ופרויקט אישי הוא פרטיות *בתוך* משפחה."""
+    # מזהה שאינו UUID לא יתאים לאף שורה, והמסלול יחזיר עליו 404 בעצמו.
+    # בלי הבדיקה, PostgREST דוחה אותו בשגיאה — והיא הייתה הופכת ל-503.
+    if not _UUID_RE.match(str(tx_id)):
+        return None
+    client = get_client()
+    if not client:
+        raise DataUnavailable("personal_project_owner: no client")
+    try:
+        rows = client.table("transactions").select("project_id, projects(owner_id)") \
+            .eq("id", tx_id).eq("family_id", family_id).limit(1).execute().data or []
+    except Exception as e:
+        # כשל כאן חייב לעצור, לא לעבור: "לא הצלחתי לבדוק" אינו "מותר"
+        raise DataUnavailable("personal_project_owner") from e
+    if not rows:
+        return None
+    return (rows[0].get("projects") or {}).get("owner_id")
+
+
 def get_recent_transactions(family_id: str, limit: int = 5, settings: dict = None,
                             viewer_user_id: str = None) -> list:
     """Returns the most recent transactions with category and user info.
@@ -1032,19 +1060,26 @@ def add_transaction(data: dict):
         return None, str(e)
 
 
-def get_recurring_transactions(family_id: str, settings: dict = None) -> list:
-    """Returns all recurring transactions for the family."""
+def get_recurring_transactions(family_id: str, viewer_user_id: str, settings: dict = None) -> list:
+    """כל התבניות הקבועות שהצופה רשאי לראות.
+
+    זה היה הקורא היחיד בלי ‎_filter_hidden_personal_projects‎: תשלום קבוע
+    בפרויקט אישי הופיע לכל המשפחה בהגדרות ובעמוד החודש — תיאור, סכום
+    ומזהה, ומהמזהה אפשר היה לערוך ולמחוק. ‎viewer_user_id‎ חובה בכוונה,
+    כי המסנן פתוח כשהוא חסר."""
     client = get_client()
     if not client:
         return []
     try:
         result = client.table("transactions") \
-            .select("*, categories(name, icon), project_categories(name, icon), profiles(name, workplace)") \
+            .select("*, categories(name, icon), project_categories(name, icon), "
+                    "profiles(name, workplace), projects(owner_id, name, icon)") \
             .eq("family_id", family_id) \
             .eq("is_recurring", True) \
             .order("amount", desc=True) \
             .execute()
-        return _format_transactions(result.data, settings)
+        return _format_transactions(
+            _filter_hidden_personal_projects(result.data, viewer_user_id), settings)
     except Exception as e:
         logger.exception("get_recurring_transactions")
         raise DataUnavailable("get_recurring_transactions") from e
@@ -1087,6 +1122,11 @@ def summarise_recurring(rows: list, today=None) -> dict:
 
     for row in rows:
         if not is_active_template(row, today):
+            continue
+        # כסף של פרויקט לא נכנס ל"יוצא כל חודש" — בדיוק כמו ששאר עמוד
+        # החודש מחריג אותו (‎_household_rows‎). הוא נספר עד היום, גם בפרויקט
+        # משותף, ו"ההוצאות הקבועות שלנו" כללו את התשלום לקבלן.
+        if row.get("project_id"):
             continue
         per_month = _PER_MONTH.get(row.get("recurring_frequency") or "monthly_1", 1.0)
         monthly = float(row["amount"]) * per_month

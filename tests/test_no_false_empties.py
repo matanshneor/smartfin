@@ -21,7 +21,7 @@ pytestmark = pytest.mark.unit
 _READERS = [
     ("get_recent_transactions",  ("fam",)),
     ("get_month_transactions",   ("fam", 2026, 9)),
-    ("get_recurring_transactions", ("fam",)),
+    ("get_recurring_transactions", ("fam", "viewer")),
     ("get_projects",             ("fam", "viewer")),
     ("get_monthly_trend",        ("fam",)),
     ("get_months_archive",       ("fam",)),

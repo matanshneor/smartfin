@@ -1140,7 +1140,7 @@ def month_view():
     if is_current:
         # רק לחודש הנוכחי: "ההוצאות הקבועות שלנו" הוא מספר של עכשיו,
         # ולחודש שעבר הוא היה משהו אחר שאין לנו דרך לשחזר
-        p2_tasks["recurring"] = partial(db.get_recurring_transactions, family_id,
+        p2_tasks["recurring"] = partial(db.get_recurring_transactions, family_id, user["id"],
                                         settings=settings_)
     p2 = _run_queries(p2_tasks)
 
@@ -1415,6 +1415,32 @@ def add_project_route():
     return jsonify(proj), 201
 
 
+def tx_visible_required(arg: str):
+    """עסקה בפרויקט אישי של בן משפחה אחר — כאילו אינה קיימת.
+
+    בכל רשימה היא כבר מוסתרת (‎_filter_hidden_personal_projects‎), אבל
+    המסלולים שפועלים על עסקה לפי מזהה בדקו רק את פרויקט *היעד*. מי שהשיג
+    מזהה — ורשימת הקבועות בהגדרות מסרה אותו — יכול היה לערוך, למחוק
+    ולפתוח את הקבלה. 404 ולא 403: 403 היה מאשר שהעסקה קיימת.
+
+    ‎arg‎ הוא שם הפרמטר בכתובת (‎tx_id‎ / ‎template_id‎). חייב לשבת מתחת
+    ל-‎login_required‎."""
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            user = get_current_user()
+            owner = db.personal_project_owner(kwargs[arg], user["family_id"]) \
+                if user.get("family_id") else None
+            if owner and owner != user["id"]:
+                if _is_api_request():
+                    return jsonify({"error": "העסקה לא נמצאה"}), 404
+                return render_template("error.html", code=404,
+                                       message="לא נמצאה קבלה מצורפת לעסקה הזו"), 404
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
 def project_access_required(f):
     """חוסם גישה לפרויקט אישי של בן משפחה אחר.
 
@@ -1588,7 +1614,8 @@ def settings():
     members    = db.get_family_members(family_id)       if family_id else []
     family     = db.get_family(family_id)               if family_id else {}
     # רק סדרות פעילות — ראו ‎db.is_active_template‎
-    recurring  = [r for r in db.get_recurring_transactions(family_id, settings=family_settings())
+    recurring  = [r for r in db.get_recurring_transactions(family_id, user["id"],
+                                                          settings=family_settings())
                   if db.is_active_template(r)] if family_id else []
     projects   = db.get_projects(family_id, user["id"])  if family_id else []
     # הפרופיל שלי כבר נמצא ברשימת החברים שנשלפה למעלה — היא מחזירה שם
@@ -2094,6 +2121,7 @@ def add_transaction():
 @app.route("/api/transactions/<tx_id>", methods=["PUT"])
 @limiter.limit("60 per minute")
 @login_required
+@tx_visible_required("tx_id")
 def update_transaction(tx_id):
     user = get_current_user()
     if not user["family_id"]:
@@ -2196,6 +2224,7 @@ def update_transaction(tx_id):
 @app.route("/api/transactions/<tx_id>", methods=["DELETE"])
 @limiter.limit("60 per minute")
 @login_required
+@tx_visible_required("tx_id")
 def delete_transaction(tx_id):
     """מחיקת עסקה — ועסקה קבועה היא לא עסקה אחת.
 
@@ -2247,6 +2276,7 @@ def delete_transaction(tx_id):
 @app.route("/api/recurring/<template_id>", methods=["DELETE"])
 @limiter.limit("30 per minute")
 @login_required
+@tx_visible_required("template_id")
 def stop_recurring_route(template_id):
     """עוצר סדרה קבועה. במכוון לא מוחק את השורה: היא המופע הראשון בסדרה,
     כלומר כסף שבאמת זז, והדיאלוג בהגדרות מבטיח שמה שכבר נוצר יישאר.
@@ -2267,6 +2297,7 @@ def stop_recurring_route(template_id):
 @app.route("/api/recurring/<template_id>/sync", methods=["PUT"])
 @limiter.limit("30 per minute")
 @login_required
+@tx_visible_required("template_id")
 def sync_recurring_template(template_id):
     """"עדכן להבא": מפצל את הסדרה במופע שנערך (ראו ‎db.split_recurring_series‎).
 
@@ -2382,6 +2413,7 @@ def scan_receipt_route():
 
 @app.route("/receipts/<tx_id>", methods=["GET"])
 @login_required
+@tx_visible_required("tx_id")
 def view_receipt(tx_id):
     """מפנה לקבלה המצורפת לעסקה.
 
