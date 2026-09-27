@@ -736,3 +736,74 @@ def test_a_project_without_a_budget_is_fine(money, monkeypatch):
     response = money.client.post("/api/projects", json={"name": "שיפוץ"})
 
     assert response.status_code in (200, 201), response.get_json()
+
+
+# ═══ עריכת סדרה ותיקה — האזהרה סופרת רק מה שבאמת ייווצר ═══════════════════
+#
+# "הסדרה תיצור 6 עסקאות אחורה" קפץ על כל עריכה של תבנית ותיקה — גם על
+# תיקון שגיאת כתיב בתיאור — כי נספרו כל המופעים מאז תחילת הסדרה, כולל אלה
+# שכבר קיימים. מספר מפחיד ושקרי, שגדל עם גיל הסדרה.
+
+@pytest.fixture
+def mid_september(monkeypatch):
+    import datetime as _dt
+    from backend import clock
+    monkeypatch.setattr(clock, "today", lambda: _dt.date(2026, 9, 16))
+
+
+def _salary_series(money, start="2026-03-05"):
+    """משכורת ב-5 לחודש ממרץ; מאפריל עד ספטמבר המופעים כבר נוצרו."""
+    _seed(money, id="tpl", type="income", amount=14000.0, date=start,
+          description="משכורת", is_recurring=True, recurring_frequency="monthly_same",
+          recurring_skips=None)
+    for m in range(4, 10):
+        _seed(money, id=f"i{m}", type="income", amount=14000.0, date=f"2026-{m:02d}-05",
+              description="משכורת", is_recurring=False, recurring_parent_id="tpl")
+
+
+def _edit_template(money, **over):
+    body = {"amount": "14000", "type": "income", "date": "2026-03-05",
+            "description": "משכורת", "is_recurring": True,
+            "recurring_frequency": "monthly_same"}
+    body.update(over)
+    return money.client.put("/api/transactions/tpl", json=body)
+
+
+def test_fixing_a_typo_in_an_old_series_does_not_warn(money, mid_september):
+    _salary_series(money)
+
+    response = _edit_template(money, description="משכורת — עבודה")
+
+    assert response.status_code == 200, response.get_json()
+
+
+def test_moving_payday_within_the_month_does_not_warn(money, mid_september):
+    """מה-5 ל-10: כל חודש כבר קיבל את המשכורת שלו, ולא ייווצר כלום."""
+    _salary_series(money)
+
+    response = _edit_template(money, date="2026-03-10")
+
+    assert response.status_code == 200, response.get_json()
+
+
+def test_moving_the_start_a_year_back_warns_with_the_real_number(money, mid_september):
+    """מ-3.2025: אפריל 2025 עד ספטמבר 2026 הם 18 חודשים, שישה מהם כבר
+    קיימים. ייווצרו 12 — וזה המספר שצריך להיאמר, לא 18."""
+    _salary_series(money)
+
+    response = _edit_template(money, date="2025-03-05")
+
+    assert response.status_code == 409
+    assert response.get_json()["will_create"] == 12
+
+
+def test_a_failed_read_does_not_skip_the_question(money, mid_september, monkeypatch):
+    """לא ידוע כמה ייווצרו → לא שומרים בשקט."""
+    _salary_series(money)
+    def broken(*a):
+        raise db.DataUnavailable("down")
+    monkeypatch.setattr(db, "existing_occurrence_dates", broken, raising=False)
+
+    response = _edit_template(money, date="2025-03-05")
+
+    assert response.status_code == 503

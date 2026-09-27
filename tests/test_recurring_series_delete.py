@@ -31,6 +31,8 @@ _TX  = "22222222-2222-2222-2222-222222222222"
 def client(monkeypatch):
     # העסקה אינה בפרויקט אישי של מישהו אחר (ראו tx_visible_required)
     monkeypatch.setattr(app_module.db, "personal_project_owner", lambda *a: None)
+    # אזהרת המילוי-אחורה בעריכה בודקת מה הסדרה כבר תפסה; כאן אין סדרה
+    monkeypatch.setattr(app_module.db, "existing_occurrence_dates", lambda *a: None)
     app.config["TESTING"] = True
     monkeypatch.setattr(app_module.db, "get_transaction_receipt_path", lambda *a: None)
     # מסלול העריכה מאמת קטגוריה ובעלים לפני שהוא כותב

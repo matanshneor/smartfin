@@ -1984,19 +1984,25 @@ def family_members():
 _RETRO_WITHOUT_CONFIRM = 3
 
 
-def _retro_occurrences(body, tx_date):
-    """כמה מופעים ייווצרו רטרואקטיבית עבור התבנית שנשמרת עכשיו."""
-    from datetime import date as _date
+def _retro_occurrences(body, tx_date, already=None):
+    """כמה מופעים ייווצרו רטרואקטיבית עבור התבנית שנשמרת עכשיו.
 
+    ‎already‎: התאריכים שהסדרה כבר תפסה (בעריכה — ‎db.existing_occurrence_dates‎).
+    תקופה תפוסה לא נספרת, בדיוק כמו שהמנוע לא ייצר אותה."""
     if not body.get("is_recurring"):
         return 0
+    freq = body.get("recurring_frequency") or "monthly_1"
     template = {
         "date": tx_date,
-        "recurring_frequency": body.get("recurring_frequency") or "monthly_1",
+        "recurring_frequency": freq,
         "recurring_end_date": body.get("recurring_end_date") or None,
     }
     try:
-        return len(db._recurring_occurrences(template, clock.today()))
+        occurrences = db._recurring_occurrences(template, clock.today())
+        if already:
+            occurrences = [d for d in occurrences
+                           if not db._already_materialized(freq, d, already)]
+        return len(occurrences)
     except Exception:
         # ספירה שנכשלה לא חוסמת שמירה לגיטימית; היא רק לא מגינה.
         logger.exception("_retro_occurrences")
@@ -2164,8 +2170,16 @@ def update_transaction(tx_id):
         return jsonify({"error": freq_err}), 422
 
     # ראו ‎_RETRO_WITHOUT_CONFIRM‎: סדרה שתייצר עשרות שורות אחורה היא
-    # כמעט תמיד טעות הקלדה בתאריך, ולא בקשה.
-    retro = _retro_occurrences(body, tx_date)
+    # כמעט תמיד טעות הקלדה בתאריך, ולא בקשה. בעריכה נספרות רק תקופות
+    # שהסדרה עוד לא תפסה — אחרת כל תיקון בתבנית ותיקה הקפיץ את השאלה.
+    already = None
+    if body.get("is_recurring") and not request.args.get("confirm"):
+        try:
+            already = db.existing_occurrence_dates(tx_id, user["family_id"])
+        except db.DataUnavailable:
+            # לא ידוע כמה ייווצרו. לשמור בלי לשאול זה בדיוק מה שהשאלה מונעת.
+            return jsonify({"error": "לא הצלחנו לבדוק את הסדרה הקבועה — נסו שוב"}), 503
+    retro = _retro_occurrences(body, tx_date, already)
     if retro > _RETRO_WITHOUT_CONFIRM and not request.args.get("confirm"):
         return jsonify({
             "needs_confirm": True,

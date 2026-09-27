@@ -1286,6 +1286,32 @@ def _occurrence_period(freq: str, d):
     return (d.year, d.month)
 
 
+def existing_occurrence_dates(tx_id: str, family_id: str):
+    """התאריכים שהסדרה כבר "תפסה": המופעים שנוצרו והדילוגים. ‎None‎ אם
+    העסקה עוד אינה תבנית קבועה — אז שום מופע שלה לא קיים.
+
+    בשביל אזהרת המילוי-אחורה בעריכה: היא ספרה את כל המופעים מאז תחילת
+    הסדרה, כולל אלה שכבר קיימים, ותיקון תיאור של משכורת ממרץ קיבל
+    "הסדרה תיצור 6 עסקאות אחורה". המנוע מדלג על תקופה שכבר תפוסה
+    (‎_already_materialized‎), אז גם הספירה חייבת."""
+    from datetime import date
+    client = get_client()
+    if not client:
+        raise DataUnavailable("existing_occurrence_dates: no client")
+    try:
+        rows = client.table("transactions").select("is_recurring, recurring_skips") \
+            .eq("id", tx_id).eq("family_id", family_id).limit(1).execute().data or []
+        if not rows or not rows[0].get("is_recurring"):
+            return None
+        instances = client.table("transactions").select("date") \
+            .eq("recurring_parent_id", tx_id).eq("family_id", family_id) \
+            .execute().data or []
+    except Exception as e:
+        raise DataUnavailable("existing_occurrence_dates") from e
+    return [date.fromisoformat(str(r["date"])[:10]) for r in instances] + \
+           [date.fromisoformat(str(d)[:10]) for d in (rows[0].get("recurring_skips") or [])]
+
+
 def _already_materialized(freq: str, d, existing_dates) -> bool:
     """האם המופע הזה כבר קיים — לא לפי תאריך מדויק אלא לפי תקופה."""
     if freq in ("weekly", "biweekly"):
