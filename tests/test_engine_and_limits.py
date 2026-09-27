@@ -85,13 +85,7 @@ def test_the_window_is_one_constant_shared_by_the_query_and_the_maths():
 
 
 # ─── ב10: הגרף לא מציג עתיד ──────────────────────────────────────────────────
-
-def test_the_trend_chart_has_an_upper_bound():
-    body = _fn("get_monthly_trend")
-
-    assert '.lte("date"' in body, \
-        'גרף "12 החודשים האחרונים" מציג גם חודשים עתידיים'
-    assert "clock.today()" in body
+# נבדק עכשיו בהתנהגות: tests/test_row_cap.py::test_the_trend_shows_no_future_months
 
 
 # ─── ב10: קטגוריה חייבת שם וסוג ──────────────────────────────────────────────

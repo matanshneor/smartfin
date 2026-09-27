@@ -325,6 +325,26 @@ def fetch_profile(user_id: str):
         return None, False
 
 
+# ‎max_rows‎ של PostgREST (config.toml, ובלוח הבקרה בייצור): כל תשובה נחתכת
+# באלף שורות — בלי שגיאה ובלי סימן שמשהו חסר.
+_PAGE_SIZE = 1000
+
+
+def _fetch_all(make_query) -> list:
+    """כל השורות, בעמודים של ‎_PAGE_SIZE‎, עד עמוד קצר.
+
+    ‎make_query‎ בונה את השאילתה מחדש לכל עמוד (בונה-השאילתות של
+    PostgREST הוא בר-שינוי), והיא **חייבת** למיין לפי עמודה ייחודית —
+    בלי סדר קבוע, עמודים יכולים לחפוף או לדלג על שורות."""
+    rows, start = [], 0
+    while True:
+        page = make_query().range(start, start + _PAGE_SIZE - 1).execute().data or []
+        rows.extend(page)
+        if len(page) < _PAGE_SIZE:
+            return rows
+        start += _PAGE_SIZE
+
+
 def export_account_data(family_id: str, user_id: str) -> dict:
     """כל מה שהאפליקציה מחזיקה על המשתמש ועל המשפחה שלו, במבנה אחד.
 
@@ -340,11 +360,13 @@ def export_account_data(family_id: str, user_id: str) -> dict:
         raise DataUnavailable("export_account_data: no client")
 
     try:
-        transactions = client.table("transactions") \
-            .select("*, categories(name), projects(name)") \
-            .eq("family_id", family_id) \
-            .order("date", desc=True) \
-            .execute().data or []
+        # בעמודים: עם 55 עסקאות בחודש, אלף הן שנה וחצי — ומשם הקובץ "המלא"
+        # הכיל רק את האלף החדשות, וייראה שלם.
+        transactions = _fetch_all(lambda: client.table("transactions")
+                                  .select("*, categories(name), projects(name)")
+                                  .eq("family_id", family_id)
+                                  .order("date", desc=True)
+                                  .order("id"))
 
         # פרויקטים אישיים של אחרים מוסתרים גם כאן
         visible_projects = {p["id"] for p in get_projects(family_id, user_id)}
@@ -1166,11 +1188,13 @@ def materialize_recurring(family_id: str) -> int:
         if not templates:
             return 0, True
 
-        existing = client.table("transactions") \
-            .select("recurring_parent_id, date") \
-            .eq("family_id", family_id) \
-            .not_.is_("recurring_parent_id", "null") \
-            .execute().data
+        # בעמודים: הרשימה היא של כל המשפחה. מעבר לאלף המנוע הפסיק לראות
+        # חלק מהמופעים ויצר אותם שוב.
+        existing = _fetch_all(lambda: client.table("transactions")
+                              .select("recurring_parent_id, date")
+                              .eq("family_id", family_id)
+                              .not_.is_("recurring_parent_id", "null")
+                              .order("id"))
         # תאריכי המופעים הקיימים לכל תבנית. לא סט של צמדי (תבנית, תאריך):
         # ההשוואה היא לפי תקופה ולא לפי תאריך מדויק, אחרת שינוי תאריך
         # בתבנית מייצר סדרה חדשה שכולה "חסרה" ומכפיל חודשים אחורה.
@@ -2409,66 +2433,36 @@ def month_transactions_from_rows(rows: list, settings: dict = None,
         _filter_hidden_personal_projects(rows, viewer_user_id), settings)
 
 
-def get_monthly_trend(family_id: str, num_months: int = 6) -> list:
-    """Returns income/expense/savings totals for the last N months."""
-    client = get_client()
-    if not client:
-        return []
-    try:
-        today  = clock.today()
-        # Calculate start date (first day of N months ago)
-        start_month = today.month - num_months + 1
-        start_year  = today.year
-        while start_month <= 0:
-            start_month += 12
-            start_year  -= 1
-        start_date = f"{start_year}-{start_month:02d}-01"
+def monthly_trend(archive: list, num_months: int = 12, today=None) -> list:
+    """גרף המגמה בעמוד ההשוואה — נגזר מטבלת הארכיון שמתחתיו, ולא נשלף בנפרד.
 
-        # אותה החרגה בדיוק כמו get_monthly_summary ו-get_months_archive:
-        # עסקה המשויכת לפרויקט היא הוצאה חד-פעמית/הונית שמעוותת את תמונת
-        # ה"חודש הרגיל", ולכן היא מוחרגת מהמאזן החודשי בכל מקום.
-        # כאן זה נשכח, ולכן הגרף והטבלה באותו עמוד הציגו שני מספרים
-        # סותרים לאותו חודש — הפרש בגודל הפרויקט, בלי שום הסבר על המסך.
-        # ‎lte‎ ולא רק ‎gte‎: ‎_parse_date‎ מתיר 5 שנים קדימה, ותשלום
-        # ששולם מראש לפברואר 2027 יצר עמודה ב"12 החודשים האחרונים" —
-        # גרף שמכריז על עצמו כעבר והציג עתיד.
-        result = client.table("transactions") \
-            .select("type, amount, date") \
-            .eq("family_id", family_id) \
-            .is_("project_id", "null") \
-            .gte("date", start_date) \
-            .lte("date", clock.today().isoformat()) \
-            .execute()
+    הוא נשלף בנפרד עד היום, ושלוש פעמים הסכים עם הטבלה רק בערך: פעם שכח
+    להחריג פרויקטים (יולי ₪31,400 בגרף, ₪9,400 בטבלה), פעם נעצר ב"היום"
+    והשמיט את שכר הדירה של ה-30 בחודש הנוכחי, ופעם שלף אלפי עסקאות
+    שנחתכו ב-‎max_rows‎. עכשיו זה אותו מקור, אז הם לא יכולים להיפרד.
 
-        # Aggregate by year+month
-        buckets: dict = {}
-        for row in result.data:
-            d = row["date"][:7]  # "YYYY-MM"
-            if d not in buckets:
-                buckets[d] = {"income": 0.0, "expense": 0.0, "savings": 0.0}
-            t = row["type"]
-            if t in buckets[d]:
-                buckets[d][t] += float(row["amount"])
+    רק 12 החודשים שעד החודש הנוכחי: תשלום ששולם מראש לנובמבר לא יוצר
+    עמודה ב"12 החודשים האחרונים". מהישן לחדש, כמו שהגרף מצייר."""
+    hebrew_months = ["", "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני",
+                     "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"]
+    today = today or clock.today()
+    last = today.year * 12 + today.month - 1
+    first = last - num_months + 1
 
-        hebrew_months = [
-            "", "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני",
-            "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"
-        ]
-
-        trend = []
-        for key in sorted(buckets):
-            y, m = int(key[:4]), int(key[5:7])
-            trend.append({
-                "key":        key,
-                "year":       y,
-                "month":      m,
-                "month_name": hebrew_months[m],
-                **{k: round(v, 2) for k, v in buckets[key].items()},
-            })
-        return trend
-    except Exception as e:
-        logger.exception("get_monthly_trend")
-        raise DataUnavailable("get_monthly_trend") from e
+    trend = []
+    for m in archive or []:
+        y, mo = int(m["year"]), int(m["month"])
+        if not first <= y * 12 + mo - 1 <= last:
+            continue
+        trend.append({
+            "key":        f"{y}-{mo:02d}",
+            "year":       y,
+            "month":      mo,
+            "month_name": hebrew_months[mo],
+            **{k: round(float(m.get(k) or 0), 2) for k in ("income", "expense", "savings")},
+        })
+    trend.sort(key=lambda t: t["key"])
+    return trend
 
 
 def _category_history_averages(family_id: str, year: int, month: int):

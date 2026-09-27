@@ -28,7 +28,7 @@ def client(monkeypatch):
         ("get_monthly_summary", _db._empty_summary()),
         ("get_categories", []), ("get_family_members", []),
         ("family_has_no_transactions", False), ("get_recent_transactions", []),
-        ("get_months_archive", []), ("get_monthly_trend", []),
+        ("get_months_archive", []),
         ("fetch_month_rows", []), ("get_recurring_transactions", []),
         # עמוד החודש עבר לנסיעה אחת (get_month_page); שאר העמודים עדיין
         # קוראים לשולפים הבודדים שלמעלה, אז שניהם מזויפים כאן.

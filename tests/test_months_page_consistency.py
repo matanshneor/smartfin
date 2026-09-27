@@ -22,52 +22,10 @@ pytestmark = pytest.mark.unit
 _PROJECT_FILTER = '.is_("project_id", "null")'
 
 
-class _RecordingClient:
-    """מתעד אילו פילטרים הופעלו על השאילתה."""
-
-    def __init__(self, rows=None):
-        self.filters = []
-        self._rows = rows or []
-
-    def table(self, _n):        return self
-    def select(self, *a, **k):  return self
-    def eq(self, *a, **k):      self.filters.append(("eq", a)); return self
-    def gte(self, *a, **k):     return self
-    # גם ‎lte‎: לגרף המגמה יש גבול עליון (היום), אחרת תשלום ששולם מראש
-    # לשנה הבאה מופיע ב"12 החודשים האחרונים".
-    def lte(self, *a, **k):     return self
-    def lt(self, *a, **k):      return self
-    def is_(self, *a, **k):     self.filters.append(("is_", a)); return self
-    def execute(self):          return self
-
-    @property
-    def not_(self):             return self
-    @property
-    def data(self):             return self._rows
-
-
-def test_the_trend_chart_excludes_project_transactions(monkeypatch):
-    """הלב: הגרף חייב לשאול את אותה שאלה כמו הטבלה שמתחתיו."""
-    client = _RecordingClient()
-    monkeypatch.setattr(db, "get_client", lambda: client)
-
-    db.get_monthly_trend("fam-1", num_months=12)
-
-    assert ("is_", ("project_id", "null")) in client.filters, (
-        "גרף המגמה סופר עסקאות של פרויקטים, והטבלה מתחתיו לא — "
-        "אותו חודש יוצג בשני מספרים שונים"
-    )
-
-
-def test_the_trend_and_the_monthly_summary_agree_on_the_rule():
-    """שתי הפונקציות שמזינות את אותו עמוד חייבות להסכים. השוואת מקור
-    ולא תוצאה, כי זו בדיוק הסתירה שנוצרת כשמתקנים אחת ושוכחים את השנייה."""
-    trend   = inspect.getsource(db.get_monthly_trend)
-    summary = inspect.getsource(db.get_monthly_summary)
-
-    assert (_PROJECT_FILTER in trend) == (_PROJECT_FILTER in summary), (
-        "get_monthly_trend ו-get_monthly_summary לא מסכימות על החרגת פרויקטים"
-    )
+# גרף המגמה נשלף בנפרד עד 27.9.2026, ושלוש הבדיקות שישבו כאן בדקו
+# שהשליפה שלו מחריגה פרויקטים כמו הטבלה. הוא נגזר עכשיו מהטבלה עצמה
+# (‎db.monthly_trend(archive)‎), אז הסכמה ביניהם היא מבנית — ונבדקת
+# בהתנהגות ב-tests/test_row_cap.py. מה שנשאר לבדוק כאן הוא המקור היחיד.
 
 
 def test_the_archive_function_also_excludes_them():
@@ -79,19 +37,3 @@ def test_the_archive_function_also_excludes_them():
            / "20260804140000_months_archive_exclude_projects.sql").read_text(encoding="utf-8")
 
     assert re.search(r"project_id\s+IS\s+NULL", sql, re.IGNORECASE)
-
-
-def test_transactions_are_still_counted_when_they_have_no_project(monkeypatch):
-    """בקרת-נגד: ההחרגה לא אמורה לרוקן את הגרף מעסקאות רגילות."""
-    rows = [
-        {"type": "expense", "amount": 100, "date": "2026-09-03"},
-        {"type": "income",  "amount": 500, "date": "2026-09-05"},
-    ]
-    monkeypatch.setattr(db, "get_client", lambda: _RecordingClient(rows))
-
-    trend = db.get_monthly_trend("fam-1", num_months=3)
-
-    september = [m for m in trend if m.get("month") == 9]
-    assert september, f"החודש נעלם מהגרף: {trend}"
-    assert september[0]["expense"] == 100
-    assert september[0]["income"] == 500

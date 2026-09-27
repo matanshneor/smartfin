@@ -37,6 +37,7 @@ class _Query:
         self._limit = None
         self._single = None
         self._order = None
+        self._range = None
 
     # ─── בניית השאילתה ──────────────────────────────────────────────────
     def select(self, *_a, count=None, **_k):
@@ -79,7 +80,15 @@ class _Query:
         return self
 
     def is_(self, column, value):
-        self._filters.append(("is", column, None if value == "null" else value))
+        kind = "is_not" if getattr(self, "_negate", False) else "is"
+        self._negate = False
+        self._filters.append((kind, column, None if value == "null" else value))
+        return self
+
+    @property
+    def not_(self):
+        """‎.not_.is_("x", "null")‎ — "כל מה שאינו NULL"."""
+        self._negate = True
         return self
 
     def order(self, column, desc=False, **_k):
@@ -88,6 +97,10 @@ class _Query:
 
     def limit(self, n):
         self._limit = n
+        return self
+
+    def range(self, start, end):
+        self._range = (start, end)
         return self
 
     def single(self):
@@ -113,6 +126,8 @@ class _Query:
             if kind == "in" and actual not in value:
                 return False
             if kind == "is" and actual is not value:
+                return False
+            if kind == "is_not" and actual is value:
                 return False
         return True
 
@@ -151,8 +166,14 @@ class _Query:
             column, desc = self._order
             hit.sort(key=lambda r: (r.get(column) is None, r.get(column)), reverse=desc)
         total = len(hit)
+        if self._range is not None:
+            hit = hit[self._range[0]:self._range[1] + 1]
         if self._limit is not None:
             hit = hit[:self._limit]
+        # ‎max_rows‎ של PostgREST: תקרה על כל תשובה, בלי שגיאה ובלי סימן.
+        # כבוי כברירת מחדל; בדיקה שמדליקה אותו רואה את מה שהמסד האמיתי עושה.
+        if self._db.max_rows is not None:
+            hit = hit[:self._db.max_rows]
         if self._single == "single":
             if not hit:
                 raise LookupError(f"{self._table}: single() לא מצא שורה")
@@ -170,7 +191,8 @@ class FakeSupabase:
     לבין לתפוס ולידציה שמחזירה 422 **אחרי** שכבר שמרה.
     """
 
-    def __init__(self, **tables):
+    def __init__(self, max_rows=None, **tables):
+        self.max_rows = max_rows
         self.tables = {name: [dict(r) for r in rows] for name, rows in tables.items()}
         self.writes = []
         self.reads = []

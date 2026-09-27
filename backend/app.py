@@ -1305,7 +1305,7 @@ def months():
     family_id = user["family_id"]
     _sync_recurring(family_id)
     archive   = db.get_months_archive(family_id)              if family_id else []
-    trend     = db.get_monthly_trend(family_id, num_months=12) if family_id else []
+    trend     = db.monthly_trend(archive, 12)
     now       = clock.now()
     return render_template("months.html", active_page="months", user=user,
                            archive=archive, trend_data=trend,
