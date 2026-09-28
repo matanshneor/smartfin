@@ -88,23 +88,22 @@ def test_it_says_how_many_transactions_will_be_affected():
     assert "אין לפרויקט עסקאות" in block, "פרויקט ריק מקבל ניסוח משלו"
 
 
-def test_the_default_keeps_the_money():
-    """מחיקת פרויקט אינה מחיקת ההוצאות שנרשמו בו — הן קרו."""
+def test_there_is_no_choice_to_keep_the_transactions_any_more():
+    """"להשאיר" הבטיח "יחזרו לקטגוריה הרגילה", והן נחתו בבית כ"ללא קטגוריה"
+    וייקרו את החודשים שעברו. מתן החליט: מחיקת פרויקט מוחקת את העסקאות שבו."""
     block = _EDIT[_EDIT.index("project-danger"):]
-    active = re.search(r'class="toggle-btn active" data-tx-mode="(\w+)"', block)
-
-    assert active and active.group(1) == "keep"
-
-    js = (_JS / "project-edit.js").read_text(encoding="utf-8")
-    assert "let txMode = 'keep';" in js, "ה-JS מתחיל ממצב אחר מהסימון החזותי"
-
-
-def test_choosing_to_delete_changes_what_the_hint_says():
-    """בלי זה הבחירה נראית כמו העדפה ולא כמו החלטה על כסף."""
     js = (_JS / "project-edit.js").read_text(encoding="utf-8")
 
-    assert "projectTxModeHint" in js
-    assert "לא יופיעו בשום דוח" in js
+    assert "data-tx-mode" not in block
+    assert "הקטגוריה הרגילה" not in block + js
+    assert "txMode" not in js
+
+
+def test_the_warning_says_what_goes_and_what_does_not_change():
+    block = _EDIT[_EDIT.index("project-danger"):]
+
+    assert "יחד עם" in block and "project.spent" in block, "לא נאמר מה נמחק ובכמה כסף"
+    assert "ההוצאות של הבית לא ישתנו" in block
 
 
 # ─── ושהמסלול באמת עושה את שתי הפעולות ───────────────────────────────────────
@@ -133,14 +132,16 @@ def project(monkeypatch):
         yield c, fake
 
 
-def test_keeping_the_transactions_leaves_every_one_of_them(project):
+@pytest.mark.parametrize("body", [{}, {"delete_transactions": False}])
+def test_deleting_a_project_always_deletes_its_transactions(project, body):
+    """גם לשונית ישנה שעוד שולחת "להשאיר" — השרת לא סומך עליה."""
     c, fake = project
 
-    res = c.delete("/api/projects/p1", json={"delete_transactions": False})
+    res = c.delete("/api/projects/p1", json=body)
 
     assert res.status_code == 200
-    assert res.get_json()["deleted"] == 0
-    assert len(fake.rows("transactions")) == 3, "עסקאות נמחקו למרות הבחירה"
+    assert res.get_json()["deleted"] == 3
+    assert fake.rows("transactions") == [], "נשארו עסקאות בלי פרויקט — הן ינחתו בבית"
     assert fake.rows("projects") == []
 
 
@@ -148,7 +149,7 @@ def test_deleting_them_reports_the_real_number(project):
     """המספר מגיע מהשרת ולא מהדפדפן — אחרת הוא הבטחה שלא נבדקה."""
     c, fake = project
 
-    res = c.delete("/api/projects/p1", json={"delete_transactions": True})
+    res = c.delete("/api/projects/p1", json={})
 
     assert res.get_json()["deleted"] == 3
     assert fake.rows("transactions") == []

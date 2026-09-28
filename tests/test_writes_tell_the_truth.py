@@ -105,24 +105,18 @@ def test_editing_a_project_that_is_gone_is_not_success(fake):
 def test_deleting_a_project_with_its_transactions_says_how_many(fake):
     """"מחק גם עסקאות" לא נשא שום מספר. זו הפעולה ההרסנית ביותר שכל חבר
     יכול לעשות בלי סיסמה ובלי הרשאת מנהל."""
-    ok, wiped = db.delete_project("p1", _FAM, delete_transactions=True)
+    ok, wiped = db.delete_project("p1", _FAM)
 
     assert ok is True
     assert wiped == 2
     assert fake.rows("transactions") == []
 
 
-def test_deleting_a_project_without_its_transactions_leaves_the_money(fake):
-    """ברירת המחדל: העסקאות חוזרות להיספר תחת הקטגוריה הרגילה שלהן."""
-    ok, wiped = db.delete_project("p1", _FAM, delete_transactions=False)
-
-    assert ok is True and wiped == 0
-    assert len(fake.rows("transactions")) == 2
-
-
 def test_deleting_a_project_that_is_gone_is_not_success(fake):
+    """ובלי לגעת בעסקאות: "לא נמצא" אחרי שהן כבר נמחקו הוא הגרוע מכולם."""
     fake.tables["projects"] = []
 
-    ok, wiped = db.delete_project("p1", _FAM, delete_transactions=False)
+    ok, wiped = db.delete_project("p1", _FAM)
 
     assert ok is False and wiped == 0
+    assert len(fake.rows("transactions")) == 2, "העסקאות נמחקו לפני שהתברר שאין פרויקט"

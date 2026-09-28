@@ -2028,22 +2028,29 @@ def unshare_project(project_id: str, family_id: str, user_id: str):
         return False, str(e)
 
 
-def delete_project(project_id: str, family_id: str, delete_transactions: bool = False):
-    """מוחק את הפרויקט (וקטגוריותיו הייעודיות, ON DELETE CASCADE).
+def delete_project(project_id: str, family_id: str):
+    """מוחק את הפרויקט, את קטגוריותיו (ON DELETE CASCADE) — ואת העסקאות שבו.
 
-    delete_transactions=False (ברירת מחדל): העסקאות ששויכו אליו לא נמחקות —
-    הן חוזרות להיספר תחת הקטגוריה הרגילה שלהן (ON DELETE SET NULL).
-    delete_transactions=True: מוחקים גם את כל העסקאות ששויכו לפרויקט, לפני
-    מחיקת הפרויקט עצמו."""
+    הייתה בחירה "להשאיר את העסקאות", והמסך הבטיח שהן "יחזרו לקטגוריה
+    הרגילה שלהן". לעסקת פרויקט אין קטגוריה רגילה: היא נחתה בהוצאות הבית
+    כ"ללא קטגוריה" (ON DELETE SET NULL), והחודשים שבהם נרשמה התייקרו
+    בדיעבד — שיפוץ של ₪40,000 על שלושה חודשים. מתן החליט (28.9.2026):
+    מחיקת פרויקט מוחקת את העסקאות שבו. כסף של פרויקט ממילא לא נספר
+    בהוצאות הבית, אז אף סכום של הבית לא זז. כל עסקה נמחקת עוברת דרך
+    הטריגר לארכיון הפנימי."""
     client = get_client()
     if not client:
         return False, 0
     try:
-        wiped = 0
-        if delete_transactions:
-            gone = client.table("transactions").delete() \
-                .eq("project_id", project_id).eq("family_id", family_id).execute()
-            wiped = len(gone.data or [])
+        # קודם לוודא שהפרויקט עוד קיים: אחרת "לא נמצא" היה חוזר אחרי שהעסקאות
+        # כבר נמחקו — בדיוק כשבן משפחה אחר מחק אותו שנייה קודם.
+        exists = client.table("projects").select("id") \
+            .eq("id", project_id).eq("family_id", family_id).limit(1).execute().data
+        if not exists:
+            return False, 0
+        gone = client.table("transactions").delete() \
+            .eq("project_id", project_id).eq("family_id", family_id).execute()
+        wiped = len(gone.data or [])
         result = client.table("projects").delete() \
             .eq("id", project_id).eq("family_id", family_id).execute()
         # ‎(ok, wiped)‎ ולא ‎True‎: זו הפעולה ההרסנית ביותר שכל חבר יכול

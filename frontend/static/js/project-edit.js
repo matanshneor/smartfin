@@ -300,27 +300,6 @@ document.addEventListener('click', function (e) {
         toggle.setAttribute('aria-expanded', String(open));
     });
 
-    // בורר "מה לעשות עם העסקאות", באותו דפוס של שאר הפקדים באפליקציה.
-    let txMode = 'keep';
-    const hint = document.getElementById('projectTxModeHint');
-    form.querySelectorAll('[data-tx-mode]').forEach(function (b) {
-        b.addEventListener('click', function () {
-            txMode = b.dataset.txMode;
-            form.querySelectorAll('[data-tx-mode]').forEach(function (other) {
-                const on = other === b;
-                other.classList.toggle('active', on);
-                other.setAttribute('aria-checked', String(on));
-            });
-            // ההסבר משתנה איתו: אחרת הבחירה נראית כמו העדפה ולא כמו
-            // החלטה על כסף.
-            if (hint) {
-                hint.textContent = txMode === 'delete'
-                    ? 'העסקאות יימחקו יחד עם הפרויקט, ולא יופיעו בשום דוח'
-                    : 'העסקאות יחזרו להיספר בקטגוריה הרגילה שלהן';
-            }
-        });
-    });
-
     if (cancel) {
         cancel.addEventListener('click', function () {
             form.classList.remove('visible');
@@ -330,17 +309,12 @@ document.addEventListener('click', function (e) {
     }
 
     go.addEventListener('click', function () {
-        // בפרויקט ריק אין בורר בכלל, ו-‎txMode‎ נשאר ‎keep‎ — אין מה
-        // למחוק חוץ מהפרויקט עצמו.
-        const deleteTransactions = txMode === 'delete';
-
         go.disabled = true;
         errorEl.textContent = '';
 
         fetch('/api/projects/' + go.dataset.id, {
             method:  'DELETE',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ delete_transactions: deleteTransactions }),
         })
         .then(r => r.json().then(d => ({ ok: r.ok, d: d })))
         .then(function (res) {

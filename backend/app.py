@@ -1484,10 +1484,9 @@ def update_project_route(project_id):
 @project_access_required
 def delete_project_route(project_id):
     user = get_current_user()
-    body = request.get_json(silent=True) or {}
-    delete_transactions = bool(body.get("delete_transactions"))
-    ok, wiped = db.delete_project(project_id, user["family_id"],
-                                  delete_transactions=delete_transactions)
+    # בלי ‎delete_transactions‎ מהגוף: העסקאות נמחקות תמיד (ראו ‎db.delete_project‎),
+    # והשרת לא סומך על לשונית ישנה שעוד שולחת "להשאיר".
+    ok, wiped = db.delete_project(project_id, user["family_id"])
     if not ok:
         # שום שורה לא נגעה: הפרויקט כבר נמחק על ידי בן משפחה אחר, או
         # שהמזהה אינו של המשפחה הזאת. "נמחק" על כלום הוא שקר.

@@ -173,32 +173,21 @@
     </div>
 
     <div class="password-form" id="deleteProjectForm">
+        {# אין יותר בחירה "להשאיר את העסקאות": הן נחתו בבית כ"ללא קטגוריה"
+           והחודשים שעברו התייקרו, בזמן שהמסך הבטיח "יחזרו לקטגוריה הרגילה".
+           הסכומים כאן אמיתיים, מהפרויקט עצמו. #}
+        {% set amounts = [] %}
+        {% if project.spent %}{% set _ = amounts.append('הוצאות ₪' ~ '{:,.0f}'.format(project.spent)) %}{% endif %}
+        {% if project.income %}{% set _ = amounts.append('הכנסות ₪' ~ '{:,.0f}'.format(project.income)) %}{% endif %}
+        {% if project.savings %}{% set _ = amounts.append('חיסכון ₪' ~ '{:,.0f}'.format(project.savings)) %}{% endif %}
         <p class="delete-account-warning">
             {% if tx_count %}
-                הפרויקט יימחק, ואפשר לבחור מה יקרה ל-{{ tx_count }} העסקאות שלו.
+                הפרויקט יימחק יחד עם {{ 'העסקה' if tx_count == 1 else tx_count ~ ' העסקאות' }} שבו{% if amounts %} ({{ amounts | join(', ') }}){% endif %}.
+                ההוצאות של הבית לא ישתנו — כסף של פרויקט ממילא לא נספר בהן.
             {% else %}
                 הפרויקט יימחק. אין לו עסקאות, אז שום כסף לא יושפע.
             {% endif %}
         </p>
-
-        {% if tx_count %}
-        {# אותו פקד מקטעים של שאר האפליקציה (‎type-toggle‎), ולא רדיו
-           חדש. ברירת המחדל שומרת את הכסף: מחיקת פרויקט אינה מחיקת
-           ההוצאות שנרשמו בו — הן קרו. #}
-        <div class="form-group">
-            <label class="form-label">מה לעשות עם העסקאות?</label>
-            <div class="type-toggle" style="grid-template-columns: 1fr 1fr;"
-                 role="radiogroup" aria-label="מה לעשות עם העסקאות">
-                <button type="button" class="toggle-btn active" data-tx-mode="keep"
-                        role="radio" aria-checked="true">להשאיר אותן</button>
-                <button type="button" class="toggle-btn" data-tx-mode="delete"
-                        role="radio" aria-checked="false">למחוק גם אותן</button>
-            </div>
-            <p class="group-row-hint" id="projectTxModeHint">
-                {{ tx_count }} העסקאות יחזרו להיספר בקטגוריה הרגילה שלהן
-            </p>
-        </div>
-        {% endif %}
 
         <p class="form-error" id="deleteProjectError" role="alert"></p>
         <div class="edit-actions">

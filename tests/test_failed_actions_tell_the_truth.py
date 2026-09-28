@@ -188,19 +188,9 @@ def test_backing_out_of_the_second_question_cancels_everything(path):
     assert "=== null" in body, f"{path}: נסיגה עדיין מוחקת"
 
 
-def test_deleting_a_project_defaults_to_keeping_the_money():
-    """מחיקת פרויקט אינה מחיקת ההוצאות שנרשמו בו — הן קרו. הבורר
-    שמסומן מראש חייב להיות זה שמשאיר אותן."""
-    html = (_ROOT / "frontend/templates/project_edit.html").read_text(encoding="utf-8")
-    block = html[html.index("project-danger"):]
-    active = re.search(r'class="toggle-btn active" data-tx-mode="(\w+)"', block)
-
-    assert active, "אין ברירת מחדל מסומנת — מי שילחץ מהר ימחק כסף"
-    assert active.group(1) == "keep"
-
-    # וגם ב-JS: המשתנה מתחיל מ-keep, אחרת הסימון החזותי משקר
-    js = (_ROOT / "frontend/static/js/project-edit.js").read_text(encoding="utf-8")
-    assert "let txMode = 'keep';" in js
+# "ברירת המחדל שומרת את הכסף" ישבה כאן. הבחירה עצמה הוסרה ב-28.9.2026:
+# "להשאיר" נחת בבית כ"ללא קטגוריה" וייקר חודשים שעברו. ההחלטה החדשה
+# נבדקת ב-tests/test_project_list_and_deletion.py.
 
 
 def test_it_says_how_many_transactions_are_at_stake():
