@@ -74,11 +74,17 @@ if (shareBtn) {
 
 if (unshareBtn) {
     unshareBtn.addEventListener('click', function () {
+        // "אור רשם כאן 10 עסקאות" — מחושב בשרת. הפרויקט יוסתר מהם, כולל מה
+        // שהם עצמם רשמו בו, אז זה נאמר לפני ולא מתגלה אחרי.
+        const others = unshareBtn.dataset.othersNote;
         window.appConfirm({
             title: 'להחזיר את הפרויקט להיות אישי?',
-            message: 'רק אתה תראה את הפרויקט מעכשיו. עסקאות שכבר נרשמו כמשותפות יישארו כך.',
+            message: others
+                ? others + '. אחרי ההחזרה רק אתה תראה את הפרויקט — '
+                  + 'גם את העסקאות האלה, והן יסומנו "נרשם ע״י".'
+                : 'רק אתה תראה את הפרויקט מעכשיו. עסקאות שכבר נרשמו כמשותפות יישארו כך.',
             confirmText: 'החזר להיות אישי',
-            danger: false,
+            danger: !!others,
         }).then(function (ok) {
             if (!ok) return;
             fetch('/api/projects/' + projectId + '/unshare', { method: 'PUT' })

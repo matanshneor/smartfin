@@ -112,7 +112,8 @@
         {% if project.is_personal %}
         <button type="button" class="btn-sm btn-ghost" id="shareProjectBtn">הפוך למשותף</button>
         {% elif project.created_by == user.id %}
-        <button type="button" class="btn-sm btn-ghost" id="unshareProjectBtn">החזר להיות אישי</button>
+        <button type="button" class="btn-sm btn-ghost" id="unshareProjectBtn"
+                data-others-note="{{ others_note }}">החזר להיות אישי</button>
         {% endif %}
     </div>
 </div>

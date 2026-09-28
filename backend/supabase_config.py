@@ -1250,6 +1250,9 @@ def materialize_recurring(family_id: str) -> int:
                     # הבית כ"ללא קטגוריה" — לעסקת פרויקט אין קטגוריה משפחתית
                     "project_id":          t.get("project_id"),
                     "project_category_id": t.get("project_category_id"),
+                    # מי שרשם את הסדרה — לא מי שבמקרה פתח את האפליקציה היום
+                    # (בלי השדה, ברירת המחדל במסד היא ‎auth.uid()‎ של הריצה)
+                    "created_by":          t.get("created_by"),
                     "user_id":             t.get("user_id"),
                     "family_id":           family_id,
                     "is_recurring":        False,
@@ -2809,6 +2812,8 @@ def _format_transactions(rows: list, settings: dict = None) -> list:
             # כשמשנים סכום במופע.
             "recurring_parent_id":  row.get("recurring_parent_id"),
             "project_id":           row.get("project_id"),
+            # מי *רשם* את העסקה (לא של מי הכסף — זה ‎user_id‎). ‎None‎ = לא ידוע.
+            "created_by":           row.get("created_by"),
             "project_name":         proj.get("name"),
             "project_icon":         proj.get("icon"),
             "has_receipt":          bool(row.get("receipt_path")),

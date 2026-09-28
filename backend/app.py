@@ -1331,6 +1331,26 @@ def projects():
                            projects=project_list)
 
 
+def _member_names(family_id) -> dict:
+    """מזהה ← שם פרטי, לסימן "נרשם ע״י". מי שכבר לא במשפחה לא ברשימה."""
+    return {m["id"]: m["name"] for m in db.get_family_members(family_id)} if family_id else {}
+
+
+def _others_contributions(project: dict, viewer_id: str, names: dict) -> str:
+    """"אור רשם כאן 10 עסקאות" — לאישור של "החזר להיות אישי".
+
+    החזרה לאישי מסתירה את הפרויקט מכל השאר, כולל את מה שהם עצמם רשמו בו
+    (החלטת מתן, 28.9.2026). אז זה נאמר מראש, בשמות ובמספרים. עסקאות שלא
+    ידוע מי רשם (לפני שהתחלנו לשמור את זה) לא נספרות."""
+    from collections import Counter
+    counts = Counter(names.get(t["created_by"], "בן משפחה לשעבר")
+                     for t in project.get("transactions") or []
+                     if t.get("created_by") and t["created_by"] != viewer_id)
+    parts = [f"{name} רשם כאן {'עסקה אחת' if n == 1 else f'{n} עסקאות'}"
+             for name, n in counts.most_common()]
+    return " · ".join(parts)
+
+
 @app.route("/projects/<project_id>")
 @login_required
 def project_detail(project_id):
@@ -1341,7 +1361,8 @@ def project_detail(project_id):
         return redirect(url_for("projects"))
     return render_template("project_detail.html", active_page="projects", user=user,
                            project=project,
-                           member_colors=_member_colors(family_id))
+                           member_colors=_member_colors(family_id),
+                           member_names=_member_names(family_id))
 
 
 @app.route("/projects/<project_id>/edit")
@@ -1356,7 +1377,9 @@ def project_edit(project_id):
         return redirect(url_for("projects"))
     return render_template("project_edit.html", active_page="projects", user=user,
                            project=project,
-                           member_colors=_member_colors(family_id))
+                           member_colors=_member_colors(family_id),
+                           others_note=_others_contributions(project, user["id"],
+                                                             _member_names(family_id)))
 
 
 def _parse_project_body(body: dict):

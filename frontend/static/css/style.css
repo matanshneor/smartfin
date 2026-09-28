@@ -2114,6 +2114,13 @@ a.submit-btn {
     color: var(--color-text-soft);
 }
 
+/* "נרשם ע״י אור" — בפרויקט שחזר להיות אישי. מידע משני, לא תג: התג
+   הצבעוני כבר אומר "של מי הכסף", וזה משהו אחר. */
+.tx-entered-by {
+    color: var(--color-text-muted);
+    font-size: 0.85em;
+}
+
 .cat-tx-amount {
     font-weight: 700;
     font-variant-numeric: tabular-nums;

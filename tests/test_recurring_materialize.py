@@ -248,3 +248,13 @@ def test_a_household_occurrence_stays_out_of_projects(frozen_september, monkeypa
 
     assert rows and all(r.get("project_id") is None for r in rows)
     assert all(r.get("project_category_id") is None for r in rows)
+
+
+def test_an_occurrence_is_entered_by_whoever_entered_the_series(frozen_september, monkeypatch):
+    """בלי העתקה מפורשת, המסד היה רושם אותו על ‎auth.uid()‎ — כלומר על מי
+    שבמקרה פתח את האפליקציה באותו יום."""
+    template = {**_salary(5), "created_by": "אור"}
+
+    _, rows = _run(monkeypatch, [template], [])
+
+    assert rows and all(r["created_by"] == "אור" for r in rows)
