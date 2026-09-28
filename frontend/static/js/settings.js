@@ -1053,6 +1053,41 @@ document.addEventListener('click', function (e) {
         });
     }
 
+    /* פרויקטים אישיים של מי שיוצא. עד היום הם נעלמו: רשומים על מי שכבר
+     * לא במשפחה, אז מוסתרים מכולם, והכסף שבהם לא נספר בשום מקום.
+     *
+     * השאלה מגיעה מהשרת (409 עם המספר) ולא מהמסך — המנהל לא רואה את
+     * הפרויקטים האישיים של אחרים, ולכן לא יכול לדעת שהם קיימים.
+     *
+     * כמו ב-askAboutTransactions: המחיקה היא כפתור האישור, ונסיגה (Escape,
+     * לחיצה בחוץ) מבטלת את כל הפעולה. "להשאיר כמשותפים" לא מאבד כלום. */
+    function askAboutProjects(title, count) {
+        const what = count === 1 ? 'פרויקט אישי אחד' : count + ' פרויקטים אישיים';
+        return window.appConfirm({
+            title: title,
+            message: 'יש ' + what + '. אם תמחקו, יימחקו גם העסקאות שבהם. '
+                   + 'אם תשאירו, כל המשפחה תראה אותם.',
+            confirmText: 'למחוק אותם',
+            cancelText:  'להשאיר כמשותפים',
+        }).then(function (wipe) {
+            if (wipe === null) return null;
+            return wipe ? 'delete' : 'share';
+        });
+    }
+
+    // שולח; ואם השרת עונה שיש פרויקטים שמחכים להחלטה — שואל ושולח שוב.
+    // ‎null‎ = המשתמש נסוג בשאלה, ושום דבר לא נשלח.
+    function sendDeparture(url, method, body, projectsTitle) {
+        return send(url, method, body).then(function (res) {
+            if (res.ok || !res.data || !res.data.needs_choice) return res;
+            return askAboutProjects(projectsTitle, res.data.project_count)
+                .then(function (projects) {
+                    if (!projects) return null;
+                    return send(url, method, Object.assign({}, body, { projects: projects }));
+                });
+        });
+    }
+
     // ── הסרת בן משפחה (מנהל בלבד) ──
     document.addEventListener('click', function (e) {
         const btn = e.target.closest('.remove-member-btn');
@@ -1073,9 +1108,11 @@ document.addEventListener('click', function (e) {
         }).then(function (choice) {
             if (!choice) return;
             btn.disabled = true;
-            return send('/api/family/members/' + id, 'DELETE',
-                        { keep_transactions: choice === KEEP })
+            return sendDeparture('/api/family/members/' + id, 'DELETE',
+                                 { keep_transactions: choice === KEEP },
+                                 'הפרויקטים האישיים של ' + name)
                 .then(function (res) {
+                    if (!res) { btn.disabled = false; return; }
                     if (res.ok) {
                         window.showToast(name + ' הוסר מהמשפחה');
                         setTimeout(function () { window.location.reload(); }, 700);
@@ -1107,9 +1144,11 @@ document.addEventListener('click', function (e) {
             }).then(function (choice) {
                 if (!choice) return;
                 leaveBtn.disabled = true;
-                return send('/api/family/leave', 'POST',
-                            { keep_transactions: choice === KEEP })
+                return sendDeparture('/api/family/leave', 'POST',
+                                     { keep_transactions: choice === KEEP },
+                                     'הפרויקטים האישיים שלך')
                     .then(function (res) {
+                        if (!res) { leaveBtn.disabled = false; return; }
                         if (res.ok) {
                             window.location.href = '/';
                         } else {

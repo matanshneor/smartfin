@@ -46,7 +46,7 @@ def test_removing_a_member_passes_the_transaction_choice_through(client, monkeyp
     """הבחירה על העסקאות היא של המשתמש; אסור שהשרת יכריע אותה בשקט."""
     seen = {}
     monkeypatch.setattr(app_module.db, "remove_family_member",
-                        lambda uid, keep_transactions: (seen.update(
+                        lambda uid, keep_transactions, projects="ask": (seen.update(
                             uid=uid, keep=keep_transactions) or (True, None)))
 
     client.delete(f"/api/family/members/{_OTHER}", json={"keep_transactions": False})
@@ -58,7 +58,7 @@ def test_keeping_transactions_is_the_default_when_nothing_is_said(client, monkey
     """בקשה בלי העדפה מפורשת לא אמורה למחוק כסף."""
     seen = {}
     monkeypatch.setattr(app_module.db, "remove_family_member",
-                        lambda uid, keep_transactions: (seen.update(
+                        lambda uid, keep_transactions, projects="ask": (seen.update(
                             keep=keep_transactions) or (True, None)))
 
     client.delete(f"/api/family/members/{_OTHER}", json={})
@@ -69,7 +69,7 @@ def test_keeping_transactions_is_the_default_when_nothing_is_said(client, monkey
 def test_a_non_manager_is_refused_with_a_hebrew_reason(client, monkeypatch):
     """ה-DB מסרב באנגלית; המשתמש צריך לדעת למה."""
     monkeypatch.setattr(app_module.db, "remove_family_member",
-                        lambda uid, keep_transactions:
+                        lambda uid, keep_transactions, projects="ask":
                             (False, "only the family manager can remove members"))
 
     response = client.delete(f"/api/family/members/{_OTHER}", json={})
@@ -84,7 +84,7 @@ def test_leaving_updates_the_session_to_the_new_family(client, monkeypatch):
     """בלי זה ה-session ממשיך להצביע על המשפחה הישנה, כל שליפה מסוננת
     לפי משפחה שהמשתמש כבר לא חבר בה, והאפליקציה נראית ריקה."""
     monkeypatch.setattr(app_module.db, "leave_family",
-                        lambda keep_transactions: ("44444444-4444-4444-4444-444444444444", None))
+                        lambda keep_transactions, projects="ask": ("44444444-4444-4444-4444-444444444444", None))
 
     client.post("/api/family/leave", json={})
 
@@ -95,12 +95,64 @@ def test_leaving_updates_the_session_to_the_new_family(client, monkeypatch):
 def test_a_failed_leave_does_not_move_the_session(client, monkeypatch):
     """בקרת-נגד: אסור שכישלון ישאיר את המשתמש מצביע לשום מקום."""
     monkeypatch.setattr(app_module.db, "leave_family",
-                        lambda keep_transactions: (None, "boom"))
+                        lambda keep_transactions, projects="ask": (None, "boom"))
 
     client.post("/api/family/leave", json={})
 
     with client.session_transaction() as sess:
         assert sess["family_id"] == _FAM
+
+
+# ─── פרויקטים אישיים של מי שיוצא ─────────────────────────────────────────────
+#
+# עד 28.9.2026 הם נעלמו: רשומים על מי שכבר לא במשפחה — מוסתרים מכולם, והכסף
+# שבהם לא נספר בשום מקום. עכשיו מי שמחליט נשאל: "למחוק" או "להשאיר כמשותפים".
+# ההתנהגות במסד נבדקה בסימולציה על המסד האמיתי בתוך ‎begin … rollback‎.
+
+@pytest.mark.parametrize("sent,passed", [
+    ({"projects": "share"}, "share"), ({"projects": "delete"}, "delete"),
+    ({}, "ask"), ({"projects": "drop table"}, "ask"),
+])
+def test_the_project_choice_is_passed_through_or_asked(client, monkeypatch, sent, passed):
+    seen = {}
+    monkeypatch.setattr(app_module.db, "remove_family_member",
+                        lambda uid, keep_transactions, projects:
+                            (seen.update(projects=projects) or (True, None)))
+
+    client.delete(f"/api/family/members/{_OTHER}", json=sent)
+
+    assert seen["projects"] == passed
+
+
+def test_undecided_projects_come_back_as_a_question_with_the_number(client, monkeypatch):
+    """המנהל לא רואה פרויקטים אישיים של אחרים — רק המסד יכול לספור אותם."""
+    monkeypatch.setattr(app_module.db, "remove_family_member",
+                        lambda *a, **k: (False, 'P0001: needs_project_choice:2'))
+
+    response = client.delete(f"/api/family/members/{_OTHER}", json={})
+
+    assert response.status_code == 409
+    assert response.get_json() == {"needs_choice": True, "project_count": 2}
+
+
+def test_leaving_with_undecided_projects_asks_and_stays(client, monkeypatch):
+    """לא עוזבים עד שנענתה השאלה — גם ה-session לא זז."""
+    monkeypatch.setattr(app_module.db, "leave_family",
+                        lambda *a, **k: (None, "needs_project_choice:1"))
+
+    response = client.post("/api/family/leave", json={})
+
+    assert response.status_code == 409
+    assert response.get_json()["project_count"] == 1
+    with client.session_transaction() as sess:
+        assert sess["family_id"] == _FAM
+
+
+def test_other_errors_are_not_mistaken_for_the_question():
+    """בקרת-נגד לפענוח."""
+    assert app_module.db.project_choice_needed("needs_project_choice:3") == 3
+    assert app_module.db.project_choice_needed("only the family manager") == 0
+    assert app_module.db.project_choice_needed(None) == 0
 
 
 # ─── החלפת קוד ───────────────────────────────────────────────────────────────

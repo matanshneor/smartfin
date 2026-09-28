@@ -2704,6 +2704,20 @@ def _family_rpc_message(err: str) -> str:
     return "הפעולה נכשלה — נסו שוב"
 
 
+def _project_choice(body) -> str:
+    """"למחוק" או "להשאיר כמשותפים" — ומה שלא נבחר עדיין הוא שאלה."""
+    choice = body.get("projects")
+    return choice if choice in ("share", "delete") else "ask"
+
+
+def _needs_project_choice(err):
+    """409 עם המספר, כדי שהמסך ישאל — אותו דפוס כמו ‎/api/family/join‎."""
+    count = db.project_choice_needed(err)
+    if not count:
+        return None
+    return jsonify({"needs_choice": True, "project_count": count}), 409
+
+
 @app.route("/api/family/members/<member_id>", methods=["DELETE"])
 @login_required
 @limiter.limit("10 per minute")
@@ -2721,7 +2735,10 @@ def remove_family_member_route(member_id):
     body = request.get_json(silent=True) or {}
     keep = body.get("keep_transactions", True) is not False
 
-    ok, err = db.remove_family_member(member_id, keep_transactions=keep)
+    ok, err = db.remove_family_member(member_id, keep_transactions=keep,
+                                      projects=_project_choice(body))
+    if not ok and _needs_project_choice(err):
+        return _needs_project_choice(err)
     if not ok:
         return jsonify({"error": _family_rpc_message(err)}), 403
     return jsonify({"status": "ok"})
@@ -2740,7 +2757,9 @@ def leave_family_route():
     body = request.get_json(silent=True) or {}
     keep = body.get("keep_transactions", True) is not False
 
-    new_family_id, err = db.leave_family(keep_transactions=keep)
+    new_family_id, err = db.leave_family(keep_transactions=keep, projects=_project_choice(body))
+    if err and _needs_project_choice(err):
+        return _needs_project_choice(err)
     if err or not new_family_id:
         return jsonify({"error": _family_rpc_message(err)}), 400
 

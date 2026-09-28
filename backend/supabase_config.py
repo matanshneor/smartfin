@@ -1422,7 +1422,15 @@ def split_recurring_series(template_id: str, instance_id: str, family_id: str):
         return None, str(e)
 
 
-def remove_family_member(user_id: str, keep_transactions: bool = True):
+def project_choice_needed(err) -> int:
+    """כמה פרויקטים אישיים מחכים להחלטה, לפי השגיאה של הסרה/עזיבה; 0 אם
+    זו שגיאה אחרת. המסד הוא היחיד שיכול לספור אותם — הם אישיים, ולכן
+    מוסתרים מהמנהל שמסיר (מיגרציה ‎20260928120000‎)."""
+    m = re.search(r"needs_project_choice:(\d+)", err or "")
+    return int(m.group(1)) if m else 0
+
+
+def remove_family_member(user_id: str, keep_transactions: bool = True, projects: str = "ask"):
     """מסירה בן משפחה. מנהל המשפחה בלבד. מחזירה (ok, error).
 
     הכללים נאכפים ב-DB ולא כאן: הפונקציה נגזרת מ-auth.uid(), בודקת שהקורא
@@ -1433,22 +1441,28 @@ def remove_family_member(user_id: str, keep_transactions: bool = True):
         return False, "Database not configured"
     try:
         client.rpc("remove_family_member",
-                   {"p_user_id": user_id, "p_keep_transactions": keep_transactions}).execute()
+                   {"p_user_id": user_id, "p_keep_transactions": keep_transactions,
+                    "p_projects": projects}).execute()
         return True, None
     except Exception as e:
         logger.exception("remove_family_member")
         return False, str(e)
 
 
-def leave_family(keep_transactions: bool = True):
+def leave_family(keep_transactions: bool = True, projects: str = "ask"):
     """עוזבת את המשפחה הנוכחית ופותחת משפחה חדשה וריקה.
-    מחזירה (new_family_id, error)."""
+    מחזירה (new_family_id, error).
+
+    ‎projects‎ (גם ב-‎remove_family_member‎): מה עושים עם הפרויקטים האישיים
+    של מי שיוצא — ‎share‎ / ‎delete‎ / ‎ask‎. ב-‎ask‎, כשיש כאלה, השגיאה היא
+    ‎needs_project_choice:N‎ (ראו ‎project_choice_needed‎) והמסך שואל."""
     client = get_client()
     if not client:
         return None, "Database not configured"
     try:
         result = client.rpc("leave_family",
-                            {"p_keep_transactions": keep_transactions}).execute()
+                            {"p_keep_transactions": keep_transactions,
+                             "p_projects": projects}).execute()
         return (result.data or None), None
     except Exception as e:
         logger.exception("leave_family")
