@@ -109,30 +109,33 @@ def test_a_failed_leave_does_not_move_the_session(client, monkeypatch):
 # שבהם לא נספר בשום מקום. עכשיו מי שמחליט נשאל: "למחוק" או "להשאיר כמשותפים".
 # ההתנהגות במסד נבדקה בסימולציה על המסד האמיתי בתוך ‎begin … rollback‎.
 
-@pytest.mark.parametrize("sent,passed", [
-    ({"projects": "share"}, "share"), ({"projects": "delete"}, "delete"),
-    ({}, "ask"), ({"projects": "drop table"}, "ask"),
-])
-def test_the_project_choice_is_passed_through_or_asked(client, monkeypatch, sent, passed):
+@pytest.mark.parametrize("sent", [{}, {"projects": "share"}, {"projects": "ask"}])
+def test_a_removed_members_personal_projects_are_always_deleted(client, monkeypatch, sent):
+    """החלטת מתן: המנהל לא נשאל ולא בוחר — גם בקשה שמבקשת "משותפים"."""
     seen = {}
     monkeypatch.setattr(app_module.db, "remove_family_member",
                         lambda uid, keep_transactions, projects:
                             (seen.update(projects=projects) or (True, None)))
 
-    client.delete(f"/api/family/members/{_OTHER}", json=sent)
+    response = client.delete(f"/api/family/members/{_OTHER}", json=sent)
+
+    assert response.status_code == 200
+    assert seen["projects"] == "delete"
+
+
+@pytest.mark.parametrize("sent,passed", [
+    ({"projects": "share"}, "share"), ({"projects": "delete"}, "delete"),
+    ({}, "ask"), ({"projects": "drop table"}, "ask"),
+])
+def test_whoever_leaves_decides_about_their_own_projects(client, monkeypatch, sent, passed):
+    seen = {}
+    monkeypatch.setattr(app_module.db, "leave_family",
+                        lambda keep_transactions, projects:
+                            (seen.update(projects=projects) or ("new-fam", None)))
+
+    client.post("/api/family/leave", json=sent)
 
     assert seen["projects"] == passed
-
-
-def test_undecided_projects_come_back_as_a_question_with_the_number(client, monkeypatch):
-    """המנהל לא רואה פרויקטים אישיים של אחרים — רק המסד יכול לספור אותם."""
-    monkeypatch.setattr(app_module.db, "remove_family_member",
-                        lambda *a, **k: (False, 'P0001: needs_project_choice:2'))
-
-    response = client.delete(f"/api/family/members/{_OTHER}", json={})
-
-    assert response.status_code == 409
-    assert response.get_json() == {"needs_choice": True, "project_count": 2}
 
 
 def test_leaving_with_undecided_projects_asks_and_stays(client, monkeypatch):

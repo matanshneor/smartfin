@@ -1056,8 +1056,9 @@ document.addEventListener('click', function (e) {
     /* פרויקטים אישיים של מי שיוצא. עד היום הם נעלמו: רשומים על מי שכבר
      * לא במשפחה, אז מוסתרים מכולם, והכסף שבהם לא נספר בשום מקום.
      *
-     * השאלה מגיעה מהשרת (409 עם המספר) ולא מהמסך — המנהל לא רואה את
-     * הפרויקטים האישיים של אחרים, ולכן לא יכול לדעת שהם קיימים.
+     * נשאל רק מי שעוזב בעצמו — אלה הפרויקטים שלו. כשהמנהל מסיר, הם נמחקים
+     * תמיד (החלטת מתן), והחלון הראשון אומר את זה מראש. השאלה מגיעה מהשרת
+     * (409 עם המספר), כי רק המסד יודע אם יש כאלה.
      *
      * כמו ב-askAboutTransactions: המחיקה היא כפתור האישור, ונסיגה (Escape,
      * לחיצה בחוץ) מבטלת את כל הפעולה. "להשאיר כמשותפים" לא מאבד כלום. */
@@ -1099,7 +1100,8 @@ document.addEventListener('click', function (e) {
         window.appConfirm({
             title: 'להסיר את ' + name + ' מהמשפחה?',
             message: name + ' יאבד גישה לתקציב המשפחתי מיד, ותיפתח לו משפחה '
-                   + 'חדשה וריקה. אפשר לצרף אותו שוב בקוד הזמנה.',
+                   + 'חדשה וריקה. אפשר לצרף אותו שוב בקוד הזמנה.\n\n'
+                   + 'אם יש לו פרויקטים אישיים, הם יימחקו יחד עם העסקאות שבהם.',
             confirmText: 'המשך',
         }).then(function (ok) {
             if (!ok) return null;
@@ -1108,11 +1110,9 @@ document.addEventListener('click', function (e) {
         }).then(function (choice) {
             if (!choice) return;
             btn.disabled = true;
-            return sendDeparture('/api/family/members/' + id, 'DELETE',
-                                 { keep_transactions: choice === KEEP },
-                                 'הפרויקטים האישיים של ' + name)
+            return send('/api/family/members/' + id, 'DELETE',
+                        { keep_transactions: choice === KEEP })
                 .then(function (res) {
-                    if (!res) { btn.disabled = false; return; }
                     if (res.ok) {
                         window.showToast(name + ' הוסר מהמשפחה');
                         setTimeout(function () { window.location.reload(); }, 700);

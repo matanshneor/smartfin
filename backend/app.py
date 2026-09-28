@@ -2757,10 +2757,10 @@ def remove_family_member_route(member_id):
     body = request.get_json(silent=True) or {}
     keep = body.get("keep_transactions", True) is not False
 
-    ok, err = db.remove_family_member(member_id, keep_transactions=keep,
-                                      projects=_project_choice(body))
-    if not ok and _needs_project_choice(err):
-        return _needs_project_choice(err)
+    # הפרויקטים האישיים של מי שמוסר נמחקים תמיד, עם העסקאות שבהם (החלטת
+    # מתן, 28.9.2026): המנהל לא רואה אותם, ואסור שיקבל לידיו דברים פרטיים של
+    # מי שהוסר. לא נקרא מהגוף — מי שעוזב בעצמו הוא היחיד שנשאל.
+    ok, err = db.remove_family_member(member_id, keep_transactions=keep, projects="delete")
     if not ok:
         return jsonify({"error": _family_rpc_message(err)}), 403
     return jsonify({"status": "ok"})
