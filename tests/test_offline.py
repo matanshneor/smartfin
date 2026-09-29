@@ -196,7 +196,11 @@ def test_a_failed_save_on_the_dashboard_brings_the_form_back():
     catch = catch[catch.index(".catch(function () {"):][:900]
 
     assert "placeholderRow.remove();" in catch
-    assert "openModal();" in catch, "החלון לא מוחזר — מה שהוקלד אבד"
+    # ‎reopenAfterFailure‎ ולא ‎openModal‎ ישירות: היא גם מחזירה את הקבלה
+    # שהסגירה האופטימית ניקתה. ושהיא אכן פותחת את החלון:
+    assert "reopenAfterFailure();" in catch, "החלון לא מוחזר — מה שהוקלד אבד"
+    helper = js[js.index("function reopenAfterFailure()"):][:200]
+    assert "openModal();" in helper
     assert "formError.textContent = window.sfNetError();" in catch
 
 

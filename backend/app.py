@@ -2381,6 +2381,30 @@ def sync_recurring_template(template_id):
 
 # ─── API: Receipt scanning (צילום קבלה) ───────────────────────────────────────
 
+@app.route("/api/receipts/discard", methods=["POST"])
+@limiter.limit("30 per minute")
+@login_required
+def discard_receipt():
+    """מוחק תמונה שנסרקה ולא נשמרה עם עסקה.
+
+    הסריקה מעלה את התמונה **לפני** שיש עסקה. סריקה שננטשה — ✕ בלי שמירה,
+    סריקה שנייה באותו טופס, או תוצאה שחזרה לטופס שכבר נסגר — השאירה קובץ
+    שאף שורה לא מצביעה עליו. הניקוי הלילי שהיה אמור לאסוף אותם נכשל בכל
+    ריצה (ראו ‎db.delete_receipts‎), אז הדפדפן מבקש למחוק ברגע הנטישה.
+
+    רק בתיקייה של המשפחה, ורק קובץ שאף עסקה לא מצביעה עליו: אחרת זו
+    דרך למחוק קבלה של עסקה קיימת."""
+    user = get_current_user()
+    path = (request.get_json(silent=True) or {}).get("path")
+    if (not user["family_id"] or not isinstance(path, str) or ".." in path
+            or not path.startswith(f"{user['family_id']}/")):
+        return jsonify({"error": "הקובץ לא נמצא"}), 404
+    if db.receipt_in_use(path, user["family_id"]):
+        return jsonify({"error": "הקבלה מצורפת לעסקה"}), 409
+    db.delete_receipt(session.get("access_token"), path)
+    return jsonify({"status": "ok"})
+
+
 @app.route("/api/receipts/scan", methods=["POST"])
 # המסלול היחיד כאן שעולה כסף אמיתי, והיחיד מבין 23 המסלולים הכותבים
 # שלא הייתה עליו שום הגבלה. סריקה אחת לוקחת 2-6 שניות, אז עשר לדקה

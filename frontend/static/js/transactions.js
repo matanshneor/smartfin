@@ -51,6 +51,28 @@
     let editingRecurringParentId = null; // אם עורכים מופע שנוצר מתבנית קבועה — מזהה התבנית
     let originalAmount = null;  // הסכום שנטען לעריכה, להשוואה לזיהוי "שינית את הסכום"
     let categoriesCache = null;
+
+    /* סריקת קבלה לוקחת כמה שניות, ובזמן הזה אפשר לסגור את הטופס ולפתוח עסקה
+     * אחרת. התשובה נכתבה לטופס שפתוח **בזמן שהיא חוזרת** — כלומר לתוך עסקה
+     * קיימת שנפתחה לתיקון: סכום, תיאור, תאריך וקטגוריה הוחלפו, והקבלה הוצמדה.
+     *
+     * ‎scanSeq‎ עולה בכל סריקה ובכל סגירה/פתיחה של הטופס; תשובה שהמספר שלה
+     * כבר לא הנוכחי לא נוגעת בכלום. ‎claimedReceipt‎ הוא הקבלה ששמירה כבר
+     * לקחה — כדי שסגירת החלון אחרי "שמור" (שבדף הבית קורית לפני שהשרת ענה)
+     * לא תמחק אותה. */
+    let scanSeq = 0;
+    let claimedReceipt = null;
+
+    // תמונה שהועלתה לסריקה ולא נשמרה עם עסקה. השרת מוחק רק מה שאף עסקה
+    // לא מצביעה עליו; כשל כאן לא מעניין את המשתמש — הכי גרוע, נשאר קובץ.
+    function discardReceipt(path) {
+        if (!path || path === claimedReceipt) return;
+        fetch('/api/receipts/discard', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ path: path }),
+        }).catch(function () {});
+    }
     let membersCache  = null;
     let projectsCache = null;
     let projectCategoriesCache = {}; // מפתח: "<projectId>:<type>"
@@ -260,6 +282,8 @@
     function closeModal() {
         overlay.classList.remove('open');
         document.body.style.overflow = '';
+        scanSeq++;                              // סריקה שעוד רצה — כבר לא של אף טופס
+        discardReceipt(txReceiptPath.value);    // נסרקה ולא נשמרה
         resetScanUI();
         formError.textContent = '';
         if (modalLastFocused) { modalLastFocused.focus(); modalLastFocused = null; }
@@ -337,6 +361,7 @@
     }
 
     function openAddModal() {
+        scanSeq++;
         editId = null;
         editingRecurringParentId = null;
         originalAmount = null;
@@ -353,6 +378,8 @@
     }
 
     function openEditModal(tx, triggerEl) {
+        scanSeq++;
+        txReceiptPath.value = '';               // לא יורשים קבלה מטופס קודם
         editId = tx.id;
         editingRecurringParentId = tx.recurringParentId || null;
         originalAmount = parseFloat(tx.amount);
@@ -525,6 +552,7 @@
         txDescription.placeholder = 'מפענח נתונים…';
         formError.textContent = '';
 
+        const mySeq = ++scanSeq;
         compressImage(file).then(function (result) {
             const formData = new FormData();
             formData.append('image', result.blob, 'receipt.' + result.ext);
@@ -532,6 +560,14 @@
         })
         .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
         .then(function (result) {
+            // הטופס נסגר או הוחלף בזמן הפענוח: לא נוגעים בו — גם לא ב-UI של
+            // הסריקה שלו — והתמונה שהועלתה נמחקת.
+            if (mySeq !== scanSeq) {
+                if (result.ok && result.data) discardReceipt(result.data.receipt_path);
+                return;
+            }
+            // סריקה שנייה באותו טופס: הקבלה הקודמת כבר לא תישמר
+            const previous = txReceiptPath.value;
             resetScanUI();
             if (!result.ok || result.data.error) {
                 formError.textContent = (result.data && result.data.error) || 'לא הצלחתי לקרוא את הקבלה — נסה שוב או הזן ידנית';
@@ -541,6 +577,7 @@
             txAmount.value = data.amount;
             if (data.merchant) txDescription.value = data.merchant;
             if (data.date) txDate.value = data.date;
+            if (previous && previous !== data.receipt_path) discardReceipt(previous);
             txReceiptPath.value = data.receipt_path || '';
             if (data.category_id) {
                 const catBtn = categoryGrid.querySelector(`[data-value="${data.category_id}"]`);
@@ -554,6 +591,7 @@
             window.showToast('הנתונים פוענחו, נא לוודא לפני שמירה');
         })
         .catch(function () {
+            if (mySeq !== scanSeq) return;
             resetScanUI();
             formError.textContent = window.sfNetError() + '. אפשר גם להזין ידנית.';
         });
@@ -664,6 +702,9 @@
 
         setSubmitBusy(true);
         submitLabel.textContent = 'שומר…';
+        // מעכשיו הקבלה שייכת לשמירה הזאת — ראו ‎claimedReceipt‎. כל כשל למטה
+        // משחרר אותה, כדי שסגירה בלי ניסיון נוסף כן תמחק אותה.
+        claimedReceipt = payload.receipt_path;
 
         // UI אופטימי: רק בהוספה חדשה (לא עריכה) ורק בדף הבית — שם יש רשימת
         // "עסקאות אחרונות" מוכרת שאפשר להוסיף לה שורה זמנית מיד, לפני
@@ -688,6 +729,13 @@
             }
         }
 
+        // הסגירה האופטימית ניקתה את שדה הקבלה (‎closeModal‎ → ‎resetScanUI‎), אז
+        // בפתיחה מחדש אחרי כשל היא חוזרת — אחרת הניסיון הבא נשמר בלעדיה.
+        function reopenAfterFailure() {
+            openModal();
+            txReceiptPath.value = payload.receipt_path || '';
+        }
+
         const url    = editId ? ('/api/transactions/' + editId) : '/api/transactions';
         const method = editId ? 'PUT' : 'POST';
 
@@ -704,13 +752,14 @@
             // סדרה קבועה שתייצר עשרות שורות אחורה — כמעט תמיד טעות
             // הקלדה בתאריך. השרת עונה 409 עם המספר האמיתי, ושואלים.
             if (res.code === 409 && res.d.needs_confirm) {
-                if (placeholderRow) { placeholderRow.remove(); placeholderRow = null; openModal(); }
+                if (placeholderRow) { placeholderRow.remove(); placeholderRow = null; reopenAfterFailure(); }
                 return window.appConfirm({
                     title: 'ליצור ' + res.d.will_create + ' עסקאות אחורה?',
                     message: res.d.error,
                     confirmText: 'כן, צור',
                 }).then(function (ok) {
                     if (!ok) {
+                        claimedReceipt = null;
                         setSubmitBusy(false);
                         updateSubmitLabel();
                         return null;
@@ -733,9 +782,10 @@
                 if (placeholderRow) {
                     placeholderRow.remove();
                     placeholderRow = null;
-                    openModal();
+                    reopenAfterFailure();
                 }
                 formError.textContent = data.error;
+                claimedReceipt = null;
                 setSubmitBusy(false);
                 updateSubmitLabel();
                 return;
@@ -822,9 +872,10 @@
                 // להשאיר את המשתמש עם הודעת שגיאה וטופס ריק: במוסך או
                 // בחניון, "נסה שוב" פירושו היה להקליד הכול מחדש, בלי
                 // רשת, בדיוק כשהוא הכי לא רוצה.
-                openModal();
+                reopenAfterFailure();
             }
             formError.textContent = window.sfNetError();
+            claimedReceipt = null;
             setSubmitBusy(false);
             updateSubmitLabel();
         });

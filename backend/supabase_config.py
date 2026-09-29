@@ -888,6 +888,20 @@ def personal_project_ids(family_id: str, owner_id: str) -> list:
         raise DataUnavailable("personal_project_ids") from e
 
 
+def receipt_in_use(path: str, family_id: str) -> bool:
+    """האם עסקה כלשהי מצביעה על הקובץ. חריגה — לא "לא": מחיקה של קובץ
+    שבשימוש משאירה עסקה עם קבלה שבורה."""
+    client = get_client()
+    if not client:
+        raise DataUnavailable("receipt_in_use: no client")
+    try:
+        return bool(client.table("transactions").select("id")
+                    .eq("family_id", family_id).eq("receipt_path", path)
+                    .limit(1).execute().data)
+    except Exception as e:
+        raise DataUnavailable("receipt_in_use") from e
+
+
 def get_transaction_receipt_path(transaction_id: str, family_id: str):
     client = get_client()
     if not client:

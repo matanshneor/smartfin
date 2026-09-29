@@ -152,7 +152,7 @@ def test_a_server_error_reopens_the_modal_when_it_was_closed_optimistically():
     err_branch = js[js.index("if (data.error) {"):]
     err_branch = err_branch[:err_branch.index("\n            }")]
 
-    assert re.search(r"if\s*\(placeholderRow\)\s*\{[^}]*openModal\(\)", err_branch, re.S), \
+    assert re.search(r"if\s*\(placeholderRow\)\s*\{[^}]*reopenAfterFailure\(\)", err_branch, re.S), \
         "כשל שרת לא פותח מחדש את המודאל כשהוא נסגר אופטימית"
 
 
@@ -166,7 +166,7 @@ def test_the_network_failure_path_still_reopens_too():
     # כש"עדכן להבא" התחיל להציג כשל רשת משלו. ה-catch החיצוני מזוהה
     # עכשיו במה שמייחד אותו: הוא מסיר את שורת הביניים ופותח את החלון.
     assert re.search(r"\.catch\(function \(\) \{\s*if \(placeholderRow\) \{\s*"
-                     r"placeholderRow\.remove\(\);\s*openModal\(\);", chain)
+                     r"placeholderRow\.remove\(\);\s*reopenAfterFailure\(\);", chain)
 
 
 # ─── ג6: אין יותר דיאלוג של הדפדפן ──────────────────────────────────────────
