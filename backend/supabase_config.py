@@ -818,26 +818,74 @@ def get_receipt_signed_url(access_token: str, path: str):
 
 def delete_receipt(access_token: str, path: str):
     """מוחקת קובץ קבלה מהאחסון (למשל כשמוחקים את העסקה המצורפת)."""
+    delete_receipts(access_token, [path])
+
+
+def delete_receipts(access_token: str, paths) -> None:
+    """מוחקת כמה קבצי קבלה בבקשה אחת, בשם המשתמש (מדיניות האחסון: רק מי
+    שבמשפחה של התיקייה).
+
+    ‎purge_orphan_receipts‎ נועדה לנקות כל לילה קבצים שאף עסקה לא מצביעה
+    עליהם — ונכשלה בכל ריצה מאז שנוספה: Supabase חוסמת מחיקה ישירה מטבלאות
+    האחסון ("Use the Storage API instead"). אז מחיקה המונית של עסקאות חייבת
+    לקחת איתה את הקבצים שלה כאן, ברגע המחיקה."""
     import httpx
 
     url = os.environ.get("SUPABASE_URL")
     key = os.environ.get("SUPABASE_KEY")
-    if not url or not key or not path:
+    paths = sorted({p for p in (paths or []) if p})
+    if not url or not key or not paths:
         return
+    for i in range(0, len(paths), 100):
+        try:
+            httpx.request(
+                "DELETE",
+                f"{url}/storage/v1/object/receipts",
+                headers={
+                    "apikey": key,
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json",
+                },
+                json={"prefixes": paths[i:i + 100]},
+                timeout=10,
+            )
+        except Exception as e:
+            logger.exception("delete_receipts")
+
+
+def receipt_paths(family_id: str, project_ids=None, user_id: str = None) -> list:
+    """נתיבי הקבלות של עסקאות שעומדות להימחק: בפרויקטים האלה, ו/או של
+    המשתמש הזה. נאסף **לפני** המחיקה — אחריה אין שורה שמצביעה על הקובץ."""
+    client = get_client()
+    if not client or not (project_ids or user_id):
+        return []
     try:
-        httpx.request(
-            "DELETE",
-            f"{url}/storage/v1/object/receipts",
-            headers={
-                "apikey": key,
-                "Authorization": f"Bearer {access_token}",
-                "Content-Type": "application/json",
-            },
-            json={"prefixes": [path]},
-            timeout=10,
-        )
+        out = []
+        if project_ids:
+            out += _fetch_all(lambda: client.table("transactions").select("id, receipt_path")
+                              .eq("family_id", family_id).in_("project_id", list(project_ids))
+                              .not_.is_("receipt_path", "null").order("id"))
+        if user_id:
+            out += _fetch_all(lambda: client.table("transactions").select("id, receipt_path")
+                              .eq("family_id", family_id).eq("user_id", user_id)
+                              .not_.is_("receipt_path", "null").order("id"))
+        return sorted({r["receipt_path"] for r in out if r.get("receipt_path")})
     except Exception as e:
-        logger.exception("delete_receipt")
+        # בלי הנתיבים אין מה למחוק — אבל המחיקה עצמה לא נעצרת בגלל קבצים
+        logger.exception("receipt_paths")
+        return []
+
+
+def personal_project_ids(family_id: str, owner_id: str) -> list:
+    """הפרויקטים האישיים של בן משפחה — כדי לדעת מה יימחק כשהוא יוצא."""
+    client = get_client()
+    if not client:
+        raise DataUnavailable("personal_project_ids: no client")
+    try:
+        return [r["id"] for r in client.table("projects").select("id")
+                .eq("family_id", family_id).eq("owner_id", owner_id).execute().data or []]
+    except Exception as e:
+        raise DataUnavailable("personal_project_ids") from e
 
 
 def get_transaction_receipt_path(transaction_id: str, family_id: str):

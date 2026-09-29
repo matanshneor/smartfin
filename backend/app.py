@@ -1509,7 +1509,12 @@ def delete_project_route(project_id):
     user = get_current_user()
     # בלי ‎delete_transactions‎ מהגוף: העסקאות נמחקות תמיד (ראו ‎db.delete_project‎),
     # והשרת לא סומך על לשונית ישנה שעוד שולחת "להשאיר".
+    # נאסף לפני: אחרי המחיקה אין עסקה שמצביעה על הקבצים, ושום דבר אחר לא
+    # ימחק אותם (ראו ‎db.delete_receipts‎ על הניקוי הלילי שלא עובד).
+    receipts = db.receipt_paths(user["family_id"], project_ids=[project_id])
     ok, wiped = db.delete_project(project_id, user["family_id"])
+    if ok:
+        db.delete_receipts(session.get("access_token"), receipts)
     if not ok:
         # שום שורה לא נגעה: הפרויקט כבר נמחק על ידי בן משפחה אחר, או
         # שהמזהה אינו של המשפחה הזאת. "נמחק" על כלום הוא שקר.
@@ -2760,7 +2765,14 @@ def remove_family_member_route(member_id):
     # הפרויקטים האישיים של מי שמוסר נמחקים תמיד, עם העסקאות שבהם (החלטת
     # מתן, 28.9.2026): המנהל לא רואה אותם, ואסור שיקבל לידיו דברים פרטיים של
     # מי שהוסר. לא נקרא מהגוף — מי שעוזב בעצמו הוא היחיד שנשאל.
+    # הקבלות של כל מה שיימחק — הפרויקטים האישיים שלו תמיד, והעסקאות שלו
+    # אם נבחר למחוק אותן. המנהל נשאר במשפחה, אז מותר לו למחוק אחרי.
+    receipts = db.receipt_paths(
+        user["family_id"], project_ids=db.personal_project_ids(user["family_id"], member_id),
+        user_id=None if keep else member_id)
     ok, err = db.remove_family_member(member_id, keep_transactions=keep, projects="delete")
+    if ok:
+        db.delete_receipts(session.get("access_token"), receipts)
     if not ok:
         return jsonify({"error": _family_rpc_message(err)}), 403
     return jsonify({"status": "ok"})
@@ -2779,7 +2791,18 @@ def leave_family_route():
     body = request.get_json(silent=True) or {}
     keep = body.get("keep_transactions", True) is not False
 
-    new_family_id, err = db.leave_family(keep_transactions=keep, projects=_project_choice(body))
+    choice = _project_choice(body)
+    # מי שעוזב מאבד את הרשאת האחסון של המשפחה ברגע שיצא, אז את הקבלות של מה
+    # שיימחק מוחקים **לפני** — ולכן קודם צריך לדעת בוודאות מה יימחק. אם יש
+    # פרויקטים אישיים ועוד לא נבחר מה לעשות בהם, שואלים לפני שנוגעים במשהו.
+    projects = db.personal_project_ids(user["family_id"], user["id"])
+    if projects and choice == "ask":
+        return jsonify({"needs_choice": True, "project_count": len(projects)}), 409
+    doomed = projects if (choice == "delete" or not keep) else []
+    db.delete_receipts(session.get("access_token"),
+                       db.receipt_paths(user["family_id"], project_ids=doomed,
+                                        user_id=None if keep else user["id"]))
+    new_family_id, err = db.leave_family(keep_transactions=keep, projects=choice)
     if err and _needs_project_choice(err):
         return _needs_project_choice(err)
     if err or not new_family_id:

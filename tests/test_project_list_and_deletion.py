@@ -155,6 +155,30 @@ def test_deleting_them_reports_the_real_number(project):
     assert fake.rows("transactions") == []
 
 
+def test_the_receipts_go_with_the_transactions(project, monkeypatch):
+    """הניקוי הלילי של קבצים יתומים נכשל בכל ריצה (Supabase חוסמת מחיקה
+    ישירה מהאחסון), אז אחרי מחיקת הפרויקט אף אחד לא היה מוחק את התמונות."""
+    c, fake = project
+    fake.tables["transactions"][0]["receipt_path"] = f"{_FAM}/a.jpg"
+    fake.tables["transactions"][1]["receipt_path"] = f"{_FAM}/b.jpg"
+    gone = []
+    monkeypatch.setattr(db, "delete_receipts", lambda token, paths: gone.extend(paths))
+
+    c.delete("/api/projects/p1", json={})
+
+    assert sorted(gone) == [f"{_FAM}/a.jpg", f"{_FAM}/b.jpg"]
+
+
+def test_a_project_that_is_already_gone_deletes_no_files(project, monkeypatch):
+    c, fake = project
+    fake.tables["transactions"][0]["receipt_path"] = f"{_FAM}/a.jpg"
+    fake.tables["projects"] = []
+    monkeypatch.setattr(db, "delete_receipts",
+                        lambda *a: pytest.fail("נמחקו קבצים של פרויקט שלא נמחק"))
+
+    c.delete("/api/projects/p1", json={})
+
+
 # ─── ניהול הפרויקט הוא תפריט אחד ────────────────────────────────────────────
 #
 # העמוד היה ארבעה ‎chart-card‎ נפרדים, כל אחד עם ‎margin-bottom: 16px‎,

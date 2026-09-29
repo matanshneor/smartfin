@@ -25,6 +25,9 @@ _OTHER = "22222222-2222-2222-2222-222222222222"
 _FAM   = "33333333-3333-3333-3333-333333333333"
 
 
+deleted_receipts = []
+
+
 @pytest.fixture
 def client(monkeypatch):
     app.config["TESTING"] = True
@@ -32,6 +35,13 @@ def client(monkeypatch):
     # ברירת המחדל כאן היא מנהל: הבדיקות בקובץ הזה עוסקות במה שהפעולות
     # עושות, לא במי רשאי. הבדיקות על ההרשאה עצמה יושבות בקובץ נפרד.
     monkeypatch.setattr(app_module.db, "is_family_manager", lambda: True)
+    # קבלות: בלי פרויקטים ובלי קבצים כברירת מחדל. מחיקת קבצים לעולם לא
+    # יוצאת לאחסון האמיתי מבדיקה — היא נרשמת כאן, והבדיקות למטה קוראות אותה.
+    monkeypatch.setattr(app_module.db, "personal_project_ids", lambda fid, uid: [])
+    monkeypatch.setattr(app_module.db, "receipt_paths", lambda *a, **k: [])
+    deleted_receipts.clear()
+    monkeypatch.setattr(app_module.db, "delete_receipts",
+                        lambda token, paths: deleted_receipts.extend(paths))
     with app.test_client() as c:
         with c.session_transaction() as sess:
             sess["user_id"]   = _ME
@@ -138,17 +148,82 @@ def test_whoever_leaves_decides_about_their_own_projects(client, monkeypatch, se
     assert seen["projects"] == passed
 
 
-def test_leaving_with_undecided_projects_asks_and_stays(client, monkeypatch):
-    """לא עוזבים עד שנענתה השאלה — גם ה-session לא זז."""
+def test_leaving_with_undecided_projects_asks_and_touches_nothing(client, monkeypatch):
+    """לא עוזבים ולא מוחקים שום קובץ עד שנענתה השאלה — גם ה-session לא זז."""
+    monkeypatch.setattr(app_module.db, "personal_project_ids", lambda fid, uid: ["p1"])
+    monkeypatch.setattr(app_module.db, "receipt_paths", lambda *a, **k: ["fam/r1.jpg"])
     monkeypatch.setattr(app_module.db, "leave_family",
-                        lambda *a, **k: (None, "needs_project_choice:1"))
+                        lambda *a, **k: pytest.fail("עזב לפני שנשאל"))
 
     response = client.post("/api/family/leave", json={})
 
     assert response.status_code == 409
     assert response.get_json()["project_count"] == 1
+    assert deleted_receipts == []
     with client.session_transaction() as sess:
         assert sess["family_id"] == _FAM
+
+
+# ─── קבלות של מה שנמחק ───────────────────────────────────────────────────────
+#
+# הניקוי הלילי (‎purge_orphan_receipts‎) נכשל בכל ריצה — Supabase חוסמת מחיקה
+# ישירה מהאחסון. אז מה שנמחק בהסרה או בעזיבה לוקח איתו את הקבצים שלו.
+
+def _receipts_by(monkeypatch, mapping):
+    """‎receipt_paths‎ מזויף: מחזיר קבצים לפי מה שהתבקש, כדי לבדוק *מה* נאסף."""
+    def fake(fid, project_ids=None, user_id=None):
+        out = []
+        for pid in project_ids or []:
+            out += mapping.get(pid, [])
+        if user_id:
+            out += mapping.get(("own", user_id), [])
+        return out
+    monkeypatch.setattr(app_module.db, "receipt_paths", fake)
+
+
+@pytest.mark.parametrize("keep,expected", [
+    (True,  ["proj.jpg"]),
+    (False, ["proj.jpg", "own.jpg"]),
+])
+def test_removing_takes_the_receipts_of_whatever_it_deletes(client, monkeypatch, keep, expected):
+    monkeypatch.setattr(app_module.db, "personal_project_ids", lambda fid, uid: ["p1"])
+    _receipts_by(monkeypatch, {"p1": ["proj.jpg"], ("own", _OTHER): ["own.jpg"]})
+    monkeypatch.setattr(app_module.db, "remove_family_member", lambda *a, **k: (True, None))
+
+    client.delete(f"/api/family/members/{_OTHER}", json={"keep_transactions": keep})
+
+    assert sorted(deleted_receipts) == sorted(expected)
+
+
+def test_a_refused_removal_deletes_no_files(client, monkeypatch):
+    _receipts_by(monkeypatch, {("own", _OTHER): ["own.jpg"]})
+    monkeypatch.setattr(app_module.db, "remove_family_member",
+                        lambda *a, **k: (False, "only the family manager can remove members"))
+
+    client.delete(f"/api/family/members/{_OTHER}", json={"keep_transactions": False})
+
+    assert deleted_receipts == []
+
+
+@pytest.mark.parametrize("body,expected", [
+    ({"projects": "share"},  []),
+    ({"projects": "delete"}, ["proj.jpg"]),
+    ({"projects": "share", "keep_transactions": False}, ["proj.jpg", "own.jpg"]),
+])
+def test_leaving_deletes_the_receipts_first_and_only_of_what_goes(client, monkeypatch, body, expected):
+    """לפני העזיבה: אחריה מי שיצא כבר לא מורשה לגעת בתיקייה של המשפחה."""
+    order = []
+    monkeypatch.setattr(app_module.db, "personal_project_ids", lambda fid, uid: ["p1"])
+    _receipts_by(monkeypatch, {"p1": ["proj.jpg"], ("own", _ME): ["own.jpg"]})
+    monkeypatch.setattr(app_module.db, "delete_receipts",
+                        lambda t, paths: (order.append("files"), deleted_receipts.extend(paths)))
+    monkeypatch.setattr(app_module.db, "leave_family",
+                        lambda *a, **k: (order.append("leave") or ("new-fam", None)))
+
+    client.post("/api/family/leave", json=body)
+
+    assert sorted(deleted_receipts) == sorted(expected)
+    assert order == ["files", "leave"]
 
 
 def test_other_errors_are_not_mistaken_for_the_question():
