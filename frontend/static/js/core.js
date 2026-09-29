@@ -260,7 +260,21 @@ window.softReload = function (selector, pendingToast) {
             });
             if (pairs.some(p => !p[0] || !p[1])) throw new Error('missing region');
 
+            // אלמנטים שמחזיקים מצב משלהם (‎data-sf-keep‎ — באנר ההתקנה) עוברים
+            // כמו שהם אל התוכן החדש, במקום להתחלף בעותק ריק מהשרת
+            const keep = [];
+            pairs.forEach(function (pair) {
+                if (pair[0].querySelectorAll) {
+                    pair[0].querySelectorAll('[data-sf-keep][id]').forEach(function (el) { keep.push(el); });
+                }
+            });
+
             pairs.forEach(function (pair) { pair[0].replaceWith(pair[1]); });
+
+            keep.forEach(function (el) {
+                const fresh = document.getElementById(el.id);
+                if (fresh && fresh !== el) fresh.replaceWith(el);
+            });
 
             // בלוקי הנתונים של העמוד (‎sf-view-data‎ וכו') יושבים ב-‎{% block
             // scripts %}‎ — מחוץ לאזורים שהוחלפו. בלי זה הגרפים והמקרא של עמוד

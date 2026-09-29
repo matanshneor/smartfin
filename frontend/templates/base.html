@@ -28,7 +28,10 @@
        מואצלות, ואין בו מופעי Chart.js שצריך לחבר מחדש. עמוד שלא מסמן את
        עצמו ממשיך לקבל רענון מלא, שזו ההתנהגות הקיימת. #}
     <main class="main-content"{% block soft_reload %}{% endblock %}{% block main_attrs %}{% endblock %}>
-        <div class="alert-card warning install-banner" id="installBanner" style="display:none;" role="status">
+        {# ‎data-sf-keep‎: הרענון הרך מחליף את ‎main‎, והבאנר הוחלף בעותק מוסתר —
+           וה-handlers של pwa.js נשארו מחוברים לעותק המנותק. אחרי העסקה
+           הראשונה ההצעה להתקין נעלמה. ראו ‎softReload‎ ב-core.js. #}
+        <div class="alert-card warning install-banner" id="installBanner" style="display:none;" role="status" data-sf-keep>
             <span class="alert-text" id="installBannerText"></span>
             <button type="button" class="btn-sm btn-primary" id="installBannerAction" style="display:none;">התקן</button>
             <button type="button" class="install-banner-close" id="installBannerClose" aria-label="סגור הודעה">✕</button>
