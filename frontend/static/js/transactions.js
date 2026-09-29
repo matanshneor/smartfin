@@ -1034,6 +1034,16 @@
      * הבטוחה היא כפתור האישור; ההרסנית עוברת אישור שני עם המספר.
      * נסיגה (Escape או לחיצה בחוץ) מחזירה ‎null‎ ומבטלת — בשני השלבים.
      */
+    /* כל השורות של עסקה בעמוד, לא רק זו שממנה המחיקה התחילה. בעמוד החודש
+     * אותה עסקה מופיעה ב"כל העסקאות", בקטגוריה שלה ובחלוקה לפי בן משפחה —
+     * והעותקים האחרים נשארו לחיצים עד הרענון, על עסקה שכבר לא קיימת. */
+    function removeTransactionRows(id, row) {
+        if (row) row.remove();
+        if (!id) return;
+        document.querySelectorAll('.transaction-item, .cat-tx-row, .recurring-row, .fixed-row')
+            .forEach(function (el) { if (el.dataset.id === id) el.remove(); });
+    }
+
     function askAboutSeries(txData, row, later, onFail) {
         return window.appConfirm({
             title:       'העסקה הזאת חוזרת',
@@ -1063,7 +1073,7 @@
             .then(r => r.json())
             .then(function (d) {
                 if (d.status !== 'ok') { if (onFail) onFail(d.error || 'המחיקה נכשלה'); return; }
-                if (row) row.remove();
+                removeTransactionRows(txData.id, row);
                 // אין כאן "בטל": שחזור של מופע בודד היה מחזיר גם את
                 // הדילוג שנרשם עליו, ושל סדרה שלמה — עשרות שורות.
                 const n = d.deleted || total;
@@ -1113,7 +1123,7 @@
                 }
                 const d = res.d;
                 if (d.status !== 'ok') { if (onFail) onFail(d.error || 'מחיקה נכשלה'); return; }
-                if (row) row.remove();
+                removeTransactionRows(txData.id, row);
                 window.showToast(hadReceipt
                     ? 'העסקה נמחקה. הקבלה המצורפת נמחקה איתה ולא תחזור'
                     : 'העסקה נמחקה', null, {
