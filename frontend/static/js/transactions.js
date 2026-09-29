@@ -384,12 +384,16 @@
         editModeActions.style.display = 'none';
         setRecurringLock(false);
         resetForm();
+        const mySeq = formSeq;
         withLoadingTrigger(fabBtn, Promise.all([loadCategories(), loadMembers(), loadProjects()]))
             .then(function () {
+                if (mySeq !== formSeq) return;      // נלחצה בינתיים עסקה — היא קובעת
                 setType('expense');
                 openModal();
             })
-            .catch(function () { window.showToast(window.sfNetError(), 'error'); });
+            .catch(function () {
+                if (mySeq === formSeq) window.showToast(window.sfNetError(), 'error');
+            });
     }
 
     function openEditModal(tx, triggerEl) {
@@ -403,8 +407,14 @@
         editModeActions.style.display = 'flex';
         formError.textContent = '';
 
+        /* הלחיצה האחרונה קובעת. הטופס מתמלא רק כשהרשימות מגיעות, ו-‎editId‎
+         * נקבע כבר עכשיו — אז לחיצה על א' ומיד על ב' ברשת איטית מילאה את
+         * הטופס בנתונים של א' ושמרה אותם על ב'. ועסקה ומיד + מילאה את טופס
+         * "עסקה חדשה" בנתונים שלה — ושמירה יצרה עותק. */
+        const mySeq = formSeq;
         withLoadingTrigger(triggerEl, Promise.all([loadCategories(), loadMembers(), loadProjects()]))
             .then(function () {
+                if (mySeq !== formSeq) return;
                 const selectedCategoryId = tx.projectId ? tx.projectCategoryId : tx.categoryId;
                 setType(tx.type, selectedCategoryId, tx.userId || 'shared', tx.projectId);
 
@@ -425,7 +435,9 @@
                 updateSubmitLabel();
                 openModal();
             })
-            .catch(function () { window.showToast(window.sfNetError(), 'error'); });
+            .catch(function () {
+                if (mySeq === formSeq) window.showToast(window.sfNetError(), 'error');
+            });
     }
 
     fabBtn.addEventListener('click', openAddModal);
