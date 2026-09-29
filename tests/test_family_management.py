@@ -179,6 +179,8 @@ def _receipts_by(monkeypatch, mapping):
             out += mapping.get(("own", user_id), [])
         return out
     monkeypatch.setattr(app_module.db, "receipt_paths", fake)
+    # אחרי המחיקה אף עסקה לא מצביעה על הקבצים (ראו ‎_delete_unused_receipts‎)
+    monkeypatch.setattr(app_module.db, "receipts_in_use", lambda fid, paths: set())
 
 
 @pytest.mark.parametrize("keep,expected", [

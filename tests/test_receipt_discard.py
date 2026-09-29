@@ -14,6 +14,9 @@ pytestmark = pytest.mark.unit
 
 _FAM = "11111111-1111-1111-1111-111111111111"
 _ME  = "22222222-2222-2222-2222-222222222222"
+# שמות כמו ש-‎upload_receipt‎ יוצר (ראו ‎_receipt_path_ok‎)
+_ABC  = f"{_FAM}/5f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b.jpg"
+_KEPT = f"{_FAM}/6a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d.jpg"
 
 
 @pytest.fixture
@@ -34,16 +37,16 @@ def discard(monkeypatch):
 def test_an_abandoned_scan_is_deleted(discard):
     post, deleted, _ = discard
 
-    assert post(f"{_FAM}/abc.jpg").status_code == 200
-    assert deleted == [f"{_FAM}/abc.jpg"]
+    assert post(_ABC).status_code == 200
+    assert deleted == [_ABC]
 
 
 def test_a_receipt_that_a_transaction_uses_is_not(discard):
     """אחרת זו דרך למחוק קבלה של עסקה קיימת — גם בשמירה שכבר הצליחה."""
     post, deleted, in_use = discard
-    in_use.add(f"{_FAM}/kept.jpg")
+    in_use.add(_KEPT)
 
-    assert post(f"{_FAM}/kept.jpg").status_code == 409
+    assert post(_KEPT).status_code == 409
     assert deleted == []
 
 
@@ -51,6 +54,7 @@ def test_a_receipt_that_a_transaction_uses_is_not(discard):
     "99999999-9999-9999-9999-999999999999/x.jpg",     # משפחה אחרת
     f"{_FAM}/../99999999-9999-9999-9999-999999999999/x.jpg",
     "x.jpg", "", None, 5,
+    f"{_FAM}/abc.jpg",                                # שם שהאפליקציה לא יוצרת
 ])
 def test_only_this_familys_folder(discard, path):
     post, deleted, _ = discard
@@ -66,5 +70,5 @@ def test_a_failed_check_deletes_nothing(discard, monkeypatch):
         raise db.DataUnavailable("down")
     monkeypatch.setattr(db, "receipt_in_use", broken)
 
-    assert post(f"{_FAM}/abc.jpg").status_code == 503
+    assert post(_ABC).status_code == 503
     assert deleted == []

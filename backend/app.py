@@ -425,6 +425,35 @@ def login_required(f):
     return decorated
 
 
+# הנתיב ש-‎db.upload_receipt‎ יוצר: ‎<family_id>/<uuid>.<סיומת>‎
+_RECEIPT_NAME_RE = re.compile(r"^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\.[a-z0-9]{2,5}$")
+
+
+def _receipt_path_ok(path, family_id) -> bool:
+    """נתיב הקבלה מגיע מהלקוח. האחסון כבר חוסם תיקייה של משפחה אחרת, אבל
+    בתוך המשפחה אפשר היה להצמיד לעסקה קבלה של עסקה אחרת — ואז מחיקת
+    אחת מחקה את הקובץ של שתיהן. מקבלים רק את מה שהאפליקציה עצמה יוצרת."""
+    if not isinstance(path, str) or not family_id:
+        return False
+    folder, _, name = path.partition("/")
+    return folder == str(family_id) and bool(_RECEIPT_NAME_RE.match(name))
+
+
+def _delete_unused_receipts(family_id, paths):
+    """מוחקת קבצי קבלה — חוץ ממה שעסקה אחרת עדיין מצביעה עליו. נקראת
+    אחרי מחיקת העסקאות. כשלא ידוע מה בשימוש, לא מוחקים: קובץ מיותר
+    באחסון עדיף על קבלה שבורה של מקרר ביום שצריך את האחריות."""
+    paths = [p for p in (paths or []) if p]
+    if not paths:
+        return
+    try:
+        in_use = db.receipts_in_use(family_id, paths)
+    except db.DataUnavailable:
+        logger.error("receipts_in_use נכשל — הקבצים נשארים באחסון")
+        return
+    db.delete_receipts(session.get("access_token"), [p for p in paths if p not in in_use])
+
+
 class BadInput(ValueError):
     """ערך מהלקוח שאין טעם לנסות לפרש — ראו ‎_text‎."""
 
@@ -1562,7 +1591,7 @@ def delete_project_route(project_id):
     receipts = db.receipt_paths(user["family_id"], project_ids=[project_id])
     ok, wiped = db.delete_project(project_id, user["family_id"])
     if ok:
-        db.delete_receipts(session.get("access_token"), receipts)
+        _delete_unused_receipts(user["family_id"], receipts)
     if not ok:
         # שום שורה לא נגעה: הפרויקט כבר נמחק על ידי בן משפחה אחר, או
         # שהמזהה אינו של המשפחה הזאת. "נמחק" על כלום הוא שקר.
@@ -2247,6 +2276,8 @@ def add_transaction():
     }
     # קבלה מצורפת אפשרית רק בהוצאות; ריק = לא נוגעים בעמודה (לא מוחקים קבלה קיימת בעריכה)
     if tx_type == "expense" and body.get("receipt_path"):
+        if not _receipt_path_ok(body["receipt_path"], user["family_id"]):
+            return jsonify({"error": "הקבלה המצורפת אינה תקינה — נסו לצלם שוב"}), 422
         payload["receipt_path"] = body["receipt_path"]
 
     result, err = db.add_transaction(payload)
@@ -2357,6 +2388,8 @@ def update_transaction(tx_id):
     }
     # קבלה מצורפת אפשרית רק בהוצאות; ריק = לא נוגעים בעמודה (לא מוחקים קבלה קיימת בעריכה)
     if tx_type == "expense" and body.get("receipt_path"):
+        if not _receipt_path_ok(body["receipt_path"], user["family_id"]):
+            return jsonify({"error": "הקבלה המצורפת אינה תקינה — נסו לצלם שוב"}), 422
         payload["receipt_path"] = body["receipt_path"]
 
     result, err = db.update_transaction(tx_id, user["family_id"], payload)
@@ -2426,8 +2459,7 @@ def delete_transaction(tx_id):
         return jsonify({"error": "העסקה כבר נמחקה"}), 404
     if not ok:
         return jsonify({"error": "המחיקה נכשלה — נסו שוב"}), 500
-    if receipt_path:
-        db.delete_receipt(session.get("access_token"), receipt_path)
+    _delete_unused_receipts(user["family_id"], [receipt_path])
     return jsonify({"status": "ok"})
 
 
@@ -2497,8 +2529,7 @@ def discard_receipt():
     דרך למחוק קבלה של עסקה קיימת."""
     user = get_current_user()
     path = (request.get_json(silent=True) or {}).get("path")
-    if (not user["family_id"] or not isinstance(path, str) or ".." in path
-            or not path.startswith(f"{user['family_id']}/")):
+    if not _receipt_path_ok(path, user["family_id"]):
         return jsonify({"error": "הקובץ לא נמצא"}), 404
     if db.receipt_in_use(path, user["family_id"]):
         return jsonify({"error": "הקבלה מצורפת לעסקה"}), 409
@@ -2964,7 +2995,7 @@ def remove_family_member_route(member_id):
         user_id=None if keep else member_id)
     ok, err = db.remove_family_member(member_id, keep_transactions=keep, projects="delete")
     if ok:
-        db.delete_receipts(session.get("access_token"), receipts)
+        _delete_unused_receipts(user["family_id"], receipts)
     if not ok:
         return jsonify({"error": _family_rpc_message(err)}), 403
     return jsonify({"status": "ok"})

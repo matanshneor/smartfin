@@ -892,6 +892,23 @@ def personal_project_ids(family_id: str, owner_id: str) -> list:
         raise DataUnavailable("personal_project_ids") from e
 
 
+def receipts_in_use(family_id: str, paths) -> set:
+    """אילו מהקבצים האלה עסקה כלשהי עדיין מצביעה עליהם. נקרא **אחרי**
+    מחיקת עסקאות: מה שחוזר כאן — לא מוחקים. חריגה, לא "אף אחד"."""
+    paths = sorted({p for p in (paths or []) if p})
+    if not paths:
+        return set()
+    client = get_client()
+    if not client:
+        raise DataUnavailable("receipts_in_use: no client")
+    try:
+        rows = client.table("transactions").select("receipt_path") \
+            .eq("family_id", family_id).in_("receipt_path", paths).execute().data
+        return {r["receipt_path"] for r in rows}
+    except Exception as e:
+        raise DataUnavailable("receipts_in_use") from e
+
+
 def receipt_in_use(path: str, family_id: str) -> bool:
     """האם עסקה כלשהי מצביעה על הקובץ. חריגה — לא "לא": מחיקה של קובץ
     שבשימוש משאירה עסקה עם קבלה שבורה."""
