@@ -65,11 +65,24 @@ if (window.location.hash.includes('type=recovery')) {
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ email: email }),
         })
-        .then(r => r.json())
-        .then(function () {
-            forgotSuccess.textContent = 'אם האימייל רשום במערכת — קישור איפוס נשלח אליו עכשיו. בדוק גם בספאם.';
+        .then(function (r) {
+            return r.json().catch(function () { return {}; })
+                .then(function (d) { return { ok: r.ok, data: d || {} }; });
+        })
+        .then(function (res) {
             btn.disabled = false;
             btn.textContent = 'שלח קישור איפוס';
+            // "נשלח" הופיע גם על 422 (מייל לא תקין), על 429 ועל מגבלת 2 המיילים
+            // בשעה של Supabase — והשרת כבר ידע לומר את האמת. מי שהזין מייל
+            // שגוי חיכה למייל שלא יגיע. כשהשרת אומר שנכשל, זה מה שמוצג.
+            //
+            // ההצלחה נשארת עמומה בכוונה ("אם האימייל רשום"), גם כשהוא לא
+            // רשום — אחרת הטופס הזה הוא דרך לבדוק אילו מיילים יש במערכת.
+            if (!res.ok) {
+                forgotError.textContent = res.data.error || 'השליחה נכשלה — נסו שוב בעוד רגע';
+                return;
+            }
+            forgotSuccess.textContent = 'אם האימייל רשום במערכת — קישור איפוס נשלח אליו עכשיו. בדוק גם בספאם.';
         })
         .catch(function () {
             forgotError.textContent = window.sfNetError();
