@@ -1538,9 +1538,25 @@ def is_family_manager() -> bool:
         raise DataUnavailable("is_family_manager") from e
 
 
+def renew_expired_invite_code():
+    """מחדשת את קוד ההזמנה **רק אם הוא חסר או פג**, ומחזירה את הקוד שבתוקף.
+    כל בן משפחה רשאי — היא לא יכולה לבטל קוד תקף (מיגרציה 20260929120000).
+    מחזירה (code, error)."""
+    client = get_client()
+    if not client:
+        return None, "Database not configured"
+    try:
+        code = client.rpc("renew_expired_invite_code", {}).execute().data
+        _invalidate_family_cache(get_my_family_id() or "")
+        return (code or None), None
+    except Exception as e:
+        logger.exception("renew_expired_invite_code")
+        return None, str(e)
+
+
 def rotate_invite_code():
-    """מחליפה את קוד ההזמנה. מחזירה (new_code, error).
-    כל בן משפחה רשאי — מי שמגלה שהקוד דלף צריך לסגור אותו מיד."""
+    """מחליפה את קוד ההזמנה גם כשהוא בתוקף — כלומר מבטלת הזמנות שנשלחו.
+    מנהל המשפחה בלבד (נאכף במסד). מחזירה (new_code, error)."""
     client = get_client()
     if not client:
         return None, "Database not configured"

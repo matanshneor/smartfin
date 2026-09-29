@@ -1,11 +1,11 @@
-"""בהגדרות של המנהל תמיד יש קוד הזמנה תקף — בלי ללחוץ "קוד חדש".
+"""בהגדרות של כל בן משפחה תמיד יש קוד הזמנה תקף — בלי ללחוץ "קוד חדש".
 
 בקשת מתן (29.9.2026). הקוד תקף שבוע, והקוד של המשפחה פג בשקט באותו
 בוקר: מי שנכנס להגדרות כדי לשלוח קוד מצא "הקוד פג. הפיקו חדש".
 
 קוד חדש נוצר רק כשהקודם **כבר פג** — כך אף הזמנה ששלחת ועדיין בתוקף לא
-מתבטלת. "קוד חדש" נשאר, לביטול מיידי של קוד שדלף. ורק למנהל: החלפת קוד
-היא הרשאה שלו, ובני משפחה אחרים רואים "פג" עד שהוא נכנס.
+מתבטלת. גם אצל מי שאינו מנהל (בקשת מתן): החידוש עובר בפונקציה שלא
+יכולה לבטל קוד תקף, אז הרשאת המנהל להחליף קוד — "קוד חדש" — לא נחלשת.
 """
 from datetime import timedelta
 
@@ -41,7 +41,9 @@ def settings_page(monkeypatch):
         return code, err
 
     monkeypatch.setattr(app_module.db, "get_family", lambda fid: dict(state["family"]))
-    monkeypatch.setattr(app_module.db, "rotate_invite_code", rotate)
+    monkeypatch.setattr(app_module.db, "renew_expired_invite_code", rotate)
+    monkeypatch.setattr(app_module.db, "rotate_invite_code",
+                        lambda: pytest.fail("החלפה של המנהל, לא חידוש של קוד שפג"))
     monkeypatch.setattr(app_module.db, "get_family_members",
                         lambda fid: [{"id": _ME, "name": "מתן", "full_name": "מתן"}])
     for fn, val in (("get_categories", []), ("get_recurring_transactions", []),
@@ -81,13 +83,22 @@ def test_a_code_that_is_still_valid_is_left_alone(settings_page):
     assert "OLD111" in html
 
 
-def test_a_member_who_is_not_the_manager_does_not_renew_it(settings_page):
+def test_a_member_who_is_not_the_manager_gets_a_fresh_code_too(settings_page):
     state, open_as = settings_page
 
     html = open_as(manager=_OTHER, expires_in_days=-1)
 
+    assert state["rotations"] == 1
+    assert "NEW777" in html and "הקוד פג" not in html
+
+
+def test_a_member_cannot_replace_a_code_that_is_still_valid(settings_page):
+    """זו ההרשאה של המנהל ("קוד חדש"), והיא לא עוברת דרך החידוש."""
+    state, open_as = settings_page
+
+    open_as(manager=_OTHER, expires_in_days=3)
+
     assert state["rotations"] == 0
-    assert "הקוד פג" in html
 
 
 def test_a_failed_renewal_still_shows_the_page_and_says_it_expired(settings_page):

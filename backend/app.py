@@ -1633,17 +1633,18 @@ def _invite_days_left(family):
 
 
 def _fresh_invite(family: dict, user: dict) -> dict:
-    """בהגדרות של המנהל תמיד יש קוד הזמנה תקף (בקשת מתן, 29.9.2026).
+    """בהגדרות של כל בן משפחה תמיד יש קוד הזמנה תקף (בקשת מתן, 29.9.2026).
 
     הקוד תקף שבוע, ופג בשקט: מי שנכנס כדי לשלוח קוד מצא "הקוד פג". עכשיו
-    כניסה של המנהל כשהקוד כבר פג מפיקה חדש. **רק כשכבר פג** — קוד שעוד
-    בתוקף אולי כבר נשלח למישהו, והחלפה הייתה מבטלת אותו. ורק למנהל: החלפת
-    קוד היא הרשאה שלו. כשל משאיר את "הקוד פג" על המסך — לא נופלים בגללו."""
-    if not family or family.get("manager_id") != user["id"]:
+    כניסה להגדרות כשהקוד כבר פג מפיקה חדש — אצל כל בן משפחה, לא רק המנהל.
+    **רק כשכבר פג** (‎renew_expired_invite_code‎, ולא ‎rotate‎): קוד שעוד בתוקף
+    אולי נשלח למישהו, והחלפה הייתה מבטלת אותו — וזו נשארת הרשאה של המנהל.
+    כשל משאיר את "הקוד פג" על המסך — לא נופלים בגללו."""
+    if not family:
         return family
     if family.get("invite_code") and not _invite_expired(family):
         return family
-    code, _ = db.rotate_invite_code()
+    code, _ = db.renew_expired_invite_code()
     return db.get_family(family["id"]) if code else family
 
 
