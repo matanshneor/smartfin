@@ -66,11 +66,14 @@ def _dispose_temp_family(client, user_id, temp_id, home_code):
 
 @pytest.fixture
 def family_a_code(family_a):
-    """קוד ההזמנה של משפחה א'. חבר במשפחה רשאי לקרוא אותה, אז שליפה רגילה
-    מספיקה כאן."""
-    family = db.get_family(family_a["family_id"])
-    code = family.get("invite_code")
-    assert code, "למשפחת הבדיקה אין קוד הזמנה — האם המיגרציה הוחלה?"
+    """קוד הזמנה **טרי** של משפחה א'.
+
+    הקוד פג אחרי שבוע (מיגרציה 20260922180000), והבדיקות האלה קראו את מה
+    שהיה שמור — אז הן עברו שבוע ונפלו ב-29.9.2026, בלי שום שינוי בקוד. כל
+    ריצה מחליפה את הקוד, כמו שמנהל משפחה אמיתי היה עושה."""
+    db.set_auth_token(family_a["token"])
+    code, err = db.rotate_invite_code()
+    assert code, f"החלפת קוד ההזמנה של משפחת הבדיקה נכשלה: {err}"
     return code
 
 
