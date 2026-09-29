@@ -93,6 +93,18 @@
     }
     function todayStr() { return dateStr(0); }
 
+    // תאריך ההתחלה של עסקה חדשה: היום — או, בעמוד של חודש אחר, אותו יום
+    // בתוך החודש ההוא (ה-31 בפברואר נקצץ לסוף החודש). ראו month.html.
+    function defaultTxDate() {
+        const main = document.querySelector('main[data-default-month]');
+        const ym = main && main.dataset.defaultMonth;
+        if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return todayStr();
+        const year = parseInt(ym.slice(0, 4), 10), month = parseInt(ym.slice(5, 7), 10);
+        const lastDay = new Date(year, month, 0).getDate();
+        const day = Math.min(new Date().getDate(), lastDay);
+        return ym + '-' + String(day).padStart(2, '0');
+    }
+
     // צ'יפים "היום"/"אתמול" — קיצור לבחירת התאריך הנפוץ בלי בורר
     function syncDateChips() {
         document.querySelectorAll('.date-chip').forEach(function (chip) {
@@ -294,7 +306,7 @@
 
     function resetForm() {
         txForm.reset();
-        txDate.value = todayStr();
+        txDate.value = defaultTxDate();
         txReceiptPath.value = '';
         formError.textContent = '';
         recurFields.classList.remove('visible');

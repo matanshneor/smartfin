@@ -70,7 +70,9 @@ def test_the_base_template_defaults_to_not_opting_in():
     """ברירת המחדל היא ההתנהגות הקיימת. עמוד חדש לא נשבר בשקט."""
     base = _read(_TPL / "base.html")
 
-    assert '<main class="main-content"{% block soft_reload %}{% endblock %}>' in base
+    # הבלוק ריק כברירת מחדל. אחריו יכולים לבוא בלוקים אחרים של ‎main‎
+    # (‎main_attrs‎ — החודש שבו + מתחיל), בלי שזה ישנה את מי מצטרף.
+    assert '<main class="main-content"{% block soft_reload %}{% endblock %}' in base
 
 
 # ─── ההתנהגות ─────────────────────────────────────────────────────────────────

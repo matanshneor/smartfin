@@ -4,6 +4,10 @@
    מ-document), והגרפים והמקרא נצבעים מחדש ב-‎sf:refreshed‎. בלי שלושת
    אלה רענון רך כאן השאיר canvas מנותקים וחיפוש מת. #}
 {% block soft_reload %} data-soft-reload{% endblock %}
+{# חודש שאינו הנוכחי: + מתחיל מתאריך בתוכו (transactions.js ‎defaultTxDate‎).
+   בלי זה, מי שנכנס למרץ כדי להשלים קנייה שמר, שמע "העסקה נוספה" — והיא
+   נרשמה בספטמבר. על ‎main‎ ולא בבלוק הסקריפטים: הרענון הרך מחליף אותו. #}
+{% block main_attrs %}{% if not is_current %} data-default-month="{{ '%04d-%02d' % (year, month) }}"{% endif %}{% endblock %}
 {% block title %}SmartFin – {{ month_label }}{% endblock %}
 
 {% block hero %}
