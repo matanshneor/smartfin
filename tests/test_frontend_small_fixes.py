@@ -165,7 +165,8 @@ def test_the_network_failure_path_still_reopens_too():
     # העוגן היה "הקריאה הראשונה ל-‎sfNetError‎", וזה הפסיק להיות נכון
     # כש"עדכן להבא" התחיל להציג כשל רשת משלו. ה-catch החיצוני מזוהה
     # עכשיו במה שמייחד אותו: הוא מסיר את שורת הביניים ופותח את החלון.
-    assert re.search(r"\.catch\(function \(\) \{\s*if \(placeholderRow\) \{\s*"
+    # ובתוכו, לפני, ענף לטופס שכבר הוחלף (הוספה רצופה) — אז "מיד אחרי" הפך ל"בתוך"
+    assert re.search(r"\.catch\(function \(\) \{[\s\S]{0,400}?if \(placeholderRow\) \{\s*"
                      r"placeholderRow\.remove\(\);\s*reopenAfterFailure\(\);", chain)
 
 

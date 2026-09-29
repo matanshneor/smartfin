@@ -1,11 +1,11 @@
-"""בדיקת דפדפן אמיתי: סריקת קבלה שחוזרת לטופס שכבר נסגר או הוחלף (ב1).
+"""בדיקת דפדפן אמיתי: הוספה רצופה בדף הבית: שמירה שחוזרת בזמן שמקלידים את הבאה (ב2).
 
 לא נאספת על ידי pytest (אין לה קידומת test_), כי היא מרימה שרת מקומי,
 מתחברת כמשתמש הבדיקה א' (RLS_TEST_* ב-.env) וכותבת למסד האמיתי — ומנקה
 אחריה. תשובות השרת לבקשות האיטיות מדומות ב-Playwright.
 
 הרצה (Playwright מותקן בפייתון של המערכת, לא ב-.venv):
-    /Library/Frameworks/Python.framework/Versions/3.14/bin/python3 tests/browser/scan_race.py
+    /Library/Frameworks/Python.framework/Versions/3.14/bin/python3 tests/browser/rapid_add.py
 """
 import os, json, time, datetime, subprocess, signal, sys
 from playwright.sync_api import sync_playwright
@@ -56,49 +56,45 @@ try:
         print("created tx:", r.status, bool(created))
         fid = page.evaluate("() => document.cookie") and None
 
-        discards = []
-        def scan_route(route):
-            time.sleep(2.5)
-            route.fulfill(status=200, content_type="application/json", body=json.dumps(
-                {"amount": 999, "merchant": "SCANNED-MERCHANT", "date": "2026-01-15",
-                 "receipt_path": "FAMILY/fake-scan.jpg"}))
-        page.route("**/api/receipts/scan", scan_route)
-        page.route("**/api/receipts/discard", lambda route: (
-            discards.append(json.loads(route.request.post_data)["path"]),
-            route.fulfill(status=200, content_type="application/json", body='{"status":"ok"}')))
-
-        page.on("console", lambda m: print("   ", m.text) if "DBG" in m.text else None)
+        held = []
+        def hold(route):
+            if route.request.method == "POST": held.append(route)
+            else: route.continue_()
+        page.route("**/api/transactions", hold)
+        page.route("**/api/receipts/discard", lambda r: r.fulfill(status=200, body="{}"))
         page.goto(BASE + "/")
-        vals = lambda: page.evaluate("""() => ({amount: txAmount.value, desc: txDescription.value,
-                     date: txDate.value, receipt: txReceiptPath.value,
-                     open: document.getElementById('modalOverlay').classList.contains('open')})""")
+        form = lambda: page.evaluate("""() => ({open: modalOverlay.classList.contains('open'),
+                     amount: txAmount.value, desc: txDescription.value, error: formError.textContent,
+                     toast: document.getElementById('appToast').textContent})""")
 
-        # ── 1. הבאג: סריקה ← סגירה ← עריכת עסקה קיימת ← התשובה חוזרת
-        page.click("#fabBtn"); page.wait_for_selector("#modalOverlay.open")
-        page.set_input_files("#receiptInput", JPEG)
+        def start(amount, desc):
+            page.click("#fabBtn"); page.wait_for_selector("#modalOverlay.open")
+            page.fill("#txAmount", amount); page.fill("#txDescription", desc)
+
+        # ── A. הראשונה מצליחה בזמן שמקלידים את השנייה
+        start("180", "FIRST"); page.click("#submitBtn")
+        page.wait_for_function("() => !modalOverlay.classList.contains('open')")
+        start("12", "SECOND-TYPING")
+        page.wait_for_timeout(300); held.pop().continue_()           # השמירה הראשונה חוזרת עכשיו
+        page.wait_for_timeout(2500)
+        a = form()
+        print("A) after 1st save returned:", a)
+        print("   second form kept:", a["open"] and a["amount"] == "12" and a["desc"] == "SECOND-TYPING")
         page.click("#modalClose")
-        print("   url:", page.url, "| rows with id:", page.locator(f'[data-id="{created}"]').count(),
-              "| visible:", [page.locator(f'[data-id="{created}"]').nth(i).is_visible() for i in range(page.locator(f'[data-id="{created}"]').count())])
-        page.screenshot(path="/tmp/before_row_click.png")
-        page.locator(f'[data-id="{created}"]').first.click()      # עורך בשורה
-        page.locator(".inline-more").first.click()                   # "עוד אפשרויות" → החלון המלא
-        page.wait_for_selector("#modalOverlay.open", timeout=5000)
-        page.wait_for_timeout(4000)
-        v = vals()
-        print("1) edit form after stale scan:", v)
-        print("   untouched:", v["amount"] in ("180", "180.0") and v["desc"] == "SUPER-ORIG" and v["receipt"] == "")
-        print("   discarded stale upload:", discards)
-        page.click("#modalClose"); discards.clear()
 
-        # ── 2. בקרה: סריקה רגילה נכנסת לטופס, ונטישה מוחקת את התמונה
-        page.click("#fabBtn"); page.wait_for_selector("#modalOverlay.open")
-        page.set_input_files("#receiptInput", JPEG)
-        page.wait_for_timeout(4000)
-        print("   discards before closing:", list(discards))
-        v = vals()
-        print("2) add form after normal scan:", {k: v[k] for k in ("amount", "desc", "receipt")})
-        page.click("#modalClose"); time.sleep(0.5)
-        print("   abandoned → discarded:", discards)
+        # ── B. הראשונה נכשלת בזמן שמקלידים את השנייה
+        page.wait_for_timeout(500)
+        start("50", "THIRD"); page.click("#submitBtn")
+        page.wait_for_function("() => !modalOverlay.classList.contains('open')")
+        start("7", "FOURTH-TYPING")
+        page.wait_for_timeout(300)
+        held.pop().fulfill(status=500, content_type="application/json", body='{"error": "תקלה מדומה"}')
+        page.wait_for_timeout(1500)
+        bb = form()
+        print("B) after 1st save failed:", bb)
+        print("   second form kept, no error in it:", bb["open"] and bb["amount"] == "7" and bb["desc"] == "FOURTH-TYPING" and bb["error"] == "")
+        print("   says which one failed:", "₪50" in bb["toast"] and "לא נשמרה" in bb["toast"])
+        page.click("#modalClose")
         b.close()
 finally:
     if created or True:
@@ -107,6 +103,7 @@ finally:
             "from backend import supabase_config as db;"
             "r,_=db.sign_in(os.environ.get('RLS_TEST_EMAIL_A','rls-test-family-a@smartfin.test'),os.environ['RLS_TEST_PASSWORD_A']);"
             f"db.set_auth_token(r.session.access_token);db.get_client().table('transactions').delete().eq('id','{created or "-"}').execute();"
+            "db.get_client().table('transactions').delete().in_('description',['FIRST','THIRD']).execute();"
             f"db.get_client().table('categories').delete().eq('name','SCANTEST-CAT').execute();print('cleaned')"],
             cwd=ROOT)
     os.killpg(os.getpgid(srv.pid), signal.SIGTERM)

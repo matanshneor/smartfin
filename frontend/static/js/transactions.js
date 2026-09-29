@@ -63,6 +63,12 @@
     let scanSeq = 0;
     let claimedReceipt = null;
 
+    /* בדף הבית החלון נסגר ב"שמור" לפני שהשרת ענה, כדי שההוספה תרגיש מיידית.
+     * מי שמוסיף כמה עסקאות ברצף כבר פותח + ומקליד את הבאה כשהתשובה חוזרת —
+     * והיא סגרה את החלון **שלו**, ומה שהקליד נמחק. ‎formSeq‎ עולה בכל פתיחה
+     * של הטופס; שמירה שהטופס שלה כבר הוחלף לא נוגעת בטופס הנוכחי. */
+    let formSeq = 0;
+
     // תמונה שהועלתה לסריקה ולא נשמרה עם עסקה. השרת מוחק רק מה שאף עסקה
     // לא מצביעה עליו; כשל כאן לא מעניין את המשתמש — הכי גרוע, נשאר קובץ.
     function discardReceipt(path) {
@@ -362,6 +368,7 @@
 
     function openAddModal() {
         scanSeq++;
+        formSeq++;
         editId = null;
         editingRecurringParentId = null;
         originalAmount = null;
@@ -379,6 +386,7 @@
 
     function openEditModal(tx, triggerEl) {
         scanSeq++;
+        formSeq++;
         txReceiptPath.value = '';               // לא יורשים קבלה מטופס קודם
         editId = tx.id;
         editingRecurringParentId = tx.recurringParentId || null;
@@ -706,6 +714,13 @@
         // משחרר אותה, כדי שסגירה בלי ניסיון נוסף כן תמחק אותה.
         claimedReceipt = payload.receipt_path;
 
+        // מה ששייך לשמירה **הזאת**, ולא למה שפתוח כשהתשובה חוזרת
+        const myForm   = formSeq;
+        const myEditId = editId;
+        const myLabel  = '₪' + amount + (payload.description ? ' (' + payload.description + ')' : '');
+        // האם הטופס של השמירה הזאת כבר לא על המסך — כי נפתח טופס אחר מאז
+        function formWasReplaced() { return formSeq !== myForm; }
+
         // UI אופטימי: רק בהוספה חדשה (לא עריכה) ורק בדף הבית — שם יש רשימת
         // "עסקאות אחרונות" מוכרת שאפשר להוסיף לה שורה זמנית מיד, לפני
         // שהשרת בכלל ענה. שאר הדף (כרטיסי סיכום, גרפים) ממשיך להתעדכן
@@ -736,6 +751,15 @@
             txReceiptPath.value = payload.receipt_path || '';
         }
 
+        // השמירה נכשלה אחרי שכבר פתחו טופס חדש: לא פותחים עליו את הישן ולא
+        // כותבים לתוכו שגיאה — אומרים איזו עסקה לא נשמרה, כדי שאפשר יהיה
+        // להקליד אותה שוב. הקבלה שלה כבר לא תישמר.
+        function failedBehindAnotherForm(reason) {
+            claimedReceipt = null;
+            discardReceipt(payload.receipt_path);
+            window.showToast('העסקה של ' + myLabel + ' לא נשמרה — ' + reason, 'error');
+        }
+
         const url    = editId ? ('/api/transactions/' + editId) : '/api/transactions';
         const method = editId ? 'PUT' : 'POST';
 
@@ -752,6 +776,11 @@
             // סדרה קבועה שתייצר עשרות שורות אחורה — כמעט תמיד טעות
             // הקלדה בתאריך. השרת עונה 409 עם המספר האמיתי, ושואלים.
             if (res.code === 409 && res.d.needs_confirm) {
+                if (placeholderRow && formWasReplaced()) {
+                    placeholderRow.remove(); placeholderRow = null;
+                    failedBehindAnotherForm(res.d.error);
+                    return null;
+                }
                 if (placeholderRow) { placeholderRow.remove(); placeholderRow = null; reopenAfterFailure(); }
                 return window.appConfirm({
                     title: 'ליצור ' + res.d.will_create + ' עסקאות אחורה?',
@@ -772,6 +801,12 @@
         .then(function (res) {
             if (!res) return;                       // המשתמש ביטל
             const data = res.d;
+            if (data.error && placeholderRow && formWasReplaced()) {
+                placeholderRow.remove();
+                placeholderRow = null;
+                failedBehindAnotherForm(data.error);
+                return;
+            }
             if (data.error) {
                 // בכשל **שרת** החלון נשאר סגור, והשדות — שעדיין מלאים,
                 // כי ‎closeModal‎ לא מאפס אותם — הפכו לבלתי נגישים: הדרך
@@ -793,19 +828,20 @@
 
             // עסקה חדשה נכנסה — צליל ונקישה. חייב לקרות כאן, בתוך שרשרת
             // הלחיצה של המשתמש, כי iOS מאפשר שמע רק מתוך אינטראקציה.
-            const isNew = !editId;
+            const isNew = !myEditId;
             if (isNew) window.appFeedback();
 
             // מה שפעולת-המשך (למטה) רוצה שהמשתמש יידע, במקום ההודעה הרגילה
             let followUp = null;
 
             function finish() {
-                closeModal();
+                // אם בינתיים נפתח טופס חדש — הוא של המשתמש, לא שלנו
+                if (!formWasReplaced()) closeModal();
                 // רענון רך: מחליף את תוכן העמוד בלי ניווט, בלי ניתוח מחדש
                 // של ה-CSS וה-JS, ובלי לאבד את מיקום הגלילה. ההשהיה של
                 // 380ms הייתה שם רק כדי שהצליל יסתיים לפני שהדף נעלם —
                 // עכשיו הוא לא נעלם, אז היא מיותרת.
-                const message = followUp ? followUp.text : (editId ? 'העסקה עודכנה' : 'העסקה נוספה');
+                const message = followUp ? followUp.text : (myEditId ? 'העסקה עודכנה' : 'העסקה נוספה');
                 if (document.querySelector('main[data-soft-reload]')) {
                     window.softReload().then(function () {
                         window.showToast(message, followUp && followUp.error ? 'error' : undefined);
@@ -865,6 +901,11 @@
                 .then(finish);
         })
         .catch(function () {
+            if (placeholderRow && formWasReplaced()) {
+                placeholderRow.remove();
+                failedBehindAnotherForm(window.sfNetError());
+                return;
+            }
             if (placeholderRow) {
                 placeholderRow.remove();
                 // החלון כבר נסגר אופטימית, אבל מה שהוקלד עדיין בשדות —
