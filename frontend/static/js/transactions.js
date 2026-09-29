@@ -817,7 +817,19 @@
                 method:  method,
                 headers: { 'Content-Type': 'application/json' },
                 body:    JSON.stringify(payload),
-            }).then(r => r.json().then(d => ({ code: r.status, d: d })));
+            }).then(function (r) {
+                // תשובה שאינה JSON — דף שגיאה של השרת או של Railway (502/504,
+                // פריסה באמצע) — הפכה ל"שגיאת רשת — נסה שוב". אבל הבקשה כבר
+                // הגיעה לשרת, וייתכן שהשמירה נכתבה לפני שהוא נפל: "נסה שוב"
+                // יצר עותק. אז אומרים את מה שידוע באמת.
+                return r.json().then(
+                    function (d) { return { code: r.status, d: d }; },
+                    function () {
+                        return { code: r.status, d: { error: myEditId
+                            ? 'השרת לא ענה כמו שצריך — ייתכן שהשינוי כבר נשמר. רעננו ובדקו לפני שמנסים שוב.'
+                            : 'השרת לא ענה כמו שצריך — ייתכן שהעסקה כבר נשמרה. בדקו ברשימה לפני שמנסים שוב.' } };
+                    });
+            });
         }
 
         send(false)
