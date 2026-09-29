@@ -80,7 +80,11 @@ self.addEventListener('fetch', function (e) {
                     const network = fetch(e.request).then(res => {
                         if (res.ok) cache.put(e.request, res.clone());
                         return res;
-                    }).catch(() => cached);
+                    // בלי רשת ובלי עותק מדויק: כל גרסה שמורה של אותו קובץ
+                    // עדיפה על כלום. מסך "אין חיבור" מבקש ‎style.css‎ בלי
+                    // ‎?v=‎ — הוא לא יודע את החתימה — והמטמון מחזיק רק כתובות
+                    // חתומות, אז המסך שנועד להיראות כמו האפליקציה הוצג כטקסט.
+                    }).catch(() => cached || cache.match(e.request, { ignoreSearch: true }));
                     return cached || network;
                 })
             )
