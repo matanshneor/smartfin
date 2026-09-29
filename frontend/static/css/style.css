@@ -3137,7 +3137,10 @@ li.project-row {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 24px 16px;
+    /* באפליקציה המותקנת באייפון (black-translucent) הדף מצויר גם מתחת
+       לשעון ולאי הדינמי; בלי המרווח תחילת טופס ארוך נחבאת שם */
+    padding: calc(24px + env(safe-area-inset-top, 0px)) 16px
+             calc(24px + env(safe-area-inset-bottom, 0px));
     min-height: 100vh;
     min-height: 100dvh;
     background:
@@ -3808,7 +3811,9 @@ li.transaction-item.swipe-ready > .swipe-content {
 .legal-page {
     max-width: 680px;
     margin: 0 auto;
-    padding: 26px 20px 60px;
+    /* "← חזרה" ישב בגובה השעון באייפון — ראו ‎.auth-body‎ */
+    padding: calc(26px + env(safe-area-inset-top, 0px)) 20px
+             calc(60px + env(safe-area-inset-bottom, 0px));
 }
 
 .legal-back {

@@ -292,3 +292,15 @@ def test_swipe_structure_is_built_lazily():
 
     assert "querySelectorAll(ROW_SELECTOR).forEach" not in js, \
         "המבנה עדיין נבנה לכל שורה בטעינת העמוד"
+
+
+def test_pages_outside_the_app_shell_clear_the_iphone_status_bar():
+    """‎black-translucent‎ מצייר את הדף מתחת לשעון ולאי הדינמי. המסכים
+    הראשיים מפנים לו מקום; התחברות/הרשמה/פרטיות לא פינו, ו"← חזרה"
+    בדף הפרטיות ישב בגובה השעון."""
+    css = re.sub(r"/\*.*?\*/", "", _read("frontend/static/css/style.css"), flags=re.S)
+    for selector in (".auth-body", ".legal-page"):
+        rule = css[css.index(selector + " {"):]
+        rule = rule[:rule.index("}")]
+        assert "safe-area-inset-top" in rule, selector
+        assert "safe-area-inset-bottom" in rule, selector
