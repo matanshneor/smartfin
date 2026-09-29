@@ -2894,6 +2894,15 @@ li.project-row {
 .password-form.visible { display: block; }
 
 /* מחיקת חשבון — אזור סכנה */
+/* "אפשרויות מתקדמות" בהגדרות — פעולות נדירות שלא אמורות להיות בהישג יד */
+.advanced-options > .advanced-summary {
+    cursor: pointer;
+    padding: 12px 0;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    list-style-position: inside;
+}
+
 .btn-danger-ghost {
     color: var(--color-expense);
     border: 1px solid rgba(185, 28, 28, 0.25);

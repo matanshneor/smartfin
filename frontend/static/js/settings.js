@@ -1083,44 +1083,60 @@ document.addEventListener('click', function (e) {
         });
     }
 
-    // ── הסרת בן משפחה (מנהל בלבד) ──
-    document.addEventListener('click', function (e) {
-        const btn = e.target.closest('.remove-member-btn');
-        if (!btn) return;
-        const id   = btn.dataset.id;
-        const name = btn.dataset.name || 'בן המשפחה';
-        if (!id) return;
+    // ── הסרת בן משפחה (מנהל בלבד, מתחת ל"אפשרויות מתקדמות") ──
+    // שלוש שאלות לפני שמשהו קורה: אזהרה, מה לעשות עם העסקאות, ואישור אחרון.
+    // נסיגה בכל אחת מהן — שום דבר לא נשלח.
+    const removeBtn    = document.getElementById('removeMemberBtn');
+    const removeSelect = document.getElementById('removeMemberSelect');
+    if (removeBtn && removeSelect) {
+        removeBtn.addEventListener('click', function () {
+            const id  = removeSelect.value;
+            const opt = removeSelect.options[removeSelect.selectedIndex];
+            const name = (opt && opt.textContent.trim()) || 'בן המשפחה';
+            if (!id) return;
+            let choice = null;
 
-        window.appConfirm({
-            title: 'להסיר את ' + name + ' מהמשפחה?',
-            message: name + ' יאבד גישה לתקציב המשפחתי מיד, ותיפתח לו משפחה '
-                   + 'חדשה וריקה. אפשר לצרף אותו שוב בקוד הזמנה.\n\n'
-                   + 'אם יש לו פרויקטים אישיים, הם יימחקו יחד עם העסקאות שבהם.',
-            confirmText: 'המשך',
-        }).then(function (ok) {
-            if (!ok) return null;
-            return askAboutTransactions('העסקאות של ' + name,
-                'העסקאות שלו נרשמו מהתקציב המשותף.');
-        }).then(function (choice) {
-            if (!choice) return;
-            btn.disabled = true;
-            return send('/api/family/members/' + id, 'DELETE',
-                        { keep_transactions: choice === KEEP })
-                .then(function (res) {
-                    if (res.ok) {
-                        window.showToast(name + ' הוסר מהמשפחה');
-                        setTimeout(function () { window.location.reload(); }, 700);
-                    } else {
-                        btn.disabled = false;
-                        window.showToast(res.data.error || 'ההסרה נכשלה', 'error');
-                    }
-                })
-                .catch(function () {
-                    btn.disabled = false;
-                    window.showToast(window.sfNetError(), 'error');
+            window.appConfirm({
+                title: 'להסיר את ' + name + ' מהמשפחה?',
+                message: name + ' יאבד גישה לתקציב המשפחתי מיד, ותיפתח לו משפחה '
+                       + 'חדשה וריקה. אפשר לצרף אותו שוב בקוד הזמנה.\n\n'
+                       + 'אם יש לו פרויקטים אישיים, הם יימחקו יחד עם העסקאות שבהם.',
+                confirmText: 'המשך',
+            }).then(function (ok) {
+                if (!ok) return null;
+                return askAboutTransactions('העסקאות של ' + name,
+                    'העסקאות שלו נרשמו מהתקציב המשותף.');
+            }).then(function (c) {
+                if (!c) return null;
+                choice = c;
+                return window.appConfirm({
+                    title: 'אישור אחרון',
+                    message: 'להסיר את ' + name + ' עכשיו? '
+                           + (choice === WIPE ? 'העסקאות שלו יימחקו. ' : '')
+                           + 'את זה אי אפשר לבטל.',
+                    confirmText: 'הסר',
                 });
+            }).then(function (ok) {
+                if (!ok) return;
+                removeBtn.disabled = true;
+                return send('/api/family/members/' + id, 'DELETE',
+                            { keep_transactions: choice === KEEP })
+                    .then(function (res) {
+                        if (res.ok) {
+                            window.showToast(name + ' הוסר מהמשפחה');
+                            setTimeout(function () { window.location.reload(); }, 700);
+                        } else {
+                            removeBtn.disabled = false;
+                            window.showToast(res.data.error || 'ההסרה נכשלה', 'error');
+                        }
+                    })
+                    .catch(function () {
+                        removeBtn.disabled = false;
+                        window.showToast(window.sfNetError(), 'error');
+                    });
+            });
         });
-    });
+    }
 
     // ── עזיבת המשפחה ──
     const leaveBtn = document.getElementById('leaveFamilyBtn');

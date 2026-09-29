@@ -155,16 +155,6 @@
                             <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
                         </svg>
                     </button>
-                    {# הסרה מוצגת רק למנהל, ורק על חבר אחר. הכלל נאכף ב-DB
-                       ממילא; ההסתרה כאן היא כדי לא להציע פעולה שתיכשל. #}
-                    {% elif user.id == family.get('manager_id') %}
-                    <button class="icon-btn icon-btn-danger remove-member-btn"
-                            data-id="{{ m.id }}" data-name="{{ m.full_name }}"
-                            aria-label="הסרת {{ m.full_name }} מהמשפחה">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/>
-                        </svg>
-                    </button>
                     {% endif %}
                 </li>
                 {% endfor %}
@@ -255,6 +245,31 @@
                 </div>
                 <button class="btn-sm btn-danger-ghost" id="leaveFamilyBtn">עזיבה</button>
             </div>
+            {% endif %}
+
+            {# הסרת בן משפחה — מוסתרת בכוונה (החלטה של מתן, 30.9). הדרך הרגילה
+               לצאת היא לצאת בעצמך; ההסרה נשארת רק למקרה חירום, למשל קוד
+               הזמנה שהגיע לאדם הלא נכון. מוצגת רק למנהל; הכלל נאכף ב-DB ממילא. #}
+            {% if user.id == family.get('manager_id') and members | length > 1 %}
+            <div class="group-divider"></div>
+            <details class="advanced-options">
+                <summary class="advanced-summary">אפשרויות מתקדמות</summary>
+                <div class="group-row group-row-stack">
+                    <div class="group-row-info">
+                        <p class="group-row-label">הסרת בן משפחה</p>
+                        <p class="group-row-hint">למקרה חירום — למשל אם מישהו שלא אמור לראות את התקציב נכנס למשפחה. בדרך כלל עדיף שבן המשפחה יצא בעצמו.</p>
+                    </div>
+                    <div class="join-family-row">
+                        <label class="sr-only" for="removeMemberSelect">בן המשפחה להסרה</label>
+                        <select class="form-input" id="removeMemberSelect">
+                            {% for m in members if m.id != user.id %}
+                            <option value="{{ m.id }}">{{ m.full_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button class="btn-sm btn-danger-ghost" id="removeMemberBtn">הסרה</button>
+                    </div>
+                </div>
+            </details>
             {% endif %}
         </div>
     </section>
