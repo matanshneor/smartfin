@@ -1356,6 +1356,15 @@ def _others_contributions(project: dict, viewer_id: str, names: dict) -> str:
     return " · ".join(parts)
 
 
+def _project_gone():
+    """פרויקט שנמחק, או קישור שנחתך: לרשימה, עם הסבר.
+
+    אותה הודעה גם לפרויקט אישי של בן משפחה אחר — "לא נמצא" ולא "אין
+    הרשאה", כדי שהתשובה לא תאשר שהוא קיים (ראו ‎project_access_required‎)."""
+    session["sf_notice"] = "הפרויקט הזה כבר לא קיים"
+    return redirect(url_for("projects"))
+
+
 @app.route("/projects/<project_id>")
 @login_required
 def project_detail(project_id):
@@ -1363,7 +1372,7 @@ def project_detail(project_id):
     family_id = user["family_id"]
     project = db.get_project_detail(project_id, family_id, user["id"]) if family_id else None
     if not project:
-        return redirect(url_for("projects"))
+        return _project_gone()
     return render_template("project_detail.html", active_page="projects", user=user,
                            project=project,
                            member_colors=_member_colors(family_id),
@@ -1379,7 +1388,7 @@ def project_edit(project_id):
     family_id = user["family_id"]
     project = db.get_project_detail(project_id, family_id, user["id"]) if family_id else None
     if not project:
-        return redirect(url_for("projects"))
+        return _project_gone()
     return render_template("project_edit.html", active_page="projects", user=user,
                            project=project,
                            member_colors=_member_colors(family_id),

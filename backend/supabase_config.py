@@ -2175,11 +2175,17 @@ def get_project_detail(project_id: str, family_id: str, viewer_user_id: str) -> 
     client = get_client()
     if not client or not family_id:
         return None
+    # מזהה משובש (קישור שנחתך) — PostgREST היה דוחה אותו בשגיאה, והיא 503
+    if not _UUID_RE.match(str(project_id)):
+        return None
     try:
-        proj = client.table("projects").select("*") \
-            .eq("id", project_id).eq("family_id", family_id).single().execute().data
-        if not proj:
+        # לא ‎.single()‎: על אפס שורות הוא זורק, וזה הפך פרויקט שנמחק לדף
+        # תקלה ("נסו לרענן") במקום ל"לא קיים"
+        found = client.table("projects").select("*") \
+            .eq("id", project_id).eq("family_id", family_id).limit(1).execute().data
+        if not found:
             return None
+        proj = found[0]
         if proj.get("owner_id") and proj["owner_id"] != viewer_user_id:
             return None
 
