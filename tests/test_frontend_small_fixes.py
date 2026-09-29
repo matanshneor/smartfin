@@ -304,3 +304,19 @@ def test_pages_outside_the_app_shell_clear_the_iphone_status_bar():
         rule = rule[:rule.index("}")]
         assert "safe-area-inset-top" in rule, selector
         assert "safe-area-inset-bottom" in rule, selector
+
+
+def test_amount_cards_shrink_instead_of_pushing_the_page_sideways():
+    """‎1fr‎ לא מתכווץ מתחת לתוכן. עם אגורות, שלושת הכרטיסים בבית דחפו את
+    העמוד הצידה ב-390 וחתכו את החסכונות ב-375 (tests/browser/narrow_screens.py)."""
+    css = re.sub(r"/\*.*?\*/", "", _read("frontend/static/css/style.css"), flags=re.S)
+
+    def rule(selector):
+        body = css[css.index(selector + " {"):]
+        return body[:body.index("}")]
+
+    for grid in (".summary-cards", ".hero-totals", ".kpi-chips"):
+        assert "minmax(0, 1fr)" in rule(grid), grid
+    assert "cqi" in rule(".summary-card .card-amount")
+    assert "cqi" in rule(".kpi-chip .kpi-value")
+    assert "flex-wrap: wrap" in rule(".month-stats")

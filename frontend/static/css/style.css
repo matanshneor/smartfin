@@ -367,12 +367,13 @@ ul { list-style: none; }
 
 .kpi-chips {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     margin-top: 14px;
 }
 
 .kpi-chip {
+    container-type: inline-size;   /* ל-‎cqi‎ של הסכום, ראו ‎.summary-card‎ */
     background: var(--hero-chip-bg);
     border: 1px solid var(--hero-chip-border);
     border-radius: var(--radius-sm);
@@ -388,7 +389,7 @@ ul { list-style: none; }
 
 .kpi-chip .kpi-value {
     font-weight: 600;
-    font-size: 0.98rem;
+    font-size: min(0.98rem, 16cqi);
     font-variant-numeric: tabular-nums;
     direction: ltr;
     white-space: nowrap;
@@ -404,7 +405,7 @@ ul { list-style: none; }
 /* Hero totals row (compare page) */
 .hero-totals {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
     margin-top: 16px;
 }
@@ -507,12 +508,16 @@ ul { list-style: none; }
 
 .summary-cards {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    /* ‎minmax(0, …)‎: עמודה של ‎1fr‎ לא מתכווצת מתחת לתוכן שלה, וסכום עם
+       אגורות ("₪28,765.43") דחף את העמוד הצידה ברוחב 390 וחתך את
+       החסכונות ב-375 */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
     margin-bottom: 18px;
 }
 
 .summary-card {
+    container-type: inline-size;
     background: var(--color-card);
     border: var(--border-subtle);
     border-radius: var(--radius);
@@ -563,7 +568,9 @@ ul { list-style: none; }
 }
 
 .summary-card .card-amount {
-    font-size: 1.02rem;
+    /* קטן בדיוק כמה שצריך כדי להיכנס: ‎cqi‎ הוא אחוז מרוחב הכרטיס.
+       בכרטיס רחב — הגודל המקורי */
+    font-size: min(1.02rem, 16cqi);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     direction: ltr;
@@ -1842,7 +1849,10 @@ a.submit-btn {
 
 .month-stats {
     display: flex;
-    gap: 18px;
+    /* ברוחב 320 שלושת הסכומים לא נכנסו, גלשו על היתרה, והחיסכון יצא
+       מהמסך. עכשיו מה שלא נכנס יורד לשורה שנייה */
+    flex-wrap: wrap;
+    gap: 4px 18px;
 }
 
 .stat {
@@ -3524,7 +3534,7 @@ li.project-row {
     .page-hero { padding-top: 32px; }
     .hero-amount { font-size: 4rem; }
     .category-grid, .onboarding-cat-grid { grid-template-columns: repeat(5, 1fr); }
-    .kpi-chips { grid-template-columns: repeat(4, 1fr); }
+    .kpi-chips { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 /* מתג ה-haptic של iOS: חייב להישאר מרונדר (display:none מבטל את האפקט),
