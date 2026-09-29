@@ -36,6 +36,25 @@
         return definitelyOffline() ? OFFLINE : GENERIC;
     };
 
+    /* רשימה מהשרת (קטגוריות, בני משפחה, פרויקטים) — או שגיאה. אף פעם לא
+     * משהו באמצע.
+     *
+     * ‎fetch().then(r => r.json())‎ לא בודק את הסטטוס: תשובת 500 או 429
+     * היא ‎{error: …}‎ — והיא נשמרה במטמון כאילו היא הרשימה. מאותו רגע כל
+     * לחיצה על + נפלה על ‎.filter‎ של אובייקט והציגה "שגיאת רשת", גם אחרי
+     * שהשרת התאושש, כי המטמון כבר "מלא". דחייה כאן לא נשמרת בשום מטמון,
+     * אז הלחיצה הבאה מנסה שוב. */
+    window.sfFetchList = function (url) {
+        return fetch(url).then(function (r) {
+            return r.json().catch(function () { return null; }).then(function (data) {
+                if (!r.ok || !Array.isArray(data)) {
+                    throw new Error((data && data.error) || ('HTTP ' + r.status));
+                }
+                return data;
+            });
+        });
+    };
+
     var banner = null;
 
     function showBanner() {

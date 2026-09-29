@@ -130,8 +130,7 @@ function renderCatRow(cat) {
 
 function loadCats(type) {
     catList.innerHTML = '<li class="category-row"><span class="cat-row-name">טוען…</span></li>';
-    fetch('/api/projects/' + projectId + '/categories?type=' + type)
-        .then(r => r.json())
+    window.sfFetchList('/api/projects/' + projectId + '/categories?type=' + type)
         .then(function (cats) {
             if (currentTab !== type) return;
             catList.innerHTML = '';

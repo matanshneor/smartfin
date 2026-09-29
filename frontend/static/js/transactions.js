@@ -109,30 +109,26 @@
 
     function loadCategories() {
         if (categoriesCache) return Promise.resolve(categoriesCache);
-        return fetch('/api/categories')
-            .then(r => r.json())
+        return window.sfFetchList('/api/categories')
             .then(function (cats) { categoriesCache = cats; return cats; });
     }
 
     function loadMembers() {
         if (membersCache) return Promise.resolve(membersCache);
-        return fetch('/api/family/members')
-            .then(r => r.json())
+        return window.sfFetchList('/api/family/members')
             .then(function (members) { membersCache = members; return members; });
     }
 
     function loadProjects() {
         if (projectsCache) return Promise.resolve(projectsCache);
-        return fetch('/api/projects')
-            .then(r => r.json())
+        return window.sfFetchList('/api/projects')
             .then(function (projects) { projectsCache = projects; return projects; });
     }
 
     function loadProjectCategories(projectId, type) {
         const key = projectId + ':' + type;
         if (projectCategoriesCache[key]) return Promise.resolve(projectCategoriesCache[key]);
-        return fetch('/api/projects/' + projectId + '/categories?type=' + type)
-            .then(r => r.json())
+        return window.sfFetchList('/api/projects/' + projectId + '/categories?type=' + type)
             .then(function (cats) { projectCategoriesCache[key] = cats; return cats; });
     }
 
