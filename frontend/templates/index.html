@@ -38,10 +38,13 @@
 <section class="hero-balance" aria-label="יתרת עו&quot;ש חודשית">
     <p class="hero-label">{{ 'יצא החודש' if no_income_yet else 'נשאר בעו״ש החודש' }}</p>
     {% set shown = (summary.expense + summary.savings) if no_income_yet else summary.remaining %}
-    <p class="hero-amount {% if not no_income_yet and summary.remaining < 0 %}deficit{% endif %}"
+    {# גירעון לפי המספר **שמוצג** (מעוגל לשקל), לא לפי המדויק: 40 אגורות של
+       גירעון הוצגו "-₪0" באדום — הצבע אמר גירעון, המספר אמר אפס. #}
+    {% set deficit = not no_income_yet and (summary.remaining | round) < 0 %}
+    <p class="hero-amount {% if deficit %}deficit{% endif %}"
        data-countup="{{ shown | abs | round | int }}"
-       {% if not no_income_yet and summary.remaining < 0 %}data-prefix="-"{% endif %}>
-        {% if not no_income_yet and summary.remaining < 0 %}-{% endif %}₪{{ "{:,.0f}".format(shown | abs) }}
+       {% if deficit %}data-prefix="-"{% endif %}>
+        {% if deficit %}-{% endif %}₪{{ "{:,.0f}".format(shown | abs) }}
     </p>
     <p class="hero-sub">
         {%- if no_income_yet -%}

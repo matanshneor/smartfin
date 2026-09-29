@@ -166,25 +166,10 @@ def test_the_dashboard_says_the_same_thing_twice_the_same_way():
 
 # ─── 4. חודש בלי הכנסות אינו גירעון ──────────────────────────────────────────
 
-def test_a_month_with_no_income_is_not_shown_as_a_deficit():
-    """הלב. כמעט כל משתמש חדש מזין הוצאה לפני משכורת, ואז המסך הראשון
-    שלו היה ‎-₪120‎ באדום."""
-    html = _read("frontend/templates/index.html")
-    hero = html[html.index('class="hero-balance"'):]
-    hero = hero[:hero.index("</p>", hero.index("hero-amount"))]
-
-    # **כל** בדיקת הסימן מגודרת, לא רק הראשונה: המחלקה ‎deficit‎,
-    # ‎data-prefix‎ וסימן המינוס עצמו הם שלושה מקומות נפרדים, ושכחה של
-    # אחד מהם משאירה מינוס אדום על מסך שאין בו גירעון.
-    guarded = hero.count("not no_income_yet and summary.remaining < 0")
-    total = hero.count("summary.remaining < 0")
-
-    assert total >= 3, f"נמצאו רק {total} בדיקות סימן — המבנה השתנה"
-    assert guarded == total, (
-        f"{total - guarded} מתוך {total} בדיקות הסימן אינן מותנות בכך "
-        f"שיש בכלל הכנסות"
-    )
-
+# "חודש בלי הכנסה אינו גירעון" נבדק עכשיו בהתנהגות, על דף הבית המרונדר:
+# tests/test_minus_zero.py::test_a_month_with_no_income_is_not_shown_as_a_deficit.
+# הבדיקה שישבה כאן ספרה מופעים של ‎summary.remaining < 0‎ בקוד המקור, וזה
+# הפסיק להתאים כשהתנאי עבר למשתנה אחד (‎deficit‎).
 
 def test_it_says_what_the_number_means_instead():
     """"נשאר בעו״ש" על מספר שאין ממנו מה להחסיר הוא משפט שלא נכון."""

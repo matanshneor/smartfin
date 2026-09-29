@@ -1040,18 +1040,9 @@ def get_monthly_summary(family_id: str, year: int, month: int) -> dict:
             .lt("date", _next_month(year, month)) \
             .execute()
 
-        summary = _empty_summary()
-        for row in result.data:
-            t = row["type"]
-            if t in summary:
-                summary[t] += float(row["amount"])
-
-        summary["balance"]   = summary["income"] - summary["expense"]
-        # יתרת עו"ש: מה שנשאר בחשבון אחרי הוצאות והפרשות לחיסכון
-        summary["remaining"] = summary["income"] - summary["expense"] - summary["savings"]
-        total = summary["income"] or 1
-        summary["expense_pct"] = round((summary["expense"] / total) * 100)
-        return summary
+        # אותו חישוב בדיוק כמו עמוד החודש. כאן הוא היה עותק בלי עיגול, ושברים
+        # עשרוניים הפכו אפס ל-‎-1.1e-13‎ — ודף הבית הציג "-₪0" באדום.
+        return summary_from_rows(result.data)
     except Exception as e:
         # לא מחזירים אפסים: דשבורד של ₪0 נראה כמו תקציב ריק ולא כמו תקלה
         raise DataUnavailable("get_monthly_summary") from e

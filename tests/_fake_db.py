@@ -71,6 +71,10 @@ class _Query:
         self._filters.append(("gte", column, value))
         return self
 
+    def lt(self, column, value):
+        self._filters.append(("lt", column, value))
+        return self
+
     def lte(self, column, value):
         self._filters.append(("lte", column, value))
         return self
@@ -122,6 +126,8 @@ class _Query:
             if kind == "gte" and not (actual is not None and str(actual) >= str(value)):
                 return False
             if kind == "lte" and not (actual is not None and str(actual) <= str(value)):
+                return False
+            if kind == "lt" and not (actual is not None and str(actual) < str(value)):
                 return False
             if kind == "in" and actual not in value:
                 return False
