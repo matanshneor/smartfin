@@ -150,10 +150,14 @@ window.escapeHtml = function (s) {
     const msgEl   = document.getElementById('confirmMessage');
     const yesBtn  = document.getElementById('confirmYes');
     const noBtn   = document.getElementById('confirmNo');
+    const choiceEl = document.getElementById('confirmChoice');
     let resolver  = null;
+    let withChoice = false;
     let confirmLastFocused = null;
 
     function closeConfirm(result) {
+        // עם ‎choices‎ האישור מחזיר את מה שנבחר ולא ‎true‎
+        if (result === true && withChoice) result = choiceEl.value;
         overlay.classList.remove('open');
         if (resolver) { resolver(result); resolver = null; }
         if (confirmLastFocused) { confirmLastFocused.focus(); confirmLastFocused = null; }
@@ -170,8 +174,20 @@ window.escapeHtml = function (s) {
      * ביטול-מחיקה.
      *
      * ‎null‎ נבחר במכוון כי הוא falsy: כל הקוראים הקיימים בודקים ‎if (!ok)‎
-     * וממשיכים לעבוד בלי שינוי. מי שצריך את ההבחנה בודק ‎=== null‎. */
+     * וממשיכים לעבוד בלי שינוי. מי שצריך את ההבחנה בודק ‎=== null‎.
+     *
+     * ‎opts.choices‎ (‏[{value, label}]) מוסיף רשימה לבחירה מתחת להודעה, ואז
+     * האישור מחזיר את ה-‎value‎ שנבחר במקום ‎true‎. */
     window.appConfirm = function (opts) {
+        withChoice = !!(opts.choices && opts.choices.length);
+        choiceEl.hidden = !withChoice;
+        choiceEl.innerHTML = '';
+        (opts.choices || []).forEach(function (c) {
+            const o = document.createElement('option');
+            o.value = c.value;
+            o.textContent = c.label;
+            choiceEl.appendChild(o);
+        });
         titleEl.textContent  = opts.title || 'לאשר את הפעולה?';
         msgEl.textContent    = opts.message || '';
         yesBtn.textContent   = opts.confirmText || 'מחק';
@@ -189,17 +205,77 @@ window.escapeHtml = function (s) {
         return new Promise(function (resolve) { resolver = resolve; });
     };
 
+    /* מחיקת קטגוריה — משותף להגדרות ולעמוד הפרויקט.
+     *
+     * אין עסקה בלי קטגוריה: קודם שואלים את השרת כמה עסקאות יש בה ולאן
+     * אפשר להעביר אותן, ואז שואלים את המשתמש באותו דיאלוג. השרת אוכף את
+     * אותו כלל בעצמו (409 בלי יעד), כך שהשאלה כאן היא נוחות ולא ההגנה.
+     * מחזיר ‎Promise‎ של ‎true‎ כשהקטגוריה נמחקה. */
+    let deletingCategory = false;
+    window.sfDeleteCategory = function (baseUrl, name) {
+        // נגיעה כפולה ב-✕ פתחה שתי שאלות ברצף, והתשובה לראשונה נבלעה בשנייה
+        if (deletingCategory) return Promise.resolve(false);
+        deletingCategory = true;
+        function json(r) {
+            return r.json().catch(function () { return {}; })
+                .then(function (d) { return { ok: r.ok, d: d }; });
+        }
+        let usage = null;
+        return fetch(baseUrl + '/usage').then(json).then(function (res) {
+            if (!res.ok || res.d.blocked) {
+                window.showToast(res.d.blocked || res.d.error || 'המחיקה נכשלה', 'error');
+                return false;
+            }
+            usage = res.d;
+            const count = usage.count || 0;
+            const opts = { title: 'למחוק את "' + name + '"?', confirmText: 'מחק קטגוריה' };
+            if (count) {
+                opts.message = (count === 1 ? 'יש בקטגוריה הזו עסקה אחת' : 'יש בקטגוריה הזו ' + count + ' עסקאות')
+                    + '. לאיזו קטגוריה להעביר ' + (count === 1 ? 'אותה' : 'אותן') + '?';
+                opts.choices = usage.alternatives.map(function (c) {
+                    return { value: c.id, label: c.icon + ' ' + c.name };
+                });
+                opts.confirmText = 'העבר ומחק';
+            } else {
+                opts.message = 'אין בה עסקאות.';
+            }
+            return window.appConfirm(opts);
+        }).then(function (answer) {
+            if (!answer) return false;
+            const target = usage.count ? answer : null;
+            const url = baseUrl + (target ? '?move_to=' + encodeURIComponent(target) : '');
+            return fetch(url, { method: 'DELETE' }).then(json).then(function (res) {
+                if (!res.ok) {
+                    window.showToast(res.d.error || 'המחיקה נכשלה', 'error');
+                    return false;
+                }
+                const dest = target && usage.alternatives.find(function (c) { return c.id === target; });
+                window.showToast(dest
+                    ? 'הקטגוריה נמחקה — ' + (usage.count === 1 ? 'העסקה הועברה' : usage.count + ' עסקאות הועברו')
+                      + ' ל"' + dest.name + '"'
+                    : 'הקטגוריה נמחקה');
+                return true;
+            });
+        }).catch(function () {
+            window.showToast(window.sfNetError(), 'error');
+            return false;
+        }).then(function (deleted) {
+            deletingCategory = false;
+            return deleted;
+        });
+    };
+
     yesBtn.addEventListener('click', function () { closeConfirm(true); });
     noBtn.addEventListener('click', function () { closeConfirm(false); });
     overlay.addEventListener('click', function (e) {
         if (e.target === overlay) closeConfirm(null);   // נסיגה, לא "לא"
     });
 
-    // Escape סוגר, Tab/Shift+Tab נשארים בתוך הדיאלוג (שני כפתורים בלבד)
+    // Escape סוגר, Tab/Shift+Tab נשארים בתוך הדיאלוג
     overlay.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') { closeConfirm(null); return; }   // נסיגה
         if (e.key !== 'Tab') return;
-        const focusables = [yesBtn, noBtn];
+        const focusables = withChoice ? [choiceEl, yesBtn, noBtn] : [yesBtn, noBtn];
         const idx = focusables.indexOf(document.activeElement);
         e.preventDefault();
         const next = e.shiftKey

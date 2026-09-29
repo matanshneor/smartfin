@@ -329,30 +329,15 @@ document.addEventListener('click', function (e) {
     const panel = row.closest('.cat-tab-panel');
 
     const catName = (row.querySelector('.cat-row-name') || {}).textContent || '';
-    window.appConfirm({
-        title: 'למחוק את "' + catName.trim() + '"?',
-        // הנוסח הישן ("יוצגו כאחר") היה נכון כשהפילוח קובץ לפי שם והן
-        // התמזגו בשקט לתוך קטגוריית "אחר" הקיימת. מאז הן דלי נפרד.
-        message: 'עסקאות קיימות בקטגוריה יעברו ל"ללא קטגוריה".',
-        confirmText: 'מחק קטגוריה',
-    }).then(function (ok) {
-        if (!ok) return;
-        fetch('/api/categories/' + id, { method: 'DELETE' })
-        .then(r => r.json())
-        .then(function (d) {
-            if (d.status === 'ok') {
-                row.style.opacity = '0';
-                row.style.height  = '0';
-                row.style.overflow = 'hidden';
-                row.style.transition = 'all 0.25s';
-                setTimeout(function () { row.remove(); updatePanelReorderState(panel); }, 260);
-                forgetCategories();
-                window.showToast('הקטגוריה נמחקה');
-            } else {
-                window.showToast(d.error || 'המחיקה נכשלה', 'error');
-            }
-        })
-        .catch(function () { window.showToast(window.sfNetError(), 'error'); });
+    // שואל לאן להעביר את העסקאות, מוחק ומודיע — ראו ‎sfDeleteCategory‎ ב-core.js
+    window.sfDeleteCategory('/api/categories/' + id, catName.trim()).then(function (deleted) {
+        if (!deleted) return;
+        row.style.opacity = '0';
+        row.style.height  = '0';
+        row.style.overflow = 'hidden';
+        row.style.transition = 'all 0.25s';
+        setTimeout(function () { row.remove(); updatePanelReorderState(panel); }, 260);
+        forgetCategories();
     });
 });
 

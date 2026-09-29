@@ -250,9 +250,12 @@ def test_the_signup_tab_does_not_welcome_you_back():
 def test_every_delete_chain_handles_a_dropped_connection():
     """בלי ‎.catch‎ השורה נשארת על המסך בלי שום הודעה, והמשתמש לוחץ ✕
     שוב ושוב."""
-    js = _strip_comments(_read("frontend/static/js/project-edit.js"))
-    block = js[js.index("/categories/' + id, { method: 'DELETE' }"):]
-    block = block[:block.index("\n});")]
+    # מחיקת קטגוריה (משפחה ופרויקט) עוברת דרך עוזר אחד ב-core.js
+    for f in ("project-edit.js", "settings.js"):
+        assert "window.sfDeleteCategory(" in _read(f"frontend/static/js/{f}"), f
+    js = _strip_comments(_read("frontend/static/js/core.js"))
+    block = js[js.index("window.sfDeleteCategory = function"):]
+    block = block[:block.index("\n    };")]
 
     assert ".catch(" in block
 

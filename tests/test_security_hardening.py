@@ -91,11 +91,6 @@ def test_a_category_of_the_wrong_type_is_refused(monkeypatch):
     assert "אינה מתאימה" in err
 
 
-def test_no_category_at_all_is_allowed(monkeypatch):
-    """בקרת-נגד: עסקה ללא קטגוריה היא מצב תקין."""
-    assert app_module._validated_category(None, _user(), "expense") == (None, None)
-
-
 def test_every_project_route_goes_through_the_access_gate():
     """שמונה מסלולים סיננו לפי משפחה בלבד. הכלל נאכף בשער אחד ולא
     בשמונה עותקים, כי השמיני הוא זה שנשכח."""

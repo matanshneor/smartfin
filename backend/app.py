@@ -1639,8 +1639,17 @@ def update_project_category_route(project_id, cat_id):
 @project_access_required
 def delete_project_category_route(project_id, cat_id):
     user = get_current_user()
-    ok = db.delete_project_category(cat_id, project_id, user["family_id"])
-    return jsonify({"status": "ok" if ok else "error"}), 200 if ok else 500
+    project = db.get_project_for_transaction(project_id, user["family_id"]) or {}
+    return _delete_category("project", cat_id, user, project=project)
+
+
+@app.route("/api/projects/<project_id>/categories/<cat_id>/usage", methods=["GET"])
+@login_required
+@project_access_required
+def project_category_usage_route(project_id, cat_id):
+    user = get_current_user()
+    project = db.get_project_for_transaction(project_id, user["family_id"]) or {}
+    return _category_usage("project", cat_id, user, project=project)
 
 
 def _invite_deadline(family):
@@ -2024,19 +2033,20 @@ def _apply_project_assignment(body: dict, user: dict, tx_type: str, current=None
 
     # קטגוריית הפרויקט חייבת להיות של הפרויקט הזה, לא של אחר
     project_category_id = body.get("project_category_id")
-    if project_category_id:
-        valid = {c["id"] for c in db.get_project_categories(project_id, user["family_id"])}
-        if project_category_id not in valid:
-            return None, None, None, None, "הקטגוריה אינה שייכת לפרויקט הזה"
+    if not project_category_id:
+        return None, None, None, None, "נא לבחור קטגוריה"
+    valid = {c["id"] for c in db.get_project_categories(project_id, user["family_id"])}
+    if project_category_id not in valid:
+        return None, None, None, None, "הקטגוריה אינה שייכת לפרויקט הזה"
 
     return project_id, project_category_id, None, user_id, None
 
 
 def _validated_category(category_id, user: dict, tx_type: str):
     """מוודא שהקטגוריה קיימת במשפחה ומתאימה לסוג העסקה.
-    מחזירה (category_id, error). ריק הוא ערך תקין — עסקה ללא קטגוריה."""
+    מחזירה (category_id, error). אין עסקה בלי קטגוריה — גם לא דרך ה-API."""
     if not category_id:
-        return None, None
+        return None, "נא לבחור קטגוריה"
     for cat in db.get_categories(user["family_id"]):
         if cat["id"] == category_id:
             if cat.get("type") != tx_type:
@@ -2651,26 +2661,76 @@ def delete_category(cat_id):
     denied = _require_manager()
     if denied:
         return denied
+    return _delete_category("family", cat_id, user)
 
-    client = db.get_client()
-    if not client:
-        return jsonify({"error": "השירות אינו זמין כרגע — נסו שוב בעוד רגע"}), 500
+
+@app.route("/api/categories/<cat_id>/usage", methods=["GET"])
+@login_required
+def category_usage(cat_id):
+    return _category_usage("family", cat_id, get_current_user())
+
+
+_TYPE_NOUN = {"expense": "הוצאה", "income": "הכנסה", "savings": "חיסכון"}
+
+
+def _deletion_plan(kind, cat_id, user, project=None):
+    """התוכנית של ‎db.category_deletion_plan‎ ועוד ‎blocked‎ — למה אי אפשר
+    למחוק בכלל, או ‎None‎.
+
+    הקטגוריה האחרונה מסוג מסוים נשארת: בלעדיה אי אפשר לרשום עסקה מהסוג
+    הזה, ועסקאות שכבר בה אין לאן להעביר. בפרויקט זה חל רק על סוג שהפרויקט
+    עוקב אחריו, או כשיש בה עסקאות — קטגוריית הכנסה ריקה בפרויקט שלא
+    עוקב אחרי הכנסות אפשר למחוק."""
+    plan = db.category_deletion_plan(kind, cat_id, user["family_id"],
+                                     project_id=(project or {}).get("id"))
+    if plan is None:
+        return None
+    type_ = plan["category"].get("type")
+    needed = kind == "family" or plan["count"] > 0 \
+        or bool((project or {}).get(f"track_{type_}"))
+    plan["blocked"] = None
+    if not plan["alternatives"] and needed:
+        plan["blocked"] = (f"זו קטגוריית ה{_TYPE_NOUN.get(type_, '')} האחרונה — "
+                           "בלעדיה אי אפשר לרשום עסקאות מהסוג הזה. "
+                           "אפשר לשנות לה את השם במקום למחוק.")
+    return plan
+
+
+def _category_usage(kind, cat_id, user, project=None):
     try:
-        # ‎.data‎ מחזיר את מה שנמחק בפועל. בלי הבדיקה הזאת המסלול ענה
-        # "נמחק" גם כשלא נגע בכלום — קטגוריה שאינה מותאמת אישית, או
-        # מזהה של משפחה אחרת.
-        result = client.table("categories") \
-            .delete() \
-            .eq("id", cat_id) \
-            .eq("family_id", user["family_id"]) \
-            .eq("is_custom", True) \
-            .execute()
-        if not result.data:
-            return jsonify({"error": "הקטגוריה לא נמצאה"}), 404
-        return jsonify({"status": "ok"})
-    except Exception as e:
-        logger.exception("delete_category route")
-        return jsonify({"error": "מחיקת הקטגוריה נכשלה — נסה שוב"}), 500
+        plan = _deletion_plan(kind, cat_id, user, project)
+    except db.DataUnavailable:
+        return jsonify({"error": "השירות אינו זמין כרגע — נסו שוב בעוד רגע"}), 503
+    if plan is None:
+        return jsonify({"error": "הקטגוריה לא נמצאה"}), 404
+    return jsonify({k: plan[k] for k in ("count", "alternatives", "blocked")})
+
+
+def _delete_category(kind, cat_id, user, project=None):
+    """מחיקה עם העברה: עסקאות הקטגוריה עוברות ל-‎?move_to=‎ לפני המחיקה.
+    בלי יעד תקין כשיש עסקאות — 409, ושום דבר לא נוגע."""
+    try:
+        plan = _deletion_plan(kind, cat_id, user, project)
+    except db.DataUnavailable:
+        return jsonify({"error": "השירות אינו זמין כרגע — נסו שוב בעוד רגע"}), 503
+    if plan is None:
+        return jsonify({"error": "הקטגוריה לא נמצאה"}), 404
+    if plan["blocked"]:
+        return jsonify({"error": plan["blocked"]}), 409
+
+    move_to = None
+    if plan["count"]:
+        move_to = request.args.get("move_to")
+        if move_to not in {c["id"] for c in plan["alternatives"]}:
+            return jsonify({"error": "נא לבחור לאן להעביר את העסקאות של הקטגוריה",
+                            "needs_target": True}), 409
+
+    if not db.delete_category_moving(kind, cat_id, user["family_id"], move_to,
+                                     project_id=(project or {}).get("id")):
+        # גם מירוץ נוחת כאן: עסקה שנוספה לקטגוריה אחרי ההעברה מכשילה את
+        # המחיקה באילוץ של המסד, והעסקאות שכבר הועברו נשארות ביעד
+        return jsonify({"error": "מחיקת הקטגוריה נכשלה — נסו שוב"}), 500
+    return jsonify({"status": "ok", "moved": plan["count"] if move_to else 0})
 
 
 @app.route("/api/categories/reorder", methods=["PUT"])

@@ -193,29 +193,13 @@ document.addEventListener('click', function (e) {
     const row = btn.closest('.category-row');
     const name = (row.querySelector('.cat-row-name') || {}).textContent || '';
 
-    window.appConfirm({
-        title: 'למחוק את "' + name.trim() + '"?',
-        message: 'עסקאות קיימות בקטגוריה יישארו, אך יוצגו ללא קטגוריה.',
-        confirmText: 'מחק קטגוריה',
-    }).then(function (ok) {
-        if (!ok) return;
-        fetch('/api/projects/' + projectId + '/categories/' + id, { method: 'DELETE' })
-        .then(r => r.json())
-        .then(function (d) {
-            if (d.status === 'ok') {
-                row.style.transition = 'opacity 0.25s';
-                row.style.opacity = '0';
-                setTimeout(() => row.remove(), 260);
-                if (window.sfForgetCategories) window.sfForgetCategories();
-                window.showToast('הקטגוריה נמחקה');
-            } else {
-                window.showToast('המחיקה נכשלה', 'error');
-            }
-        })
-        // בלי ‎.catch‎ — כל שאר המחיקות בקובץ יש להן — חיבור שנופל
-        // השאיר את השורה על המסך בלי שום הודעה, רק דחייה לא מטופלת
-        // בקונסולה. המשתמש לוחץ ✕ שוב ושוב.
-        .catch(function () { window.showToast(window.sfNetError(), 'error'); });
+    window.sfDeleteCategory('/api/projects/' + projectId + '/categories/' + id, name.trim())
+    .then(function (deleted) {
+        if (!deleted) return;
+        row.style.transition = 'opacity 0.25s';
+        row.style.opacity = '0';
+        setTimeout(() => row.remove(), 260);
+        if (window.sfForgetCategories) window.sfForgetCategories();
     });
 });
 

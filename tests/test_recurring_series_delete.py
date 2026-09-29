@@ -27,6 +27,9 @@ _FAM = "11111111-1111-1111-1111-111111111111"
 _TX  = "22222222-2222-2222-2222-222222222222"
 
 
+_CAT = "55555555-5555-5555-5555-555555555555"
+
+
 @pytest.fixture
 def client(monkeypatch):
     # העסקה אינה בפרויקט אישי של מישהו אחר (ראו tx_visible_required)
@@ -39,7 +42,8 @@ def client(monkeypatch):
     app.config["TESTING"] = True
     monkeypatch.setattr(app_module.db, "get_transaction_receipt_path", lambda *a: None)
     # מסלול העריכה מאמת קטגוריה ובעלים לפני שהוא כותב
-    monkeypatch.setattr(app_module.db, "get_categories", lambda *a, **k: [])
+    monkeypatch.setattr(app_module.db, "get_categories",
+                        lambda *a, **k: [{"id": _CAT, "name": "מכולת", "type": "expense"}])
     monkeypatch.setattr(app_module, "family_settings",
                         lambda: dict(app_module.db.DEFAULT_FAMILY_SETTINGS))
     with app.test_client() as c:
@@ -145,7 +149,7 @@ def test_an_unknown_series_state_refuses_rather_than_guessing(client, monkeypatc
 
 def _edit(client, is_recurring):
     return client.put(f"/api/transactions/{_TX}", json={
-        "amount": 100, "type": "expense", "date": "2026-09-10",
+        "amount": 100, "type": "expense", "date": "2026-09-10", "category_id": _CAT,
         "is_recurring": is_recurring, "recurring_frequency": "monthly_1",
     })
 

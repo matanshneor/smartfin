@@ -1127,6 +1127,17 @@ li.transaction-item.open.swipe-ready > .swipe-content {
     line-height: 1.5;
 }
 
+.cat-grid-empty {
+    grid-column: 1 / -1;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    margin: 4px 0;
+}
+
+.confirm-choice {
+    margin: -6px 0 18px;
+}
+
 .confirm-actions {
     display: flex;
     gap: 10px;

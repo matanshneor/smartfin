@@ -2289,6 +2289,72 @@ def add_project_category(project_id: str, family_id: str, name: str, icon: str, 
         return None, str(e)
 
 
+# ─── מחיקת קטגוריה: אין עסקה שנשארת בלי קטגוריה ─────────────────────────────
+#
+# מחיקה פשוטה השאירה את העסקאות של הקטגוריה "ללא קטגוריה" (ה-FK הוא ‎ON
+# DELETE SET NULL‎). עכשיו הן מועברות לקטגוריה אחרת **לפני** המחיקה, ואילוץ
+# ‎transactions_category_required‎ במסד תופס מירוץ: עסקה שנוספה לקטגוריה
+# בין ההעברה למחיקה מכשילה את המחיקה, במקום להישאר יתומה.
+
+# (טבלת הקטגוריות, העמודה בעסקה שמצביעה עליה)
+_CATEGORY_KINDS = {
+    "family":  ("categories", "category_id"),
+    "project": ("project_categories", "project_category_id"),
+}
+
+
+def category_deletion_plan(kind: str, cat_id: str, family_id: str, project_id: str = None):
+    """מה יקרה אם הקטגוריה תימחק: ‎{"category", "count", "alternatives"}‎,
+    או ‎None‎ אם היא לא קיימת (או של משפחה/פרויקט אחרים).
+
+    ‎alternatives‎ — הקטגוריות מאותו סוג, באותו מקום, שאפשר להעביר אליהן."""
+    table, column = _CATEGORY_KINDS[kind]
+    client = get_client()
+    if not client:
+        raise DataUnavailable("category_deletion_plan")
+    try:
+        def scoped(q):
+            q = q.eq("family_id", family_id)
+            return q.eq("project_id", project_id) if kind == "project" else q
+
+        found = scoped(client.table(table).select("*").eq("id", cat_id)).execute().data
+        if not found:
+            return None
+        category = found[0]
+        siblings = scoped(client.table(table).select("id, name, icon, type")
+                          .eq("type", category.get("type"))).execute().data
+        used = client.table("transactions").select("id", count="exact") \
+            .eq("family_id", family_id).eq(column, cat_id).limit(1).execute()
+        return {
+            "category": category,
+            "count": used.count or 0,
+            "alternatives": [{"id": c["id"], "name": c["name"], "icon": c.get("icon") or "📦"}
+                             for c in siblings if c["id"] != cat_id],
+        }
+    except Exception as e:
+        logger.exception("category_deletion_plan")
+        raise DataUnavailable("category_deletion_plan") from e
+
+
+def delete_category_moving(kind: str, cat_id: str, family_id: str,
+                           move_to: str = None, project_id: str = None) -> bool:
+    """מעביר את העסקאות של הקטגוריה ל-‎move_to‎ ואז מוחק אותה.
+    הבדיקה שהיעד תקין היא של הקורא (‎category_deletion_plan‎)."""
+    table, column = _CATEGORY_KINDS[kind]
+    client = get_client()
+    if not client:
+        return False
+    try:
+        if move_to:
+            client.table("transactions").update({column: move_to}) \
+                .eq("family_id", family_id).eq(column, cat_id).execute()
+        q = client.table(table).delete().eq("id", cat_id).eq("family_id", family_id)
+        q = q.eq("project_id", project_id) if kind == "project" else q.eq("is_custom", True)
+        return bool(q.execute().data)
+    except Exception as e:
+        logger.exception("delete_category_moving")
+        return False
+
 def update_project_category(cat_id: str, project_id: str, family_id: str, name: str, icon: str):
     client = get_client()
     if not client:

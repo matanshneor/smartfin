@@ -47,7 +47,7 @@ def client(monkeypatch):
 
 
 def _add(client, confirm=False, **over):
-    body = {"amount": 100, "type": "expense", "date": "2026-09-21"}
+    body = {"amount": 100, "type": "expense", "date": "2026-09-21", "category_id": _CAT}
     body.update(over)
     # ‎confirm‎ עוקף את שער המילוי-אחורה (ראו ‎_RETRO_WITHOUT_CONFIRM‎).
     # סדרה שמתחילה חודשים אחורה מייצרת שורות אמיתיות, ולכן נשאלת שאלה.
@@ -144,7 +144,7 @@ def test_editing_a_transaction_that_no_longer_exists_says_so(client, monkeypatch
     monkeypatch.setattr(app_module.db, "update_transaction", lambda *a, **k: (None, None))
 
     res = client.put(f"/api/transactions/{_TX}", json={
-        "amount": 100, "type": "expense", "date": "2026-09-21"})
+        "amount": 100, "type": "expense", "date": "2026-09-21", "category_id": _CAT})
 
     assert res.status_code == 404
     assert "ייתכן שנמחקה בינתיים" in res.get_json()["error"]

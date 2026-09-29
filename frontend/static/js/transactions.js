@@ -173,12 +173,21 @@
     function renderCategoryGrid(cats, selectedId, isProject, keepOriginal) {
         categoryGridIsProject = isProject;
         categoryGrid.innerHTML = '';
-        // הקטגוריה הנוכחית לא ברשת (אין קטגוריה, או של סוג שהפרויקט כבר לא
-        // עוקב אחריו): כפתור משלה, בחור — במקום לבחור בשבילו את הראשונה
-        const keepCurrent = keepOriginal && !cats.some(c => c.id === selectedId);
+        // הקטגוריה הנוכחית לא ברשת (של סוג שהפרויקט כבר לא עוקב אחריו):
+        // כפתור משלה, בחור — במקום לבחור בשבילו את הראשונה. "ללא קטגוריה"
+        // כבר לא אפשרות: אין עסקה בלי קטגוריה (test_category_required).
+        const keepCurrent = keepOriginal && !!selectedId && !cats.some(c => c.id === selectedId);
         if (keepCurrent) {
-            cats = [{ id: selectedId || '', type: currentType, icon: selectedId ? '•' : '❔',
-                      name: selectedId ? 'הקטגוריה הנוכחית' : 'ללא קטגוריה' }].concat(cats);
+            cats = [{ id: selectedId, type: currentType, icon: '•',
+                      name: 'הקטגוריה הנוכחית' }].concat(cats);
+        }
+        if (!cats.length) {
+            const empty = document.createElement('p');
+            empty.className = 'cat-grid-empty';
+            empty.textContent = isProject
+                ? 'לפרויקט אין עדיין קטגוריות מהסוג הזה — אפשר להוסיף בעריכת הפרויקט'
+                : 'אין עדיין קטגוריות מהסוג הזה — אפשר להוסיף בהגדרות';
+            categoryGrid.appendChild(empty);
         }
         // הסדר נקבע בשרת (sort_order) — כולל מיקום "אחר", שניתן להזזה בהגדרות
         cats.forEach(function (cat) {
@@ -739,6 +748,12 @@
             txAmount.setAttribute('aria-invalid', 'true');
             txAmount.setAttribute('aria-describedby', 'formError');
             txAmount.focus();
+            return;
+        }
+
+        // השרת דוחה בלי קטגוריה בכל מקרה; כאן רק אומרים את זה לפני הבקשה
+        if (!(txProject.value ? txProjectCategory.value : txCategory.value)) {
+            formError.textContent = 'נא לבחור קטגוריה';
             return;
         }
 
@@ -1427,6 +1442,10 @@
             if (!amount || amount <= 0 || !isFinite(amount)) {
                 errEl.textContent = 'נא להזין סכום תקין';
                 amountEl.focus();
+                return;
+            }
+            if (!state.categoryId) {
+                errEl.textContent = 'נא לבחור קטגוריה';
                 return;
             }
             saveBtn.disabled = true;

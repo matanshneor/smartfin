@@ -75,7 +75,7 @@ finally:
         "fid = db.get_profile(r.user.id)['family_id']",
         "t = db.get_client().table",
         "t('transactions').delete().eq('family_id', fid).in_('description', "
-        "['SUPER-ORIG', 'FIRST', 'THIRD', 'CHART-1', 'CHART-2']).execute()",
+        "['AGOROT']).execute()",
         "t('categories').delete().eq('family_id', fid).eq('name', 'SCANTEST-CAT').execute()",
         "print('cleaned')",
     ])

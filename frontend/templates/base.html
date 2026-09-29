@@ -256,6 +256,9 @@
         <div class="confirm-card">
             <p class="confirm-title" id="confirmTitle"></p>
             <p class="confirm-message" id="confirmMessage"></p>
+            {# בחירה בתוך האישור — למשל לאן להעביר עסקאות של קטגוריה שנמחקת #}
+            <select class="form-input confirm-choice" id="confirmChoice" hidden
+                    aria-labelledby="confirmMessage"></select>
             <div class="confirm-actions">
                 <button type="button" class="btn-sm confirm-yes" id="confirmYes">מחק</button>
                 <button type="button" class="btn-sm btn-ghost" id="confirmNo">ביטול</button>

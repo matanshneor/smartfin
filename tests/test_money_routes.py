@@ -37,6 +37,23 @@ _CATEGORIES = [
 ]
 
 
+_CAT_SAVINGS = "aaaaaaaa-0000-0000-0000-000000000003"
+_CATEGORIES.append({"id": _CAT_SAVINGS, "name": "פיקדון", "type": "savings", "family_id": _FAM})
+_PROJECT_CAT = "pc-1"
+_DEFAULT_CATEGORY = {"expense": _CAT_FOOD, "income": _CAT_SALARY, "savings": _CAT_SAVINGS}
+
+
+def _with_category(body):
+    """אין עסקה בלי קטגוריה (test_category_required). בדיקה שלא עוסקת
+    בקטגוריה מקבלת את זו שמתאימה לסוג, ולא נדחית על דבר שלא בדקה."""
+    body = dict(body)
+    if body.get("project_id"):
+        body.setdefault("project_category_id", _PROJECT_CAT)
+    else:
+        body.setdefault("category_id", _DEFAULT_CATEGORY.get(body.get("type")))
+    return body
+
+
 class _Money:
     """הכפיל, בתוספת קיצורים שקוראים כמו המשפט שהבדיקה בודקת."""
 
@@ -54,10 +71,10 @@ class _Money:
         return rows[0]
 
     def post(self, **body):
-        return self.client.post("/api/transactions", json=body)
+        return self.client.post("/api/transactions", json=_with_category(body))
 
     def put(self, tx_id, **body):
-        return self.client.put(f"/api/transactions/{tx_id}", json=body)
+        return self.client.put(f"/api/transactions/{tx_id}", json=_with_category(body))
 
     def delete(self, tx_id, **params):
         query = "&".join(f"{k}={v}" for k, v in params.items())
@@ -79,6 +96,8 @@ def money(monkeypatch):
                         lambda fid: {"owner_attribution": {"expense": False, "income": False,
                                                            "savings": False}})
     monkeypatch.setattr(db, "get_categories", lambda fid: list(_CATEGORIES))
+    monkeypatch.setattr(db, "get_project_categories",
+                        lambda pid, fid, type_=None: [{"id": _PROJECT_CAT, "project_id": pid}])
     monkeypatch.setattr(db, "get_family_members",
                         lambda fid: [{"id": _ME, "name": "מתן"},
                                      {"id": _SPOUSE, "name": "אור"}])
@@ -672,7 +691,7 @@ def test_a_recurring_transaction_needs_a_frequency_the_engine_knows(money, freq)
     if freq is not None:
         body["recurring_frequency"] = freq
 
-    response = money.client.post("/api/transactions", json=body)
+    response = money.client.post("/api/transactions", json=_with_category(body))
 
     assert response.status_code == 422, f"{freq!r} התקבל"
     assert money.transactions == []
@@ -702,9 +721,9 @@ def test_a_series_that_would_backfill_months_asks_first(money):
 
 def test_confirming_lets_it_through(money):
     """מילוי אחורה מכוון הוא שימוש לגיטימי; רק צריך לומר אותו בקול."""
-    response = money.client.post("/api/transactions?confirm=1", json={
+    response = money.client.post("/api/transactions?confirm=1", json=_with_category({
         "amount": "6000", "type": "expense", "date": "2016-03-01",
-        "is_recurring": True, "recurring_frequency": "monthly_1"})
+        "is_recurring": True, "recurring_frequency": "monthly_1"}))
 
     assert response.status_code == 201
 
@@ -766,7 +785,7 @@ def _edit_template(money, **over):
             "description": "משכורת", "is_recurring": True,
             "recurring_frequency": "monthly_same"}
     body.update(over)
-    return money.client.put("/api/transactions/tpl", json=body)
+    return money.client.put("/api/transactions/tpl", json=_with_category(body))
 
 
 def test_fixing_a_typo_in_an_old_series_does_not_warn(money, mid_september):
