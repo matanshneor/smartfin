@@ -425,6 +425,29 @@ def login_required(f):
     return decorated
 
 
+class BadInput(ValueError):
+    """ערך מהלקוח שאין טעם לנסות לפרש — ראו ‎_text‎."""
+
+
+def _text(value) -> str:
+    """שדה טקסט מגוף בקשת JSON: מחרוזת נקייה מרווחים, או "" כשהוא חסר.
+
+    כל ערך אחר — מספר, רשימה, אובייקט, בוליאני — הוא ‎BadInput‎, שעונה
+    422 "ערך לא תקין". קודם ‎(body.get("x") or "").strip()‎ נפל על מספר
+    ב-500, שנרשם אצלנו כתקלה אמיתית. הטפסים תמיד שולחים טקסט; זה
+    לבקשות שנשלחות ידנית."""
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise BadInput(type(value).__name__)
+    return value.strip()
+
+
+@app.errorhandler(BadInput)
+def bad_input(e):
+    return jsonify({"error": "ערך לא תקין"}), 422
+
+
 def get_current_user():
     return {
         "id":             session.get("user_id"),
@@ -797,7 +820,7 @@ def logout():
 @limiter.limit("3 per minute")
 def forgot_password():
     body  = request.get_json(silent=True) or {}
-    email = (body.get("email") or "").strip()
+    email = _text(body.get("email"))
     if not email:
         return jsonify({"error": "נא להזין אימייל"}), 422
     # פורמט פסול הוא לא מידע על מי רשום, ולכן מותר לומר אותו בקול —
@@ -931,7 +954,7 @@ def onboarding_complete():
         return jsonify({"error": "ההגדרה הראשונית כבר הושלמה"}), 400
 
     body = request.get_json(silent=True) or {}
-    family_name = (body.get("family_name") or "").strip()
+    family_name = _text(body.get("family_name"))
     categories  = body.get("categories") or []
 
     if not categories:
@@ -1412,7 +1435,7 @@ def _parse_project_body(body: dict):
     בלבד — לא בעלות: זו נקבעת בנפרד ב-add_project_route, ומשתנה אחר כך רק
     דרך share_project_route/unshare_project_route).
     Returns (fields_dict, error) — fields_dict מוכן להעברה ל-db.add/update_project."""
-    name = (body.get("name") or "").strip()
+    name = _text(body.get("name"))
     if not name:
         return None, "נא להזין שם לפרויקט"
 
@@ -1425,8 +1448,8 @@ def _parse_project_body(body: dict):
     if err:
         return None, "יעד תקציב חייב להיות מספר"
 
-    description = (body.get("description") or "").strip()[:200] or None
-    icon = (body.get("icon") or "").strip()[:16] or None
+    description = _text(body.get("description"))[:200] or None
+    icon = _text(body.get("icon"))[:16] or None
 
     track_expense = bool(body.get("track_expense", True))
     track_income  = bool(body.get("track_income", False))
@@ -1772,10 +1795,10 @@ def settings():
 def update_profile():
     user = get_current_user()
     body = request.get_json(silent=True) or {}
-    first_name = (body.get("first_name") or "").strip()
-    last_name  = (body.get("last_name") or "").strip()
-    phone      = _normalize_phone(body.get("phone") or "")
-    workplace  = (body.get("workplace") or "").strip()
+    first_name = _text(body.get("first_name"))
+    last_name  = _text(body.get("last_name"))
+    phone      = _normalize_phone(_text(body.get("phone")))
+    workplace  = _text(body.get("workplace"))
     workplace_scope = body.get("workplace_scope")  # 'all' | 'future' | None
 
     if not first_name or not last_name:
@@ -2211,7 +2234,7 @@ def add_transaction():
         "amount":      amount,
         "type":        tx_type,
         "date":        tx_date,
-        "description": body.get("description", ""),
+        "description": _text(body.get("description")),
         "category_id": category_id,
         "user_id":     owner_user_id,
         "family_id":   user["family_id"],
@@ -2323,7 +2346,7 @@ def update_transaction(tx_id):
         "amount":      amount,
         "type":        tx_type,
         "date":        tx_date,
-        "description": body.get("description", ""),
+        "description": _text(body.get("description")),
         "category_id": category_id,
         "user_id":     owner_user_id,
         "is_recurring":         bool(body.get("is_recurring", False)),
@@ -2860,7 +2883,7 @@ def update_family_settings_route():
 def update_family():
     user = get_current_user()
     body = request.get_json(silent=True) or {}
-    name = body.get("name", "").strip()
+    name = _text(body.get("name"))
     if not name:
         return jsonify({"error": "נא להזין שם"}), 422
     ok = db.update_family_name(user["family_id"], name)
@@ -3027,7 +3050,7 @@ def join_family():
     שנרשם לפני שקיבל אותו נשאר תקוע במשפחה משלו בלי דרך חזרה."""
     user = get_current_user()
     body = request.get_json(silent=True) or {}
-    code = body.get("code", "").strip()
+    code = _text(body.get("code"))
     if not code:
         return jsonify({"error": "לא הוזן קוד הזמנה"}), 422
 
