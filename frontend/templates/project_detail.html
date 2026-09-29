@@ -25,29 +25,29 @@
     {% if project.track_expense %}
     <div class="kpi-chip">
         <p class="kpi-label">סה"כ הוצאות</p>
-        <p class="kpi-value expense" data-countup="{{ project.spent | round | int }}">₪{{ "{:,.0f}".format(project.spent) }}</p>
+        <p class="kpi-value expense" data-countup="{{ (project.spent) | round(2) }}">₪{{ project.spent | money }}</p>
     </div>
     {% endif %}
     {% if project.track_income %}
     <div class="kpi-chip">
         <p class="kpi-label">סה"כ הכנסות</p>
-        <p class="kpi-value income" data-countup="{{ project.income | round | int }}">₪{{ "{:,.0f}".format(project.income) }}</p>
+        <p class="kpi-value income" data-countup="{{ (project.income) | round(2) }}">₪{{ project.income | money }}</p>
     </div>
     {% endif %}
     {% if project.track_savings %}
     <div class="kpi-chip">
         <p class="kpi-label">סה"כ חיסכון</p>
-        <p class="kpi-value savings" data-countup="{{ project.savings | round | int }}">₪{{ "{:,.0f}".format(project.savings) }}</p>
+        <p class="kpi-value savings" data-countup="{{ (project.savings) | round(2) }}">₪{{ project.savings | money }}</p>
     </div>
     {% endif %}
     {% if project.budget_target %}
     <div class="kpi-chip">
         <p class="kpi-label">תקציב יעד</p>
-        <p class="kpi-value">₪{{ "{:,.0f}".format(project.budget_target) }}</p>
+        <p class="kpi-value">₪{{ project.budget_target | money }}</p>
     </div>
     <div class="kpi-chip">
         <p class="kpi-label">{% if project.remaining >= 0 %}נשאר{% else %}חריגה{% endif %}</p>
-        <p class="kpi-value {% if project.remaining >= 0 %}surplus{% else %}deficit{% endif %}">₪{{ "{:,.0f}".format(project.remaining | abs) }}</p>
+        <p class="kpi-value {% if project.remaining >= 0 %}surplus{% else %}deficit{% endif %}">₪{{ (project.remaining | abs) | money }}</p>
     </div>
     {% endif %}
 </div>
@@ -90,7 +90,7 @@
         <div class="doughnut-wrap">
             <canvas id="chart-{{ typ }}" aria-label="{{ chart_titles[typ] }}"></canvas>
             <div class="doughnut-center">
-                <p class="doughnut-total">₪{{ "{:,.0f}".format(type_totals[typ]) }}</p>
+                <p class="doughnut-total">₪{{ type_totals[typ] | money }}</p>
                 <p class="doughnut-label">{{ type_labels[typ] }}</p>
             </div>
         </div>
@@ -107,7 +107,7 @@
                     <span class="legend-icon">{{ item.icon }}</span>
                     <span class="legend-name">{{ item.name }}</span>
                     <span class="legend-pct">{{ item.pct }}%</span>
-                    <span class="legend-amount">₪{{ "{:,.0f}".format(item.total) }}</span>
+                    <span class="legend-amount">₪{{ item.total | money }}</span>
                     {% if cat_txs %}
                     <span class="expand-chevron" aria-hidden="true">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -134,7 +134,7 @@
                        target="_blank" rel="noopener"
                        title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</a>
                         {% endif %}
-                        <span class="cat-tx-amount {{ tx.type }}">₪{{ "{:,.0f}".format(tx.amount) }}</span>
+                        <span class="cat-tx-amount {{ tx.type }}">₪{{ tx.amount | money }}</span>
                     </li>
                     {% endfor %}
                 </ul>
@@ -168,7 +168,7 @@
                        target="_blank" rel="noopener"
                        title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</a>
             {% endif %}
-            <span class="cat-tx-amount {{ tx.type }}">₪{{ "{:,.0f}".format(tx.amount) }}</span>
+            <span class="cat-tx-amount {{ tx.type }}">₪{{ tx.amount | money }}</span>
         </li>
         {% endfor %}
     </ul>

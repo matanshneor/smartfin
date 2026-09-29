@@ -14,6 +14,7 @@
 """
 import json
 import shutil
+import os
 import subprocess
 from pathlib import Path
 
@@ -86,6 +87,9 @@ g.document = {
     querySelectorAll: () => [],
 };
 g.window = g;
+// ‎sfMoney‎ מ-core.js עצמו (נחלץ בזמן ריצה), לא עותק
+eval(require('fs').readFileSync(process.env.SF_CORE_JS, 'utf8')
+     .match(/window\.sfMoney = function[\s\S]*?\n\};/)[0]);
 // דפדפן אמיתי מספק את זה, והכפיל לא — ‎month.js‎ מאזין ל-‎sf:refreshed‎
 // כדי לצייר מחדש אחרי רענון רך.
 g.addEventListener = g.addEventListener || function () {};
@@ -115,6 +119,7 @@ def _run_node(harness_js, *files):
         out = subprocess.run(
             [node, str(harness)] + [str(_JS / f) for f in files],
             capture_output=True, text=True, timeout=30,
+            env={**os.environ, "SF_CORE_JS": str(_JS / "core.js")},
         )
     finally:
         harness.unlink(missing_ok=True)
@@ -204,6 +209,9 @@ g.document = {
         (id === 'overviewLegend' ? { appendChild: (li) => legend.push(li.innerHTML) } : el(id)),
 };
 g.window = g;
+// ‎sfMoney‎ מ-core.js עצמו (נחלץ בזמן ריצה), לא עותק
+eval(require('fs').readFileSync(process.env.SF_CORE_JS, 'utf8')
+     .match(/window\.sfMoney = function[\s\S]*?\n\};/)[0]);
 // דפדפן אמיתי מספק את זה, והכפיל לא — ‎month.js‎ מאזין ל-‎sf:refreshed‎
 // כדי לצייר מחדש אחרי רענון רך.
 g.addEventListener = g.addEventListener || function () {};

@@ -13,6 +13,7 @@ import os
 import re
 import time
 from . import supabase_config as db
+from .money import format_money
 from . import clock
 from . import logs
 
@@ -234,6 +235,10 @@ def _asset_version(filename: str) -> str:
     if not _IS_DEV:
         _ASSET_HASHES[filename] = digest
     return digest
+
+
+# סכום כסף בתבניות: ‎{{ x | money }}‎ — אגורות רק כשיש (ראו backend/money.py)
+app.jinja_env.filters["money"] = format_money
 
 
 @app.context_processor

@@ -7,6 +7,7 @@ from gotrue.errors import AuthApiError, AuthRetryableError
 from postgrest.exceptions import APIError
 
 from . import clock
+from .money import format_money
 from . import logs
 
 logger = logs.get("smartfin.db")
@@ -2647,7 +2648,7 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
     if summary.get("income", 0) > 0 and summary.get("expense", 0) > summary["income"]:
         alerts.append({
             "severity": "danger",
-            "text": f'ההוצאות החודש (₪{summary["expense"]:,.0f}) גבוהות מההכנסות (₪{summary["income"]:,.0f})',
+            "text": f'ההוצאות החודש (₪{format_money(summary["expense"])}) גבוהות מההכנסות (₪{format_money(summary["income"])})',
         })
     elif summary.get("remaining", 0) < 0:
         alerts.append({
@@ -2680,7 +2681,7 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
                 pct = round((total / avg - 1) * 100)
                 alerts.append({
                     "severity": "warning",
-                    "text": f'{icons[name]} ההוצאה על {name} (₪{total:,.0f}) גבוהה ב-{pct}% מהממוצע (₪{avg:,.0f})',
+                    "text": f'{icons[name]} ההוצאה על {name} (₪{format_money(total)}) גבוהה ב-{pct}% מהממוצע (₪{format_money(avg)})',
                 })
     except Exception as e:
         logger.exception("get_anomalies")
@@ -2703,8 +2704,8 @@ def budget_alerts(breakdown: list) -> list:
         out.append({
             "severity": "warning",
             "text": (f'{row.get("icon") or "📦"} {row["name"]}: '
-                     f'₪{row["total"]:,.0f} מתוך תקציב של ₪{row["budget"]:,.0f} '
-                     f'— חריגה של ₪{row["budget_excess"]:,.0f}'),
+                     f'₪{format_money(row["total"])} מתוך תקציב של ₪{format_money(row["budget"])} '
+                     f'— חריגה של ₪{format_money(row["budget_excess"])}'),
         })
     return out
 

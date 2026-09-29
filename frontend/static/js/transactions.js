@@ -687,7 +687,7 @@
             '</div>';
         li.querySelector('.tx-name').textContent = name;
         li.querySelector('.tx-meta').textContent = (desc ? desc + ' · ' : '') + dateLabel;
-        li.querySelector('.tx-amount').textContent = sign + '₪' + Math.round(amount).toLocaleString('en-US');
+        li.querySelector('.tx-amount').textContent = sign + '₪' + window.sfMoney(amount);
         return li;
     }
 

@@ -27,7 +27,9 @@
             const target = parseFloat(el.dataset.countup);
             if (isNaN(target)) return;
             const prefix = el.dataset.prefix || '';
-            const format = v => prefix + '₪' + Math.round(v).toLocaleString('en-US');
+            // אגורות אם הסכום הסופי כולל אגורות — אחרת היעד עוגל בסוף לשקל
+            const cents = target !== Math.round(target);
+            const format = v => prefix + '₪' + window.sfMoney(v, cents);
 
             const key  = keyFor(el, seen);
             const prev = lastShown[key];

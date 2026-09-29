@@ -178,9 +178,9 @@
            והחודשים שעברו התייקרו, בזמן שהמסך הבטיח "יחזרו לקטגוריה הרגילה".
            הסכומים כאן אמיתיים, מהפרויקט עצמו. #}
         {% set amounts = [] %}
-        {% if project.spent %}{% set _ = amounts.append('הוצאות ₪' ~ '{:,.0f}'.format(project.spent)) %}{% endif %}
-        {% if project.income %}{% set _ = amounts.append('הכנסות ₪' ~ '{:,.0f}'.format(project.income)) %}{% endif %}
-        {% if project.savings %}{% set _ = amounts.append('חיסכון ₪' ~ '{:,.0f}'.format(project.savings)) %}{% endif %}
+        {% if project.spent %}{% set _ = amounts.append('הוצאות ₪' ~ (project.spent | money)) %}{% endif %}
+        {% if project.income %}{% set _ = amounts.append('הכנסות ₪' ~ (project.income | money)) %}{% endif %}
+        {% if project.savings %}{% set _ = amounts.append('חיסכון ₪' ~ (project.savings | money)) %}{% endif %}
         <p class="delete-account-warning">
             {% if tx_count %}
                 הפרויקט יימחק יחד עם {{ 'העסקה' if tx_count == 1 else tx_count ~ ' העסקאות' }} שבו{% if amounts %} ({{ amounts | join(', ') }}){% endif %}.

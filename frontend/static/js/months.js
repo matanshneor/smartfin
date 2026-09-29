@@ -51,7 +51,7 @@ if (trendData.length > 0) {
                     },
                     tooltip: {
                         callbacks: {
-                            label: c => ` ${c.dataset.label}: ₪${c.parsed.y.toLocaleString('en-US')}`
+                            label: c => ` ${c.dataset.label}: ₪${window.sfMoney(c.parsed.y)}`
                         }
                     }
                 },

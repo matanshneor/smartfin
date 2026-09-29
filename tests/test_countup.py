@@ -11,6 +11,7 @@
 """
 import json
 import shutil
+import os
 import subprocess
 from pathlib import Path
 
@@ -40,6 +41,9 @@ g.document = {
     addEventListener: (t, fn) => { handlers[t] = fn; },
 };
 g.window = g;
+// ‎sfMoney‎ מ-core.js עצמו (נחלץ בזמן ריצה), לא עותק
+eval(require('fs').readFileSync(process.env.SF_CORE_JS, 'utf8')
+     .match(/window\.sfMoney = function[\s\S]*?\n\};/)[0]);
 g.addEventListener = (t, fn) => { handlers[t] = fn; };
 g.matchMedia = () => ({ matches: reduce });
 // שעון אחד לשניהם. ‎performance.now‎ ו-‎requestAnimationFrame‎ חייבים
@@ -93,7 +97,8 @@ def _run(steps, reduce=False):
     try:
         out = subprocess.run([node, str(h), str(_JS / "motion.js"),
                               "reduce" if reduce else "normal", json.dumps(steps)],
-                             capture_output=True, text=True, timeout=30)
+                             capture_output=True, text=True, timeout=30,
+            env={**os.environ, "SF_CORE_JS": str(_JS / "core.js")},)
     finally:
         h.unlink(missing_ok=True)
     assert out.returncode == 0, out.stderr[:800]
@@ -113,7 +118,8 @@ def _run(steps, reduce=False):
 
 
 def _num(text):
-    return int(text.replace("₪", "").replace(",", "").replace("-", "") or 0)
+    # ‎float‎ ולא ‎int‎: סכום עם אגורות מוצג עם אגורות גם באמצע האנימציה
+    return float(text.replace("₪", "").replace(",", "").replace("-", "") or 0)
 
 
 # ─── ההתנהגות שביקש מתן ─────────────────────────────────────────────────────

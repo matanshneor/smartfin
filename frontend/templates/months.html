@@ -14,15 +14,15 @@
 <div class="hero-totals">
     <div class="kpi-chip">
         <p class="kpi-label">סה"כ הכנסות</p>
-        <p class="kpi-value income" data-countup="{{ (archive | sum(attribute='income') | float) | round | int }}">₪{{ "{:,.0f}".format(archive | sum(attribute='income') | float) }}</p>
+        <p class="kpi-value income" data-countup="{{ ((archive | sum(attribute='income') | float)) | round(2) }}">₪{{ (archive | sum(attribute='income') | float) | money }}</p>
     </div>
     <div class="kpi-chip">
         <p class="kpi-label">סה"כ הוצאות</p>
-        <p class="kpi-value expense" data-countup="{{ (archive | sum(attribute='expense') | float) | round | int }}">₪{{ "{:,.0f}".format(archive | sum(attribute='expense') | float) }}</p>
+        <p class="kpi-value expense" data-countup="{{ ((archive | sum(attribute='expense') | float)) | round(2) }}">₪{{ (archive | sum(attribute='expense') | float) | money }}</p>
     </div>
     <div class="kpi-chip">
         <p class="kpi-label">סה"כ חיסכון</p>
-        <p class="kpi-value savings" data-countup="{{ (archive | sum(attribute='savings') | float) | round | int }}">₪{{ "{:,.0f}".format(archive | sum(attribute='savings') | float) }}</p>
+        <p class="kpi-value savings" data-countup="{{ ((archive | sum(attribute='savings') | float)) | round(2) }}">₪{{ (archive | sum(attribute='savings') | float) | money }}</p>
     </div>
 </div>
 {% endif %}
@@ -89,22 +89,22 @@
                 <div class="month-stats">
                     <span class="stat income">
                         <span class="stat-label">הכנסות</span>
-                        ₪{{ "{:,.0f}".format(entry.income | float) }}
+                        ₪{{ (entry.income | float) | money }}
                     </span>
                     <span class="stat expense">
                         <span class="stat-label">הוצאות</span>
-                        ₪{{ "{:,.0f}".format(entry.expense | float) }}
+                        ₪{{ (entry.expense | float) | money }}
                     </span>
                     <span class="stat savings">
                         <span class="stat-label">חיסכון</span>
-                        ₪{{ "{:,.0f}".format(entry.savings | float) }}
+                        ₪{{ (entry.savings | float) | money }}
                     </span>
                 </div>
             </div>
 
             <!-- Net balance — ממורכז אנכית בצד שמאל -->
             <span class="month-balance {% if is_surplus %}surplus{% else %}deficit{% endif %}">
-                {% if is_surplus %}+{% else %}-{% endif %}₪{{ "{:,.0f}".format(balance | abs) }}
+                {% if is_surplus %}+{% else %}-{% endif %}₪{{ (balance | abs) | money }}
             </span>
 
             <!-- Chevron -->

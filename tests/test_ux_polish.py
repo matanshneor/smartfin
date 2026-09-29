@@ -184,7 +184,7 @@ def test_the_normal_case_is_untouched():
     html = _read("frontend/templates/index.html")
 
     assert "נשאר בעו״ש החודש" in html
-    assert "מתוך ₪{{ \"{:,.0f}\".format(summary.income) }} הכנסות החודש" in html
+    assert "מתוך ₪{{ summary.income | money }} הכנסות החודש" in html
 
 
 # ─── 5. הפס בדשבורד ערבב חיסכון עם הוצאות ───────────────────────────────────

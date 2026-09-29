@@ -56,7 +56,7 @@ const breakdown = SF_VIEW.breakdown;
             plugins: {
                 tooltip: {
                     callbacks: {
-                        label: c => ` ₪${c.parsed.toLocaleString('en-US')} (${items[c.dataIndex].pct}%)`
+                        label: c => ` ₪${window.sfMoney(c.parsed)} (${items[c.dataIndex].pct}%)`
                     }
                 }
             }

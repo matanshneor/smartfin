@@ -589,7 +589,7 @@
                         </p>
                     </div>
                     <p class="recurring-amount {{ tx.type }}">
-                        {% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ "{:,.0f}".format(tx.amount) }}
+                        {% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ tx.amount | money }}
                     </p>
                     <button class="delete-recurring-btn" data-id="{{ tx.id }}" aria-label="הסר עסקה קבועה">✕</button>
                 </li>

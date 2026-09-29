@@ -94,7 +94,7 @@ function buildOverviewLegend() {
             <span class="legend-dot" style="background:${p.color}"></span>
             <span class="legend-name">${p.label}</span>
             <span class="legend-pct">${Math.round(p.value / total * 100)}%</span>
-            <span class="legend-amount">₪${p.value.toLocaleString('en-US')}</span>`;
+            <span class="legend-amount">₪${window.sfMoney(p.value)}</span>`;
         legend.appendChild(li);
     });
 }
@@ -177,7 +177,7 @@ if (parts.length) {
                 plugins: {
                     tooltip: {
                         callbacks: {
-                            label: c => ` ${c.label}: ₪${c.parsed.toLocaleString('en-US')} (${Math.round(c.parsed / outTotal * 100)}%)`
+                            label: c => ` ${c.label}: ₪${window.sfMoney(c.parsed)} (${Math.round(c.parsed / outTotal * 100)}%)`
                         }
                     }
                 }
@@ -210,7 +210,7 @@ if (expenseData.length > 0) {
                 plugins: {
                     tooltip: {
                         callbacks: {
-                            label: c => ` ₪${c.parsed.toLocaleString('en-US')} (${expenseData[c.dataIndex].pct}%)`
+                            label: c => ` ₪${window.sfMoney(c.parsed)} (${expenseData[c.dataIndex].pct}%)`
                         }
                     }
                 }
@@ -242,7 +242,7 @@ SF_VIEW.members.forEach(function (mb) {
             plugins: {
                 tooltip: {
                     callbacks: {
-                        label: c => ` ${mb.label}: ₪${c.parsed.y.toLocaleString('en-US')}`
+                        label: c => ` ${mb.label}: ₪${window.sfMoney(c.parsed.y)}`
                     }
                 }
             },

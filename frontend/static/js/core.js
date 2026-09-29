@@ -18,6 +18,19 @@ window.sfData = function (id) {
 // הנתונים הגלובליים מ-base.html זמינים מיד — האי שלהם מופיע לפני הקובץ הזה.
 window.SF_PAGE_DATA = window.sfData('sf-page-data');
 
+/* סכום כסף לתצוגה — אותו כלל כמו ‎format_money‎ בשרת (backend/money.py):
+ * אגורות רק כשיש. ‎12.5 → "12.50"‎, ‎180 → "180"‎. בלי ₪ ובלי סימן.
+ * ‎withCents‎ כופה שתי ספרות — לאנימציה שמסתיימת בסכום עם אגורות, כדי
+ * שהספרות לא יקפצו מ-"12" ל-"12.50" בפריים האחרון. */
+window.sfMoney = function (value, withCents) {
+    const amount = Math.round((Number(value) || 0) * 100) / 100;
+    const cents = withCents || amount !== Math.round(amount);
+    return amount.toLocaleString('en-US', {
+        minimumFractionDigits: cents ? 2 : 0,
+        maximumFractionDigits: cents ? 2 : 0,
+    });
+};
+
 /* הודעה להצגה אחרי טעינה מלאה של הדף ("העסקה נוספה").
  *
  * ‎sessionStorage‎ זורק בדפדפן שחוסם אחסון (מצב פרטי מחמיר, Lockdown).

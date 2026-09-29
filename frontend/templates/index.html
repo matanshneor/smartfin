@@ -42,15 +42,15 @@
        גירעון הוצגו "-₪0" באדום — הצבע אמר גירעון, המספר אמר אפס. #}
     {% set deficit = not no_income_yet and (summary.remaining | round) < 0 %}
     <p class="hero-amount {% if deficit %}deficit{% endif %}"
-       data-countup="{{ shown | abs | round | int }}"
+       data-countup="{{ (shown | abs) | round(2) }}"
        {% if deficit %}data-prefix="-"{% endif %}>
-        {% if deficit %}-{% endif %}₪{{ "{:,.0f}".format(shown | abs) }}
+        {% if deficit %}-{% endif %}₪{{ (shown | abs) | money }}
     </p>
     <p class="hero-sub">
         {%- if no_income_yet -%}
             עדיין לא הוזנו הכנסות החודש
         {%- else -%}
-            מתוך ₪{{ "{:,.0f}".format(summary.income) }} הכנסות החודש
+            מתוך ₪{{ summary.income | money }} הכנסות החודש
         {%- endif -%}
     </p>
 
@@ -101,7 +101,7 @@
             </svg>
         </div>
         <p class="card-label">הכנסות</p>
-        <p class="card-amount">₪{{ "{:,.0f}".format(summary.income) }}</p>
+        <p class="card-amount">₪{{ summary.income | money }}</p>
     </article>
 
     <article class="summary-card expense">
@@ -111,7 +111,7 @@
             </svg>
         </div>
         <p class="card-label">הוצאות</p>
-        <p class="card-amount">₪{{ "{:,.0f}".format(summary.expense) }}</p>
+        <p class="card-amount">₪{{ summary.expense | money }}</p>
     </article>
 
     <article class="summary-card savings">
@@ -121,7 +121,7 @@
             </svg>
         </div>
         <p class="card-label">חסכונות</p>
-        <p class="card-amount">₪{{ "{:,.0f}".format(summary.savings) }}</p>
+        <p class="card-amount">₪{{ summary.savings | money }}</p>
     </article>
 </section>
 
@@ -145,7 +145,7 @@
             data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
                     data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
             <div class="tx-head" role="button" tabindex="0" aria-expanded="false"
-                 aria-label="עריכת {{ tx.category_name }}, {{ "{:,.0f}".format(tx.amount) }} שקלים">
+                 aria-label="עריכת {{ tx.category_name }}, {{ tx.amount | money }} שקלים">
                 <div class="tx-icon {{ tx.type }}">
                     <span class="tx-emoji">{{ tx.category_icon }}</span>
                 </div>
@@ -158,7 +158,7 @@
                 </div>
                 <div class="tx-side">
                     <p class="tx-amount {{ tx.type }}">
-                        {% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ "{:,.0f}".format(tx.amount) }}
+                        {% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ tx.amount | money }}
                     </p>
                     {% if family_settings.owner_attribution[tx.type] %}
                     {% set color = member_colors.get(tx.user_id) %}
