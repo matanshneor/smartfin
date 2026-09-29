@@ -710,9 +710,13 @@ _RECEIPT_MEDIA_TYPES = ("image/jpeg", "image/png", "image/webp")
 
 def _month_start() -> str:
     """תחילת החודש בשעון ישראל. משותף לשתי הספירות, כדי ששתיהן
-    יתאפסו באותו רגע — השרת עצמו רץ ב-UTC."""
+    יתאפסו באותו רגע — השרת עצמו רץ ב-UTC.
+
+    עם אזור הזמן במפורש: ‎"2026-10-01"‎ לבד פורש במסד (UTC) כחצות UTC,
+    שהיא 03:00 בישראל בקיץ — וסריקה ב-01:30 ב-1 לחודש נספרה לחודש הקודם."""
+    from datetime import datetime
     today = clock.today()
-    return f"{today.year}-{today.month:02d}-01"
+    return datetime(today.year, today.month, 1, tzinfo=clock.ISRAEL).isoformat()
 
 
 def receipt_scans_globally_this_month() -> int:

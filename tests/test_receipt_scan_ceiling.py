@@ -11,10 +11,12 @@
 שהמפתח ייחסם ותתקבל שגיאת API סתומה שנראית למשתמש כמו באג.
 """
 import io
+from datetime import datetime, timezone
 
 import pytest
 
 from backend import app as app_module
+from backend import supabase_config as db
 from backend.app import app, limiter
 
 pytestmark = pytest.mark.unit
@@ -149,3 +151,21 @@ def test_both_counts_share_one_month_boundary():
 
     assert "_month_start()" in family
     assert "_month_start()" in glob
+
+
+# ─── תחילת החודש בשעון ישראל, לא ב-UTC ──────────────────────────────────────
+#
+# ‎"2026-10-01"‎ נשלח כמחרוזת תאריך, והמסד (UTC) פירש אותו כחצות UTC —
+# 03:00 בישראל בקיץ. סריקה ב-1 לחודש ב-01:30 נספרה לחודש הקודם.
+
+@pytest.mark.parametrize("israel_now,start,utc", [
+    (datetime(2026, 10, 1, 1, 30), "2026-10-01T00:00:00+03:00", "2026-09-30T21:00:00+00:00"),
+    (datetime(2026, 12, 1, 0, 30), "2026-12-01T00:00:00+02:00", "2026-11-30T22:00:00+00:00"),
+], ids=["summer", "winter"])
+def test_the_month_starts_at_midnight_in_israel(monkeypatch, israel_now, start, utc):
+    monkeypatch.setattr(db.clock, "now", lambda: israel_now)
+
+    boundary = db._month_start()
+
+    assert boundary == start
+    assert datetime.fromisoformat(boundary).astimezone(timezone.utc).isoformat() == utc
