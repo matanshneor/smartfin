@@ -1139,7 +1139,7 @@ def month_view():
     p2_tasks = {
         # קטגוריה עם תקציב מדלגת על התראת הממוצע — יש לה התראה מדויקת יותר
         "anomalies":    partial(db.get_anomalies, family_id, year, month, summary, settings_,
-                                skip_categories=[r["name"] for r in expense_breakdown
+                                skip_categories=[r["category_id"] for r in expense_breakdown
                                                  if r.get("budget")]),
     }
     if is_current:

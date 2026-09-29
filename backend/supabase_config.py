@@ -2577,8 +2577,10 @@ def monthly_trend(archive: list, num_months: int = 12, today=None) -> list:
 
 def _category_history_averages(family_id: str, year: int, month: int):
     """השאילתה של get_anomalies: מחזירה
-    (current, history, icons) — סכום החודש הנוכחי לכל קטגוריית הוצאה,
+    (current, history, labels) — סכום החודש הנוכחי לכל קטגוריית הוצאה,
     וההיסטוריה החודשית שלה בשלושת החודשים הקודמים (לחישוב ממוצע).
+    המפתח הוא מזהה הקטגוריה (ראו ‎category_breakdown_from_rows‎), ו-labels
+    ממפה אותו לשם ולאייקון שמוצגים בהתראה.
     ממוטב-לבקשה: שני הקוראים רצים באותו עמוד — השאילתה רצה פעם אחת."""
     return _request_cache(
         f"cat_history:{family_id}:{year}:{month}",
@@ -2602,7 +2604,7 @@ def _fetch_category_history_averages(family_id: str, year: int, month: int):
         start_year  -= 1
 
     result = client.table("transactions") \
-        .select("amount, date, categories(name, icon)") \
+        .select("amount, date, category_id, categories(name, icon)") \
         .eq("family_id", family_id) \
         .eq("type", "expense") \
         .is_("project_id", "null") \
@@ -2612,21 +2614,22 @@ def _fetch_category_history_averages(family_id: str, year: int, month: int):
 
     current_key = f"{year}-{month:02d}"
     current: dict = {}
-    history: dict = {}   # category -> {month_key -> total}
-    icons: dict = {}
+    history: dict = {}   # category_id -> {month_key -> total}
+    labels: dict = {}
 
     for row in result.data:
-        cat  = row.get("categories") or {}
-        name = cat.get("name", "אחר")
-        icons[name] = cat.get("icon", "📦")
-        key  = row["date"][:7]
+        cat = row.get("categories") or {}
+        cid = row.get("category_id")
+        labels[cid] = {"name": cat.get("name") or _NO_CATEGORY,
+                       "icon": cat.get("icon") or "📦"}
+        key = row["date"][:7]
         if key == current_key:
-            current[name] = current.get(name, 0) + float(row["amount"])
+            current[cid] = current.get(cid, 0) + float(row["amount"])
         else:
-            history.setdefault(name, {})
-            history[name][key] = history[name].get(key, 0) + float(row["amount"])
+            history.setdefault(cid, {})
+            history[cid][key] = history[cid].get(key, 0) + float(row["amount"])
 
-    return current, history, icons
+    return current, history, labels
 
 
 def get_anomalies(family_id: str, year: int, month: int, summary: dict,
@@ -2657,15 +2660,15 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
         })
 
     try:
-        current, history, icons = _category_history_averages(family_id, year, month)
+        current, history, labels = _category_history_averages(family_id, year, month)
         skip = set(skip_categories or ())
-        for name, total in current.items():
+        for cid, total in current.items():
             # לקטגוריה עם תקציב יש כבר התראה משלה, מדויקת יותר. שתי
             # התראות על אותה קטגוריה הן רעש, והן גם סותרות: "40% מעל
             # הממוצע" ליד "בתוך התקציב" מבלבל יותר משהוא מסביר.
-            if name in skip:
+            if cid in skip:
                 continue
-            past = history.get(name)
+            past = history.get(cid)
             if not past:
                 continue
             # מחלקים ב-3 ולא ב-‎len(past)‎, כי "ממוצע שלושת החודשים
@@ -2679,9 +2682,10 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
             avg = sum(past.values()) / _HISTORY_MONTHS
             if avg > 0 and total > avg * ratio and total - avg >= min_gap:
                 pct = round((total / avg - 1) * 100)
+                label = labels[cid]
                 alerts.append({
                     "severity": "warning",
-                    "text": f'{icons[name]} ההוצאה על {name} (₪{format_money(total)}) גבוהה ב-{pct}% מהממוצע (₪{format_money(avg)})',
+                    "text": f'{label["icon"]} ההוצאה על {label["name"]} (₪{format_money(total)}) גבוהה ב-{pct}% מהממוצע (₪{format_money(avg)})',
                 })
     except Exception as e:
         logger.exception("get_anomalies")
