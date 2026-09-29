@@ -50,6 +50,7 @@ def client(monkeypatch):
     monkeypatch.setattr(db, "get_categories", lambda fam=None: fake.rows("categories"))
     monkeypatch.setattr(db, "get_family_members", lambda fid: [{"id": _ME, "name": "מ"}])
     monkeypatch.setattr(db, "get_project_for_transaction", lambda pid, fam: fake.rows("projects")[0])
+    monkeypatch.setattr(db, "send_reset_email", lambda email, redirect_to: (True, None))
     for name, value in (("materialize_recurring", (0, True)), ("personal_project_owner", None),
                         ("existing_occurrence_dates", None), ("is_recurring_instance", False),
                         ("get_transaction_receipt_path", None),

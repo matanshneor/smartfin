@@ -99,6 +99,13 @@ def _unit_tests_cannot_reach_supabase(request, monkeypatch):
         )
 
     monkeypatch.setattr(db, "get_client", _refuse)
+    # וגם רשת ישירה. ‎send_reset_email‎, ‎upload_receipt‎ ו-‎delete_receipts‎
+    # פונים ל-Supabase ב-httpx ולא דרך ‎get_client‎ — ובדיקת ביקורת על "שכחתי
+    # סיסמה" שלחה ככה בקשת איפוס אמיתית (30.9.2026, לכתובת שלא רשומה, אז
+    # לא נשלח מייל). ב-CI אין ‎SUPABASE_URL‎ והבדיקה נכשלה; אצלנו היא עברה.
+    import httpx
+    for verb in ("request", "get", "post", "put", "patch", "delete"):
+        monkeypatch.setattr(httpx, verb, lambda *a, **k: _refuse())
     yield
 
 
