@@ -3195,6 +3195,31 @@ def too_many_requests(e):
     return render_template("error.html", code=429, message=msg), 429
 
 
+def _family_changed():
+    """מעדכן את הסשן אם המשתמש כבר במשפחה אחרת; מחזיר את שם החדשה, או ‎None‎.
+
+    הסשן זוכר את המשפחה מרגע ההתחברות. מי שהוסר ממנה — או יצא ממנה
+    במכשיר אחר — המשיך לשלוח את המזהה הישן, והמסד כבר לא ענה עליו: כמעט
+    כל מסך הפך לדף תקלה שמבקש לרענן, ורענון לא עזר עד התנתקות.
+
+    נקרא רק אחרי שליפה שנכשלה, לא בכל בקשה: בשימוש רגיל אין אף שאילתה
+    נוספת. כישלון בבדיקה עצמה הוא "לא ידוע", לא "השתנתה"."""
+    uid = session.get("user_id")
+    if not uid:
+        return None
+    try:
+        profile, ok = db.fetch_profile(uid)
+    except Exception:
+        return None
+    new_family = (profile or {}).get("family_id") if ok else None
+    if not new_family or new_family == session.get("family_id"):
+        return None
+    session["family_id"] = new_family
+    # סנכרון העסקאות הקבועות נעשה פעם ביום **למשפחה** — החדשה עוד לא סונכרנה
+    session.pop("recurring_synced", None)
+    return ((profile.get("families") or {}).get("name")) or "המשפחה שלי"
+
+
 @app.errorhandler(db.DataUnavailable)
 def data_unavailable(e):
     """שליפה שנכשלה מגיעה לכאן, ולא מוצגת כ"אין לך נתונים".
@@ -3207,6 +3232,14 @@ def data_unavailable(e):
     אפס מדומה נראה בדיוק כמו אפס אמיתי, וכל האפליקציה היא מספרים. אז
     עדיף מסך שאומר "לא הצלחנו לטעון" על מסך שמשקר בשקט."""
     logger.error("DataUnavailable: %s", e)
+    # לפני שמכריזים על תקלה: אולי המשתמש כבר במשפחה אחרת (ראו ‎_family_changed‎)
+    new_name = _family_changed()
+    if new_name:
+        if _is_api_request():
+            return jsonify({"error": "המשפחה שלך השתנתה — רעננו את הדף",
+                            "family_changed": True}), 409
+        session["sf_notice"] = f'המשפחה שלך השתנתה — "{new_name}"'
+        return redirect(url_for("dashboard"))
     msg = "לא הצלחנו לטעון את הנתונים כרגע. נסו לרענן בעוד רגע."
     if _is_api_request():
         return jsonify({"error": msg}), 503

@@ -1,0 +1,82 @@
+"""בדיקת דפדפן אמיתי: מי שהמשפחה שלו השתנתה מאחורי הגב לא נתקע על דף תקלה.
+
+מתחברת כמשתמש הבדיקה ב', מעבירה אותו (SQL בהרשאות בעלים) למשפחה של א' —
+מה שהסרה או יציאה במכשיר אחר עושות — ופותחת את עמוד החודש. מחזירה אותו
+בסוף.
+
+הרצה (Playwright מותקן בפייתון של המערכת, לא ב-.venv):
+    /Library/Frameworks/Python.framework/Versions/3.14/bin/python3 tests/browser/family_changed_session.py
+"""
+import os, json, time, subprocess, signal
+from playwright.sync_api import sync_playwright
+
+ROOT = os.getcwd()
+def _dotenv(path):
+    out = {}
+    for line in open(path, encoding="utf-8"):
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1); out[k.strip()] = v.strip().strip('"').strip("'")
+    return out
+env = {**os.environ, **{k: v for k, v in _dotenv(os.path.join(ROOT, ".env")).items() if v}}
+env["PORT"] = "8099"
+EMAIL_A = env.get("RLS_TEST_EMAIL_A", "rls-test-family-a@smartfin.test")
+EMAIL_B = env.get("RLS_TEST_EMAIL_B", "rls-test-family-b@smartfin.test")
+
+
+def sql(q):
+    out = subprocess.run(["supabase", "db", "query", q, "--linked", "-o", "json"],
+                         cwd=os.path.join(ROOT, "backend"), capture_output=True, text=True, timeout=60)
+    if out.returncode != 0:
+        raise RuntimeError(out.stderr[:300])
+    txt = out.stdout
+    return json.loads(txt[txt.index("{"):])["rows"]
+
+
+ids = sql(f"select u.email, p.id, p.family_id from auth.users u join profiles p on p.id = u.id "
+          f"where u.email in ('{EMAIL_A}', '{EMAIL_B}')")
+a = next(r for r in ids if r["email"] == EMAIL_A)
+b = next(r for r in ids if r["email"] == EMAIL_B)
+manager = sql(f"select manager_id from families where id = '{a['family_id']}'")[0]["manager_id"]
+
+srv = subprocess.Popen([os.path.join(ROOT, ".venv/bin/python3"), "-m", "backend.app"], cwd=ROOT, env=env,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+BASE = "http://127.0.0.1:8099"
+try:
+    for _ in range(40):
+        try:
+            import urllib.request; urllib.request.urlopen(BASE + "/health", timeout=1); break
+        except Exception: time.sleep(0.5)
+    with sync_playwright() as p:
+        br = p.chromium.launch()
+        page = br.new_page(viewport={"width": 390, "height": 844})
+        page.goto(BASE + "/login")
+        page.fill("#identifier", EMAIL_B)
+        page.fill("#password", env["RLS_TEST_PASSWORD_B"])
+        page.click("button.submit-btn")
+        page.wait_for_url(lambda u: "/login" not in u, timeout=15000)
+        page.goto(BASE + "/month")
+        print("before the move, month page:", "לא הצלחנו לטעון" not in page.content())
+
+        # מאחורי הגב: ב' עובר למשפחה של א' — מה שהסרה או יציאה במכשיר אחר עושות
+        sql(f"update profiles set family_id = '{a['family_id']}' where id = '{b['id']}'")
+
+        page.goto(BASE + "/month")
+        page.wait_for_timeout(1200)
+        print("landed on:", page.url.replace(BASE, ""),
+              "| error page:", "לא הצלחנו לטעון" in page.content())
+        toast = page.inner_text(".toast") if page.is_visible(".toast") else None
+        print("toast:", toast)
+        page.screenshot(path="/tmp/family_changed.png")
+        page.goto(BASE + "/month")
+        page.wait_for_timeout(1200)
+        again = page.eval_on_selector(".toast", "t => t.classList.contains('show') ? t.textContent : null")
+        print("month page now works:", "לא הצלחנו לטעון" not in page.content(),
+              "| notice again:", again, "| data block:", page.locator("#sfNotice").count())
+        br.close()
+finally:
+    sql(f"update profiles set family_id = '{b['family_id']}' where id = '{b['id']}'")
+    back = sql(f"select family_id from profiles where id = '{b['id']}'")[0]["family_id"]
+    print("B restored:", back == b["family_id"])
+    os.killpg(os.getpgid(srv.pid), signal.SIGTERM)
+    time.sleep(2)

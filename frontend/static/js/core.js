@@ -140,6 +140,11 @@ window.escapeHtml = function (s) {
     try {
         pending = sessionStorage.getItem('sf_toast');
     } catch (e) { /* אין אחסון — ההודעה הדחויה פשוט לא תוצג */ }
+    // הודעה מהשרת (‎_notice.html‎) — למשל "המשפחה שלך השתנתה"
+    const noticeEl = document.getElementById('sfNotice');
+    if (!pending && noticeEl) {
+        try { pending = JSON.parse(noticeEl.textContent); } catch (e) {}
+    }
     if (pending) {
         try { sessionStorage.removeItem('sf_toast'); } catch (e) {}
         setTimeout(function () { window.showToast(pending); }, 350);

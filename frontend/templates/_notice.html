@@ -1,0 +1,4 @@
+{# הודעה חד-פעמית מהשרת, למשל "המשפחה שלך השתנתה" (ראו _family_changed).
+   נשלפת מהסשן — ולכן מוצגת פעם אחת בלבד — ו-core.js מציג אותה כ-toast. #}
+{% set sf_notice = session.pop('sf_notice', None) %}
+{% if sf_notice %}<script type="application/json" id="sfNotice">{{ sf_notice | tojson }}</script>{% endif %}
