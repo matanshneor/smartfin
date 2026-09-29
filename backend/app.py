@@ -1632,6 +1632,21 @@ def _invite_days_left(family):
     return max((deadline - clock.now_utc()).days, 0)
 
 
+def _fresh_invite(family: dict, user: dict) -> dict:
+    """בהגדרות של המנהל תמיד יש קוד הזמנה תקף (בקשת מתן, 29.9.2026).
+
+    הקוד תקף שבוע, ופג בשקט: מי שנכנס כדי לשלוח קוד מצא "הקוד פג". עכשיו
+    כניסה של המנהל כשהקוד כבר פג מפיקה חדש. **רק כשכבר פג** — קוד שעוד
+    בתוקף אולי כבר נשלח למישהו, והחלפה הייתה מבטלת אותו. ורק למנהל: החלפת
+    קוד היא הרשאה שלו. כשל משאיר את "הקוד פג" על המסך — לא נופלים בגללו."""
+    if not family or family.get("manager_id") != user["id"]:
+        return family
+    if family.get("invite_code") and not _invite_expired(family):
+        return family
+    code, _ = db.rotate_invite_code()
+    return db.get_family(family["id"]) if code else family
+
+
 @app.route("/settings")
 @login_required
 def settings():
@@ -1639,7 +1654,7 @@ def settings():
     family_id  = user["family_id"]
     categories = db.get_categories(family_id)
     members    = db.get_family_members(family_id)       if family_id else []
-    family     = db.get_family(family_id)               if family_id else {}
+    family     = _fresh_invite(db.get_family(family_id), user) if family_id else {}
     # רק סדרות פעילות — ראו ‎db.is_active_template‎
     recurring  = [r for r in db.get_recurring_transactions(family_id, user["id"],
                                                           settings=family_settings())
