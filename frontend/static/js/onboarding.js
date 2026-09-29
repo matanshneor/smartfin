@@ -84,7 +84,7 @@ window.escapeHtml = window.escapeHtml || function (s) {
                         joinPreview.textContent = 'מצטרפים ל: ' + res.data.name;
                         joinPreview.classList.add('field-hint-ok');
                     } else {
-                        joinPreview.textContent = 'לא נמצאה משפחה עם הקוד הזה';
+                        joinPreview.textContent = 'הקוד לא נמצא או שפג תוקפו — בקשו ממנהל המשפחה קוד חדש';
                         joinPreview.classList.add('field-hint-bad');
                     }
                 })

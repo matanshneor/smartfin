@@ -2777,7 +2777,10 @@ def join_family_by_code(code: str):
         result = client.rpc("join_family_by_code", {"p_code": code}).execute()
         family_id = result.data
         if not family_id:
-            return None, "קוד ההזמנה לא נמצא — בדקו שהועתק במלואו"
+            # "או שפג תוקפו": קוד תקף שבוע, ומי שקיבל קוד ישן בדק שוב ושוב
+            # שהעתיק נכון. בלי להבחין בין השניים — "פג" היה מאשר לזר שניחש
+            # שהקוד היה אמיתי פעם.
+            return None, "הקוד לא נמצא או שפג תוקפו — בקשו ממנהל המשפחה קוד חדש"
         return family_id, None
     except Exception as e:
         logger.exception("join_family_by_code")
