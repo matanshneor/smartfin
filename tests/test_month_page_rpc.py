@@ -12,6 +12,7 @@ import uuid
 import pytest
 
 from backend import supabase_config as db
+from tests.conftest import category_of
 
 YEAR, MONTH = 2031, 3
 
@@ -58,12 +59,13 @@ def month_fixture(family_a):
             {"family_id": fid, "amount": 300, "type": "expense", "date": f"{YEAR}-{MONTH:02d}-11",
              "description": f"{marker}-project", "project_id": proj["id"],
              "project_category_id": pcat["id"], "user_id": family_a["user_id"]},
-            # בלי שום קישור — כל ארבעת השדות המקוננים אמורים לצאת null
+            # בלי קישור מלבד הקטגוריה — עסקת בית בלי קטגוריה נדחית במסד
+            # (‎transactions_category_required‎). שלושת האחרים אמורים לצאת null
             {"family_id": fid, "amount": 42, "type": "income", "date": f"{YEAR}-{MONTH:02d}-20",
-             "description": f"{marker}-bare"},
+             "description": f"{marker}-bare", "category_id": category_of(fid, "income")},
             # אותו תאריך כמו הקודמת: כאן מתגלה אי-יציבות בסדר, אם יש
             {"family_id": fid, "amount": 7, "type": "savings", "date": f"{YEAR}-{MONTH:02d}-20",
-             "description": f"{marker}-same-day"},
+             "description": f"{marker}-same-day", "category_id": category_of(fid, "savings")},
         ]
         for r in rows:
             created["transactions"].append(_table("transactions").insert(r).execute().data[0]["id"])
@@ -135,7 +137,7 @@ def test_nested_joins_are_null_not_empty(month_fixture):
     rows = db.fetch_month_page(fid, YEAR, MONTH)["rows"]
     bare = [r for r in rows if r["description"].endswith("-bare")]
     assert len(bare) == 1
-    for key in ("categories", "project_categories", "profiles", "projects"):
+    for key in ("project_categories", "profiles", "projects"):
         assert bare[0][key] is None, f"{key} should be None on an unlinked row"
 
     linked = [r for r in rows if r["description"].endswith("-with-cat")][0]

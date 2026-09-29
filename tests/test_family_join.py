@@ -20,6 +20,7 @@ from pathlib import Path
 import pytest
 
 from backend import supabase_config as db
+from tests.conftest import category_of
 
 _BACKEND = Path(__file__).resolve().parent.parent / "backend"
 
@@ -201,7 +202,8 @@ def test_join_keeps_a_family_that_still_holds_transactions(family_a, family_a_co
 
         client.table("transactions").insert(
             {"family_id": temp_id, "amount": 1, "type": "expense",
-             "date": "2026-01-01", "description": "join test"},
+             "date": "2026-01-01", "description": "join test",
+             "category_id": category_of(temp_id)},
             returning="minimal",
         ).execute()
 

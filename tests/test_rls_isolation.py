@@ -9,6 +9,7 @@
 import uuid
 
 from backend import supabase_config as db
+from tests.conftest import category_of
 
 
 def _table(name):
@@ -60,10 +61,12 @@ def test_categories_isolation(family_a, family_b):
 
 
 def test_transactions_isolation(family_a, family_b):
+    db.set_auth_token(family_a["token"])
     _assert_isolated(
         "transactions",
         {"family_id": family_a["family_id"], "amount": 1, "type": "expense",
-         "date": "2026-01-01", "description": "RLS test"},
+         "date": "2026-01-01", "description": "RLS test",
+         "category_id": category_of(family_a["family_id"])},
         family_a, family_b,
         update_patch={"amount": 999999},
     )

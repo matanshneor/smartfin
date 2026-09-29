@@ -16,6 +16,7 @@ import uuid
 import pytest
 
 from backend import supabase_config as db
+from tests.conftest import category_of
 
 _MONTHS_WITH_INSTANCES = ["02", "03", "05", "06", "07", "09"]
 
@@ -30,10 +31,11 @@ def series(family_a):
     fid = family_a["family_id"]
     marker = f"SPLIT-{uuid.uuid4().hex[:8]}"
     ids = {}
+    cat = category_of(fid)
     try:
         template = _table("transactions").insert({
             "family_id": fid, "amount": 5000, "type": "expense",
-            "date": "2026-01-01", "description": marker,
+            "date": "2026-01-01", "description": marker, "category_id": cat,
             "is_recurring": True, "recurring_frequency": "monthly_1",
             "recurring_skips": ["2026-04-01", "2026-08-01"],
         }).execute().data[0]
@@ -41,7 +43,7 @@ def series(family_a):
         for mm in _MONTHS_WITH_INSTANCES:
             row = _table("transactions").insert({
                 "family_id": fid, "amount": 5000, "type": "expense",
-                "date": f"2026-{mm}-01", "description": marker,
+                "date": f"2026-{mm}-01", "description": marker, "category_id": cat,
                 "is_recurring": False, "recurring_parent_id": template["id"],
                 "recurring_frequency": "monthly_1",
             }).execute().data[0]

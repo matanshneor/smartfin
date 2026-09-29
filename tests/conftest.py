@@ -55,6 +55,21 @@ def family_b():
     return _login("b")
 
 
+def category_of(family_id: str, type_: str = "expense") -> str:
+    """קטגוריה קיימת של המשפחה מהסוג הזה — ואם אין, יוצרת אחת קבועה.
+
+    עסקת בית בלי קטגוריה נדחית במסד (‎transactions_category_required‎),
+    אז כל בדיקה שמכניסה עסקה ישירות צריכה אחת. הטוקן הפעיל חייב להיות
+    של בן המשפחה הזו."""
+    table = db.get_client().table("categories")
+    found = table.select("id").eq("family_id", family_id).eq("type", type_) \
+        .limit(1).execute().data
+    if found:
+        return found[0]["id"]
+    return table.insert({"family_id": family_id, "name": f"TEST-{type_}", "icon": "🧪",
+                         "type": type_, "is_custom": True}).execute().data[0]["id"]
+
+
 def pytest_configure(config):
     config.addinivalue_line(
         "markers",
