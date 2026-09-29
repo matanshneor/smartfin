@@ -678,7 +678,7 @@
 
         li.innerHTML =
             '<div class="tx-head">' +
-                '<div class="tx-icon ' + currentType + '"><span class="tx-emoji">' + (icon || '📦') + '</span></div>' +
+                '<div class="tx-icon ' + currentType + '"><span class="tx-emoji">' + escapeHtml(icon || '📦') + '</span></div>' +
                 '<div class="tx-details">' +
                     '<p class="tx-name"></p>' +
                     '<p class="tx-meta"></p>' +

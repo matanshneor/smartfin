@@ -1564,20 +1564,48 @@ def list_project_categories_route(project_id):
     return jsonify(db.get_project_categories(project_id, user["family_id"], type_))
 
 
+_CATEGORY_NAME_MAX = 30     # כמו ה-‎maxlength‎ של המסך
+_CATEGORY_ICON_MAX = 16     # אימוג'י מורכב (משפחה, דגל) הוא כמה תווים — עדיין אייקון
+
+
+def _category_fields(body: dict):
+    """שם ואייקון של קטגוריה (משפחתית או של פרויקט). מחזירה (name, icon, error).
+
+    למסך היה ‎maxlength‎, לשרת — כלום. מי שפנה ל-API ישירות יכול היה לשמור
+    אייקון ‎<style>…</style>‎, והוא נכנס ל-‎innerHTML‎ אצל כל המשפחה; ו-
+    ‎{"name": 5}‎ הפיל את המסלול ב-500 על ‎.strip()‎ של מספר."""
+    name, icon = body.get("name"), body.get("icon")
+    if name is not None and not isinstance(name, str):
+        return None, None, "שם הקטגוריה חייב להיות טקסט"
+    if icon is not None and not isinstance(icon, str):
+        return None, None, "האייקון חייב להיות טקסט"
+    name = (name or "").strip()
+    icon = (icon or "").strip() or "📦"
+    if not name:
+        return None, None, "נא להזין שם קטגוריה"
+    if len(name) > _CATEGORY_NAME_MAX:
+        return None, None, f"שם הקטגוריה ארוך מדי — עד {_CATEGORY_NAME_MAX} תווים"
+    if len(icon) > _CATEGORY_ICON_MAX or any(ch in icon for ch in '<>&"\''):
+        return None, None, "האייקון לא תקין — בחרו אימוג'י אחד"
+    return name, icon, None
+
+
 @app.route("/api/projects/<project_id>/categories", methods=["POST"])
 @login_required
 @project_access_required
 def add_project_category_route(project_id):
     user = get_current_user()
     body = request.get_json(silent=True) or {}
-    name = (body.get("name") or "").strip()
+    name, icon, field_err = _category_fields(body)
+    if field_err:
+        return jsonify({"error": field_err}), 422
     if not name:
         return jsonify({"error": "נא להזין שם קטגוריה"}), 422
     type_ = body.get("type")
     if type_ not in ("expense", "income", "savings"):
         return jsonify({"error": "סוג קטגוריה לא תקין"}), 422
     cat, err = db.add_project_category(project_id, user["family_id"], name,
-                                       body.get("icon", "📦"), type_)
+                                       icon, type_)
     if err:
         logger.error("add_project_category route: %s", err)
         return jsonify({"error": "הוספת הקטגוריה נכשלה — נסה שוב"}), 500
@@ -1590,8 +1618,9 @@ def add_project_category_route(project_id):
 def update_project_category_route(project_id, cat_id):
     user = get_current_user()
     body = request.get_json(silent=True) or {}
-    name = (body.get("name") or "").strip()
-    icon = (body.get("icon") or "").strip() or "📦"
+    name, icon, field_err = _category_fields(body)
+    if field_err:
+        return jsonify({"error": field_err}), 422
     if not name:
         return jsonify({"error": "נא להזין שם קטגוריה"}), 422
     ok = db.update_project_category(cat_id, project_id, user["family_id"], name, icon)
@@ -2569,9 +2598,9 @@ def add_category():
     # מחרוזת ריקה, אז נוצרה קטגוריה בלי שם — שורה בפילוח החודשי שאי
     # אפשר לזהות ואי אפשר לחפש. ו-‎type‎ לא מוכר נעצר רק ב-CHECK של
     # המסד וחזר כ-500 סתום, אחרי שכל מסלול כתיבה אחר כבר מאמת אותו.
-    name = (body.get("name") or "").strip()
-    if not name:
-        return jsonify({"error": "נא להזין שם לקטגוריה"}), 422
+    name, icon, field_err = _category_fields(body)
+    if field_err:
+        return jsonify({"error": field_err}), 422
 
     type_ = body.get("type", "expense")
     if type_ not in ("expense", "income", "savings"):
@@ -2580,7 +2609,7 @@ def add_category():
     cat, err = db.add_custom_category(
         family_id=user["family_id"],
         name=name,
-        icon=body.get("icon", "📦"),
+        icon=icon,
         type_=type_,
     )
     if err:
@@ -2595,8 +2624,9 @@ def add_category():
 def update_category(cat_id):
     user = get_current_user()
     body = request.get_json(silent=True) or {}
-    name = (body.get("name") or "").strip()
-    icon = (body.get("icon") or "").strip() or "📦"
+    name, icon, field_err = _category_fields(body)
+    if field_err:
+        return jsonify({"error": field_err}), 422
     if not name:
         return jsonify({"error": "נא להזין שם קטגוריה"}), 422
     ok = db.update_category(cat_id, user["family_id"], name, icon)
