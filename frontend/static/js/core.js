@@ -18,6 +18,16 @@ window.sfData = function (id) {
 // הנתונים הגלובליים מ-base.html זמינים מיד — האי שלהם מופיע לפני הקובץ הזה.
 window.SF_PAGE_DATA = window.sfData('sf-page-data');
 
+/* הודעה להצגה אחרי טעינה מלאה של הדף ("העסקה נוספה").
+ *
+ * ‎sessionStorage‎ זורק בדפדפן שחוסם אחסון (מצב פרטי מחמיר, Lockdown).
+ * הקריאה הזאת ישבה בלי הגנה בתוך ‎.then‎ של שמירה שכבר הצליחה — והחריגה
+ * נפלה ל-‎.catch‎ של הרשת: המשתמש ראה "שגיאת רשת", הכפתור השתחרר, והוא
+ * לחץ שוב ויצר עותק. בלי אחסון מוותרים על ההודעה, לא על הטעינה. */
+window.sfToastAfterReload = function (message) {
+    try { sessionStorage.setItem('sf_toast', message); } catch (e) { /* בלי הודעה, לא בלי טעינה */ }
+};
+
 // בריחת HTML — כל ערך שהמשתמש הזין (שם קטגוריה/פרויקט/אייקון/תיאור)
 // חייב לעבור דרך זה לפני הזרקה ל-innerHTML, אחרת שם עם תגית זדונית
 // שיצר בן משפחה אחד ירוץ אצל כולם (XSS). זמין גלובלית לכל העמודים.
@@ -220,7 +230,7 @@ const SF_RELOAD_REGIONS = ['header.page-hero', 'main.main-content'];
 window.softReload = function (selector, pendingToast) {
     const regions = selector ? [selector] : SF_RELOAD_REGIONS;
     function fullReload() {
-        if (pendingToast) { try { sessionStorage.setItem('sf_toast', pendingToast); } catch (e) {} }
+        if (pendingToast) window.sfToastAfterReload(pendingToast);
         window.location.reload();
         return 'reloaded';
     }

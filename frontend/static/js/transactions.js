@@ -898,7 +898,7 @@
                     });
                 } else {
                     // עמוד עם גרפים או האזנות ישירות — רענון מלא, כמו קודם
-                    sessionStorage.setItem('sf_toast', message);
+                    window.sfToastAfterReload(message);
                     setTimeout(function () { window.location.reload(); }, isNew ? 380 : 0);
                 }
             }
@@ -1146,7 +1146,7 @@
             if (data.error) { window.showToast(data.error, 'error'); return; }
             // ‎receipt_path‎ נשלח ‎null‎ במכוון: הקובץ נמחק מהאחסון ברגע
             // המחיקה, וכתובת לקובץ שאינו קיים הייתה מייצרת תג 📎 שבור.
-            sessionStorage.setItem('sf_toast',
+            window.sfToastAfterReload(
                 txData.hadReceipt ? 'העסקה שוחזרה — בלי הקבלה' : 'העסקה שוחזרה');
             window.location.reload();
         })
@@ -1435,7 +1435,7 @@
                     saveBtn.textContent = 'שמור';
                     return;
                 }
-                sessionStorage.setItem('sf_toast', 'העסקה עודכנה');
+                window.sfToastAfterReload('העסקה עודכנה');
                 window.location.reload();
             })
             .catch(function () {

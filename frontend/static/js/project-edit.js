@@ -42,7 +42,7 @@ editForm.addEventListener('submit', function (e) {
     .then(r => r.json())
     .then(function (data) {
         if (data.error) { editSubmitBtn.disabled = false; editError.textContent = data.error; return; }
-        sessionStorage.setItem('sf_toast', 'הפרויקט עודכן');
+        window.sfToastAfterReload('הפרויקט עודכן');
         window.location.href = detailUrl;
     })
     .catch(function () { editSubmitBtn.disabled = false; editError.textContent = window.sfNetError(); });
@@ -336,7 +336,7 @@ document.addEventListener('click', function (e) {
             // כדי שלא נצטרך להבטיח מספר שלא נבדק.
             const wiped = res.d.deleted || 0;
             try {
-                sessionStorage.setItem('sf_toast', wiped
+                window.sfToastAfterReload(wiped
                     ? 'הפרויקט נמחק, ואיתו ' + wiped + ' עסקאות'
                     : 'הפרויקט נמחק');
             } catch (e) { /* אין אחסון — נוותר על הטוסט, לא על הניווט */ }

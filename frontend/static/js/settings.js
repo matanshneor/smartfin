@@ -648,7 +648,7 @@ if (toggleResetBtn) {
                     resetError.textContent = d.error;
                     return;
                 }
-                sessionStorage.setItem('sf_toast', 'כל העסקאות נמחקו');
+                window.sfToastAfterReload('כל העסקאות נמחקו');
                 window.location.href = '/';
             })
             .catch(function () {
