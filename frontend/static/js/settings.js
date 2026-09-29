@@ -463,6 +463,9 @@ function submitProfile(workplaceScope) {
         const workplaceDisplay = document.getElementById('accountWorkplaceDisplay');
         workplaceDisplay.textContent = d.workplace || '';
         workplaceDisplay.style.display = d.workplace ? '' : 'none';
+        // הערך השמור הוא עכשיו נקודת ההשוואה. בלי זה "שינית את מקום העבודה"
+        // נשאל שוב בכל שמירה הבאה של הפרופיל, גם כשלא נגעו בו.
+        document.getElementById('editWorkplace').defaultValue = d.workplace || '';
 
         profileEdit.classList.remove('visible');
     })
@@ -496,6 +499,9 @@ if (saveProfileBtn) {
                 cancelText: 'רק מהחודש הזה',
                 danger: false,
             }).then(function (updateAll) {
+                // ‎null‎ = נסיגה (Escape, לחיצה בחוץ): לא שומרים כלום. עד היום
+                // זה נשמר כ"רק מהחודש הזה" — בחירה שאף אחד לא עשה.
+                if (updateAll === null) return;
                 submitProfile(updateAll ? 'all' : 'future');
             });
         } else {
