@@ -1526,6 +1526,11 @@
         let drag = null;
         let openRow = null; // השורה שכרגע פתוחה (אם יש), כדי לסגור אותה בלחיצה במקום אחר
 
+        // שורת עסקה קבועה ברשימה של ההגדרות — שם "הסרה" עוצרת את הסדרה
+        function isSettingsSeriesRow(row) {
+            return row.classList.contains('recurring-row') && !row.closest('#fixedList');
+        }
+
         function ensureSwipeStructure(row) {
             if (row.classList.contains('swipe-ready')) return;
             row.classList.add('swipe-ready');
@@ -1540,7 +1545,9 @@
 
             const deleteAction = document.createElement('div');
             deleteAction.className = 'swipe-action swipe-action-delete';
-            deleteAction.textContent = '✕ מחיקה';
+            // בהגדרות ההחלקה עוצרת את הסדרה (כמו ה-✕ שם), ולא מוחקת — אז
+            // היא גם לא נקראת "מחיקה"
+            deleteAction.textContent = isSettingsSeriesRow(row) ? '✕ הסרה' : '✕ מחיקה';
 
             row.appendChild(editAction);
             row.appendChild(deleteAction);
@@ -1657,6 +1664,14 @@
             const delBtn = e.target.closest('.swipe-action-delete');
             if (delBtn) {
                 const row = delBtn.closest(ROW_SELECTOR);
+                // בהגדרות: אותה עצירת סדרה כמו ה-✕ באותה שורה. עד היום ההחלקה
+                // הלכה ל-‎DELETE /api/transactions‎ — ומחקה את העסקה הראשונה
+                // בסדרה, או את כולה, מתוך שורה שה-✕ שלה מבטיח "כל מה שכבר
+                // נרשם יישאר".
+                if (isSettingsSeriesRow(row)) {
+                    stopSeriesFromSettings(row, function () { closeRow(row); });
+                    return;
+                }
                 const swiped = buildTxFromRow(row);
                 confirmDelete(swiped).then(function (ok) {
                     if (!ok) { closeRow(row); return; }
@@ -1697,12 +1712,18 @@
         }
 
         // בהגדרות: עצירת הסדרה.
+        stopSeriesFromSettings(row);
+    });
+
+    /* עצירת סדרה מתוך "עסקאות קבועות" בהגדרות — ה-✕ וההחלקה שניהם כאן.
+     * ‎onCancel‎: מה לעשות אם המשתמש חזר בו (ההחלקה סוגרת את השורה). */
+    function stopSeriesFromSettings(row, onCancel) {
         window.appConfirm({
             title: 'להסיר את העסקה הקבועה?',
             message: 'מופעים חדשים יפסיקו להיווצר. כל מה שכבר נרשם — כולל העסקה הראשונה — יישאר בהיסטוריה.',
             confirmText: 'הסר',
         }).then(function (ok) {
-            if (!ok) return;
+            if (!ok) { if (onCancel) onCancel(); return; }
             // ‎/api/recurring‎ ולא ‎/api/transactions‎: זה עוצר את הסדרה ולא מוחק
             // שורה. שורת התבנית היא העסקה הראשונה בסדרה, ומחיקתה הייתה מוציאה
             // כסף אמיתי מההיסטוריה — בדיוק מה שההודעה למעלה מבטיחה שלא יקרה.
@@ -1720,6 +1741,6 @@
             })
             .catch(function () { window.showToast(window.sfNetError(), 'error'); });
         });
-    });
+    }
 
 })();
