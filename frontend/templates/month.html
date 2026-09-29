@@ -62,11 +62,21 @@
     </div>
     <div class="kpi-chip">
         <p class="kpi-label">נשאר בעו״ש</p>
-        <p class="kpi-value {% if summary.remaining >= 0 %}surplus{% else %}deficit{% endif %}"
+        {# כמו דף הבית: חודש בלי הכנסה אינו גירעון — עוד אין ממה להחסיר, אז
+           "—" ניטרלי ולא "₪-800" באדום. (לא "יצא החודש" כמו שם: כאן יש כבר
+           ריבוע "הוצאות" ליד, והיה אותו מספר פעמיים.) הגירעון נקבע לפי המספר
+           שמוצג, מעוגל לשקל, והמינוס לפני ה-₪ גם בלי JS. #}
+        {% set no_income_yet = summary.income <= 0 %}
+        {% set deficit = not no_income_yet and (summary.remaining | round) < 0 %}
+        {% if no_income_yet %}
+        <p class="kpi-value">—</p>
+        {% else %}
+        <p class="kpi-value {% if deficit %}deficit{% else %}surplus{% endif %}"
            data-countup="{{ summary.remaining | abs | round | int }}"
-           {% if summary.remaining < 0 %}data-prefix="-"{% endif %}>
-            ₪{{ "{:,.0f}".format(summary.remaining) }}
+           {% if deficit %}data-prefix="-"{% endif %}>
+            {% if deficit %}-{% endif %}₪{{ "{:,.0f}".format(summary.remaining | abs) }}
         </p>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
