@@ -166,7 +166,7 @@ def test_leaving_with_undecided_projects_asks_and_touches_nothing(client, monkey
 
 # ─── קבלות של מה שנמחק ───────────────────────────────────────────────────────
 #
-# הניקוי הלילי (‎purge_orphan_receipts‎) נכשל בכל ריצה — Supabase חוסמת מחיקה
+# אין ניקוי לילי (‎purge_orphan_receipts‎ נכשל בכל ריצה והוסר) — Supabase חוסמת מחיקה
 # ישירה מהאחסון. אז מה שנמחק בהסרה או בעזיבה לוקח איתו את הקבצים שלו.
 
 def _receipts_by(monkeypatch, mapping):
