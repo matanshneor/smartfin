@@ -166,15 +166,44 @@ class _Deleted:
 
 
 def test_deleting_a_row_that_matched_nothing_is_not_a_success(monkeypatch):
+    """ולא "נכשל" סתם: היא כבר לא קיימת (ראו test_deleting_what_is_already_gone)."""
     monkeypatch.setattr(db, "get_client", lambda: _Deleted([]))
 
-    assert db.delete_transaction(_TX, _FAM) is False
+    assert db.delete_transaction(_TX, _FAM) == (False, "not found")
 
 
 def test_deleting_a_row_that_did_match_is(monkeypatch):
     monkeypatch.setattr(db, "get_client", lambda: _Deleted([{"id": _TX}]))
 
-    assert db.delete_transaction(_TX, _FAM) is True
+    assert db.delete_transaction(_TX, _FAM) == (True, None)
+
+
+def test_a_failed_delete_is_not_mistaken_for_gone(monkeypatch):
+    class Down(_Deleted):
+        def execute(self):
+            raise ConnectionError("down")
+    monkeypatch.setattr(db, "get_client", lambda: Down([]))
+
+    assert db.delete_transaction(_TX, _FAM) == (False, "error")
+
+
+# ─── מחיקה של מה שבן משפחה אחר כבר מחק ──────────────────────────────────────
+#
+# אור מחקה את "סופר ₪200"; מתן, שעדיין רואה אותה, לוחץ מחיקה. עד היום:
+# 500 "מחיקה נכשלה", והשורה נשארה על המסך — ובכל ניסיון נוסף שוב "נכשלה".
+
+@pytest.mark.parametrize("result,code", [((False, "not found"), 404), ((False, "error"), 500),
+                                         ((True, None), 200)], ids=["gone", "failed", "deleted"])
+def test_deleting_what_is_already_gone(client, monkeypatch, result, code):
+    monkeypatch.setattr(app_module.db, "recurring_occurrence", lambda *a: (None, True))
+    monkeypatch.setattr(app_module.db, "get_transaction_receipt_path", lambda *a: None)
+    monkeypatch.setattr(app_module.db, "delete_transaction", lambda *a: result)
+
+    res = client.delete(f"/api/transactions/{_TX}")
+
+    assert res.status_code == code
+    if code == 404:
+        assert res.get_json()["error"] == "העסקה כבר נמחקה"
 
 
 def test_a_reset_reports_how_many_rows_it_removed(monkeypatch):

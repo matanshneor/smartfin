@@ -185,7 +185,9 @@ class _Query:
                 raise LookupError(f"{self._table}: single() לא מצא שורה")
             return FakeExecute(dict(hit[0]), total)
         if self._single == "maybe":
-            return FakeExecute(dict(hit[0]) if hit else None, total)
+            # כמו postgrest-py 0.16: בלי שורה חוזר ‎None‎ ולא תשובה ריקה
+            # (ראו ‎_maybe_one‎) — הכפיל ה"מנומס" הסתיר באג בארבעה מקומות
+            return FakeExecute(dict(hit[0]), total) if hit else None
         return FakeExecute([dict(r) for r in hit], total)
 
 

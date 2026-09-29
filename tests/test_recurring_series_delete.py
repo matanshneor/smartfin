@@ -126,7 +126,7 @@ def test_an_ordinary_transaction_is_untouched(client, monkeypatch):
     _occurrence(monkeypatch, None)
     deleted = []
     monkeypatch.setattr(app_module.db, "delete_transaction",
-                        lambda tx, fam: (deleted.append(tx) or True))
+                        lambda tx, fam: (deleted.append(tx) or (True, None)))
 
     res = client.delete(f"/api/transactions/{_TX}")
 

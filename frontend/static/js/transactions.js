@@ -1083,10 +1083,21 @@
         });
     }
 
+    /* בן משפחה אחר מחק את העסקה רגע קודם. זו לא תקלה — מה שהמשתמש ביקש
+     * כבר קרה. בלי זה הוא ראה "מחיקה נכשלה", השורה נשארה, וכל ניסיון
+     * נוסף נכשל שוב. */
+    function alreadyGone(txData, row) {
+        removeTransactionRows(txData.id, row);
+        window.showToast('העסקה כבר נמחקה');
+        clearTimeout(pendingDeleteReload);
+        pendingDeleteReload = setTimeout(refreshAfterDelete, 2500);
+    }
+
     function sendSeriesDelete(txData, row, mode, total, onFail) {
         return fetch('/api/transactions/' + txData.id + '?mode=' + mode, { method: 'DELETE' })
-            .then(r => r.json())
+            .then(r => r.json().then(d => (r.status === 404 ? null : d)))
             .then(function (d) {
+                if (d === null) return alreadyGone(txData, row);
                 if (d.status !== 'ok') { if (onFail) onFail(d.error || 'המחיקה נכשלה'); return; }
                 removeTransactionRows(txData.id, row);
                 // אין כאן "בטל": שחזור של מופע בודד היה מחזיר גם את
@@ -1136,6 +1147,7 @@
                 if (res.code === 409 && res.d.needs_choice) {
                     return askAboutSeries(txData, row, res.d.later, onFail);
                 }
+                if (res.code === 404) return alreadyGone(txData, row);
                 const d = res.d;
                 if (d.status !== 'ok') { if (onFail) onFail(d.error || 'מחיקה נכשלה'); return; }
                 removeTransactionRows(txData.id, row);

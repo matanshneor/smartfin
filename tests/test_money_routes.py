@@ -354,8 +354,9 @@ def test_deleting_something_that_is_not_there_does_not_say_ok(money):
     """‎delete_transaction‎ החזירה ‎True‎ גם כששום שורה לא נגעה."""
     response = money.delete("tx-נעלם")
 
-    assert response.get_json()["status"] != "ok"
-    assert response.status_code == 500
+    assert response.get_json().get("status") != "ok"
+    assert response.status_code == 404
+    assert response.get_json()["error"] == "העסקה כבר נמחקה"
 
 
 def test_deleting_cannot_reach_into_another_family(money):
@@ -363,7 +364,8 @@ def test_deleting_cannot_reach_into_another_family(money):
 
     response = money.delete("tx-זר")
 
-    assert response.get_json()["status"] != "ok"
+    assert response.get_json().get("status") != "ok"
+    assert response.status_code == 404, "התשובה לא מאשרת שהעסקה קיימת אצל אחרים"
     assert len(money.transactions) == 1, "עסקה של משפחה אחרת נמחקה"
 
 

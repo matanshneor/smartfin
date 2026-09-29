@@ -2384,7 +2384,7 @@ def delete_transaction(tx_id):
             tx_id, occurrence["template_id"], occurrence["date"], user["family_id"])
         if not ok:
             if err == "not found":
-                return jsonify({"error": "העסקה לא נמצאה"}), 404
+                return jsonify({"error": "העסקה כבר נמחקה"}), 404
             logger.error("delete_one_occurrence route: %s", err)
             return jsonify({"error": "המחיקה נכשלה — נסו שוב"}), 500
         return jsonify({"status": "ok", "deleted": 1})
@@ -2398,10 +2398,14 @@ def delete_transaction(tx_id):
         return jsonify({"status": "ok", "deleted": deleted})
 
     receipt_path = db.get_transaction_receipt_path(tx_id, user["family_id"])
-    ok = db.delete_transaction(tx_id, user["family_id"])
-    if ok and receipt_path:
+    ok, err = db.delete_transaction(tx_id, user["family_id"])
+    if err == "not found":
+        return jsonify({"error": "העסקה כבר נמחקה"}), 404
+    if not ok:
+        return jsonify({"error": "המחיקה נכשלה — נסו שוב"}), 500
+    if receipt_path:
         db.delete_receipt(session.get("access_token"), receipt_path)
-    return jsonify({"status": "ok" if ok else "error"}), 200 if ok else 500
+    return jsonify({"status": "ok"})
 
 
 @app.route("/api/recurring/<template_id>", methods=["DELETE"])

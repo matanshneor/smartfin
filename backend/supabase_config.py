@@ -1639,6 +1639,18 @@ def stop_recurring(transaction_id: str, family_id: str):
         return False, str(e)
 
 
+def _maybe_one(query):
+    """שורה אחת או ‎None‎.
+
+    ב-postgrest-py שלנו (0.16) ‎.maybe_single().execute()‎ מחזיר ‎None‎ —
+    לא תשובה עם ‎.data = None‎ — כשאין שורה. ‎.execute().data‎ זרק אז
+    ‎AttributeError‎, והוא הפך ל-‎DataUnavailable‎: מחיקה של עסקה שבן משפחה
+    אחר מחק רגע קודם ענתה "לא הצלחנו לבדוק אם זו עסקה קבועה — נסו שוב",
+    ושום ניסיון נוסף לא עזר."""
+    result = query.maybe_single().execute()
+    return result.data if result is not None else None
+
+
 def recurring_occurrence(transaction_id: str, family_id: str):
     """מה העסקה הזאת בתוך סדרה קבועה. מחזירה ‎(info, ok)‎ או זורקת.
 
@@ -1653,10 +1665,9 @@ def recurring_occurrence(transaction_id: str, family_id: str):
     if not client:
         raise DataUnavailable("recurring_occurrence: no client")
     try:
-        row = client.table("transactions") \
+        row = _maybe_one(client.table("transactions") \
             .select("id, date, is_recurring, recurring_parent_id") \
-            .eq("id", transaction_id).eq("family_id", family_id) \
-            .maybe_single().execute().data
+            .eq("id", transaction_id).eq("family_id", family_id))
         if not row:
             return None, True
         template_id = row["id"] if row.get("is_recurring") else row.get("recurring_parent_id")
@@ -1687,9 +1698,8 @@ def transaction_type(transaction_id: str, family_id: str):
     if not client:
         raise DataUnavailable("transaction_type: no client")
     try:
-        row = client.table("transactions").select("type") \
-            .eq("id", transaction_id).eq("family_id", family_id) \
-            .maybe_single().execute().data
+        row = _maybe_one(client.table("transactions").select("type") \
+            .eq("id", transaction_id).eq("family_id", family_id))
         return (row or {}).get("type")
     except Exception as e:
         raise DataUnavailable("transaction_type") from e
@@ -1705,9 +1715,8 @@ def is_recurring_instance(transaction_id: str, family_id: str) -> bool:
     if not client:
         raise DataUnavailable("is_recurring_instance: no client")
     try:
-        row = client.table("transactions").select("recurring_parent_id") \
-            .eq("id", transaction_id).eq("family_id", family_id) \
-            .maybe_single().execute().data
+        row = _maybe_one(client.table("transactions").select("recurring_parent_id") \
+            .eq("id", transaction_id).eq("family_id", family_id))
         return bool(row and row.get("recurring_parent_id"))
     except Exception as e:
         raise DataUnavailable("is_recurring_instance") from e
@@ -1765,9 +1774,8 @@ def delete_occurrences_from(template_id: str, occurrence_date: str, family_id: s
             .gte("date", occurrence_date).execute().data or []
 
         cutoff = date.fromisoformat(occurrence_date) - timedelta(days=1)
-        template = client.table("transactions").select("id, date") \
-            .eq("id", template_id).eq("family_id", family_id) \
-            .maybe_single().execute().data
+        template = _maybe_one(client.table("transactions").select("id, date") \
+            .eq("id", template_id).eq("family_id", family_id))
         if not template:
             return len(removed), None
 
@@ -1787,9 +1795,13 @@ def delete_occurrences_from(template_id: str, occurrence_date: str, family_id: s
 
 
 def delete_transaction(transaction_id: str, family_id: str):
+    """מחזירה ‎(ok, err)‎: ‎(True, None)‎, או ‎(False, "not found")‎ כשהעסקה כבר
+    לא קיימת — בן משפחה אחר מחק אותה רגע קודם — או ‎(False, "error")‎.
+    ההבחנה קובעת מה המשתמש רואה: "כבר נמחקה" והשורה יורדת מהמסך, מול
+    "המחיקה נכשלה" והשורה נשארת."""
     client = get_client()
     if not client:
-        return False
+        return False, "error"
     try:
         # ‎.data‎ מחזיר את השורות שנמחקו בפועל (‎returning=representation‎
         # הוא ברירת המחדל). בלי הבדיקה הזאת הפונקציה החזירה ‎True‎ גם
@@ -1800,12 +1812,12 @@ def delete_transaction(transaction_id: str, family_id: str):
             .eq("id", transaction_id) \
             .eq("family_id", family_id) \
             .execute()
-        return bool(result.data)
+        return (True, None) if result.data else (False, "not found")
     except Exception:
         # המשתמש כן רואה "מחיקה נכשלה", אז זה לא כשל שקט — אבל בלי
         # הרישום אי אפשר לענות על "למה".
         logger.exception("delete_transaction")
-        return False
+        return False, "error"
 
 
 # ─── Categories ───────────────────────────────────────────────────────────────
