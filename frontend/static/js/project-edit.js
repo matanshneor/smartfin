@@ -177,6 +177,8 @@ if (addForm) {
             addCatBtn.disabled = false;
             if (cat.error) { addError.textContent = cat.error; return; }
             catList.appendChild(renderCatRow(cat));
+            // המטמון של טופס ה-+ (transactions.js) לא ידע על השינוי
+            if (window.sfForgetCategories) window.sfForgetCategories();
             document.getElementById('newProjectCatName').value = '';
             document.getElementById('newProjectCatIcon').value = '🏷';
         })
@@ -204,6 +206,7 @@ document.addEventListener('click', function (e) {
                 row.style.transition = 'opacity 0.25s';
                 row.style.opacity = '0';
                 setTimeout(() => row.remove(), 260);
+                if (window.sfForgetCategories) window.sfForgetCategories();
                 window.showToast('הקטגוריה נמחקה');
             } else {
                 window.showToast('המחיקה נכשלה', 'error');
@@ -276,6 +279,7 @@ document.addEventListener('click', function (e) {
         row.dataset.name = name;
         row.dataset.icon = icon;
         row.innerHTML = catRowInnerHTML(id, icon, name);
+        if (window.sfForgetCategories) window.sfForgetCategories();
         window.showToast('הקטגוריה עודכנה');
     })
     .catch(function () { window.showToast(window.sfNetError(), 'error'); saveBtn.disabled = false; });

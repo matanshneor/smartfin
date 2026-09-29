@@ -185,27 +185,21 @@ if (joinBtn && joinInput) {
 // החודש, ו-settings.js לא נטען שם. עותק שני היה הופך כל תיקון לשניים.
 
 // ── סדר קטגוריות (▲▼) ──
-function catRowInnerHTML(id, icon, name, isCustom) {
-    return `
-        <span class="cat-row-icon">${escapeHtml(icon)}</span>
-        <span class="cat-row-name">${escapeHtml(name)}</span>
-        ${isCustom ? `
-        <button class="edit-cat-btn" data-id="${id}" aria-label="ערוך קטגוריה">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-            </svg>
-        </button>
-        <button class="delete-cat-btn" data-id="${id}" aria-label="מחק קטגוריה">✕</button>
-        ` : `<span class="cat-system-badge">מובנה</span>`}
-        <div class="cat-reorder-btns">
-            <button type="button" class="cat-move-btn cat-move-up" data-id="${id}" aria-label="הזז למעלה">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
-            </button>
-            <button type="button" class="cat-move-btn cat-move-down" data-id="${id}" aria-label="הזז למטה">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-        </div>
-    `;
+/* שם ואייקון בשורת קטגוריה — דרך ‎textContent‎ ומאפיינים, לא דרך HTML.
+ * משותף לשינוי שם ולשורה חדשה שנבנית מה-‎<template>‎ של התבנית. */
+function applyCategoryName(row, name, icon) {
+    row.dataset.name = name;
+    row.dataset.icon = icon;
+    row.querySelector('.cat-row-name').textContent = name;
+    row.querySelector('.cat-row-icon').textContent = icon;
+    const sw = row.querySelector('.budget-enabled');
+    if (sw) sw.setAttribute('aria-label', 'קביעת תקציב חודשי ל' + name);
+    const amount = row.querySelector('.budget-amount');
+    if (amount) amount.setAttribute('aria-label', 'תקציב חודשי ל' + name);
+}
+
+function forgetCategories() {
+    if (window.sfForgetCategories) window.sfForgetCategories();
 }
 
 function updatePanelReorderState(panel) {
@@ -228,7 +222,10 @@ function persistCategoryOrder(panel) {
         body:    JSON.stringify({ type, order }),
     })
     .then(r => r.json())
-    .then(function (d) { if (d.error) window.showToast('שמירת הסדר נכשלה', 'error'); })
+    .then(function (d) {
+        if (d.error) { window.showToast('שמירת הסדר נכשלה', 'error'); return; }
+        forgetCategories();                 // הסדר קובע גם את הסדר ב-+
+    })
     .catch(function () { window.showToast(window.sfNetError(), 'error'); });
 }
 
@@ -309,10 +306,14 @@ document.addEventListener('click', function (e) {
     .then(function (d) {
         if (d.error) { window.showToast(d.error, 'error'); saveEditBtn.disabled = false; return; }
         row.classList.remove('editing');
-        row.dataset.name = name;
-        row.dataset.icon = icon;
-        row.innerHTML = catRowInnerHTML(id, icon, name, true);
+        // השורה המקורית חוזרת במלואה — עם בקרת התקציב ובלי ✕ למי שאינו
+        // מנהל — ורק השם והאייקון מתעדכנים. קודם היא נבנתה מחדש מ-
+        // ‎catRowInnerHTML‎, שאין בו תקציב, ו"קביעת תקציב" נעלם עד רענון.
+        row.innerHTML = row.dataset.origHtml;
+        delete row.dataset.origHtml;
+        applyCategoryName(row, name, icon);
         updatePanelReorderState(row.closest('.cat-tab-panel'));
+        forgetCategories();
         window.showToast('הקטגוריה עודכנה');
     })
     .catch(function () { window.showToast(window.sfNetError(), 'error'); saveEditBtn.disabled = false; });
@@ -345,6 +346,7 @@ document.addEventListener('click', function (e) {
                 row.style.overflow = 'hidden';
                 row.style.transition = 'all 0.25s';
                 setTimeout(function () { row.remove(); updatePanelReorderState(panel); }, 260);
+                forgetCategories();
                 window.showToast('הקטגוריה נמחקה');
             } else {
                 window.showToast(d.error || 'המחיקה נכשלה', 'error');
@@ -386,17 +388,18 @@ if (addForm) {
 
             const listMap = { expense: 'expenseCatList', income: 'incomeCatList', savings: 'savingsCatList' };
             const list    = document.getElementById(listMap[type]);
-            if (list) {
-                const li = document.createElement('li');
-                li.className   = 'category-row';
-                li.dataset.id  = cat.id;
-                li.dataset.custom = 'true';
-                li.dataset.name = cat.name;
-                li.dataset.icon = cat.icon;
-                li.innerHTML = catRowInnerHTML(cat.id, cat.icon, cat.name, true);
+            const tpl     = document.getElementById('newCategoryRow-' + type);
+            if (list && tpl) {
+                // אותה שורה בדיוק כמו בטעינה (המאקרו ‎category_row‎ בתבנית),
+                // כולל בקרת התקציב — ולא גרסה שנבנתה כאן בנפרד
+                const li = tpl.content.querySelector('.category-row').cloneNode(true);
+                li.dataset.id = cat.id;
+                li.querySelectorAll('[data-id]').forEach(function (el) { el.dataset.id = cat.id; });
+                applyCategoryName(li, cat.name, cat.icon);
                 list.appendChild(li);
                 updatePanelReorderState(list);
             }
+            forgetCategories();
 
             document.getElementById('newCatName').value = '';
             document.getElementById('newCatIcon').value = '🏷';

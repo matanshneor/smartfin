@@ -119,6 +119,14 @@
     });
     txDate.addEventListener('change', syncDateChips);
 
+    /* ההגדרות ועמוד עריכת הפרויקט משנים קטגוריות בלי לעזוב את העמוד. המטמון
+     * כאן לא ידע על זה: קטגוריה שנוספה לא הופיעה ב-+, ושנמחקה — הופיעה,
+     * ונכשלה בשמירה. */
+    window.sfForgetCategories = function () {
+        categoriesCache = null;
+        projectCategoriesCache = {};
+    };
+
     function loadCategories() {
         if (categoriesCache) return Promise.resolve(categoriesCache);
         return window.sfFetchList('/api/categories')

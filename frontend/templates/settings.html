@@ -19,6 +19,67 @@
 </div>
 {% endblock %}
 
+{# שורת קטגוריה — מקור אחד לשורות בטעינה ולשורה שנוספת אחר כך (ה-‎<template>‎
+   מתחת לרשימות). עד היום JS בנה שורה משלו: בלי בקרת התקציב, ועם ✕ גם
+   למי שאינו מנהל — ושינוי שם החליף את השורה המקורית באותה גרסה חסרה. #}
+{% macro category_row(cat, type_key, limit, is_manager) %}
+                    <li class="category-row" data-id="{{ cat.id }}" data-custom="{{ cat.is_custom | lower }}"
+                        data-name="{{ cat.name }}" data-icon="{{ cat.icon }}">
+                        <span class="cat-row-icon">{{ cat.icon }}</span>
+                        <span class="cat-row-name">{{ cat.name }}</span>
+                        {% if cat.is_custom %}
+                        <button class="edit-cat-btn" data-id="{{ cat.id }}" aria-label="ערוך קטגוריה">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                            </svg>
+                        </button>
+                        {% if is_manager %}
+                        <button class="delete-cat-btn" data-id="{{ cat.id }}" aria-label="מחק קטגוריה">✕</button>
+                        {% endif %}
+                        {% else %}
+                        <span class="cat-system-badge">מובנה</span>
+                        {% endif %}
+                        <div class="cat-reorder-btns">
+                            <button type="button" class="cat-move-btn cat-move-up" data-id="{{ cat.id }}" aria-label="הזז למעלה">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                            </button>
+                            <button type="button" class="cat-move-btn cat-move-down" data-id="{{ cat.id }}" aria-label="הזז למטה">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                        </div>
+
+                        {# תקציב יעד — רק להוצאות. זה מה שמגבילים; תקציב
+                           להכנסה או לחיסכון לא אומר כלום.
+                           גלוי תמיד, בלי "מצב ניהול": זו ההגדרה המרכזית
+                           של האפליקציה ולא פעולת ניהול רשימה. #}
+                        {% if type_key == 'expense' %}
+                                                <div class="cat-budget-edit">
+                            {# אותו מתג בדיוק כמו בשאר ההגדרות (pref-switch),
+                               ולא תיבת סימון: זו הדלקה/כיבוי של אפשרות. #}
+                            <span class="cat-budget-label">קביעת תקציב חודשי</span>
+                            <label class="pref-switch">
+                                <input type="checkbox" class="budget-enabled" data-id="{{ cat.id }}"
+                                       {% if limit %}checked{% endif %}
+                                       aria-label="קביעת תקציב חודשי ל{{ cat.name }}">
+                                <span class="pref-slider"></span>
+                            </label>
+                            {# השמירה מפורשת ולא אוטומטית: סכום נכתב ספרה-ספרה,
+                               ושמירה על כל הקשה שומרת גם את "2" ואת "20" בדרך
+                               ל-"200". כפתור אומר מתי סיימת. #}
+                            <div class="cat-budget-fields" {% if not limit %}hidden{% endif %}>
+                                <input class="form-input budget-amount" type="number" min="1" step="1"
+                                       inputmode="decimal" placeholder="₪ לחודש"
+                                       data-id="{{ cat.id }}"
+                                       value="{{ limit.amount | round | int if limit else '' }}"
+                                       aria-label="תקציב חודשי ל{{ cat.name }}">
+                                <button type="button" class="btn-sm btn-primary budget-save"
+                                        data-id="{{ cat.id }}" disabled>שמור</button>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </li>
+{% endmacro %}
+
 {% block content %}
 
 <div class="settings-groups">
@@ -230,64 +291,14 @@
                 <ul class="categories-list cat-tab-panel" id="{{ list_id }}" data-tab-panel="{{ type_key }}"
                     {% if not loop.first %}style="display:none;"{% endif %}>
                     {% for cat in categories if cat.type == type_key %}
-                    <li class="category-row" data-id="{{ cat.id }}" data-custom="{{ cat.is_custom | lower }}"
-                        data-name="{{ cat.name }}" data-icon="{{ cat.icon }}">
-                        <span class="cat-row-icon">{{ cat.icon }}</span>
-                        <span class="cat-row-name">{{ cat.name }}</span>
-                        {% if cat.is_custom %}
-                        <button class="edit-cat-btn" data-id="{{ cat.id }}" aria-label="ערוך קטגוריה">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                            </svg>
-                        </button>
-                        {% if user.id == family.get('manager_id') %}
-                        <button class="delete-cat-btn" data-id="{{ cat.id }}" aria-label="מחק קטגוריה">✕</button>
-                        {% endif %}
-                        {% else %}
-                        <span class="cat-system-badge">מובנה</span>
-                        {% endif %}
-                        <div class="cat-reorder-btns">
-                            <button type="button" class="cat-move-btn cat-move-up" data-id="{{ cat.id }}" aria-label="הזז למעלה">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
-                            </button>
-                            <button type="button" class="cat-move-btn cat-move-down" data-id="{{ cat.id }}" aria-label="הזז למטה">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                            </button>
-                        </div>
-
-                        {# תקציב יעד — רק להוצאות. זה מה שמגבילים; תקציב
-                           להכנסה או לחיסכון לא אומר כלום.
-                           גלוי תמיד, בלי "מצב ניהול": זו ההגדרה המרכזית
-                           של האפליקציה ולא פעולת ניהול רשימה. #}
-                        {% if type_key == 'expense' %}
-                        {% set limit = (family_settings.limits or {}).get(cat.id) %}
-                        <div class="cat-budget-edit">
-                            {# אותו מתג בדיוק כמו בשאר ההגדרות (pref-switch),
-                               ולא תיבת סימון: זו הדלקה/כיבוי של אפשרות. #}
-                            <span class="cat-budget-label">קביעת תקציב חודשי</span>
-                            <label class="pref-switch">
-                                <input type="checkbox" class="budget-enabled" data-id="{{ cat.id }}"
-                                       {% if limit %}checked{% endif %}
-                                       aria-label="קביעת תקציב חודשי ל{{ cat.name }}">
-                                <span class="pref-slider"></span>
-                            </label>
-                            {# השמירה מפורשת ולא אוטומטית: סכום נכתב ספרה-ספרה,
-                               ושמירה על כל הקשה שומרת גם את "2" ואת "20" בדרך
-                               ל-"200". כפתור אומר מתי סיימת. #}
-                            <div class="cat-budget-fields" {% if not limit %}hidden{% endif %}>
-                                <input class="form-input budget-amount" type="number" min="1" step="1"
-                                       inputmode="decimal" placeholder="₪ לחודש"
-                                       data-id="{{ cat.id }}"
-                                       value="{{ limit.amount | round | int if limit else '' }}"
-                                       aria-label="תקציב חודשי ל{{ cat.name }}">
-                                <button type="button" class="btn-sm btn-primary budget-save"
-                                        data-id="{{ cat.id }}" disabled>שמור</button>
-                            </div>
-                        </div>
-                        {% endif %}
-                    </li>
+                    {{ category_row(cat, type_key, (family_settings.limits or {}).get(cat.id),
+                                    user.id == family.get('manager_id')) }}
                     {% endfor %}
                 </ul>
+                <template id="newCategoryRow-{{ type_key }}">
+                    {{ category_row({'id': '', 'name': '', 'icon': '', 'is_custom': True}, type_key, None,
+                                    user.id == family.get('manager_id')) }}
+                </template>
                 {% endfor %}
 
                 <!-- הוספת קטגוריה — מוצג במצב ניהול, לפי הטאב הפעיל -->
