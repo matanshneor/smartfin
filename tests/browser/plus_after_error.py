@@ -81,14 +81,23 @@ try:
         print("   recovered:", opened)
         b.close()
 finally:
-    if created or True:
-        subprocess.run([os.path.join(ROOT, ".venv/bin/python3"), "-c",
-            "import os,sys;sys.path.insert(0,'.');from dotenv import load_dotenv;load_dotenv('.env');"
-            "from backend import supabase_config as db;"
-            "r,_=db.sign_in(os.environ.get('RLS_TEST_EMAIL_A','rls-test-family-a@smartfin.test'),os.environ['RLS_TEST_PASSWORD_A']);"
-            f"db.set_auth_token(r.session.access_token);db.get_client().table('transactions').delete().eq('id','{created or "-"}').execute();"
-            "db.get_client().table('transactions').delete().in_('description',['FIRST','THIRD']).execute();"
-            f"db.get_client().table('categories').delete().eq('name','SCANTEST-CAT').execute();print('cleaned')"],
-            cwd=ROOT)
+    # ניקוי: כל מה שהתסריט יצר במשפחת הבדיקה — גם אם הוא נפל באמצע.
+    # קוד רגיל ולא מחרוזת משורשרת: הגרסה הקודמת נשברה על ‎created = None‎
+    # ("invalid input syntax for type uuid") והשאירה שאריות לריצה הבאה.
+    cleanup = "\n".join([
+        "import os, sys",
+        "sys.path.insert(0, '.')",
+        "from dotenv import load_dotenv; load_dotenv('.env')",
+        "from backend import supabase_config as db",
+        "r, _ = db.sign_in(os.environ.get('RLS_TEST_EMAIL_A', 'rls-test-family-a@smartfin.test'), os.environ['RLS_TEST_PASSWORD_A'])",
+        "db.set_auth_token(r.session.access_token)",
+        "fid = db.get_profile(r.user.id)['family_id']",
+        "t = db.get_client().table",
+        "t('transactions').delete().eq('family_id', fid).in_('description', "
+        "['SUPER-ORIG', 'FIRST', 'THIRD', 'CHART-1', 'CHART-2']).execute()",
+        "t('categories').delete().eq('family_id', fid).eq('name', 'SCANTEST-CAT').execute()",
+        "print('cleaned')",
+    ])
+    subprocess.run([os.path.join(ROOT, ".venv/bin/python3"), "-c", cleanup], cwd=ROOT)
     os.killpg(os.getpgid(srv.pid), signal.SIGTERM)
     time.sleep(2)   # תהליך-הבן של Flask נסגר רגע אחרי

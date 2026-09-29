@@ -91,6 +91,12 @@ const stub = () => ({
 
 const liveHas   = new Set(['header.page-hero', 'main.main-content']);
 const freshHas  = new Set(JSON.parse(process.argv[2]));
+// תרחיש: בלוקי נתונים בעמוד החי ובתשובה, קנבס בתשובה, והאם Chart.js נטען
+const cfg = JSON.parse(process.argv[4] || '{}');
+const liveData = {};
+Object.entries(cfg.liveData || {}).forEach(([id, text]) =>
+    liveData[id] = { id, tagName: 'SCRIPT', textContent: text });
+let storedToast = null;
 
 // core.js עושה עוד דברים בטעינה (toast, דיאלוג אישור) — כולם
 // מקבלים null ומדלגים על עצמם בשקט, בדיוק כמו בעמוד בלי הרכיבים.
@@ -101,7 +107,7 @@ g.document = {
     // אובייקט אדיש במקום null
     getElementById: (id) => (id === 'sf-page-data'
         ? Object.assign(stub(), { textContent: '{}' })
-        : stub()),
+        : (liveData[id] || stub())),
     createElement: () => stub(),
     addEventListener() {},
     body: { appendChild() {}, style: {} },
@@ -115,23 +121,33 @@ g.addEventListener = () => {};
 g.matchMedia = () => ({ matches: false });
 // ‎sessionStorage‎/‎localStorage‎ קיימים כגלובלי רק מ-node 24. ב-CI רץ
 // node 22, ושם הם נעדרים — וזה מה שהפיל את הבדיקה הזאת בפעם הראשונה.
-g.sessionStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+g.sessionStorage = { getItem: () => null, setItem(k, v) { if (k === 'sf_toast') storedToast = v; }, removeItem() {} };
 g.localStorage   = { getItem: () => null, setItem() {}, removeItem() {} };
 g.requestAnimationFrame = (fn) => fn(0);
 g.DOMParser = class {
-    parseFromString() { return { querySelector: (sel) => el(sel, freshHas.has(sel)) }; }
+    parseFromString() { return {
+        querySelector: (sel) => sel === 'main canvas'
+            ? (cfg.freshCanvas ? {} : null)
+            : el(sel, freshHas.has(sel)),
+        querySelectorAll: (sel) => sel.startsWith('script[type="application/json"]')
+            ? Object.entries(cfg.freshData || {}).map(([id, textContent]) => ({ id, textContent }))
+            : [],
+    }; }
 };
+if (cfg.chartLoaded) g.Chart = function () {};
 g.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve('<html></html>') });
 
 (0, eval)(fs.readFileSync(process.argv[3], 'utf8'));
 
-g.softReload().then(function () {
-    console.log(JSON.stringify({ replaced, reloaded }));
+g.softReload(null, cfg.toast).then(function (how) {
+    const data = {};
+    Object.keys(liveData).forEach(id => data[id] = liveData[id].textContent);
+    console.log(JSON.stringify({ replaced, reloaded, how, storedToast, data }));
 });
 """
 
 
-def _run(fresh_regions):
+def _run(fresh_regions, **cfg):
     node = shutil.which("node")
     if not node:
         pytest.skip("node לא מותקן")
@@ -139,7 +155,7 @@ def _run(fresh_regions):
     harness.write_text(_HARNESS, encoding="utf-8")
     try:
         out = subprocess.run(
-            [node, str(harness), json.dumps(fresh_regions), str(_JS / "core.js")],
+            [node, str(harness), json.dumps(fresh_regions), str(_JS / "core.js"), json.dumps(cfg)],
             capture_output=True, text=True, timeout=30)
     finally:
         harness.unlink(missing_ok=True)
@@ -232,3 +248,38 @@ def test_the_harness_does_not_depend_on_the_node_version():
 
     assert "g.sessionStorage" in src
     assert "g.localStorage" in src
+
+
+# ─── עמוד החודש: הנתונים של הגרפים, וחודש שהיה ריק ──────────────────────────
+
+_BOTH = ["header.page-hero", "main.main-content"]
+
+
+def test_the_data_behind_the_charts_is_refreshed_too():
+    """‎sf-view-data‎ יושב מחוץ ל-‎main‎. בלי זה העוגה והמקרא צוירו מחדש
+    מהמספרים הישנים, מתחת לכרטיסים שכבר התעדכנו."""
+    res = _run(_BOTH, chartLoaded=True,
+               liveData={"sf-view-data": '{"summary": {"expense": 100}}'},
+               freshData={"sf-view-data": '{"summary": {"expense": 600}}'})
+
+    assert res["reloaded"] is False
+    assert res["data"]["sf-view-data"] == '{"summary": {"expense": 600}}'
+
+
+def test_charts_without_the_library_reload_fully_and_keep_the_message():
+    """חודש ריק לא טוען את Chart.js; העסקה הראשונה מביאה גרפים — ובלי
+    הספרייה הם נשארו ריבועים ריקים. וההודעה "העסקה נוספה" לא הולכת לאיבוד."""
+    res = _run(_BOTH, chartLoaded=False, freshCanvas=True, toast="העסקה נוספה")
+
+    assert res["reloaded"] is True
+    assert res["how"] == "reloaded", "הקורא יציג את ההודעה פעמיים"
+    assert res["storedToast"] == "העסקה נוספה"
+    assert res["replaced"] == [], "הוחלף משהו רגע לפני שהעמוד נטען מחדש"
+
+
+def test_a_page_that_already_has_the_library_stays_soft():
+    """בקרת-נגד: רק היעדר הספרייה מצדיק טעינה מלאה."""
+    res = _run(_BOTH, chartLoaded=True, freshCanvas=True, toast="העסקה נוספה")
+
+    assert res["reloaded"] is False
+    assert res["storedToast"] is None

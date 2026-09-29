@@ -214,8 +214,16 @@ window.escapeHtml = function (s) {
  * על המסך מעל העסקה שהרגע נוספה. */
 const SF_RELOAD_REGIONS = ['header.page-hero', 'main.main-content'];
 
-window.softReload = function (selector) {
+/* ‎pendingToast‎: הודעה שהקורא מתכוון להציג אחרי הרענון. אם הרענון הרך לא
+ * מתאפשר ונופלים לרענון מלא, היא נשמרת כדי שתוצג אחרי הטעינה ולא תאבד —
+ * ואז ההבטחה מחזירה ‎'reloaded'‎, כדי שהקורא לא יציג אותה פעמיים. */
+window.softReload = function (selector, pendingToast) {
     const regions = selector ? [selector] : SF_RELOAD_REGIONS;
+    function fullReload() {
+        if (pendingToast) { try { sessionStorage.setItem('sf_toast', pendingToast); } catch (e) {} }
+        window.location.reload();
+        return 'reloaded';
+    }
     return fetch(window.location.href, {
         headers: { 'X-Requested-With': 'sf-soft-reload' },
         credentials: 'same-origin',
@@ -228,6 +236,13 @@ window.softReload = function (selector) {
         .then(function (html) {
             const doc = new DOMParser().parseFromString(html, 'text/html');
 
+            // חודש שהיה ריק לא טוען את ספריית הגרפים (70KB שאין מה לצייר
+            // בהם). אחרי העסקה הראשונה ה-HTML החדש כבר מביא גרפים — ובלי
+            // הספרייה הם נשארו ריבועים ריקים. פעם אחת בחודש: רענון מלא.
+            if (typeof window.Chart === 'undefined' && doc.querySelector('main canvas')) {
+                return fullReload();
+            }
+
             // כל האזורים נאספים לפני שנוגעים באחד מהם: החלפה חלקית —
             // hero חדש מעל גוף ישן — גרועה מרענון מלא.
             const pairs = regions.map(function (sel) {
@@ -236,10 +251,16 @@ window.softReload = function (selector) {
             if (pairs.some(p => !p[0] || !p[1])) throw new Error('missing region');
 
             pairs.forEach(function (pair) { pair[0].replaceWith(pair[1]); });
+
+            // בלוקי הנתונים של העמוד (‎sf-view-data‎ וכו') יושבים ב-‎{% block
+            // scripts %}‎ — מחוץ לאזורים שהוחלפו. בלי זה הגרפים והמקרא של עמוד
+            // החודש צוירו מחדש מהמספרים הישנים, מתחת לכרטיסים שכבר התעדכנו.
+            doc.querySelectorAll('script[type="application/json"][id]').forEach(function (fresh) {
+                const current = document.getElementById(fresh.id);
+                if (current && current.tagName === 'SCRIPT') current.textContent = fresh.textContent;
+            });
             // מודיעים למי שצריך לחבר את עצמו מחדש (אנימציות, גרפים)
             window.dispatchEvent(new CustomEvent('sf:refreshed'));
         })
-        .catch(function () {
-            window.location.reload();
-        });
+        .catch(fullReload);
 };

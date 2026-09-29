@@ -1,11 +1,11 @@
-"""בדיקת דפדפן אמיתי: הוספה רצופה בדף הבית: שמירה שחוזרת בזמן שמקלידים את הבאה (ב2).
+"""בדיקת דפדפן אמיתי: הגרפים בעמוד החודש — אחרי העסקה הראשונה בחודש ריק, ואחרי הוספה (ב5).
 
 לא נאספת על ידי pytest (אין לה קידומת test_), כי היא מרימה שרת מקומי,
 מתחברת כמשתמש הבדיקה א' (RLS_TEST_* ב-.env) וכותבת למסד האמיתי — ומנקה
 אחריה. תשובות השרת לבקשות האיטיות מדומות ב-Playwright.
 
 הרצה (Playwright מותקן בפייתון של המערכת, לא ב-.venv):
-    /Library/Frameworks/Python.framework/Versions/3.14/bin/python3 tests/browser/rapid_add.py
+    /Library/Frameworks/Python.framework/Versions/3.14/bin/python3 tests/browser/month_charts.py
 """
 import os, json, time, datetime, subprocess, signal, sys
 from playwright.sync_api import sync_playwright
@@ -49,52 +49,28 @@ try:
             headers={"Content-Type": "application/json"})
         cat = (rc.json().get("category") or rc.json()).get("id")
         print("temp category:", rc.status, bool(cat))
-        r = page.request.post(BASE + "/api/transactions", data=json.dumps(
-            {"amount": "180", "type": "expense", "date": today, "description": "SUPER-ORIG", "category_id": cat}),
-            headers={"Content-Type": "application/json"})
-        created = r.json().get("transaction", r.json()).get("id")
-        print("created tx:", r.status, bool(created))
-        fid = page.evaluate("() => document.cookie") and None
+        created = None
+        page.goto(BASE + "/month")
+        state = lambda: page.evaluate("""() => ({
+            chartLib: typeof Chart !== 'undefined',
+            overviewDrawn: typeof Chart !== 'undefined' && !!Chart.getChart(document.getElementById('overviewChart')),
+            legend: [...document.querySelectorAll('#overviewLegend .legend-amount')].map(e => e.textContent)})""")
+        print("empty month:", state())
 
-        held = []
-        def hold(route):
-            if route.request.method == "POST": held.append(route)
-            else: route.continue_()
-        page.route("**/api/transactions", hold)
-        page.route("**/api/receipts/discard", lambda r: r.fulfill(status=200, body="{}"))
-        page.goto(BASE + "/")
-        form = lambda: page.evaluate("""() => ({open: modalOverlay.classList.contains('open'),
-                     amount: txAmount.value, desc: txDescription.value, error: formError.textContent,
-                     toast: document.getElementById('appToast').textContent})""")
-
-        def start(amount, desc):
+        def add(amount, desc):
             page.click("#fabBtn"); page.wait_for_selector("#modalOverlay.open")
             page.fill("#txAmount", amount); page.fill("#txDescription", desc)
+            page.click("#submitBtn")
+            page.wait_for_timeout(3500)
 
-        # ── A. הראשונה מצליחה בזמן שמקלידים את השנייה
-        start("180", "FIRST"); page.click("#submitBtn")
-        page.wait_for_function("() => !modalOverlay.classList.contains('open')")
-        start("12", "SECOND-TYPING")
-        page.wait_for_timeout(300); held.pop().continue_()           # השמירה הראשונה חוזרת עכשיו
-        page.wait_for_timeout(2500)
-        a = form()
-        print("A) after 1st save returned:", a)
-        print("   second form kept:", a["open"] and a["amount"] == "12" and a["desc"] == "SECOND-TYPING")
-        page.click("#modalClose")
-
-        # ── B. הראשונה נכשלת בזמן שמקלידים את השנייה
-        page.wait_for_timeout(500)
-        start("50", "THIRD"); page.click("#submitBtn")
-        page.wait_for_function("() => !modalOverlay.classList.contains('open')")
-        start("7", "FOURTH-TYPING")
-        page.wait_for_timeout(300)
-        held.pop().fulfill(status=500, content_type="application/json", body='{"error": "תקלה מדומה"}')
-        page.wait_for_timeout(1500)
-        bb = form()
-        print("B) after 1st save failed:", bb)
-        print("   second form kept, no error in it:", bb["open"] and bb["amount"] == "7" and bb["desc"] == "FOURTH-TYPING" and bb["error"] == "")
-        print("   says which one failed:", "₪50" in bb["toast"] and "לא נשמרה" in bb["toast"])
-        page.click("#modalClose")
+        add("300", "CHART-1")
+        s1 = state(); toast1 = page.text_content("#appToast")
+        print("after 1st tx:", s1, "| toast:", repr(toast1))
+        print("   charts appear in a month that was empty:", s1["overviewDrawn"] and s1["legend"] == ["₪300"])
+        add("200", "CHART-2")
+        s2 = state()
+        print("after 2nd tx:", s2)
+        print("   chart numbers follow the new total:", s2["overviewDrawn"] and s2["legend"] == ["₪500"])
         b.close()
 finally:
     # ניקוי: כל מה שהתסריט יצר במשפחת הבדיקה — גם אם הוא נפל באמצע.

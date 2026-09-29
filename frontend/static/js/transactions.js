@@ -839,7 +839,8 @@
                 // עכשיו הוא לא נעלם, אז היא מיותרת.
                 const message = followUp ? followUp.text : (myEditId ? 'העסקה עודכנה' : 'העסקה נוספה');
                 if (document.querySelector('main[data-soft-reload]')) {
-                    window.softReload().then(function () {
+                    window.softReload(null, message).then(function (how) {
+                        if (how === 'reloaded') return;   // תוצג אחרי הטעינה המלאה
                         window.showToast(message, followUp && followUp.error ? 'error' : undefined);
                     });
                 } else {
