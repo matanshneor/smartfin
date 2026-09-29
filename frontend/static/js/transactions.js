@@ -146,7 +146,7 @@
 
     // מקור הקטגוריות תלוי בבחירת פרויקט: אם נבחר פרויקט — הקטגוריות הייעודיות
     // שלו; אחרת — קטגוריות המשפחה הרגילות לפי סוג העסקה הנוכחי.
-    function refreshCategoryGrid(selectedId) {
+    function refreshCategoryGrid(selectedId, keepOriginal) {
         const projectId = txProject.value;
         if (projectId) {
             const forType = currentType;
@@ -154,17 +154,24 @@
                 // אם המשתמש החליף פרויקט/סוג בזמן הטעינה — לא לדרוס את הרשת
                 // עם תוצאה של בקשה ישנה (מירוץ out-of-order).
                 if (txProject.value !== projectId || currentType !== forType) return;
-                renderCategoryGrid(cats, selectedId, true);
+                renderCategoryGrid(cats, selectedId, true, keepOriginal);
             });
         } else {
             const cats = (categoriesCache || []).filter(c => c.type === currentType);
-            renderCategoryGrid(cats, selectedId, false);
+            renderCategoryGrid(cats, selectedId, false, keepOriginal);
         }
     }
 
-    function renderCategoryGrid(cats, selectedId, isProject) {
+    function renderCategoryGrid(cats, selectedId, isProject, keepOriginal) {
         categoryGridIsProject = isProject;
         categoryGrid.innerHTML = '';
+        // הקטגוריה הנוכחית לא ברשת (אין קטגוריה, או של סוג שהפרויקט כבר לא
+        // עוקב אחריו): כפתור משלה, בחור — במקום לבחור בשבילו את הראשונה
+        const keepCurrent = keepOriginal && !cats.some(c => c.id === selectedId);
+        if (keepCurrent) {
+            cats = [{ id: selectedId || '', type: currentType, icon: selectedId ? '•' : '❔',
+                      name: selectedId ? 'הקטגוריה הנוכחית' : 'ללא קטגוריה' }].concat(cats);
+        }
         // הסדר נקבע בשרת (sort_order) — כולל מיקום "אחר", שניתן להזזה בהגדרות
         cats.forEach(function (cat) {
             const btn = document.createElement('button');
@@ -185,8 +192,9 @@
             const salaryBtn = salary && categoryGrid.querySelector(`[data-value="${salary.id}"]`);
             if (salaryBtn) fallbackBtn = salaryBtn;
         }
-        const toSelect = (selectedId && categoryGrid.querySelector(`[data-value="${selectedId}"]`))
-            || fallbackBtn;
+        const toSelect = keepCurrent
+            ? categoryGrid.querySelector('.cat-btn')
+            : ((selectedId && categoryGrid.querySelector(`[data-value="${selectedId}"]`)) || fallbackBtn);
         txCategory.value = '';
         txProjectCategory.value = '';
         if (toSelect) {
@@ -197,10 +205,15 @@
         }
     }
 
-    function buildOwnerToggle(selectedOwner) {
+    function buildOwnerToggle(selectedOwner, keepOriginal) {
         // "משותפת" ראשונה ברשימה כדי שתופיע מימין (RTL: הפריט הראשון ב-DOM מוצג בצד ימין)
         const options = [{ value: 'shared', label: 'משותפת' }]
             .concat((membersCache || []).map(m => ({ value: m.id, label: m.name })));
+        // מי שעבר למשפחה אחרת כבר לא ברשימה — ובלי זה העסקה שלו הפכה
+        // ל"משותפת" בכל עריכה. השרת מקבל בעלים שלא השתנה.
+        if (keepOriginal && selectedOwner && !options.some(o => o.value === selectedOwner)) {
+            options.push({ value: selectedOwner, label: 'בן משפחה לשעבר' });
+        }
         ownerToggle.innerHTML = '';
         options.forEach(function (opt) {
             const btn = document.createElement('button');
@@ -224,9 +237,12 @@
         }
     }
 
-    function buildProjectSelect(selectedProjectId) {
+    function buildProjectSelect(selectedProjectId, keepOriginal) {
         const trackKey = { expense: 'track_expense', income: 'track_income', savings: 'track_savings' }[currentType];
-        const projects = (projectsCache || []).filter(p => p[trackKey]);
+        // פרויקט שהפסיק לעקוב אחרי הסוג לא מוצע לעסקה חדשה — אבל עסקה שכבר
+        // בו נשארת בו. אחרת עריכת הסכום שלה הוציאה אותה אל הוצאות הבית.
+        const projects = (projectsCache || []).filter(p => p[trackKey]
+            || (keepOriginal && p.id === selectedProjectId));
 
         // השדה מוסתר כשאין לאן לשייך.
         //
@@ -319,7 +335,12 @@
         submitLabel.textContent = TYPE_LABELS[currentType];
     }
 
-    function setType(type, selectedCategoryId, selectedOwner, selectedProjectId) {
+    /* ‎keepOriginal‎: מילוי ראשון של טופס עריכה. ערך שכבר רשום על העסקה נשמר
+     * גם כשהוא לא ברשימת האפשרויות — עסקה בלי קטגוריה, של מי שעבר למשפחה
+     * אחרת, או בפרויקט שהפסיק לעקוב אחרי הסוג. עד היום הטופס בחר במקומו
+     * (הקטגוריה הראשונה, "משותפת", "ללא"), ושמירה של שינוי בסכום שינתה גם
+     * אותם, בשקט. כשהמשתמש מחליף סוג בעצמו — ‎keepOriginal‎ כבוי. */
+    function setType(type, selectedCategoryId, selectedOwner, selectedProjectId, keepOriginal) {
         currentType = type;
         toggleExp.classList.toggle('active', type === 'expense');
         toggleInc.classList.toggle('active', type === 'income');
@@ -331,14 +352,14 @@
         modalSheet.classList.toggle('income-mode', type === 'income');
         modalSheet.classList.toggle('expense-mode', type === 'expense');
         modalSheet.classList.toggle('savings-mode', type === 'savings');
-        buildProjectSelect(selectedProjectId);
-        refreshCategoryGrid(selectedCategoryId);
+        buildProjectSelect(selectedProjectId, keepOriginal);
+        refreshCategoryGrid(selectedCategoryId, keepOriginal);
         // בורר "של מי?" מופיע רק בסוגים שהמשפחה הפעילה בהם שיוך (העדפות משפחה)
         const hasOwner = !!window.SF_ATTRIBUTION[type];
         ownerGroup.style.display = hasOwner ? '' : 'none';
         if (hasOwner) {
             document.getElementById('ownerLabel').textContent = OWNER_LABELS[type];
-            buildOwnerToggle(selectedOwner);
+            buildOwnerToggle(selectedOwner, keepOriginal);
         }
         // סריקת קבלה קיימת רק בהוספת הוצאה חדשה — לא בעריכה ולא בהכנסה/חיסכון
         scanBtn.style.display = (!editId && type === 'expense') ? '' : 'none';
@@ -416,7 +437,7 @@
             .then(function () {
                 if (mySeq !== formSeq) return;
                 const selectedCategoryId = tx.projectId ? tx.projectCategoryId : tx.categoryId;
-                setType(tx.type, selectedCategoryId, tx.userId || 'shared', tx.projectId);
+                setType(tx.type, selectedCategoryId, tx.userId || 'shared', tx.projectId, true);
 
                 txAmount.value       = tx.amount;
                 txDescription.value  = tx.description || '';

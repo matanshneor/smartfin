@@ -47,6 +47,9 @@ class _FakeClient:
 def client(monkeypatch):
     # העסקה אינה בפרויקט אישי של מישהו אחר (ראו tx_visible_required)
     monkeypatch.setattr(app_module.db, "personal_project_owner", lambda *a: None)
+    # עריכה בודקת את השיוכים הנוכחיים — כאן עסקה משפחתית רגילה
+    monkeypatch.setattr(app_module.db, "transaction_links",
+                        lambda *a: {"user_id": None, "project_id": None})
     app.config["TESTING"] = True
     fake = _FakeClient()
     monkeypatch.setattr(db, "get_client", lambda: fake)

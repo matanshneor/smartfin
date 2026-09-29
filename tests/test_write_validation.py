@@ -29,6 +29,9 @@ _CAT = "44444444-4444-4444-4444-444444444444"
 def client(monkeypatch):
     # העסקה אינה בפרויקט אישי של מישהו אחר (ראו tx_visible_required)
     monkeypatch.setattr(app_module.db, "personal_project_owner", lambda *a: None)
+    # עריכה בודקת את השיוכים הנוכחיים — כאן עסקה משפחתית רגילה
+    monkeypatch.setattr(app_module.db, "transaction_links",
+                        lambda *a: {"user_id": None, "project_id": None})
     app.config["TESTING"] = True
     monkeypatch.setattr(app_module.db, "get_categories",
                         lambda *a, **k: [{"id": _CAT, "name": "מכולת", "type": "expense"}])

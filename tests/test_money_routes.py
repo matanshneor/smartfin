@@ -807,3 +807,62 @@ def test_a_failed_read_does_not_skip_the_question(money, mid_september, monkeypa
     response = _edit_template(money, date="2025-03-05")
 
     assert response.status_code == 503
+
+
+# ═══ עריכה לא משנה את מה שלא נגעו בו ═══════════════════════════════════════
+#
+# בדיקות הבעלים והפרויקט נועדו לבחירה **חדשה**, ודחו גם ערך שלא השתנה.
+# הטופס "פתר" את זה בכך שהחליף בשקט: עסקה של מי שעבר למשפחה אחרת הפכה
+# ל"משותפת", ועסקה בפרויקט שהפסיק לעקוב אחרי הסוג יצאה ממנו אל הבית.
+
+_GONE = "44444444-4444-4444-4444-444444444444"      # עבר למשפחה אחרת
+
+
+def test_editing_keeps_an_owner_who_is_no_longer_in_the_family(money, monkeypatch):
+    monkeypatch.setattr(db, "get_family_settings",
+                        lambda fid: {"owner_attribution": {"expense": True}})
+    _seed(money, id="tx-1", user_id=_GONE)
+
+    response = money.put("tx-1", amount="250", type="expense", date="2026-09-10", owner=_GONE)
+
+    assert response.status_code == 200, response.get_json()
+    assert money.only()["user_id"] == _GONE
+    assert money.only()["amount"] == 250.0
+
+
+def test_but_hanging_a_transaction_on_an_outsider_is_still_refused(money, monkeypatch):
+    """בקרת-נגד: "לא השתנה" אינו פרצה — בעלים חדש מבחוץ עדיין נדחה."""
+    monkeypatch.setattr(db, "get_family_settings",
+                        lambda fid: {"owner_attribution": {"expense": True}})
+    _seed(money, id="tx-1", user_id=_ME)
+
+    response = money.put("tx-1", amount="250", type="expense", date="2026-09-10", owner=_GONE)
+
+    assert response.status_code == 422
+    assert money.only()["user_id"] == _ME
+
+
+def _project(track_income):
+    return lambda pid, fid: {"id": pid, "owner_id": None, "track_expense": True,
+                             "track_income": track_income, "track_savings": False}
+
+
+def test_editing_keeps_a_project_that_stopped_tracking_the_type(money, monkeypatch):
+    monkeypatch.setattr(db, "get_project_for_transaction", _project(track_income=False))
+    _seed(money, id="tx-1", type="income", project_id="p1", category_id=None)
+
+    response = money.put("tx-1", amount="900", type="income", date="2026-09-10", project_id="p1")
+
+    assert response.status_code == 200, response.get_json()
+    assert money.only()["project_id"] == "p1"
+
+
+def test_but_adding_to_such_a_project_is_still_refused(money, monkeypatch):
+    """בקרת-נגד: "עוקב אחרי סוג" עדיין קובע מה אפשר להוסיף."""
+    monkeypatch.setattr(db, "get_project_for_transaction", _project(track_income=False))
+    _seed(money, id="tx-1", type="income", project_id=None)
+
+    response = money.put("tx-1", amount="900", type="income", date="2026-09-10", project_id="p1")
+
+    assert response.status_code == 422
+    assert money.only()["project_id"] is None

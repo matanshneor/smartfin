@@ -1923,7 +1923,7 @@ def _require_manager():
     }), 403
 
 
-def _resolve_owner(body: dict, user: dict, tx_type: str):
+def _resolve_owner(body: dict, user: dict, tx_type: str, unchanged=None):
     """מי הבעלים של העסקה — לפי העדפות המשפחה: סוג שהשיוך כבוי בו נשמר
     תמיד כמשפחתי (NULL), גם אם הבקשה ניסתה לשלוח בעלים.
     ערכים: uuid של בן משפחה, "shared" = משותפת (NULL), ובלי owner — המחובר.
@@ -1933,6 +1933,10 @@ def _resolve_owner(body: dict, user: dict, tx_type: str):
     owner = body.get("owner")
     if owner == "shared":
         return None, None
+    # בעריכה: הבעלים שכבר רשום על העסקה נשאר מותר, גם אם כבר לא במשפחה
+    # (עבר למשפחה אחרת בקוד הזמנה). אחרת הטופס נאלץ להחליף אותו בשקט.
+    if owner and unchanged and owner == unchanged:
+        return owner, None
     if owner:
         # ה-uuid הגיע מהלקוח והתקבל עד היום כמו שהוא. RLS בודקת רק את
         # family_id בשורה שנכתבת, לא את user_id, אז אפשר היה לרשום עסקה
@@ -1944,14 +1948,15 @@ def _resolve_owner(body: dict, user: dict, tx_type: str):
     return user["id"], None
 
 
-def _apply_project_assignment(body: dict, user: dict, tx_type: str):
+def _apply_project_assignment(body: dict, user: dict, tx_type: str, current=None):
     """מיישם שיוך לפרויקט (אם body['project_id'] נשלח): מוודא שהפרויקט
     עוקב אחרי סוג העסקה הזה, אוכף בשרת שיוך אוטומטי לבעלים בפרויקט אישי
     (מתעלם מ-body['owner'] במקרה הזה), ומחליף את הקטגוריה הרגילה בקטגוריית
     הפרויקט הייעודית. Returns (project_id, project_category_id, category_id, user_id, error)."""
+    current = current or {}
     project_id = body.get("project_id")
     if not project_id:
-        owner_id, owner_err = _resolve_owner(body, user, tx_type)
+        owner_id, owner_err = _resolve_owner(body, user, tx_type, unchanged=current.get("user_id"))
         if owner_err:
             return None, None, None, None, owner_err
         category_id, cat_err = _validated_category(body.get("category_id"), user, tx_type)
@@ -1970,14 +1975,16 @@ def _apply_project_assignment(body: dict, user: dict, tx_type: str):
         return None, None, None, None, "הפרויקט לא נמצא"
 
     track_key = {"expense": "track_expense", "income": "track_income", "savings": "track_savings"}[tx_type]
-    if not project.get(track_key):
+    # "עוקב אחרי סוג" קובע מה אפשר **להוסיף** לפרויקט. עסקה שכבר בו נשארת —
+    # אחרת עריכת הסכום שלה הוציאה אותה בשקט מהפרויקט אל הוצאות הבית.
+    if not project.get(track_key) and project_id != current.get("project_id"):
         return None, None, None, None, "הפרויקט הזה לא עוקב אחרי סוג העסקה הזה"
 
     owner_id = project.get("owner_id")
     if owner_id:
         user_id, owner_err = owner_id, None
     else:
-        user_id, owner_err = _resolve_owner(body, user, tx_type)
+        user_id, owner_err = _resolve_owner(body, user, tx_type, unchanged=current.get("user_id"))
     if owner_err:
         return None, None, None, None, owner_err
 
@@ -2202,8 +2209,11 @@ def update_transaction(tx_id):
         if recurring_end < tx_date:
             return jsonify({"error": "תאריך סיום הסדרה מוקדם מתאריך ההתחלה"}), 422
 
+    current = db.transaction_links(tx_id, user["family_id"])
+    if current is None:
+        return jsonify({"error": "העסקה לא נמצאה — ייתכן שנמחקה בינתיים"}), 404
     project_id, project_category_id, category_id, owner_user_id, proj_err = \
-        _apply_project_assignment(body, user, tx_type)
+        _apply_project_assignment(body, user, tx_type, current=current)
     if proj_err:
         return jsonify({"error": proj_err}), 422
 

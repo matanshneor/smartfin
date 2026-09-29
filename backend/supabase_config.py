@@ -902,6 +902,23 @@ def receipt_in_use(path: str, family_id: str) -> bool:
         raise DataUnavailable("receipt_in_use") from e
 
 
+def transaction_links(tx_id: str, family_id: str):
+    """השיוכים של עסקה קיימת — בעלים ופרויקט — או ‎None‎ אם אינה קיימת.
+
+    בשביל העריכה: בדיקות השרת על בעלים ועל פרויקט נועדו לבחירה **חדשה**,
+    ודחו גם ערך שלא השתנה — עסקה של מי שעזב, או בפרויקט שהפסיק לעקוב אחרי
+    הסוג. הטופס "פתר" את זה בכך שהחליף את הערך בשקט."""
+    client = get_client()
+    if not client:
+        raise DataUnavailable("transaction_links: no client")
+    try:
+        rows = client.table("transactions").select("user_id, project_id") \
+            .eq("id", tx_id).eq("family_id", family_id).limit(1).execute().data or []
+    except Exception as e:
+        raise DataUnavailable("transaction_links") from e
+    return rows[0] if rows else None
+
+
 def get_transaction_receipt_path(transaction_id: str, family_id: str):
     client = get_client()
     if not client:
