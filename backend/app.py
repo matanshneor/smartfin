@@ -1245,6 +1245,17 @@ def export_account():
     )
 
 
+# תא שמתחיל באחד מאלה הוא נוסחה באקסל (CSV injection)
+_CSV_FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _csv_text(value) -> str:
+    """טקסט חופשי לתא ב-CSV. גרש בהתחלה אומר לאקסל "טקסט, לא נוסחה":
+    "‎-50 הנחה‎" לא יהפוך ל-‎#NAME?‎, ותיאור זדוני לא ירוץ אצל מי שפותח."""
+    text = str(value or "")
+    return "'" + text if text.startswith(_CSV_FORMULA_START) else text
+
+
 @app.route("/month.csv")
 @limiter.limit("10 per minute")
 @login_required
@@ -1287,10 +1298,10 @@ def month_csv():
             tx["date"],
             _TYPE_HE.get(tx["type"], tx["type"]),
             f'{tx["amount"]:.2f}',
-            tx.get("category_name") or "",
-            tx.get("description") or "",
-            tx.get("user_name") or "",
-            tx.get("project_name") or "",
+            _csv_text(tx.get("category_name")),
+            _csv_text(tx.get("description")),
+            _csv_text(tx.get("user_name")),
+            _csv_text(tx.get("project_name")),
             "כן" if tx.get("is_recurring") or tx.get("recurring_parent_id") else "",
         ])
 
