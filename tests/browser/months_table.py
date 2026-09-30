@@ -71,6 +71,9 @@ try:
             print(width, page.evaluate(OVER) or "ok")
         page.set_viewport_size({"width": 375, "height": 800})
         page.goto(BASE + "/months"); page.wait_for_timeout(1200)
+        page.locator(".chart-card").first.screenshot(path="/tmp/compare_chart.png")
+        print("x reversed:", page.evaluate("Chart.getChart(document.getElementById('compareChart')).options.scales.x.reverse"),
+              "| y axis side:", page.evaluate("Chart.getChart(document.getElementById('compareChart')).options.scales.y.position"))
         page.locator("#monthsArchive").screenshot(path="/tmp/months_table.png")
         print("header vs numbers (left edges):", page.evaluate("""() => {
             const th = document.querySelectorAll('.months-table thead th')[1], td = document.querySelector('.months-table td.inc');

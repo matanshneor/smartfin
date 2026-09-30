@@ -505,3 +505,20 @@ def test_a_receipt_does_not_make_the_row_taller():
     rule = css[css.index(".tx-amount-row .receipt-badge {"):]
     rule = rule[:rule.index("}")]
     assert "margin-block: -4px" in rule
+
+
+def test_the_compare_chart_reads_right_to_left():
+    """מתן (30.9): הגרף בעמוד ההשוואה הפוך — מימין לשמאל."""
+    js = _strip_comments(_read("frontend/static/js/months.js"))
+    scales = js[js.index("scales: {"):]
+    assert re.search(r"x:\s*\{\s*reverse:\s*true", scales)
+    assert "position: 'right'" in scales[:scales.index("}\n            }")]
+
+
+def test_within_each_month_income_is_on_the_right_then_expenses_then_savings():
+    """מתן (30.9). ‎Chart.js‎ מסדר את העמודות בכל חודש משמאל לימין, ולכן
+    הרשימה בקוד הפוכה: חיסכון, הוצאות, הכנסות."""
+    js = _read("frontend/static/js/months.js")
+    labels = re.findall(r"label:\s*'([^']+)'", js[js.index("datasets: ["):])[:3]
+    assert labels == ["חיסכון", "הוצאות", "הכנסות"]
+    assert "maxRotation: 0" in js

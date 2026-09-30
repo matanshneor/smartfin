@@ -19,11 +19,13 @@ if (trendData.length > 0) {
             type: 'bar',
             data: {
                 labels: last6.map(d => d.month_name),
+                // בסדר הפוך: Chart.js מסדר את העמודות בכל חודש משמאל לימין, וכך
+                // ההכנסות יוצאות מימין — כמו במקרא ובקריאה בעברית
                 datasets: [
                     {
-                        label:           'הכנסות',
-                        data:            last6.map(d => d.income),
-                        backgroundColor: 'rgba(61,107,84,0.9)',
+                        label:           'חיסכון',
+                        data:            last6.map(d => d.savings),
+                        backgroundColor: 'rgba(166,124,0,0.9)',
                         borderRadius:    5,
                     },
                     {
@@ -33,9 +35,9 @@ if (trendData.length > 0) {
                         borderRadius:    5,
                     },
                     {
-                        label:           'חיסכון',
-                        data:            last6.map(d => d.savings),
-                        backgroundColor: 'rgba(166,124,0,0.9)',
+                        label:           'הכנסות',
+                        data:            last6.map(d => d.income),
+                        backgroundColor: 'rgba(61,107,84,0.9)',
                         borderRadius:    5,
                     }
                 ]
@@ -55,9 +57,14 @@ if (trendData.length > 0) {
                         }
                     }
                 },
+                // מימין לשמאל (מתן, 30.9): החודש הישן בימין והחדש בשמאל, כמו
+                // שקוראים בעברית, והסולם של הסכומים בצד ימין
                 scales: {
-                    x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                    x: { reverse: true, grid: { display: false },
+                         // שמות ישרים ולא מוטים — המוטה נחתך בקצה
+                         ticks: { font: { size: 11 }, maxRotation: 0, autoSkip: false } },
                     y: {
+                        position: 'right',
                         grid: { color: GRID_LINE },
                         ticks: { font: { size: 11 }, callback: v => '₪' + v.toLocaleString('en-US') }
                     }
