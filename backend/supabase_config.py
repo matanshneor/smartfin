@@ -3037,7 +3037,7 @@ def category_trend(family_id: str, months: list, categories: list, today=None) -
     (y0, m0), (y1, m1) = months[0], months[-1]
     try:
         rows = _fetch_all(lambda: client.table("transactions")
-                          .select("id, amount, category_id, date")
+                          .select("id, amount, category_id, date, description")
                           .eq("family_id", family_id)
                           .eq("type", "expense")
                           .is_("project_id", "null")
@@ -3049,7 +3049,7 @@ def category_trend(family_id: str, months: list, categories: list, today=None) -
 
     index = {(y, m): i for i, (y, m) in enumerate(months)}
     names = {c["id"]: c for c in categories}
-    totals = {}
+    totals, items = {}, {}
     for r in rows:
         d = str(r["date"])
         i = index.get((int(d[:4]), int(d[5:7])))
@@ -3057,6 +3057,9 @@ def category_trend(family_id: str, months: list, categories: list, today=None) -
             continue
         key = r.get("category_id") or "none"
         totals.setdefault(key, [0.0] * len(months))[i] += float(r["amount"])
+        # העסקאות עצמן — לחלון שנפתח בנגיעה בעמודה של חודש (מתן, 30.9)
+        items.setdefault(key, [[] for _ in months])[i].append(
+            {"date": d[:10], "description": r.get("description") or "", "amount": float(r["amount"])})
 
     finished = [i for i, (y, m) in enumerate(months) if (y, m) < (today.year, today.month)]
     out = []
@@ -3076,6 +3079,7 @@ def category_trend(family_id: str, months: list, categories: list, today=None) -
             # "החודש" רק כשהחודש האחרון בחלון הוא באמת החודש הנוכחי
             "current": vals[-1] if months[-1] == (today.year, today.month) else None,
             "total": round(sum(vals), 2),
+            "items": [sorted(m, key=lambda x: x["date"], reverse=True) for m in items[key]],
         })
     out.sort(key=lambda c: (-c["total"], c["name"]))
     return {"months": [{"year": y, "month": m, "label": _SHORT_MONTHS[m], "name": _FULL_MONTHS[m]}

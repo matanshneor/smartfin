@@ -162,9 +162,88 @@ if (catTrend && catTrend.categories.length && catCanvas) {
         plugins: [valuesOnTop],
     });
 
+    // ── נגיעה בעמודה של חודש: חלון עם ההוצאות של הקטגוריה באותו חודש (מתן, 30.9) ──
+    let sheet = null;
+    function closeSheet() {
+        if (sheet) { sheet.remove(); sheet = null; }
+        catCanvas.focus && catCanvas.focus({ preventScroll: true });
+    }
+    function openMonth(i) {
+        if (!current) return;
+        const m = months[i];
+        const items = (current.items || [])[i] || [];
+        if (sheet) sheet.remove();
+        sheet = document.createElement('div');
+        sheet.className = 'color-sheet cat-month-sheet';
+        sheet.setAttribute('role', 'dialog');
+        sheet.setAttribute('aria-modal', 'true');
+        sheet.setAttribute('aria-labelledby', 'catMonthTitle');
+        const card = document.createElement('div');
+        card.className = 'color-sheet-card';
+        const title = document.createElement('p');
+        title.className = 'color-sheet-title';
+        title.id = 'catMonthTitle';
+        title.textContent = current.icon + ' ' + current.name + ' · ' + m.name + ' ' + m.year;
+        const sub = document.createElement('p');
+        sub.className = 'color-sheet-hint';
+        sub.textContent = items.length
+            ? window.sfCount(items.length, 'עסקה אחת', 'עסקאות') + ' · ' + money(current.values[i])
+            : 'לא בוצעו עסקאות בקטגוריה הזאת בחודש הזה';
+        card.append(title, sub);
+        if (items.length) {
+            const ul = document.createElement('ul');
+            ul.className = 'cat-month-list';
+            items.forEach(function (t) {
+                const li = document.createElement('li');
+                const d = document.createElement('span');
+                d.className = 'cat-month-date';
+                d.textContent = t.date.slice(8, 10) + '.' + t.date.slice(5, 7);
+                const n = document.createElement('span');
+                n.className = 'cat-month-desc';
+                n.textContent = t.description || current.name;
+                const a = document.createElement('span');
+                a.className = 'cat-month-amount';
+                a.textContent = '-' + money(t.amount);
+                li.append(d, n, a);
+                ul.appendChild(li);
+            });
+            card.appendChild(ul);
+        }
+        const actions = document.createElement('div');
+        actions.className = 'edit-actions';
+        const link = document.createElement('a');
+        link.className = 'btn-sm btn-ghost';
+        link.href = '/month?year=' + m.year + '&month=' + m.month + '#expense-breakdown';
+        link.textContent = 'לכל ' + m.name;
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'btn-sm btn-primary';
+        close.textContent = 'סגירה';
+        close.addEventListener('click', closeSheet);
+        actions.append(close, link);
+        card.appendChild(actions);
+        sheet.appendChild(card);
+        sheet.addEventListener('click', function (e) { if (e.target === sheet) closeSheet(); });
+        document.body.appendChild(sheet);
+        close.focus({ preventScroll: true });
+    }
+    // לפי העמודה כולה, כמו בגרף שמעל — גם חודש בלי הוצאה נפתח ואומר את זה
+    chart.options.onClick = function (evt) {
+        const hit = chart.getElementsAtEventForMode(evt, 'index', { intersect: false }, true);
+        if (hit.length) openMonth(hit[0].index);
+    };
+    chart.options.onHover = function (evt, els) {
+        evt.native.target.style.cursor = els.length ? 'pointer' : 'default';
+    };
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && sheet) closeSheet();
+    });
+
     const stats = document.getElementById('catTrendStats');
+    let current = null;
     function show(key) {
         const c = catTrend.categories.find(x => x.key === key) || catTrend.categories[0];
+        current = c;
         chart.data.datasets[0].data = c.values;
         // קו הממוצע לכל רוחב הגרף; בלי חודש שנגמר — אין ממוצע
         chart.data.datasets[1].data = c.avg == null ? [] : c.values.map(() => c.avg);

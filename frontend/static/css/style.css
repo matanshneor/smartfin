@@ -4915,3 +4915,15 @@ body > .color-sheet { z-index: 180; }
 .week-detail-list li span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .week-detail-amount { color: var(--color-expense); font-weight: 600; flex: none; font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
 .week-empty { margin: 0; font-size: 0.8rem; color: var(--color-text-muted); }
+
+/* חלון ההוצאות של קטגוריה בחודש — עמוד ההשוואה (מתן, 30.9) */
+.cat-month-sheet .color-sheet-card { max-height: 80vh; }
+.cat-month-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; min-height: 0; }
+.cat-month-list li {
+    display: flex; align-items: center; gap: 10px; padding: 10px 0;
+    border-top: 1px solid var(--divider-subtle); font-size: 0.9rem;
+}
+.cat-month-list li:first-child { border-top: 0; }
+.cat-month-date { flex: none; width: 3.2em; font-size: 0.78rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.cat-month-desc { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat-month-amount { flex: none; color: var(--color-expense); font-weight: 600; font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }

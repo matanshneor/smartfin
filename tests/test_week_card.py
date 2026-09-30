@@ -82,3 +82,9 @@ def test_the_card_is_placed_under_the_three_cards_and_days_can_be_tapped():
     assert tpl.index('class="summary-cards"') < tpl.index('class="chart-card week-card"') < tpl.index("<h2>עסקאות אחרונות</h2>")
     js = (root / "frontend/static/js/core.js").read_text(encoding="utf-8")
     assert "d.hidden = d.dataset.day !== btn.dataset.day;" in js
+
+
+def test_an_empty_day_says_so_in_matans_words():
+    from pathlib import Path
+    tpl = (Path(__file__).resolve().parent.parent / "frontend/templates/index.html").read_text(encoding="utf-8")
+    assert '<p class="week-empty">לא בוצעו עסקאות ביום זה</p>' in tpl

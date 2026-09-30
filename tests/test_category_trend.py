@@ -91,3 +91,16 @@ def test_this_month_is_only_this_month(monkeypatch):
 
     assert t["categories"][0]["current"] is None
     assert t["categories"][0]["avg"] == 200
+
+
+def test_each_month_carries_its_transactions_for_the_window(monkeypatch):
+    """נגיעה בעמודה של חודש פותחת חלון עם ההוצאות של הקטגוריה באותו חודש
+    (מתן, 30.9) — מהחדשה לישנה."""
+    t = _trend([_tx("food", 100, "2026-07-03"), _tx("food", 50, "2026-07-20"),
+                _tx("food", 300, "2026-08-10")], monkeypatch)
+
+    food = t["categories"][0]
+    july = food["items"][0]
+    assert [(i["date"], i["amount"]) for i in july] == [("2026-07-20", 50), ("2026-07-03", 100)]
+    assert [i["amount"] for i in food["items"][1]] == [300]
+    assert food["items"][2] == []

@@ -65,8 +65,22 @@ try:
         print("סופר:", state())
         card.evaluate("el => window.scrollTo(0, el.getBoundingClientRect().top + scrollY - 70)"); page.wait_for_timeout(500)
         page.screenshot(path="/tmp/cat_trend.png")
+        # נגיעה בעמודה של חודש — חלון עם ההוצאות של הקטגוריה באותו חודש
+        def tap_month(i):
+            pt = page.evaluate("""(i) => { const ch = Chart.getChart('categoryChart'); const r = ch.canvas.getBoundingClientRect();
+                return {x: r.left + ch.getDatasetMeta(0).data[i].x, y: r.top + ch.chartArea.bottom - 4}; }""", i)
+            page.mouse.click(pt["x"], pt["y"]); page.wait_for_timeout(400)
+        tap_month(1)
+        print("sheet:", page.inner_text("#catMonthTitle"), "|", page.inner_text(".cat-month-sheet .color-sheet-hint"),
+              "|", [t.replace("\n", " ") for t in page.locator(".cat-month-list li").all_inner_texts()])
+        page.screenshot(path="/tmp/cat_month_sheet.png")
+        page.keyboard.press("Escape"); page.wait_for_timeout(200)
+        print("escape closes:", page.locator(".cat-month-sheet").count() == 0)
         card.locator(".tx-cat-chip", has_text="CT-דלק").click(); page.wait_for_timeout(400)
         print("דלק:", state())
+        tap_month(2)
+        print("empty month:", page.inner_text(".cat-month-sheet .color-sheet-hint"))
+        page.keyboard.press("Escape")
         for w in (320, 390):
             page.set_viewport_size({"width": w, "height": 800}); page.wait_for_timeout(300)
             print(w, "sideways:", page.evaluate("document.documentElement.scrollWidth > innerWidth"))
