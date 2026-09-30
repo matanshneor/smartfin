@@ -2214,6 +2214,18 @@ a.submit-btn {
 .tx-search-input { font-size: 1rem; padding: 9px 12px; }
 .tx-type-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
 .tx-type-chip { min-height: 36px; }
+/* שורת הקטגוריות מתחת לסוג (מתן, 30.9): נגללת הצידה כשיש הרבה */
+.tx-cat-chips {
+    display: flex; gap: 8px; margin-bottom: 8px;
+    overflow-x: auto; scrollbar-width: none; padding-bottom: 2px;
+}
+.tx-cat-chips[hidden] { display: none; }
+.tx-cat-chips::-webkit-scrollbar { display: none; }
+.tx-cat-chip { flex: none; white-space: nowrap; min-height: 34px; padding: 6px 12px; font-size: 0.8rem; }
+.tx-cat-chip-amount {
+    margin-inline-start: 5px; font-weight: 500; color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate;
+}
 .tx-search-empty {
     font-size: 0.82rem;
     color: var(--color-text-muted);

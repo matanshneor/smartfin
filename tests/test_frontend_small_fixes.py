@@ -563,3 +563,21 @@ def test_all_transactions_can_be_filtered_by_type():
     assert "(!type || row.dataset.type === type)" in js
     assert "(!q || desc.toLowerCase().indexOf(q) !== -1)" in js
     assert "count.dataset.total" in js
+
+
+def test_the_category_row_filters_several_categories_together():
+    """מתן (30.9, אפשרות א): "כל ההוצאות" או כמה קטגוריות יחד."""
+    tpl = _read("frontend/templates/month.html")
+    assert 'data-cat-key="{{ tx.get(\'cat_key\', \'\') }}"' in tpl
+    assert 'class="date-chip tx-cat-chip active" data-cat=""' in tpl
+    js = _strip_comments(_read("frontend/static/js/month.js"))
+    assert "(!cats.size || cats.has(row.dataset.catKey))" in js
+    assert "pressChip(catChip, !catChip.classList.contains('active'))" in js
+
+
+def test_the_form_date_chips_ignore_other_chips_on_the_page():
+    """כפתורי הסינון לובשים ‎.date-chip‎. כשהטופס תפס את כולם, לחיצה על
+    "הוצאות" שינתה את התאריך בטופס, וסימנה את כל הכפתורים כפעילים."""
+    js = _strip_comments(_read("frontend/static/js/transactions.js"))
+    assert "querySelectorAll('.date-chip')" not in js
+    assert js.count("querySelectorAll('.date-quick-chips .date-chip')") == 2

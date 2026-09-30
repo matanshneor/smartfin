@@ -1,4 +1,4 @@
-"""בדיקת דפדפן אמיתי: סינון "כל העסקאות" לפי סוג בעמוד החודש (מתן, 30.9 — רעיון 5).
+"""בדיקת דפדפן אמיתי: סינון "כל העסקאות" לפי סוג ולפי קטגוריה בעמוד החודש (מתן, 30.9 — רעיון 5, אפשרות א).
 
 הרצה (Playwright מותקן בפייתון של המערכת, לא ב-.venv):
     /Library/Frameworks/Python.framework/Versions/3.14/bin/python3 tests/browser/type_filter.py
@@ -43,39 +43,52 @@ try:
             return r.status, (r.json() if r.body() else None)
 
         cats = page.request.get(BASE + "/api/categories").json()
-        by = {t: next(c["id"] for c in cats if c["type"] == t) for t in ("expense", "income", "savings")}
+        by = {t: next(c["id"] for c in cats if c["type"] == t) for t in ("income", "savings")}
+        ex = {}
+        for name, icon in (("TF-סופר", "🛒"), ("TF-דלק", "⛽")):
+            _, c2 = api("POST", "/api/categories", {"name": name, "icon": icon, "type": "expense"})
+            ex[name] = (c2.get("category") or c2)["id"]
         today = datetime.date.today().isoformat()
-        for kind, amount, desc in (("expense", 100, "TF-TEST סופר"), ("expense", 50, "TF-TEST דלק"),
-                                   ("income", 5000, "TF-TEST משכורת"), ("savings", 700, "TF-TEST קרן")):
-            api("POST", "/api/transactions", {"amount": amount, "type": kind, "category_id": by[kind],
+        for kind, cat, amount, desc in (("expense", ex["TF-סופר"], 100, "TF-TEST רמי לוי"),
+                                        ("expense", ex["TF-סופר"], 64, "TF-TEST מכולת"),
+                                        ("expense", ex["TF-דלק"], 50, "TF-TEST פז"),
+                                        ("income", by["income"], 5000, "TF-TEST משכורת"),
+                                        ("savings", by["savings"], 700, "TF-TEST קרן")):
+            api("POST", "/api/transactions", {"amount": amount, "type": kind, "category_id": cat,
                                               "date": today, "description": desc})
         page.goto(BASE + "/month"); page.wait_for_timeout(1500)
         page.click(".all-tx-header"); page.wait_for_timeout(300)
-        chips = page.locator(".tx-type-chip")
-        print("chips:", chips.all_inner_texts())
-        visible = lambda: page.locator(".all-tx-header + .tx-search-wrap + .cat-tx-list .cat-tx-row:visible").count()
+        sel = ".all-tx-header + .tx-search-wrap + .cat-tx-list .cat-tx-row:visible"
+        visible = lambda: page.locator(sel).count()
+        descs = lambda: sorted(t.split("TF-TEST ")[-1] for t in page.locator(sel + " .cat-tx-desc").all_inner_texts())
         count = lambda: page.locator(".all-tx-count").inner_text()
-        print("all:", visible(), count())
-        for label in ("הוצאות", "הכנסות", "חיסכון"):
-            page.locator(".tx-type-chip", has_text=label).click(); page.wait_for_timeout(150)
-            types = page.locator(".all-tx-header + .tx-search-wrap + .cat-tx-list .cat-tx-row:visible").evaluate_all(
-                "els => [...new Set(els.map(e => e.dataset.type))]")
-            print(label, "->", visible(), count(), types)
-        page.locator(".tx-type-chip", has_text="הוצאות").click()
-        page.fill("#txSearch", "דלק"); page.wait_for_timeout(150)
-        print("הוצאות + דלק ->", visible(), count())
-        page.fill("#txSearch", "משכורת"); page.wait_for_timeout(150)
-        print("הוצאות + משכורת ->", visible(), "| empty msg:", page.locator("#txSearchEmpty").is_visible())
-        page.fill("#txSearch", ""); page.locator(".tx-type-chip", has_text="הכל").click(); page.wait_for_timeout(150)
-        print("back to all:", visible(), count(), "| open still:",
-              page.locator(".all-tx-header").get_attribute("aria-expanded"))
+        print("cat row before:", page.locator(".tx-cat-chips:visible").count())
         page.locator(".tx-type-chip", has_text="הוצאות").click(); page.wait_for_timeout(150)
+        print("expense chips:", page.locator(".tx-cat-chips:visible .tx-cat-chip").all_inner_texts())
+        def tap(text):
+            page.locator(".tx-cat-chips:visible .tx-cat-chip", has_text=text).click(); page.wait_for_timeout(150)
+            print("tap", text, "->", visible(), count(), descs())
+        tap("TF-סופר"); tap("TF-דלק"); tap("TF-סופר"); tap("כל ההוצאות")
+        tap("TF-סופר")
+        page.fill("#txSearch", "מכולת"); page.wait_for_timeout(150)
+        print("סופר + מכולת ->", visible(), count())
+        page.fill("#txSearch", ""); page.wait_for_timeout(150)
+        page.locator(".tx-type-chip", has_text="הכנסות").click(); page.wait_for_timeout(150)
+        print("income ->", visible(), count(), "| rows open:", page.locator(".tx-cat-chips:visible").get_attribute("data-for-type"))
+        page.locator(".tx-type-chip", has_text="הוצאות").click(); page.wait_for_timeout(150)
+        print("back to expense resets:", visible(), count())
+        page.locator(".tx-cat-chips:visible .tx-cat-chip", has_text="TF-סופר").click(); page.wait_for_timeout(150)
+        page.screenshot(path="/tmp/cat_filter.png")
+        # צ'יפי התאריך בטופס עדיין עובדים, והסינון לא נגע בתאריך
+        page.click("#fabBtn"); page.wait_for_timeout(800)
+        page.locator(".date-quick-chips .date-chip", has_text="אתמול").click(); page.wait_for_timeout(100)
+        print("form date after אתמול:", page.input_value("#txDate"),
+              "| active:", page.locator(".date-quick-chips .date-chip.active").all_inner_texts())
+        page.keyboard.press("Escape"); page.wait_for_timeout(400)
         for w in (320, 390):
             page.set_viewport_size({"width": w, "height": 800}); page.wait_for_timeout(300)
             print(w, "sideways:", page.evaluate("document.documentElement.scrollWidth > innerWidth"))
         page.set_viewport_size({"width": 390, "height": 844})
-        page.locator(".all-tx-header").scroll_into_view_if_needed()
-        page.screenshot(path="/tmp/type_filter.png")
         b.close()
 finally:
     cleanup = "\n".join([
@@ -87,6 +100,7 @@ finally:
         "fid = db.get_profile(r.user.id)['family_id']",
         "t = db.get_client().table",
         "print('cleaned', len(t('transactions').delete().eq('family_id', fid).like('description', 'TF-TEST%').execute().data))",
+        "t('categories').delete().eq('family_id', fid).like('name', 'TF-%').execute()",
     ])
     subprocess.run([os.path.join(ROOT, ".venv/bin/python3"), "-c", cleanup], cwd=ROOT)
     os.killpg(os.getpgid(srv.pid), signal.SIGTERM)

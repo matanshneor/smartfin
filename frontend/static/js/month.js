@@ -112,17 +112,31 @@ function filterAllTx() {
     const count = document.querySelector('.all-tx-count');
     const activeChip = document.querySelector('.tx-type-chip.active');
     const type = activeChip ? activeChip.dataset.type : '';
+    // הקטגוריות שנבחרו בשורה הפתוחה (ריק = "כל ההוצאות")
+    const cats = new Set();
+    document.querySelectorAll('.tx-cat-chips:not([hidden]) .tx-cat-chip.active').forEach(function (c) {
+        if (c.dataset.cat) cats.add(c.dataset.cat);
+    });
     const q = input ? input.value.trim().toLowerCase() : '';
-    let shown = 0;
+    let shown = 0, sum = 0;
     rows.forEach(function (row) {
         const desc = (row.querySelector('.cat-tx-desc') || {}).textContent || '';
         const match = (!q || desc.toLowerCase().indexOf(q) !== -1)
-                   && (!type || row.dataset.type === type);
+                   && (!type || row.dataset.type === type)
+                   && (!cats.size || cats.has(row.dataset.catKey));
         row.style.display = match ? '' : 'none';
-        if (match) shown++;
+        if (match) { shown++; sum += parseFloat(row.dataset.amount) || 0; }
     });
-    if (emptyMsg) emptyMsg.style.display = ((q || type) && shown === 0) ? 'block' : 'none';
-    if (count) count.textContent = (q || type) ? shown : count.dataset.total;
+    const filtering = q || type || cats.size;
+    if (emptyMsg) emptyMsg.style.display = (filtering && shown === 0) ? 'block' : 'none';
+    // כשנבחרו קטגוריות — גם כמה יצא עליהן ("5 · ₪1,070")
+    if (count) count.textContent = !filtering ? count.dataset.total
+        : (cats.size ? shown + ' · ₪' + window.sfMoney(Math.round(sum)) : shown);
+}
+
+function pressChip(chip, on) {
+    chip.classList.toggle('active', on);
+    chip.setAttribute('aria-pressed', on ? 'true' : 'false');
 }
 
 document.addEventListener('input', function (e) {
@@ -130,13 +144,31 @@ document.addEventListener('input', function (e) {
 });
 
 document.addEventListener('click', function (e) {
-    const chip = e.target.closest && e.target.closest('.tx-type-chip');
-    if (!chip) return;
-    document.querySelectorAll('.tx-type-chip').forEach(function (c) {
-        const on = c === chip;
-        c.classList.toggle('active', on);
-        c.setAttribute('aria-pressed', on ? 'true' : 'false');
-    });
+    if (!e.target.closest) return;
+    const typeChip = e.target.closest('.tx-type-chip');
+    const catChip = e.target.closest('.tx-cat-chip');
+    if (typeChip) {
+        // סוג חדש: פותחים את שורת הקטגוריות שלו, וכל שורה חוזרת ל"כל ה…"
+        document.querySelectorAll('.tx-type-chip').forEach(function (c) { pressChip(c, c === typeChip); });
+        document.querySelectorAll('.tx-cat-chips').forEach(function (rowEl) {
+            rowEl.hidden = rowEl.dataset.forType !== typeChip.dataset.type;
+            rowEl.querySelectorAll('.tx-cat-chip').forEach(function (c) { pressChip(c, !c.dataset.cat); });
+        });
+    } else if (catChip) {
+        const group = catChip.closest('.tx-cat-chips');
+        const allChip = group.querySelector('.tx-cat-chip[data-cat=""]');
+        if (!catChip.dataset.cat) {
+            // "כל ההוצאות" — מבטל את כל הבחירות
+            group.querySelectorAll('.tx-cat-chip').forEach(function (c) { pressChip(c, c === allChip); });
+        } else {
+            // קטגוריה: נגיעה מוסיפה, נגיעה נוספת מורידה
+            pressChip(catChip, !catChip.classList.contains('active'));
+            const any = group.querySelector('.tx-cat-chip.active:not([data-cat=""])');
+            pressChip(allChip, !any);
+        }
+    } else {
+        return;
+    }
     filterAllTx();
 });
 

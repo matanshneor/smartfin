@@ -517,6 +517,22 @@
                     {% endfor %}
                 </div>
                 {% endif %}
+                {# שורת קטגוריות לכל סוג — נפתחת כשבוחרים אותו (מתן, 30.9 — אפשרות א).
+                   "כל ההוצאות" או כמה קטגוריות יחד. כשיש החודש סוג אחד בלבד (אין
+                   שורת סוגים), השורה שלו פתוחה מההתחלה. #}
+                {% set cat_chips = tx_cat_chips if tx_cat_chips is defined else {} %}
+                {% set all_labels = {'expense': 'כל ההוצאות', 'income': 'כל ההכנסות', 'savings': 'כל החיסכון'} %}
+                {% for key, label in [('expense', 'הוצאות'), ('income', 'הכנסות'), ('savings', 'חיסכון')] %}
+                {% if cat_chips.get(key) %}
+                <div class="tx-cat-chips" data-for-type="{{ key }}" role="group" aria-label="קטגוריות {{ label }}"
+                     {% if tx_types | length > 1 %}hidden{% endif %}>
+                    <button type="button" class="date-chip tx-cat-chip active" data-cat="" aria-pressed="true">{{ all_labels[key] }}</button>
+                    {% for c in cat_chips[key] %}
+                    <button type="button" class="date-chip tx-cat-chip" data-cat="{{ c.key }}" aria-pressed="false">{{ c.icon }} {{ c.name }}<span class="tx-cat-chip-amount">₪{{ c.total | money }}</span></button>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endfor %}
                 <input type="search" class="form-input tx-search-input" id="txSearch"
                        placeholder="חיפוש עסקה…" aria-label="חיפוש בעסקאות החודש"
                        autocomplete="off" enterkeyhint="search">
@@ -529,7 +545,8 @@
                     data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
                     data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
                     data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
-                    data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
+                    data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}"
+                    data-cat-key="{{ tx.get('cat_key', '') }}">
                     <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
                     <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.is_recurring or tx.recurring_parent_id %} · 🔁 {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
                     {% if tx.project_id %}<span class="project-tag">{{ tx.project_icon or '🎯' }} {{ tx.project_name or 'פרויקט' }}</span>{% endif %}

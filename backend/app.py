@@ -1229,6 +1229,8 @@ def month_view():
     if is_current:
         fixed = db.summarise_recurring(p2["recurring"])
     month_transactions = db.month_transactions_from_rows(rows, settings_, user["id"])
+    # שורת הקטגוריות מתחת ל"הוצאות" וכו׳ ב"כל העסקאות" (מתן, 30.9)
+    tx_cat_chips = db.category_filter_chips(month_transactions)
 
     # פעילות פרויקטים החודש — מוחרגת מהמאזן/הגרפים, ומוצגת בנפרד. נגזרת
     # מהעסקאות שכבר נשלפו (שכוללות גם עסקאות פרויקט), בלי שליפה נוספת.
@@ -1291,6 +1293,7 @@ def month_view():
         member_breakdowns=member_breakdowns,
         anomalies=anomalies,
         month_transactions=month_transactions,
+        tx_cat_chips=tx_cat_chips,
         project_month=project_month,
         fixed=fixed,
         member_colors=_member_colors(family_id),

@@ -107,12 +107,14 @@
     }
 
     // צ'יפים "היום"/"אתמול" — קיצור לבחירת התאריך הנפוץ בלי בורר
+    // ‎.date-quick-chips‎ ולא כל ‎.date-chip‎: כפתורי הסינון בעמוד החודש לובשים
+    // את אותו עיצוב, ולחיצה עליהם שינתה את התאריך בטופס וסימנה אותם כפעילים
     function syncDateChips() {
-        document.querySelectorAll('.date-chip').forEach(function (chip) {
+        document.querySelectorAll('.date-quick-chips .date-chip').forEach(function (chip) {
             chip.classList.toggle('active', dateStr(parseInt(chip.dataset.days, 10)) === txDate.value);
         });
     }
-    document.querySelectorAll('.date-chip').forEach(function (chip) {
+    document.querySelectorAll('.date-quick-chips .date-chip').forEach(function (chip) {
         chip.addEventListener('click', function () {
             txDate.value = dateStr(parseInt(chip.dataset.days, 10));
             syncDateChips();

@@ -2709,6 +2709,32 @@ def project_breakdown_from_rows(rows: list) -> list:
     return out
 
 
+def category_filter_chips(transactions: list) -> dict:
+    """שורת הקטגוריות שנפתחת מתחת ל"הוצאות"/"הכנסות"/"חיסכון" ב"כל העסקאות"
+    (מתן, 30.9 — אפשרות א): לכל סוג, הקטגוריות שהיו בו החודש עם הסכום,
+    מהגדולה לקטנה.
+
+    כל עסקה מקבלת ‎cat_key‎ — המפתח שהדפדפן מסנן לפיו. לפי מזהה ולא לפי
+    שם, כמו כל פילוח בעמוד; קטגוריית פרויקט מקבלת קידומת כדי שלא תתערבב
+    בקטגוריה רגילה."""
+    groups = {}
+    for tx in transactions:
+        if tx.get("category_id"):
+            key = str(tx["category_id"])
+        elif tx.get("project_category_id"):
+            key = f"pc-{tx['project_category_id']}"
+        else:
+            key = "none"
+        tx["cat_key"] = key
+        chip = groups.setdefault(tx.get("type"), {}).setdefault(key, {
+            "key": key, "name": tx.get("category_name") or _NO_CATEGORY,
+            "icon": tx.get("category_icon") or "📦", "total": 0.0})
+        chip["total"] += float(tx.get("amount") or 0)
+    return {t: sorted(({**c, "total": round(c["total"], 2)} for c in by.values()),
+                      key=lambda c: (-c["total"], c["name"]))
+            for t, by in groups.items()}
+
+
 def month_transactions_from_rows(rows: list, settings: dict = None,
                                  viewer_user_id: str = None) -> list:
     """רשימת העסקאות להצגה: כוללת פרויקטים, מסתירה פרויקט אישי של אחר."""
