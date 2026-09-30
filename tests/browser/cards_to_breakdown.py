@@ -55,7 +55,8 @@ try:
             page.wait_for_timeout(1200)
             top = page.evaluate(f"document.getElementById('{expected}').getBoundingClientRect().top")
             flash = page.evaluate(f"document.getElementById('{expected}').classList.contains('flash')")
-            return f"url #{page.url.split('#')[-1]} | section top at {round(top)}px | flash={flash}"
+            opacity = page.evaluate(f"getComputedStyle(document.getElementById('{expected}')).opacity")
+            return f"url #{page.url.split('#')[-1]} | section top at {round(top)}px | flash={flash} | opacity={opacity}"
 
         for kind in ("income", "expense", "savings"):
             page.goto(BASE + "/")
@@ -70,6 +71,12 @@ try:
             page.evaluate("window.scrollTo(0, 0)"); page.wait_for_timeout(300)
             page.click(f'a.kpi-link[href="#{kind}-breakdown"]')
             print(f"month {kind} chip →", landed(f"{kind}-breakdown"))
+        page.evaluate("window.scrollTo(0, 0)"); page.wait_for_timeout(300)
+        page.click('a.kpi-link[href="#expense-breakdown"]')
+        page.wait_for_timeout(2500)                     # אחרי שההבהוב נגמר
+        print("after the flash ends, opacity:",
+              page.evaluate("getComputedStyle(document.getElementById('expense-breakdown')).opacity"))
+        page.screenshot(path="/tmp/go_landed.png")
         print("remaining chip is a link:", page.locator("a.kpi-chip", has_text="נשאר").count() > 0)
         page.evaluate("window.scrollTo(0, 0)"); page.wait_for_timeout(300)
         page.screenshot(path="/tmp/go_month.png", clip={"x": 0, "y": 0, "width": 390, "height": 200})

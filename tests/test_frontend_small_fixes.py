@@ -381,3 +381,13 @@ def test_what_is_left_is_not_a_link():
     label = month.index("נשאר בעו״ש</p>")
     opening = month[month.rindex("kpi-chip", 0, label) - 20:label]   # התגית הפותחת של הריבוע
     assert "<a " not in opening and "kpi-link" not in opening
+
+
+def test_the_card_you_jump_to_stays_visible():
+    """‎.anim-rise‎ מתחיל ב-‎opacity: 0‎ ונשאר גלוי רק דרך האנימציה שלו. ההבהוב
+    החליף אותה, והכרטיס שאליו קפצו נעלם (מתן: "כאילו מחוק"). בדפדפן:
+    tests/browser/cards_to_breakdown.py מדפיס את ה-opacity."""
+    css = re.sub(r"/\*.*?\*/", "", _read("frontend/static/css/style.css"), flags=re.S)
+    rule = css[css.index(".chart-card.flash {"):]
+    rule = rule[:rule.index("}")]
+    assert "opacity: 1" in rule

@@ -547,6 +547,11 @@ a.kpi-chip:active { transform: scale(0.97); }
 }
 
 .chart-card.flash {
+    /* ההבהוב מחליף את אנימציית הכניסה (‎.anim-rise‎, ‎motion.js‎), שמתחילה
+       ב-‎opacity: 0‎ ונשארת ב-1 רק כל עוד היא פעילה. בלי השורה הזאת הכרטיס
+       שאליו קפצו נעלם לגמרי — מתן: "לא רואים כלום, כאילו מחוק" */
+    opacity: 1;
+    transform: none;
     animation: breakdown-flash 1.6s ease-out;
 }
 
