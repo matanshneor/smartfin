@@ -410,6 +410,41 @@ ul { list-style: none; }
     margin-top: 16px;
 }
 
+/* עמוד החודש: מאזן חודשי במלבן רחב, ומתחתיו שלושה מלבנים שווים (מתן, 30.9) */
+.month-net {
+    margin-top: 14px;
+    background: var(--hero-chip-bg);
+    border: 1px solid var(--hero-chip-border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    text-align: center;
+}
+
+.month-net .kpi-label {
+    font-size: 0.74rem;
+    color: var(--hero-text-muted);
+    margin-bottom: 2px;
+}
+
+.month-net-value {
+    font-weight: 700;
+    font-size: 1.6rem;
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+    color: var(--hero-text);
+}
+
+.month-net.surplus .month-net-value { color: var(--color-income-light); }
+.month-net.deficit .month-net-value { color: var(--color-expense-light); }
+
+.month-net-hint {
+    font-size: 0.68rem;
+    color: var(--hero-text-muted);
+    margin-top: 2px;
+}
+
+.kpi-chips.kpi-chips-three { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 8px; }
+
 /* מאזן הפרויקט — שורה רחבה מתחת לריבועים */
 .project-net {
     margin-top: 14px;

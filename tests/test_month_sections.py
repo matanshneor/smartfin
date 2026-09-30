@@ -217,3 +217,17 @@ def test_removing_a_row_on_the_month_page_refreshes_the_totals():
     block = block[:block.index("\n    function ")]
 
     assert "refreshAfterDelete" in block, "המספרים נשארים תקועים אחרי מחיקה"
+
+
+def test_the_sections_come_in_matans_order():
+    """מתן (30.9): מאזן חודשי במלבן רחב, שלושה מלבנים שווים, ואז הכנסות, הוצאות,
+    חיסכון, עסקאות קבועות, לפי בן משפחה, כל העסקאות, פרויקטים החודש."""
+    order = ['id="income-breakdown"', 'id="expense-breakdown"', 'id="savings-breakdown"',
+             '<h2 class="chart-title">עסקאות קבועות</h2>', "{{ mb.label }} לפי בן משפחה",
+             '<h2 class="chart-title">כל העסקאות</h2>', '<h2 class="chart-title">פרויקטים החודש</h2>']
+    where = [_HTML.index(m) for m in order]
+    assert where == sorted(where), [m for _, m in sorted(zip(where, order))]
+    top = _HTML[:_HTML.index("{% endblock %}", _HTML.index("{% block hero %}"))]
+    assert top.index('class="month-net') < top.index('kpi-chips kpi-chips-three')
+    import re as _re
+    assert len(_re.findall(r'class="kpi-chip[ "]', top)) == 6   # שלושה, בכל אחד מענפי a/div

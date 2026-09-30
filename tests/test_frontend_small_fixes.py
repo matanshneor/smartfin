@@ -377,10 +377,10 @@ def test_each_summary_leads_to_its_breakdown(kind):
 
 
 def test_what_is_left_is_not_a_link():
-    """"נשאר בעו״ש" לא שייך לקטגוריה אחת — מתן בחר להשאיר אותו לא לחיץ."""
+    """המאזן החודשי לא שייך לקטגוריה אחת — מתן בחר להשאיר אותו לא לחיץ."""
     month = _read("frontend/templates/month.html")
-    label = month.index("נשאר בעו״ש</p>")
-    opening = month[month.rindex("kpi-chip", 0, label) - 20:label]   # התגית הפותחת של הריבוע
+    label = month.index("מאזן חודשי</p>")
+    opening = month[month.rindex("month-net", 0, label) - 20:label]
     assert "<a " not in opening and "kpi-link" not in opening
 
 

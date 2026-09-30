@@ -1,4 +1,4 @@
-""""נשאר בעו״ש" בעמוד החודש — בלי אדום כשעוד אין הכנסות, ובלי "-₪0".
+""""מאזן חודשי" (לשעבר "נשאר בעו״ש") בעמוד החודש — בלי אדום כשעוד אין הכנסות, ובלי "-₪0".
 
 דף הבית כבר ידע: חודש בלי הכנסה אינו גירעון, כי עוד אין ממה להחסיר.
 עמוד החודש, באותו מצב בדיוק, הציג "₪-800" באדום. ובלי JS (או לפני שאנימציית
@@ -14,8 +14,9 @@ pytestmark = pytest.mark.unit
 
 
 def _chip(html):
-    i = html.index("נשאר בעו״ש")
-    return html[i:html.index("</p>", html.index("kpi-value", i)) + 4]
+    """המלבן של המאזן, מהתגית הפותחת (עליה יושב סימון הגירעון) ועד הסכום."""
+    i = html.rindex('<div class="month-net', 0, html.index("מאזן חודשי"))
+    return html[i:html.index("</p>", html.index("month-net-value", i)) + 4]
 
 
 def _expense(amount, kind="expense"):
@@ -27,7 +28,7 @@ def test_spending_before_any_income_is_not_a_deficit(month_page):
     chip = _chip(month_page([_expense(800)]))
 
     assert "deficit" not in chip, "גירעון אדום לפני שנכנסה הכנסה"
-    assert "-" not in re.sub(r"<[^>]+>", "", chip).replace("נשאר בעו״ש", "")
+    assert "-" not in re.sub(r"<[^>]+>", "", chip).replace("מאזן חודשי", "")
 
 
 def test_a_real_deficit_is_red_with_the_minus_before_the_shekel(month_page):
