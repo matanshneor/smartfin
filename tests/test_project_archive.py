@@ -86,3 +86,22 @@ def test_the_archive_route(client):
 def test_the_form_list_route_includes_finished_ones_marked(client):
     body = client.get("/api/projects?include_archived=1").get_json()
     assert {(p["name"], p["archived"]) for p in body} == {("טיול", False), ("שיפוץ", True)}
+
+
+def test_the_projects_page_has_two_sections():
+    """מתן (30.9): "פרויקטים פעילים" ו"פרויקטים שהסתיימו", כל אחד עם הרשימה
+    שלו — ולא חלק סגור בתחתית."""
+    from pathlib import Path
+    tpl = (Path(__file__).resolve().parent.parent / "frontend/templates/projects.html").read_text(encoding="utf-8")
+    assert '<h2 class="chart-title" style="flex:1;">פרויקטים פעילים</h2>' in tpl
+    assert '<h2 class="chart-title">פרויקטים שהסתיימו</h2>' in tpl
+    assert "<details" not in tpl
+    assert tpl.index('id="activeProjects"') < tpl.index('id="finishedProjects"')
+
+
+def test_the_page_renders_both_lists(client):
+    html = client.get("/projects").get_data(as_text=True)
+    active = html[html.index('id="activeProjects"'):html.index('id="finishedProjects"')]
+    finished = html[html.index('id="finishedProjects"'):]
+    assert "טיול" in active and "שיפוץ" not in active
+    assert "שיפוץ" in finished

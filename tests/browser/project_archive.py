@@ -56,8 +56,10 @@ try:
 
         page.goto(BASE + "/projects"); page.wait_for_timeout(1000)
         print("in main list:", page.locator("#projectsList .project-name", has_text="PA-שיפוץ").count())
-        print("finished summary:", page.locator(".finished-projects summary").inner_text())
-        page.locator(".finished-projects summary").click(); page.wait_for_timeout(300)
+        print("sections:", page.locator("#activeProjects .chart-title").inner_text(), "|",
+              page.locator("#finishedProjects .chart-title").inner_text(),
+              "| finished list:", page.locator("#finishedProjects .project-name").all_inner_texts())
+        page.screenshot(path="/tmp/projects_two.png")
         page.locator(".finished-projects .project-name", has_text="PA-שיפוץ").click(); page.wait_for_timeout(1200)
         print("banner:", page.locator(".project-archived-banner").inner_text().replace("\n", " | "))
         page.screenshot(path="/tmp/archived.png")

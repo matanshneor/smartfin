@@ -4747,12 +4747,7 @@ body.search-open { overflow: hidden; }
     color: var(--color-gold-text); font-weight: 600; font-size: 0.9rem;
     border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px;
 }
-.finished-projects { margin-top: 18px; border-top: 1px solid var(--color-border, rgba(var(--ink-rgb), 0.08)); padding-top: 12px; }
-.finished-projects > summary {
-    cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--color-text-soft);
-    min-height: 40px; display: flex; align-items: center;
-}
-.finished-projects .project-row.is-finished { opacity: 0.75; }
+.projects-none-active { margin: 14px 2px 2px; font-size: 0.85rem; color: var(--color-text-muted); line-height: 1.5; }
 
 /* גרירת קטגוריות לסידור (מתן, 30.9 — סבב 6, פריט 5). ‎touch-action: none‎
    על הידית בלבד: שם הגרירה מזיזה את השורה, ובכל מקום אחר — גוללת את העמוד */

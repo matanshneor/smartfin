@@ -13,9 +13,30 @@
 
 {% block content %}
 
-<section class="chart-card">
+{# שורת פרויקט — אותה שורה בשני החלקים.
+   רשימה, לא לוח מחוונים. קודם כל שורה נשאה גם סכום וגם ✕ למחיקה. הסכום
+   דורש הקשר שאין כאן (מתוך כמה? על פני כמה זמן?), והמחיקה — הפעולה הבלתי
+   הפיכה ביותר בעמוד — ישבה במרחק נגיעה אחת מהשם, בלי שום הקשר על מה עומד
+   להימחק. שניהם עברו לתוך הפרויקט: שם הסכום מלווה בפירוט, ושם רואים מה יאבד. #}
+{% macro project_row(p) %}
+        <li class="project-row" data-id="{{ p.id }}">
+            <a class="project-main clickable" href="{{ url_for('project_detail', project_id=p.id) }}">
+                <span class="breakdown-icon">{{ p.icon or ('🔒' if p.is_personal else '🎯') }}</span>
+                <div class="project-info">
+                    <span class="project-name">{{ p.name }}</span>
+                    {% if p.description %}<span class="project-sub">{{ p.description }}</span>{% endif %}
+                </div>
+                <span class="project-chevron" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </span>
+            </a>
+        </li>
+{% endmacro %}
+
+{# שני חלקים: פעילים, ומתחתיו שהסתיימו — כל אחד עם הרשימה שלו (מתן, 30.9) #}
+<section class="chart-card" id="activeProjects">
     <div class="cat-manage-bar">
-        <h2 class="chart-title" style="flex:1;">הפרויקטים שלך</h2>
+        <h2 class="chart-title" style="flex:1;">פרויקטים פעילים</h2>
         <button type="button" class="btn-sm btn-ghost" id="newProjectBtn">יצירת פרויקט חדש</button>
     </div>
 
@@ -74,58 +95,28 @@
 
     {% if projects %}
     <ul class="breakdown-bars" id="projectsList" style="margin-top:14px;">
-        {% for p in projects %}
-        {# רשימה, לא לוח מחוונים.
-           קודם כל שורה נשאה גם סכום וגם ✕ למחיקה. הסכום דורש הקשר
-           שאין כאן (מתוך כמה? על פני כמה זמן?), והמחיקה — הפעולה
-           הבלתי הפיכה ביותר בעמוד — ישבה במרחק נגיעה אחת מהשם, בלי
-           שום הקשר על מה עומד להימחק. שניהם עברו לתוך הפרויקט: שם
-           הסכום מלווה בפירוט, ושם רואים מה יאבד. #}
-        <li class="project-row" data-id="{{ p.id }}">
-            <a class="project-main clickable" href="{{ url_for('project_detail', project_id=p.id) }}">
-                <span class="breakdown-icon">{{ p.icon or ('🔒' if p.is_personal else '🎯') }}</span>
-                <div class="project-info">
-                    <span class="project-name">{{ p.name }}</span>
-                    {% if p.description %}<span class="project-sub">{{ p.description }}</span>{% endif %}
-                </div>
-                <span class="project-chevron" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                </span>
-            </a>
-        </li>
-        {% endfor %}
+        {% for p in projects %}{{ project_row(p) }}{% endfor %}
     </ul>
-    {% elif not finished_projects %}
+    {% elif finished_projects %}
+    <p class="projects-none-active">אין כרגע פרויקטים פעילים. "יצירת פרויקט חדש" למעלה, או פתיחה מחדש של פרויקט שהסתיים.</p>
+    {% else %}
     <div class="empty-state">
         <p class="empty-icon">🎯</p>
         <p class="empty-text">אין פרויקטים עדיין</p>
         <p class="empty-sub">צור פרויקט כדי לעקוב אחרי הוצאות טיול, שיפוץ או אירוע לאורך זמן</p>
     </div>
     {% endif %}
-
-    {# פרויקטים שהסתיימו (מתן, 30.9 — סבב 6, פריט 3): סגור, בתחתית #}
-    {% if finished_projects %}
-    <details class="finished-projects">
-        <summary>פרויקטים שהסתיימו ({{ finished_projects | length }})</summary>
-        <ul class="breakdown-bars">
-            {% for p in finished_projects %}
-            <li class="project-row is-finished" data-id="{{ p.id }}">
-                <a class="project-main clickable" href="{{ url_for('project_detail', project_id=p.id) }}">
-                    <span class="breakdown-icon">{{ p.icon or ('🔒' if p.is_personal else '🎯') }}</span>
-                    <div class="project-info">
-                        <span class="project-name">{{ p.name }}</span>
-                        {% if p.description %}<span class="project-sub">{{ p.description }}</span>{% endif %}
-                    </div>
-                    <span class="project-chevron" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                    </span>
-                </a>
-            </li>
-            {% endfor %}
-        </ul>
-    </details>
-    {% endif %}
 </section>
+
+{# מופיע רק כשיש כאלה — חלק ריק "פרויקטים שהסתיימו" לא אומר כלום #}
+{% if finished_projects %}
+<section class="chart-card finished-projects" id="finishedProjects">
+    <h2 class="chart-title">פרויקטים שהסתיימו</h2>
+    <ul class="breakdown-bars">
+        {% for p in finished_projects %}{{ project_row(p) }}{% endfor %}
+    </ul>
+</section>
+{% endif %}
 
 {% endblock %}
 
