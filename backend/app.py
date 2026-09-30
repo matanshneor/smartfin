@@ -867,6 +867,7 @@ def signup():
 # את המבקר מהחשבון ומחק לו את עוגיות המכשיר. מטרד ולא פרצה — אבל מטרד
 # שמישהו יכול להפעיל מרחוק, ואין שום סיבה ש-GET יבצע פעולה.
 @app.route("/logout", methods=["POST"])
+@limiter.limit("30 per minute")
 def logout():
     """יציאה יזומה מחזירה לדף הנחיתה, ומוחקת את כל מה שנשמר על המכשיר.
 
@@ -1012,6 +1013,7 @@ def onboarding():
 
 
 @app.route("/api/onboarding/complete", methods=["POST"])
+@limiter.limit("10 per minute")
 @login_required
 def onboarding_complete():
     user = get_current_user()
@@ -1588,6 +1590,7 @@ def _parse_project_body(body: dict):
 
 
 @app.route("/api/transactions/precheck", methods=["POST"])
+@limiter.limit("60 per minute")
 @login_required
 def precheck_transaction_route():
     """לפני שמירה של עסקה חדשה: כפילות? סכום חריג? (מתן, 30.9 — סבב 6, 6–7)."""
@@ -1612,6 +1615,7 @@ def search_route():
 
 
 @app.route("/api/projects", methods=["POST"])
+@limiter.limit("30 per minute")
 @login_required
 def add_project_route():
     user = get_current_user()
@@ -1682,6 +1686,7 @@ def project_access_required(f):
 
 
 @app.route("/api/projects/<project_id>", methods=["PUT"])
+@limiter.limit("30 per minute")
 @login_required
 @project_access_required
 def update_project_route(project_id):
@@ -1691,12 +1696,15 @@ def update_project_route(project_id):
     if err:
         return jsonify({"error": err}), 422
     ok = db.update_project(project_id, user["family_id"], **fields)
+    if ok is None:
+        return jsonify({"error": "הפרויקט לא נמצא — ייתכן שנמחק בינתיים"}), 404
     if not ok:
         return jsonify({"error": "עדכון נכשל"}), 500
     return jsonify({"status": "ok", **fields})
 
 
 @app.route("/api/projects/<project_id>", methods=["DELETE"])
+@limiter.limit("30 per minute")
 @login_required
 @project_access_required
 def delete_project_route(project_id):
@@ -1719,6 +1727,7 @@ def delete_project_route(project_id):
 
 
 @app.route("/api/projects/<project_id>/share", methods=["PUT"])
+@limiter.limit("30 per minute")
 @login_required
 @project_access_required
 def share_project_route(project_id):
@@ -1731,6 +1740,7 @@ def share_project_route(project_id):
 
 
 @app.route("/api/projects/<project_id>/unshare", methods=["PUT"])
+@limiter.limit("30 per minute")
 @login_required
 @project_access_required
 def unshare_project_route(project_id):
@@ -1754,6 +1764,7 @@ def list_projects_route():
 
 
 @app.route("/api/projects/<project_id>/archive", methods=["PUT"])
+@limiter.limit("30 per minute")
 @login_required
 @project_access_required
 def archive_project_route(project_id):
@@ -1803,6 +1814,7 @@ def _category_fields(body: dict):
 
 
 @app.route("/api/projects/<project_id>/categories", methods=["POST"])
+@limiter.limit("30 per minute")
 @login_required
 @project_access_required
 def add_project_category_route(project_id):
@@ -1825,6 +1837,7 @@ def add_project_category_route(project_id):
 
 
 @app.route("/api/projects/<project_id>/categories/<cat_id>", methods=["PUT"])
+@limiter.limit("30 per minute")
 @login_required
 @project_access_required
 def update_project_category_route(project_id, cat_id):
@@ -1842,6 +1855,7 @@ def update_project_category_route(project_id, cat_id):
 
 
 @app.route("/api/projects/<project_id>/categories/<cat_id>", methods=["DELETE"])
+@limiter.limit("30 per minute")
 @login_required
 @project_access_required
 def delete_project_category_route(project_id, cat_id):
@@ -2969,6 +2983,7 @@ def _delete_category(kind, cat_id, user, project=None):
 
 
 @app.route("/api/categories/reorder", methods=["PUT"])
+@limiter.limit("30 per minute")
 @login_required
 def reorder_categories_route():
     user = get_current_user()

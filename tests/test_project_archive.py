@@ -144,3 +144,30 @@ def test_settings_says_no_recurring_instead_of_zero():
     render = lambda recurring: flask_app.jinja_env.from_string("{{" + expr + "}}").render(recurring=recurring)
     assert render([]) == "אין עסקאות קבועות"
     assert render([1, 2]) == "2 עסקאות חוזרות פעילות"
+
+
+# ─── פרויקט שנמחק רגע קודם (סקירה של 1.10) ───────────────────────────────────
+
+_GONE = "aaaaaaaa-0000-0000-0000-00000000dead"
+
+
+def test_sharing_a_just_deleted_project_says_so(fake):
+    ok, err = db.share_project(_GONE, _FAM, _ME)
+    assert not ok and err == "הפרויקט לא נמצא — ייתכן שנמחק בינתיים"
+
+
+def test_unsharing_a_just_deleted_project_says_so(fake):
+    ok, err = db.unshare_project(_GONE, _FAM, _ME)
+    assert not ok and err == "הפרויקט לא נמצא — ייתכן שנמחק בינתיים"
+
+
+def test_editing_a_just_deleted_project_is_a_404(client):
+    """בדיקת הגישה לפרויקט (‎project_access_required‎) כבר עונה 404 לפני
+    הפעולה — אותו "לא נמצא" כמו לפרויקט אישי של אחר, בכוונה."""
+    res = client.put(f"/api/projects/{_GONE}", json={"name": "טיול", "track_expense": True})
+    assert res.status_code == 404
+
+
+def test_the_update_itself_tells_a_vanished_project_apart(fake):
+    """ובחלקיק השנייה שבין הבדיקה לפעולה — ‎None‎, והמסלול עונה 404 ולא 500."""
+    assert db.update_project(_GONE, _FAM, name="טיול") is None

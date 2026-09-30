@@ -1,6 +1,5 @@
 import os
 import re
-import uuid
 
 from dotenv import load_dotenv
 from gotrue.errors import AuthApiError, AuthRetryableError
@@ -57,7 +56,7 @@ def get_client():
         from supabase import create_client
         _client = create_client(url, key)
         return _client
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to connect to Supabase")
         return None
 
@@ -124,7 +123,7 @@ def set_auth_token(access_token: str):
 
     try:
         client.postgrest.auth(access_token)
-    except Exception as e:
+    except Exception:
         logger.exception("set_auth_token")
 
 
@@ -186,7 +185,7 @@ def get_email_by_phone(normalized_phone: str):
     try:
         result = client.rpc("email_for_phone", {"p_phone": normalized_phone}).execute()
         return result.data or None
-    except Exception as e:
+    except Exception:
         logger.exception("get_email_by_phone")
         return None
 
@@ -211,7 +210,7 @@ def log_login_event(event: str = "login"):
         return
     try:
         client.rpc("log_login_event", {"p_event": event}).execute()
-    except Exception as e:
+    except Exception:
         logger.exception("log_login_event")
 
 
@@ -321,7 +320,7 @@ def fetch_profile(user_id: str):
             return None, True          # אין פרופיל — תשובה, לא כישלון
         logger.exception("fetch_profile(%s)", user_id)
         return None, False
-    except Exception as e:
+    except Exception:
         logger.exception("fetch_profile(%s)", user_id)
         return None, False
 
@@ -454,7 +453,7 @@ def update_workplace_history(user_id: str, family_id: str, new_workplace: str,
             .eq("user_id", user_id).eq("type", "income") \
             .in_("category_id", salary_cat_ids) \
             .gte("date", month_start).execute()
-    except Exception as e:
+    except Exception:
         logger.exception("update_workplace_history")
 
 
@@ -565,7 +564,7 @@ def ensure_family(user_id: str, family_name: str = "המשפחה שלי"):
     try:
         result = client.rpc("create_own_family", {"p_name": family_name}).execute()
         return result.data or None
-    except Exception as e:
+    except Exception:
         logger.exception("ensure_family")
         return None
 
@@ -683,7 +682,7 @@ def update_family_settings(family_id: str, patch: dict) -> bool:
         }).execute()
         _invalidate_family_cache(family_id)
         return True
-    except Exception as e:
+    except Exception:
         logger.exception("update_family_settings")
         return False
 
@@ -760,7 +759,7 @@ def record_receipt_scan(family_id: str, user_id: str):
         client.table("receipt_scans").insert(
             {"family_id": family_id, "user_id": user_id}, returning="minimal"
         ).execute()
-    except Exception as e:
+    except Exception:
         logger.exception("record_receipt_scan")
 
 
@@ -854,7 +853,7 @@ def delete_receipts(access_token: str, paths) -> None:
                 json={"prefixes": paths[i:i + 100]},
                 timeout=10,
             )
-        except Exception as e:
+        except Exception:
             logger.exception("delete_receipts")
 
 
@@ -875,7 +874,7 @@ def receipt_paths(family_id: str, project_ids=None, user_id: str = None) -> list
                               .eq("family_id", family_id).eq("user_id", user_id)
                               .not_.is_("receipt_path", "null").order("id"))
         return sorted({r["receipt_path"] for r in out if r.get("receipt_path")})
-    except Exception as e:
+    except Exception:
         # בלי הנתיבים אין מה למחוק — אבל המחיקה עצמה לא נעצרת בגלל קבצים
         logger.exception("receipt_paths")
         return []
@@ -1042,7 +1041,7 @@ def scan_receipt(image_bytes: bytes, content_type: str, category_names: list):
                 "category_name":  (data.get("category_name") or "").strip() or None,
             }, None
         return None, "לא הצלחתי לקרוא את הקבלה — נסו שוב או הזינו ידנית"
-    except Exception as e:
+    except Exception:
         logger.exception("scan_receipt")
         return None, "שגיאה בסריקת הקבלה — נסו שוב"
 
@@ -2194,7 +2193,7 @@ def update_category(cat_id: str, family_id: str, name: str, icon: str):
         # נאמר גם כששום שורה לא התאימה — למשל כשבן משפחה אחר מחק את
         # הפריט שנייה קודם, או כשהמזהה שייך למשפחה אחרת.
         return bool(result.data)
-    except Exception as e:
+    except Exception:
         logger.exception("update_category")
         return False
 
@@ -2226,7 +2225,7 @@ def reorder_categories(family_id: str, type_: str, ordered_ids: list) -> bool:
             client.table("categories").update({"sort_order": i}) \
                 .eq("id", cat_id).eq("family_id", family_id).eq("type", type_).execute()
         return True
-    except Exception as e:
+    except Exception:
         logger.exception("reorder_categories")
         return False
 
@@ -2348,9 +2347,12 @@ def update_project(project_id: str, family_id: str, name: str, budget_target: fl
     if not client:
         return False
     try:
-        existing = client.table("projects") \
+        rows = client.table("projects") \
             .select("track_expense, track_income, track_savings") \
-            .eq("id", project_id).eq("family_id", family_id).single().execute().data or {}
+            .eq("id", project_id).eq("family_id", family_id).limit(1).execute().data
+        if not rows:
+            return None                 # נמחק בינתיים — המסלול אומר את זה (404)
+        existing = rows[0]
         # סוגים שהופעלו כרגע לראשונה — נזרע להם קטגוריות התחלתיות
         newly_enabled = [
             t for t, before, after in (
@@ -2372,7 +2374,7 @@ def update_project(project_id: str, family_id: str, name: str, budget_target: fl
         if newly_enabled:
             _seed_project_categories(project_id, family_id, newly_enabled)
         return True
-    except Exception as e:
+    except Exception:
         logger.exception("update_project")
         return False
 
@@ -2385,10 +2387,13 @@ def share_project(project_id: str, family_id: str, user_id: str):
     if not client:
         return False, "Database not configured"
     try:
-        proj = client.table("projects").select("owner_id") \
-            .eq("id", project_id).eq("family_id", family_id).single().execute().data
+        # לא ‎.single()‎: על פרויקט שנמחק רגע קודם הוא זרק, והמשתמש קיבל שגיאה
+        # כללית במקום "נמחק בינתיים" (סקירה של 1.10)
+        rows = client.table("projects").select("owner_id") \
+            .eq("id", project_id).eq("family_id", family_id).limit(1).execute().data
+        proj = rows[0] if rows else None
         if not proj:
-            return False, "הפרויקט לא נמצא"
+            return False, "הפרויקט לא נמצא — ייתכן שנמחק בינתיים"
         if proj.get("owner_id") != user_id:
             return False, "רק הבעלים של הפרויקט יכול להפוך אותו למשותף"
         client.table("projects").update({"owner_id": None}) \
@@ -2407,10 +2412,11 @@ def unshare_project(project_id: str, family_id: str, user_id: str):
     if not client:
         return False, "Database not configured"
     try:
-        proj = client.table("projects").select("owner_id, created_by") \
-            .eq("id", project_id).eq("family_id", family_id).single().execute().data
+        rows = client.table("projects").select("owner_id, created_by") \
+            .eq("id", project_id).eq("family_id", family_id).limit(1).execute().data
+        proj = rows[0] if rows else None
         if not proj:
-            return False, "הפרויקט לא נמצא"
+            return False, "הפרויקט לא נמצא — ייתכן שנמחק בינתיים"
         if proj.get("owner_id"):
             return False, "הפרויקט כבר אישי"
         if proj.get("created_by") != user_id:
@@ -2451,7 +2457,7 @@ def delete_project(project_id: str, family_id: str):
         # לעשות בלי סיסמה ובלי הרשאת מנהל, והמשתמש צריך לראות כמה עסקאות
         # באמת נעלמו — בדיוק כמו באיפוס העסקאות.
         return bool(result.data), wiped
-    except Exception as e:
+    except Exception:
         logger.exception("delete_project")
         return False, 0
 
@@ -2568,7 +2574,7 @@ def _seed_project_categories(project_id: str, family_id: str, types: list):
             "name": c["name"], "icon": c.get("icon", "📦"), "type": c["type"],
         } for c in family_cats]
         client.table("project_categories").insert(rows).execute()
-    except Exception as e:
+    except Exception:
         logger.exception("_seed_project_categories")
 
 
@@ -2663,7 +2669,7 @@ def delete_category_moving(kind: str, cat_id: str, family_id: str,
         q = client.table(table).delete().eq("id", cat_id).eq("family_id", family_id)
         q = q.eq("project_id", project_id) if kind == "project" else q.eq("is_custom", True)
         return bool(q.execute().data)
-    except Exception as e:
+    except Exception:
         logger.exception("delete_category_moving")
         return False
 
@@ -2678,7 +2684,7 @@ def update_project_category(cat_id: str, project_id: str, family_id: str, name: 
         # נאמר גם כששום שורה לא התאימה — למשל כשבן משפחה אחר מחק את
         # הפריט שנייה קודם, או כשהמזהה שייך למשפחה אחרת.
         return bool(result.data)
-    except Exception as e:
+    except Exception:
         logger.exception("update_project_category")
         return False
 
@@ -2694,7 +2700,7 @@ def delete_project_category(cat_id: str, project_id: str, family_id: str) -> boo
         # נאמר גם כששום שורה לא התאימה — למשל כשבן משפחה אחר מחק את
         # הפריט שנייה קודם, או כשהמזהה שייך למשפחה אחרת.
         return bool(result.data)
-    except Exception as e:
+    except Exception:
         logger.exception("delete_project_category")
         return False
 
@@ -3201,7 +3207,7 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
                     "severity": "warning",
                     "text": f'{label["icon"]} ההוצאה על {label["name"]} (₪{format_money(total)}) גבוהה ב-{pct}% מהממוצע (₪{format_money(avg)})',
                 })
-    except Exception as e:
+    except Exception:
         logger.exception("get_anomalies")
 
     return alerts
@@ -3260,7 +3266,7 @@ def update_family_name(family_id: str, name: str):
         _invalidate_family_cache(family_id)
         # ראו update_category: "נשמר" על שום שורה הוא שקר קטן שמצטבר.
         return bool(result.data)
-    except Exception as e:
+    except Exception:
         logger.exception("update_family_name")
         return False
 
@@ -3291,7 +3297,7 @@ def family_name_for_code(code: str):
     try:
         result = client.rpc("family_name_for_code", {"p_code": code}).execute()
         return result.data or None
-    except Exception as e:
+    except Exception:
         logger.exception("family_name_for_code")
         return None
 
@@ -3338,7 +3344,7 @@ def join_family_by_code(code: str):
             # שהקוד היה אמיתי פעם.
             return None, "הקוד לא נמצא או שפג תוקפו — בקשו ממנהל המשפחה קוד חדש"
         return family_id, None
-    except Exception as e:
+    except Exception:
         logger.exception("join_family_by_code")
         return None, "ההצטרפות נכשלה — נסו שוב בעוד כמה רגעים"
 

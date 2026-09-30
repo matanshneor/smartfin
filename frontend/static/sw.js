@@ -1,4 +1,4 @@
-const CACHE = 'smartfin-v22';
+const CACHE = 'smartfin-v23';
 
 // אין טעינה-מראש.
 //
@@ -36,6 +36,9 @@ function offlinePage() {
         '<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="utf-8">' +
         '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">' +
         '<title>אין חיבור</title>' +
+        // מצב כהה גם כאן (סקירה של 1.10). לתשובה שנבנית כאן אין CSP, אז שורה
+        // בתוך העמוד מותרת — js/theme.js אולי לא במטמון כשאין רשת
+        '<script>try{if(localStorage.getItem("sf_theme")==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>' +
         '<link rel="stylesheet" href="/static/css/style.css"></head>' +
         '<body class="auth-body"><div class="auth-container">' +
         '<div class="empty-state">' +

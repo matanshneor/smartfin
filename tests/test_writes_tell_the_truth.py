@@ -96,8 +96,10 @@ def test_deleting_a_project_category_that_is_gone_is_not_success(fake):
 def test_editing_a_project_that_is_gone_is_not_success(fake):
     fake.tables["projects"] = []
 
+    # ‎None‎ = "לא נמצא" (המסלול עונה 404), להבדיל מ-‎False‎ = תקלה (500). העיקר:
+    # לא ‎True‎ — אין "נשמר" על פרויקט שאיננו
     assert db.update_project("p1", _FAM, "שיפוץ", 5000, None, "🔨",
-                             True, False, False) is False
+                             True, False, False) is None
 
 
 # ═══ מחיקת פרויקט מדווחת כמה כסף נעלם ═════════════════════════════════════════
