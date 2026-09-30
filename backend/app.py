@@ -1104,6 +1104,8 @@ def dashboard():
 
     # "עסקאות אחרונות" תלויות בהעדפות — נשלפות אחרי שיש לנו אותן
     transactions = db.get_recent_transactions(family_id, settings=batch["settings"], viewer_user_id=user["id"])
+    home_budgets = db.get_home_budgets(family_id, now.year, now.month,
+                                       batch["settings"], batch["categories"])
 
     # מיחזור תוצאות המקבץ ל-context-processors ו-_member_colors (בלי שליפה חוזרת)
     _prime_request_cache(family_id, settings=batch["settings"], categories=batch["categories"], members=batch["members"])
@@ -1114,6 +1116,7 @@ def dashboard():
         user=user,
         summary=batch["summary"],
         transactions=transactions,
+        home_budgets=home_budgets,
         categories=batch["categories"],
         member_colors=_member_colors(family_id),
         month_label=_month_label(now.year, now.month),

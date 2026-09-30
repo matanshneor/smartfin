@@ -130,6 +130,38 @@
     </a>
 </section>
 
+{# תקציבים החודש (מתן, 30.9 — אפשרות א): עד 3 קטגוריות, הקרובה לגבול קודם.
+   ירוק כשיש מקום, כתום מ-80%, אדום בחריגה. בלי אף תקציב — אין כרטיס. #}
+{% if home_budgets %}
+<section class="chart-card home-budgets" aria-label="תקציבים החודש">
+    <div class="section-header">
+        <h2>תקציבים החודש</h2>
+        <a href="{{ url_for('month_view') }}#expense-breakdown" class="see-all-link">לכל התקציבים</a>
+    </div>
+    <ul class="home-budget-list">
+        {% for b in home_budgets %}
+        {% set state = 'over' if b.budget_over else ('warn' if b.budget_pct >= 80 else 'ok') %}
+        <li class="home-budget">
+            <div class="home-budget-top">
+                <span class="home-budget-name">{{ b.icon }} {{ b.name }}</span>
+                <span class="home-budget-left {{ state }}">
+                    {%- if b.budget_over -%}
+                    חריגה של ₪{{ b.budget_excess | round | int | money }}
+                    {%- else -%}
+                    נשארו ₪{{ b.budget_left | round | int | money }} מתוך ₪{{ b.budget | round | int | money }}
+                    {%- endif -%}
+                </span>
+            </div>
+            <div class="home-budget-track" role="progressbar" aria-valuenow="{{ b.budget_pct }}"
+                 aria-valuemin="0" aria-valuemax="100" aria-label="{{ b.name }}: {{ b.budget_pct }}% מהתקציב">
+                <div class="home-budget-fill budget-fill {{ state }}" style="width: {{ b.budget_pct }}%;"></div>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
 <!-- Recent Transactions -->
 <section class="transactions-section">
     <div class="section-header">

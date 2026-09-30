@@ -46,6 +46,7 @@
     /* Semantic */
     --color-income:        #15803D;
     --color-expense:       #B91C1C;
+    --color-warn:          #B45309;   /* תקציב שעבר 80% */
     /* משמש רק לסכומי חיסכון, שהם טקסט — ולכן אותו ערך כמו
        --color-gold-text ולא כמו זהב המותג. */
     --color-savings:       #846300;
@@ -3177,6 +3178,22 @@ li.project-row {
    הנכון — פס שגולש החוצה לא מוסיף מידע ורק שובר את הפריסה. */
 .cat-budget.over .cat-budget-fill { background: var(--color-expense); }
 .cat-budget.over .cat-budget-text { color: var(--color-expense); font-weight: 600; }
+
+/* תקציבים החודש בדף הבית (מתן, 30.9): ירוק כשיש מקום, כתום מ-80%, אדום בחריגה */
+.home-budgets .section-header { margin-bottom: 12px; }
+.home-budget-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.home-budget-top {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+    font-size: 0.92rem;
+}
+.home-budget-name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-budget-left { font-size: 0.8rem; color: var(--color-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.home-budget-left.warn { color: var(--color-warn); font-weight: 600; }
+.home-budget-left.over { color: var(--color-expense); font-weight: 600; }
+.home-budget-track { height: 8px; border-radius: 99px; background: var(--color-input); overflow: hidden; margin-top: 6px; }
+.home-budget-fill { height: 100%; border-radius: 99px; background: var(--color-income); }
+.home-budget-fill.warn { background: var(--color-warn); }
+.home-budget-fill.over { background: var(--color-expense); }
 
 /* ─── פרויקטים החודש ──────────────────────────────────────────── */
 

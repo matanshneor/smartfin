@@ -345,7 +345,8 @@ def test_the_compare_page_compares_and_does_not_sum_everything():
 def test_the_link_next_to_recent_transactions_says_where_it_goes():
     """האחרונות הן מכל החודשים; הקישור פותח רק את החודש הנוכחי."""
     html = _read("frontend/templates/index.html")
-    link = html[html.index('class="see-all-link"'):]
+    recent = html[html.index("<h2>עסקאות אחרונות</h2>"):]
+    link = recent[recent.index('class="see-all-link"'):]
     link = link[link.index(">") + 1:link.index("</a>")]
 
     assert link == "לכל החודש"

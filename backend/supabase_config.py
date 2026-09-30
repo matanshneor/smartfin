@@ -1070,6 +1070,38 @@ def get_monthly_summary(family_id: str, year: int, month: int) -> dict:
         raise DataUnavailable("get_monthly_summary") from e
 
 
+def get_home_budgets(family_id: str, year: int, month: int,
+                     settings: dict, categories: list, limit: int = 3) -> list:
+    """כרטיס "תקציבים החודש" בדף הבית (מתן, 30.9): עד ‎limit‎ קטגוריות עם
+    תקציב, הקרובה ביותר לגבול קודם — חריגה לפני הכל, כי שם צריך לשים לב.
+
+    בלי אף תקציב אין מה להציג, ולכן גם לא שולפים."""
+    if not any(category_budget(settings, cid) for cid in ((settings or {}).get("limits") or {})):
+        return []
+    client = get_client()
+    if not client:
+        return []
+    try:
+        rows = client.table("transactions") \
+            .select("type, amount, category_id") \
+            .eq("family_id", family_id) \
+            .eq("type", "expense") \
+            .is_("project_id", "null") \
+            .gte("date", f"{year}-{month:02d}-01") \
+            .lt("date", _next_month(year, month)) \
+            .execute().data or []
+    except Exception as e:
+        raise DataUnavailable("get_home_budgets") from e
+
+    budgeted = [r for r in apply_budgets(
+                    category_breakdown_from_rows(rows, categories, "expense"), settings)
+                if r.get("budget")]
+    # לפי היחס האמיתי ולא לפי ‎budget_pct‎, שנעצר ב-100: חריגה של ₪500
+    # קודמת לחריגה של ₪5
+    budgeted.sort(key=lambda r: (-r["total"] / r["budget"], r["name"]))
+    return budgeted[:limit]
+
+
 def _filter_hidden_personal_projects(rows: list, viewer_user_id: str) -> list:
     """מסנן שורות עסקה ששייכות לפרויקט אישי של בן משפחה אחר — פרטיות:
     רק בעל הפרויקט האישי רואה את העסקאות הבודדות שבו. לסיכומים החודשיים
