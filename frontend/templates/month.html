@@ -160,7 +160,9 @@
             </div>
             <ul class="cat-tx-list">
                 {% for tx in src.transactions %}
-                <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                {# מופע צפוי בחודש עתידי: אין עסקה במסד, אז אין ‎data-id‎ — וכל ה-JS של
+                   עריכה, מחיקה והחלקה מדלג על שורה בלי מזהה #}
+                <li class="cat-tx-row{% if tx.projected %} is-projected{% endif %}" {% if not tx.projected %}role="button" tabindex="0" {% endif %}data-id="{{ '' if tx.projected else tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
                     data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
                     data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
                     data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
@@ -291,7 +293,9 @@
             {% if cat_txs %}
             <ul class="cat-tx-list">
                 {% for tx in cat_txs %}
-                <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                {# מופע צפוי בחודש עתידי: אין עסקה במסד, אז אין ‎data-id‎ — וכל ה-JS של
+                   עריכה, מחיקה והחלקה מדלג על שורה בלי מזהה #}
+                <li class="cat-tx-row{% if tx.projected %} is-projected{% endif %}" {% if not tx.projected %}role="button" tabindex="0" {% endif %}data-id="{{ '' if tx.projected else tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
                     data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
                     data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
                     data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
@@ -376,7 +380,9 @@
             {% if cat_txs %}
             <ul class="cat-tx-list">
                 {% for tx in cat_txs %}
-                <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                {# מופע צפוי בחודש עתידי: אין עסקה במסד, אז אין ‎data-id‎ — וכל ה-JS של
+                   עריכה, מחיקה והחלקה מדלג על שורה בלי מזהה #}
+                <li class="cat-tx-row{% if tx.projected %} is-projected{% endif %}" {% if not tx.projected %}role="button" tabindex="0" {% endif %}data-id="{{ '' if tx.projected else tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
                     data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
                     data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
                     data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
@@ -540,7 +546,9 @@
             </div>
             <ul class="cat-tx-list">
                 {% for tx in month_transactions %}
-                <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                {# מופע צפוי בחודש עתידי: אין עסקה במסד, אז אין ‎data-id‎ — וכל ה-JS של
+                   עריכה, מחיקה והחלקה מדלג על שורה בלי מזהה #}
+                <li class="cat-tx-row{% if tx.projected %} is-projected{% endif %}" {% if not tx.projected %}role="button" tabindex="0" {% endif %}data-id="{{ '' if tx.projected else tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
                     data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
                     data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
                     data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
@@ -597,7 +605,9 @@
 
             <ul class="cat-tx-list">
                 {% for tx in proj.transactions %}
-                <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                {# מופע צפוי בחודש עתידי: אין עסקה במסד, אז אין ‎data-id‎ — וכל ה-JS של
+                   עריכה, מחיקה והחלקה מדלג על שורה בלי מזהה #}
+                <li class="cat-tx-row{% if tx.projected %} is-projected{% endif %}" {% if not tx.projected %}role="button" tabindex="0" {% endif %}data-id="{{ '' if tx.projected else tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
                     data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
                     data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
                     data-recurring-frequency="{{ tx.recurring_frequency or '' }}"

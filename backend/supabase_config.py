@@ -1508,6 +1508,49 @@ def _recurring_occurrences(template: dict, until) -> list:
     return out
 
 
+def projected_month_rows(family_id: str, year: int, month: int, today=None) -> list:
+    """המופעים שהעסקאות הקבועות ייצרו בחודש שעוד לא הגיע (מתן, 30.9).
+
+    חודש עתידי מוצג כמו כל חודש, עם מה שידוע עד כה — ומה שידוע הוא גם
+    שכר הדירה של ה-1 בו. המופעים נוצרים כעסקאות אמיתיות רק כשהתאריך
+    מגיע (‎materialize_recurring‎), ולכן בחודש הנוכחי ובחודשים שעברו אין
+    מה להוסיף: שם הם כבר קיימים, והוספה הייתה סופרת אותם פעמיים.
+
+    כל שורה היא העתק של התבנית בתאריך המופע, באותה צורה בדיוק כמו שורות
+    החודש — כדי שכל הסיכומים והפילוחים יעברו עליה בלי מקרה מיוחד. היא
+    מסומנת ‎projected‎: אין מאחוריה עסקה במסד, אז אין מה לערוך או למחוק."""
+    import calendar
+    from datetime import date
+    today = today or clock.today()
+    if (year, month) <= (today.year, today.month):
+        return []
+    client = get_client()
+    if not client:
+        return []
+    try:
+        templates = client.table("transactions") \
+            .select("*, categories(name, icon), project_categories(name, icon), "
+                    "profiles(name, workplace), projects(owner_id, name, icon)") \
+            .eq("family_id", family_id) \
+            .eq("is_recurring", True) \
+            .execute().data or []
+    except Exception as e:
+        raise DataUnavailable("projected_month_rows") from e
+
+    first = date(year, month, 1)
+    last = date(year, month, calendar.monthrange(year, month)[1])
+    out = []
+    for t in templates:
+        for d in _recurring_occurrences(t, last):
+            if d < first or d <= today:
+                continue
+            out.append({**t, "id": f"projected-{t['id']}-{d.isoformat()}",
+                        "date": d.isoformat(), "is_recurring": False,
+                        "recurring_parent_id": t["id"], "receipt_path": None,
+                        "projected": True})
+    return out
+
+
 def update_transaction(transaction_id: str, family_id: str, data: dict):
     """Updates a transaction. Returns (updated_row, error)."""
     client = get_client()
@@ -3109,5 +3152,7 @@ def _format_transactions(rows: list, settings: dict = None) -> list:
             "project_name":         proj.get("name"),
             "project_icon":         proj.get("icon"),
             "has_receipt":          bool(row.get("receipt_path")),
+            # מופע צפוי בחודש עתידי (‎projected_month_rows‎) — אין עסקה במסד
+            "projected":            bool(row.get("projected")),
         })
     return out
