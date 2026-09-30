@@ -2134,6 +2134,16 @@ a.submit-btn {
 }
 
 /* רשימה עצמאית (לא drilldown מתקפל) — למשל בעמוד פרויקט בודד */
+/* עמוד פרויקט: 5 האחרונות, והשאר מאחורי "הצג את כל העסקאות" */
+#projectTxList:not(.show-all) .tx-extra { display: none; }
+
+.show-all-tx {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    min-height: 44px;
+}
+
 .cat-tx-list.cat-tx-list-standalone {
     display: block;
     background: none;

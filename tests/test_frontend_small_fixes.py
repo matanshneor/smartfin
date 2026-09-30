@@ -415,3 +415,23 @@ def test_choosing_a_project_takes_you_to_its_categories():
     handler = js[js.index("txProject.addEventListener('change'"):]
     handler = handler[:handler.index("});")]
     assert "scrollIntoView" in handler and "refreshCategoryGrid()" in handler
+
+
+def test_a_project_shows_its_latest_five_and_the_rest_behind_a_button():
+    """מתן (30.9): לא רשימה ענקית בעמוד הפרויקט. בדפדפן:
+    tests/browser/project_tx_collapsed.py."""
+    html = _read("frontend/templates/project_detail.html")
+    assert "{% set first_shown = 5 %}" in html
+    assert "loop.index > first_shown %} tx-extra" in html
+    assert 'id="showAllProjectTx"' in html and 'aria-controls="projectTxList"' in html
+    css = _read("frontend/static/css/style.css")
+    assert "#projectTxList:not(.show-all) .tx-extra { display: none; }" in css
+
+
+def test_the_show_all_button_works_without_the_chart_library():
+    """הבלוק של הגרפים יוצא מוקדם כשאין Chart.js — הכפתור לא יכול לשבת בתוכו."""
+    js = _strip_comments(_read("frontend/static/js/project-detail.js"))
+    charts_guard = js.index("if (!window.sfCharts.ready) return;")
+    handler = js.index("#showAllProjectTx")
+    charts_block_end = js.index("})();", charts_guard)
+    assert handler > charts_block_end

@@ -149,9 +149,12 @@
 <section class="chart-card">
     <h2 class="chart-title">כל העסקאות ({{ project.transactions | length }})</h2>
     {% if project.transactions %}
-    <ul class="cat-tx-list cat-tx-list-standalone">
+    {# 5 האחרונות, והשאר מאחורי כפתור (מתן, 30.9): רשימה ארוכה של כל העסקאות
+       דחקה את כל השאר. הרשימה ממוינת מהחדשה לישנה (‎get_project_detail‎). #}
+    {% set first_shown = 5 %}
+    <ul class="cat-tx-list cat-tx-list-standalone" id="projectTxList">
         {% for tx in project.transactions %}
-        <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+        <li class="cat-tx-row{% if loop.index > first_shown %} tx-extra{% endif %}" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
             data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
             data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
             data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
@@ -175,6 +178,11 @@
         </li>
         {% endfor %}
     </ul>
+    {% if project.transactions | length > first_shown %}
+    <button type="button" class="btn-sm btn-ghost show-all-tx" id="showAllProjectTx"
+            aria-expanded="false" aria-controls="projectTxList"
+            data-more="הצג את כל העסקאות ({{ project.transactions | length }})" data-less="הצג פחות">הצג את כל העסקאות ({{ project.transactions | length }})</button>
+    {% endif %}
     {% else %}
     <div class="empty-state">
         <p class="empty-icon">🎯</p>

@@ -64,3 +64,17 @@ const breakdown = SF_VIEW.breakdown;
     });
 });
 })();
+
+/* "הצג את כל העסקאות" — בבלוק משלו ולא בתוך הגרפים: הבלוק שלהם יוצא מוקדם
+ * כשאין Chart.js, והכפתור היה מת יחד איתו. בהאצלה, כי רענון רך מחליף אותו. */
+(function () {
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest('#showAllProjectTx');
+    if (!btn) return;
+    const list = document.getElementById('projectTxList');
+    if (!list) return;
+    const open = list.classList.toggle('show-all');
+    btn.setAttribute('aria-expanded', String(open));
+    btn.textContent = open ? btn.dataset.less : btn.dataset.more;
+});
+})();
