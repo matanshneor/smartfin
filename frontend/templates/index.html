@@ -172,6 +172,13 @@
     {% if transactions %}
     <ul class="transactions-list" aria-label="רשימת עסקאות אחרונות">
         {% for tx in transactions %}
+        {# כותרת יום מעל כל קבוצה (מתן, 30.9): "היום", "אתמול", "ראשון, 27.9" —
+           במקום תאריך בכל שורה. ‎li‎ ולא כותרת מחוץ לרשימה: הרשימה אחת, וכל
+           ה-JS (הוספה אופטימית, עריכה, החלקה) ממשיך לעבוד עליה כמו שהוא. #}
+        {% if loop.first or tx.date[:10] != loop.previtem.date[:10] %}
+        {% set day = tx.date | day_label %}
+        <li class="tx-day"{% if day == 'היום' %} data-today{% endif %}>{{ day }}</li>
+        {% endif %}
         {# role/tabindex יושבים על .tx-head ולא על ה-li: אחרי הפתיחה ה-li מכיל
            טופס, ו-role="button" שעוטף שדות קלט הוא שגוי לקוראי מסך #}
         <li class="transaction-item" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
@@ -188,10 +195,9 @@
                 </div>
                 <div class="tx-details">
                     <p class="tx-name">{{ tx.category_name }}</p>
-                    <p class="tx-meta">
-                        {%- if tx.workplace or tx.description %}{{ tx.workplace or tx.description }} · {% endif -%}
-                        {{ tx.date[8:10] }}.{{ tx.date[5:7] }}
-                    </p>
+                    {% if tx.workplace or tx.description %}
+                    <p class="tx-meta">{{ tx.workplace or tx.description }}</p>
+                    {% endif %}
                 </div>
                 <div class="tx-side">
                     {# הקבלה באותה שורה עם הסכום ולא בשורה משלה מתחתיו — בשורה

@@ -14,7 +14,7 @@ import re
 import time
 from . import supabase_config as db
 from .money import format_money
-from .wording import count_of, share_map
+from .wording import count_of, day_label, share_map
 from . import clock
 from . import logs
 
@@ -242,6 +242,8 @@ def _asset_version(filename: str) -> str:
 app.jinja_env.filters["money"] = format_money
 app.jinja_env.filters["count_of"] = count_of
 app.jinja_env.filters["share_map"] = share_map
+# "היום" / "אתמול" / "ראשון, 27.9" — מול היום של השעון המוזרק (בדיקות)
+app.jinja_env.filters["day_label"] = lambda d: day_label(d, clock.today())
 
 
 @app.context_processor
@@ -1104,6 +1106,10 @@ def dashboard():
 
     # "עסקאות אחרונות" תלויות בהעדפות — נשלפות אחרי שיש לנו אותן
     transactions = db.get_recent_transactions(family_id, settings=batch["settings"], viewer_user_id=user["id"])
+    # חמש האחרונות **שהוזנו**, מוצגות לפי התאריך שלהן — הרשימה מחולקת לפי
+    # יום (מתן, 30.9), ובסדר ההזנה אותו יום היה מופיע פעמיים. המיון יציב,
+    # אז בתוך יום נשמר סדר ההזנה (החדשה למעלה).
+    transactions = sorted(transactions, key=lambda t: str(t.get("date") or "")[:10], reverse=True)
     home_budgets = db.get_home_budgets(family_id, now.year, now.month,
                                        batch["settings"], batch["categories"])
 

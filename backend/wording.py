@@ -29,3 +29,23 @@ def share_map(items) -> dict:
     for name, p in sorted(raw, key=lambda x: x[1] - int(x[1]), reverse=True)[:short]:
         floors[name] += 1
     return floors
+
+
+# ‎date.weekday()‎: שני = 0 … ראשון = 6
+_WEEKDAYS = ("שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת", "ראשון")
+
+
+def day_label(date_str, today) -> str:
+    """כותרת יום ב"עסקאות אחרונות" (מתן, 30.9): "היום", "אתמול", ואחרת
+    "ראשון, 27.9" — עם השנה רק כשהיא לא השנה הנוכחית."""
+    import datetime
+    try:
+        d = datetime.date.fromisoformat(str(date_str)[:10])
+    except (TypeError, ValueError):
+        return ""
+    if d == today:
+        return "היום"
+    if d == today - datetime.timedelta(days=1):
+        return "אתמול"
+    label = f"{_WEEKDAYS[d.weekday()]}, {d.day}.{d.month}"
+    return label if d.year == today.year else f"{label}.{d.year}"
