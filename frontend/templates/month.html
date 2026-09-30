@@ -47,19 +47,25 @@
 </nav>
 {% endif %}
 
+{# לחיצה על הכנסות/הוצאות/חיסכון מובילה לפירוט שלהם למטה (בקשת מתן, 30.9).
+   בחודש ריק הפירוטים לא מוצגים, ואז אין לאן להוביל. "נשאר בעו״ש" לא לחיץ — בחירתו. #}
+{% set has_breakdown = month_transactions or project_month.transactions %}
 <div class="kpi-chips">
-    <div class="kpi-chip">
+    {% if has_breakdown %}<a class="kpi-chip kpi-link" href="#income-breakdown">{% else %}<div class="kpi-chip">{% endif %}
         <p class="kpi-label">הכנסות</p>
         <p class="kpi-value income" data-countup="{{ (summary.income) | round(2) }}">₪{{ summary.income | money }}</p>
-    </div>
-    <div class="kpi-chip">
+        {% if has_breakdown %}<span class="card-go" aria-hidden="true">‹</span>{% endif %}
+    {% if has_breakdown %}</a>{% else %}</div>{% endif %}
+    {% if has_breakdown %}<a class="kpi-chip kpi-link" href="#expense-breakdown">{% else %}<div class="kpi-chip">{% endif %}
         <p class="kpi-label">הוצאות</p>
         <p class="kpi-value expense" data-countup="{{ (summary.expense) | round(2) }}">₪{{ summary.expense | money }}</p>
-    </div>
-    <div class="kpi-chip">
+        {% if has_breakdown %}<span class="card-go" aria-hidden="true">‹</span>{% endif %}
+    {% if has_breakdown %}</a>{% else %}</div>{% endif %}
+    {% if has_breakdown %}<a class="kpi-chip kpi-link" href="#savings-breakdown">{% else %}<div class="kpi-chip">{% endif %}
         <p class="kpi-label">חיסכון</p>
         <p class="kpi-value savings" data-countup="{{ (summary.savings) | round(2) }}">₪{{ summary.savings | money }}</p>
-    </div>
+        {% if has_breakdown %}<span class="card-go" aria-hidden="true">‹</span>{% endif %}
+    {% if has_breakdown %}</a>{% else %}</div>{% endif %}
     <div class="kpi-chip">
         <p class="kpi-label">נשאר בעו״ש</p>
         {# כמו דף הבית: חודש בלי הכנסה אינו גירעון — עוד אין ממה להחסיר, אז
@@ -207,7 +213,7 @@
 <!-- Chart 2: הוצאות לפי קטגוריה -->
 {% set expense_active = expense_breakdown | selectattr('total', 'gt', 0) | list %}
 {% set expense_zero   = expense_breakdown | rejectattr('total', 'gt', 0) | list %}
-<section class="chart-card">
+<section class="chart-card" id="expense-breakdown">
     <h2 class="chart-title">הוצאות לפי קטגוריה</h2>
     {% if expense_active %}
     <div class="doughnut-wrap">
@@ -402,7 +408,7 @@
 {% endif %}
 
 <!-- Chart 3: חיסכון לפי יעד -->
-<section class="chart-card">
+<section class="chart-card" id="savings-breakdown">
     <h2 class="chart-title">חיסכון — לאן הופרש</h2>
     {% set savings_active = savings_breakdown | selectattr('total', 'gt', 0) | list %}
     {% set savings_zero   = savings_breakdown | rejectattr('total', 'gt', 0) | list %}
@@ -505,7 +511,7 @@
 </section>
 
 <!-- Chart 4: הכנסות לפי מקור -->
-<section class="chart-card">
+<section class="chart-card" id="income-breakdown">
     <h2 class="chart-title">הכנסות — מאיפה הגיעו</h2>
     {% set income_active = income_breakdown | selectattr('total', 'gt', 0) | list %}
     {% set income_zero   = income_breakdown | rejectattr('total', 'gt', 0) | list %}

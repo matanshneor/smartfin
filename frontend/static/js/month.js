@@ -103,6 +103,39 @@ function buildOverviewLegend() {
 buildOverviewLegend();
 window.addEventListener('sf:refreshed', buildOverviewLegend);
 
+// ── מהריבועים (וכרטיסי הבית) אל הפירוט: גלילה והבהוב ──
+// ‎:target‎ לא מתעדכן ב-‎replaceState‎, אז ההבהוב במחלקה. הגעה מהבית היא
+// ניווט רגיל עם ‎#‎ — הדפדפן גולל בעצמו, ורק ההבהוב נוסף כאן.
+const BREAKDOWNS = ['income-breakdown', 'expense-breakdown', 'savings-breakdown'];
+
+function flashBreakdown(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    el.classList.remove('flash');
+    void el.offsetWidth;                  // מאתחל את האנימציה גם בלחיצה חוזרת
+    el.classList.add('flash');
+    return el;
+}
+
+document.addEventListener('click', function (e) {
+    const link = e.target.closest('a.kpi-link');
+    if (!link) return;
+    const id = (link.getAttribute('href') || '').slice(1);
+    const el = flashBreakdown(id);
+    if (!el) return;                      // אין פירוט — הקישור מתנהג כרגיל
+    e.preventDefault();
+    const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' });
+    try { history.replaceState(null, '', '#' + id); } catch (err) { /* לא קריטי */ }
+});
+
+// הגנה על ‎location‎: שורה ברמת הקובץ שזורקת מפילה את כל month.js — גרפים,
+// מקרא, פתיחת קטגוריות (כך בדיוק נפל core.js פעם על sessionStorage)
+try {
+    const arrived = window.location.hash.slice(1);
+    if (BREAKDOWNS.includes(arrived)) flashBreakdown(arrived);
+} catch (err) { /* בלי הבהוב — לא בלי העמוד */ }
+
 // ── חיפוש/סינון ברשימת "כל העסקאות" (client-side) ──
 //
 // בהאצלה מ-document ולא בהאזנה ישירה, ובלי לשמור את השורות מראש:

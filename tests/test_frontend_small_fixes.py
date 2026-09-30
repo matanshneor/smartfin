@@ -361,3 +361,23 @@ def test_a_successful_save_releases_the_save_button():
     for opener in ("function openAddModal()", "function openEditModal("):
         body = js[js.index(opener):]
         assert "setSubmitBusy(false)" in body[:body.index("formSeq++") + 60], opener
+
+
+@pytest.mark.parametrize("kind", ["income", "expense", "savings"])
+def test_each_summary_leads_to_its_breakdown(kind):
+    """מתן (30.9): לחיצה על "הכנסות" בבית או בעמוד החודש → הפירוט שלהן.
+    בדפדפן: tests/browser/cards_to_breakdown.py."""
+    month = _read("frontend/templates/month.html")
+    home = _read("frontend/templates/index.html")
+
+    assert f'id="{kind}-breakdown"' in month
+    assert f'href="#{kind}-breakdown"' in month
+    assert f"url_for('month_view') }}}}#{kind}-breakdown" in home
+
+
+def test_what_is_left_is_not_a_link():
+    """"נשאר בעו״ש" לא שייך לקטגוריה אחת — מתן בחר להשאיר אותו לא לחיץ."""
+    month = _read("frontend/templates/month.html")
+    label = month.index("נשאר בעו״ש</p>")
+    opening = month[month.rindex("kpi-chip", 0, label) - 20:label]   # התגית הפותחת של הריבוע
+    assert "<a " not in opening and "kpi-link" not in opening

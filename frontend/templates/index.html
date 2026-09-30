@@ -94,35 +94,38 @@
 
 <!-- Summary Cards -->
 <section class="summary-cards" aria-label="סיכום חודשי">
-    <article class="summary-card income">
+    <a class="summary-card income" href="{{ url_for('month_view') }}#income-breakdown">
         <div class="card-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
             </svg>
         </div>
         <p class="card-label">הכנסות</p>
+        <span class="card-go" aria-hidden="true">‹</span>
         <p class="card-amount">₪{{ summary.income | money }}</p>
-    </article>
+    </a>
 
-    <article class="summary-card expense">
+    <a class="summary-card expense" href="{{ url_for('month_view') }}#expense-breakdown">
         <div class="card-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>
             </svg>
         </div>
         <p class="card-label">הוצאות</p>
+        <span class="card-go" aria-hidden="true">‹</span>
         <p class="card-amount">₪{{ summary.expense | money }}</p>
-    </article>
+    </a>
 
-    <article class="summary-card savings">
+    <a class="summary-card savings" href="{{ url_for('month_view') }}#savings-breakdown">
         <div class="card-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
             </svg>
         </div>
         <p class="card-label">חיסכון</p>
+        <span class="card-go" aria-hidden="true">‹</span>
         <p class="card-amount">₪{{ summary.savings | money }}</p>
-    </article>
+    </a>
 </section>
 
 <!-- Recent Transactions -->
