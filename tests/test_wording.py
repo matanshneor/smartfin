@@ -134,3 +134,14 @@ def test_shares_always_add_up_to_a_hundred(totals, expected):
     got = share_map([{"name": n, "total": t} for n, t in totals.items()])
     assert got == expected
     assert not got or sum(got.values()) == 100
+
+
+def test_the_app_says_monthly_balance_and_never_checking_account():
+    """מתן (30.9): "מאזן חודשי" במקום "נשאר בעו״ש" — "שבכלל לא יהיה נשאר בעוש
+    באפליקציה". בכל צורת כתיבה, בכל טקסט שמשתמש רואה."""
+    forms = re.compile(r'עו״ש|עו\\?"ש|עו&quot;ש|(?<![א-ת])עוש(?![א-ת])')
+    hits = [name for name, line in _visible_strings() if forms.search(line)]
+    assert not hits, hits
+    for page in ("index.html", "month.html", "landing.html"):
+        html = re.sub(r"\{#.*?#\}", "", (_ROOT / "frontend/templates" / page).read_text(encoding="utf-8"), flags=re.S)
+        assert "מאזן חודשי" in html, page

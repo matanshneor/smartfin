@@ -56,8 +56,8 @@
                 </thead>
                 <tbody>
                 {% for entry in year_group.list %}
-                    {# המאזן = "נשאר בעו״ש": הכנסות פחות הוצאות פחות חיסכון (חיסכון
-                       גם יוצא מהעו״ש), עקבי עם הדשבורד. הסימן לפי המספר המעוגל. #}
+                    {# המאזן החודשי: הכנסות פחות הוצאות פחות חיסכון (חיסכון גם
+                       יוצא מהחשבון), עקבי עם הדשבורד. הסימן לפי המספר המעוגל. #}
                     {% set balance = ((entry.income | float) - (entry.expense | float) - (entry.savings | float)) | round | int %}
                     {% set is_current = entry.year == today_year and entry.month == today_month %}
                     <tr class="month-row{% if is_current %} is-current{% endif %}"

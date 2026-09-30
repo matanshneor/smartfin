@@ -2797,7 +2797,7 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
     elif summary.get("remaining", 0) < 0:
         alerts.append({
             "severity": "danger",
-            "text": "יתרת העו\"ש החודש שלילית — ההוצאות והחיסכון עברו את ההכנסות",
+            "text": "המאזן החודשי שלילי — ההוצאות והחיסכון עברו את ההכנסות",
         })
 
     try:
