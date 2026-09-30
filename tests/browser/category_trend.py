@@ -64,7 +64,7 @@ try:
         card.locator(".tx-cat-chip", has_text="CT-סופר").click(); page.wait_for_timeout(400)
         print("סופר:", state())
         card.evaluate("el => window.scrollTo(0, el.getBoundingClientRect().top + scrollY - 70)"); page.wait_for_timeout(500)
-        page.screenshot(path="/tmp/cat_trend.png")
+        page.screenshot(path="/tmp/cat_trend.png"); page.set_viewport_size({"width": 320, "height": 700}); page.wait_for_timeout(300); card.locator("#catTrendStats").screenshot(path="/tmp/cat_stats_320.png"); page.set_viewport_size({"width": 390, "height": 844}); page.wait_for_timeout(300); card.locator("#catTrendStats").screenshot(path="/tmp/cat_stats_390.png"); page.set_viewport_size({"width": 390, "height": 844})
         # נגיעה בעמודה של חודש — חלון עם ההוצאות של הקטגוריה באותו חודש
         def tap_month(i):
             pt = page.evaluate("""(i) => { const ch = Chart.getChart('categoryChart'); const r = ch.canvas.getBoundingClientRect();

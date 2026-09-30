@@ -246,10 +246,11 @@ if (catTrend && catTrend.categories.length && catCanvas) {
         chart.data.datasets[1].data = c.avg == null ? [] : c.values.map(() => c.avg);
         chart.options.scales.y.suggestedMax = Math.max.apply(null, c.values) * 1.12;
         chart.update();
-        const cell = (label, value) => '<div>' + label + '<b>' + value + '</b></div>';
+        const cell = (label, value) => '<div><span>' + label + '</span><b>' + value + '</b></div>';
         stats.innerHTML =
             cell('ממוצע לחודש', c.avg == null ? '—' : '<span class="num">' + money(c.avg) + '</span>') +
-            cell('הכי יקר' + (c.max_label ? ' · ' + c.max_label : ''),
+            // "החודש הכי יקר - יולי" (מתן, 1.10)
+            cell('החודש הכי יקר' + (c.max_label ? ' <span class="nowrap">- ' + c.max_label + '</span>' : ''),
                  c.max_label ? '<span class="num">' + money(c.max) + '</span>' : '—') +
             (c.current == null ? '' : cell('החודש', '<span class="num">' + money(c.current) + '</span>'));
     }

@@ -4687,15 +4687,20 @@ body.no-fab .fab { display: none; }
 @media (prefers-reduced-motion: reduce) { .ptr.spinning svg { animation-duration: 2.4s; } }
 
 /* לפי קטגוריה בעמוד ההשוואה (מתן, 30.9) */
+/* עמודות לפי התוכן: "החודש הכי יקר - ספטמבר" ארוך מהשכנים (מתן, 1.10).
+   הכיתוב בשורה אחת והסכום מתחתיו, ממורכז לאמצע הכיתוב. במסך צר שבו
+   הכיתוב בכל זאת נשבר — הסכומים נשארים בשורה אחת למטה. */
 .cat-trend-stats {
-    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
+    display: grid; grid-template-columns: auto auto auto; justify-content: space-between; gap: 8px;
     margin: 4px 0 10px; font-size: 0.78rem; color: var(--color-text-muted);
 }
+.cat-trend-stats > div { display: flex; flex-direction: column; align-items: center; text-align: center; }
 .cat-trend-stats b {
-    display: block; margin-top: 2px; font-size: 1rem; color: var(--color-text);
+    display: block; margin-top: auto; padding-top: 2px; font-size: 1rem; color: var(--color-text);
     font-variant-numeric: tabular-nums;
 }
 .cat-trend-stats .num { direction: ltr; unicode-bidi: isolate; }
+.cat-trend-stats .nowrap { white-space: nowrap; }   /* "- ספטמבר" לא נשבר אחרי המקף */
 .line-chart-wrap.cat-trend-wrap { height: 200px; margin-inline: -10px; }
 
 /* מסך החיפוש בכל החודשים (מתן, 30.9 — סבב 6, פריט 2). מעל העמוד ומתחת

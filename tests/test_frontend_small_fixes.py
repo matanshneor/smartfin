@@ -766,6 +766,10 @@ def test_the_category_chart_title_label_and_month_link():
     assert "tooltip: { enabled: false }" in cat
     assert "link.href = '/month?year=' + m.year + '&month=' + m.month;" in js
     assert "#expense-breakdown';" not in js[js.index("function openMonth"):]
+    css = _read("frontend/static/css/style.css")
+    assert ".cat-trend-stats > div { display: flex; flex-direction: column; align-items: center; text-align: center; }" in css
+    assert "const cell = (label, value) => '<div><span>' + label + '</span><b>' + value + '</b></div>';" in js
+    assert "cell('החודש הכי יקר' + (c.max_label ? ' <span class=\"nowrap\">- ' + c.max_label + '</span>' : '')," in js
 
 
 # ─── סקירה של 1.10 ───────────────────────────────────────────────────────────
