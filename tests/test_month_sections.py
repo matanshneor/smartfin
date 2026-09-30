@@ -229,5 +229,7 @@ def test_the_sections_come_in_matans_order():
     assert where == sorted(where), [m for _, m in sorted(zip(where, order))]
     top = _HTML[:_HTML.index("{% endblock %}", _HTML.index("{% block hero %}"))]
     assert top.index('class="month-net') < top.index('kpi-chips kpi-chips-three')
+    assert "הכנסות פחות הוצאות וחיסכון" not in re.sub(r"\{#.*?#\}", "", top, flags=re.S), \
+        "מתן: בלי שורת ההסבר מתחת למאזן"
     import re as _re
     assert len(_re.findall(r'class="kpi-chip[ "]', top)) == 6   # שלושה, בכל אחד מענפי a/div

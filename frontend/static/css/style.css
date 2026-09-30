@@ -437,12 +437,6 @@ ul { list-style: none; }
 .month-net.surplus .month-net-value { color: var(--color-income-light); }
 .month-net.deficit .month-net-value { color: var(--color-expense-light); }
 
-.month-net-hint {
-    font-size: 0.68rem;
-    color: var(--hero-text-muted);
-    margin-top: 2px;
-}
-
 .kpi-chips.kpi-chips-three { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 8px; }
 
 /* מאזן הפרויקט — שורה רחבה מתחת לריבועים */
