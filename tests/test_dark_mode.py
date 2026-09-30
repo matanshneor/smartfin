@@ -77,3 +77,12 @@ def test_the_text_size_switch():
         assert f'data-size="{size}"' in tpl
     js = (_ROOT / "frontend/static/js/settings.js").read_text(encoding="utf-8")
     assert "localStorage.setItem('sf_text_size', size)" in js
+
+
+def test_the_settings_titles_say_what_is_inside():
+    """מתן (30.9): "תצוגה" — מה יש בה, ולא "בטלפון הזה בלבד"; ו"העדפות משפחה"
+    כבר לא כוללות תצוגה."""
+    tpl = (_ROOT / "frontend/templates/settings.html").read_text(encoding="utf-8")
+    assert '<span class="group-sub">מצב כהה וגודל טקסט</span>' in tpl
+    assert "בטלפון הזה בלבד" not in tpl
+    assert '<span class="group-sub">שיוך עסקאות והתראות</span>' in tpl
