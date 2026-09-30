@@ -3,11 +3,10 @@
 {% block title %}SmartFin – הגדרות{% endblock %}
 
 {% block hero %}
-<div class="hero-top">
-    <div>
-        <h1 class="hero-title">הגדרות</h1>
-        <p class="hero-subtitle">{{ family.get('name', 'המשפחה שלי') }}</p>
-    </div>
+{# שם המשפחה בצד שמאל, באותה שורה עם "הגדרות" (מתן, 1.10 — אפשרות ה) #}
+<div class="hero-top settings-hero-top">
+    <h1 class="hero-title">הגדרות</h1>
+    <p class="settings-family-name">{{ family.get('name', 'המשפחה שלי') }}</p>
 </div>
 
 <div class="hero-profile">

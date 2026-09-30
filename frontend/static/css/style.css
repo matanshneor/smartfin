@@ -267,6 +267,19 @@ ul { list-style: none; }
     margin-top: 2px;
 }
 
+/* הגדרות: שם המשפחה בצד שמאל, באותה שורה עם הכותרת (מתן, 1.10).
+   שם ארוך נשבר לשתי שורות בצד שלו ולא דוחף את "הגדרות". */
+.settings-hero-top { align-items: center; gap: 16px; }
+.settings-family-name {
+    min-width: 0;
+    text-align: left;
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--hero-text);
+    overflow-wrap: anywhere;
+}
+
 .back-to-current {
     color: var(--color-gold-bright);
     font-weight: 600;

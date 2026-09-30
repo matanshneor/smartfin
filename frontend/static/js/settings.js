@@ -89,6 +89,8 @@ if (saveBtn) {
             saveBtn.disabled = false;
             if (d.status === 'ok') {
                 nameDisplay.textContent = newName;
+                // גם השם בראש העמוד — בלי זה הוא נשאר הישן עד רענון
+                document.querySelectorAll('.settings-family-name').forEach(el => { el.textContent = newName; });
                 nameEdit.classList.remove('visible');
             } else {
                 window.showToast('השמירה נכשלה', 'error');
