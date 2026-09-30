@@ -145,13 +145,9 @@ if (catTrend && catTrend.categories.length && catCanvas) {
             layout: { padding: { top: 20 } },
             plugins: {
                 legend: { display: false },
-                tooltip: {
-                    filter: item => item.datasetIndex === 0,
-                    callbacks: {
-                        title: items => months[items[0].dataIndex].name,
-                        label: c => ' ' + money(c.parsed.y),
-                    },
-                },
+                // בלי תווית צפה (מתן, 1.10): הסכום כבר כתוב מעל העמודה,
+                // ונגיעה בעמודה פותחת את החלון.
+                tooltip: { enabled: false },
             },
             scales: {
                 x: { reverse: true, grid: { display: false },
@@ -213,7 +209,8 @@ if (catTrend && catTrend.categories.length && catCanvas) {
         actions.className = 'edit-actions';
         const link = document.createElement('a');
         link.className = 'btn-sm btn-ghost';
-        link.href = '/month?year=' + m.year + '&month=' + m.month + '#expense-breakdown';
+        // לראש העמוד, לא לפירוט (מתן, 1.10): שם הוא נפתח חתוך מלמעלה
+        link.href = '/month?year=' + m.year + '&month=' + m.month;
         link.textContent = 'לעמוד החודש';
         const close = document.createElement('button');
         close.type = 'button';

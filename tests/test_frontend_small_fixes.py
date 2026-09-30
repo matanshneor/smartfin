@@ -756,6 +756,18 @@ def test_tapping_a_month_in_the_category_chart_opens_its_expenses():
     assert "link.textContent = 'לעמוד החודש';" in js
 
 
+def test_the_category_chart_title_label_and_month_link():
+    """מתן (1.10): כותרת "הוצאות לפי קטגוריה", בלי תווית שחורה צפה על הגרף,
+    ו"לעמוד החודש" פותח את העמוד מלמעלה ולא חתוך בפירוט."""
+    tpl = _read("frontend/templates/months.html")
+    assert '<h2 class="chart-title">הוצאות לפי קטגוריה</h2>' in tpl
+    js = _strip_comments(_read("frontend/static/js/months.js"))
+    cat = js[js.index("const chart = new Chart(catCanvas"):js.index("plugins: [valuesOnTop]")]
+    assert "tooltip: { enabled: false }" in cat
+    assert "link.href = '/month?year=' + m.year + '&month=' + m.month;" in js
+    assert "#expense-breakdown';" not in js[js.index("function openMonth"):]
+
+
 # ─── סקירה של 1.10 ───────────────────────────────────────────────────────────
 
 def test_closing_the_form_during_the_check_cancels_the_save():
