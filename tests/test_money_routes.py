@@ -84,6 +84,13 @@ class _Money:
 @pytest.fixture
 def money(monkeypatch):
     """מסלול אמיתי → פונקציית נתונים אמיתית → טבלה בזיכרון."""
+    # השעון קבוע: התאריכים כאן כתובים ביד (ספטמבר 2026), ובשעון האמיתי סדרה
+    # קבועה מ-15.9 "מתמלאת אחורה" יותר ויותר עם הזמן — והבדיקות נשברו לבד
+    # (נמצא בסקירה של 1.10: בנובמבר אחת, בינואר שבע).
+    import datetime as _dt
+    from backend import clock as _clock
+    monkeypatch.setattr(_clock, "today", lambda: _dt.date(2026, 9, 30))
+    monkeypatch.setattr(_clock, "now", lambda: _dt.datetime(2026, 9, 30, 12, 0))
     limiter.reset()
     app.config["TESTING"] = True
 

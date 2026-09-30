@@ -32,6 +32,13 @@ _CAT = "55555555-5555-5555-5555-555555555555"
 
 @pytest.fixture
 def client(monkeypatch):
+    # השעון קבוע: התאריכים כאן כתובים ביד (ספטמבר 2026), ובשעון האמיתי סדרה
+    # קבועה מ-15.9 "מתמלאת אחורה" יותר ויותר עם הזמן — והבדיקות נשברו לבד
+    # (נמצא בסקירה של 1.10: בנובמבר אחת, בינואר שבע).
+    import datetime as _dt
+    from backend import clock as _clock
+    monkeypatch.setattr(_clock, "today", lambda: _dt.date(2026, 9, 30))
+    monkeypatch.setattr(_clock, "now", lambda: _dt.datetime(2026, 9, 30, 12, 0))
     # העסקה אינה בפרויקט אישי של מישהו אחר (ראו tx_visible_required)
     monkeypatch.setattr(app_module.db, "personal_project_owner", lambda *a: None)
     # עריכה בודקת את השיוכים הנוכחיים — כאן עסקה משפחתית רגילה
