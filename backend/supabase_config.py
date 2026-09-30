@@ -933,7 +933,9 @@ def transaction_links(tx_id: str, family_id: str):
     if not client:
         raise DataUnavailable("transaction_links: no client")
     try:
-        rows = client.table("transactions").select("user_id, project_id") \
+        # גם הערכים עצמם — ל"בטל" אחרי עריכה (‎if_match‎ ב-app.py)
+        rows = client.table("transactions").select(
+            "user_id, project_id, amount, type, date, description, category_id, project_category_id") \
             .eq("id", tx_id).eq("family_id", family_id).limit(1).execute().data or []
     except Exception as e:
         raise DataUnavailable("transaction_links") from e

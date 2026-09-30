@@ -58,7 +58,8 @@ def test_the_deferred_refresh_actually_happens_when_editing_ends():
 
 def test_undoing_the_delete_cancels_the_pending_refresh():
     """שוחזרה העסקה — אין מה לרענן, ורענון היה סוגר מודאל פתוח לחינם."""
-    block = _JS[_JS.index("label: 'בטל'"):][:400]
+    # של המחיקה — לא ה"בטל" של העריכה (סבב 6, פריט 10), שמופיע קודם בקובץ
+    block = _JS[_JS.index("label: 'בטל'", _JS.index("function deleteWithUndo")):][:400]
 
     assert "refreshWhenEditingEnds = false" in block
     assert "clearTimeout(pendingDeleteReload)" in block

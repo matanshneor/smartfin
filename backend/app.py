@@ -2392,6 +2392,20 @@ def add_transaction():
     return jsonify({"status": "ok", "transaction": result}), 201
 
 
+def _still_matches(current: dict, expected: dict) -> bool:
+    """השדות שעריכה יכולה לשנות — זהים למה שהלקוח ראה אחרי השמירה שלו?"""
+    for key in ("type", "date", "description", "category_id", "project_category_id", "user_id"):
+        if key in expected and str(current.get(key) or "") != str(expected.get(key) or ""):
+            return False
+    if "amount" in expected:
+        try:
+            if abs(float(current.get("amount")) - float(expected["amount"])) > 0.005:
+                return False
+        except (TypeError, ValueError):
+            return False
+    return True
+
+
 @app.route("/api/transactions/<tx_id>", methods=["PUT"])
 @limiter.limit("60 per minute")
 @login_required
@@ -2430,6 +2444,11 @@ def update_transaction(tx_id):
     current = db.transaction_links(tx_id, user["family_id"])
     if current is None:
         return jsonify({"error": "העסקה לא נמצאה — ייתכן שנמחקה בינתיים"}), 404
+    # "בטל" אחרי עריכה (מתן, 30.9 — סבב 6, פריט 10): רק אם העסקה עדיין כמו
+    # שהעריכה שלנו השאירה אותה. אחרת מישהו שינה אותה מאז — לא דורסים אותו.
+    if isinstance(body.get("if_match"), dict) and not _still_matches(current, body["if_match"]):
+        return jsonify({"error": "העסקה השתנתה בינתיים, אז לא ביטלנו — כדי לא לדרוס את השינוי",
+                        "conflict": True}), 409
     project_id, project_category_id, category_id, owner_user_id, proj_err = \
         _apply_project_assignment(body, user, tx_type, current=current)
     if proj_err:

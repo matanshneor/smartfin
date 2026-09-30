@@ -50,6 +50,7 @@
     let currentType   = 'expense';
     let editId        = null;   // null = adding a new transaction, otherwise editing this id
     let editingRecurringParentId = null; // אם עורכים מופע שנוצר מתבנית קבועה — מזהה התבנית
+    let editingOriginal = null;          // העסקה כמו שהייתה לפני העריכה — ל"בטל" (סבב 6, פריט 10)
     let originalAmount = null;  // הסכום שנטען לעריכה, להשוואה לזיהוי "שינית את הסכום"
     let categoriesCache = null;
 
@@ -457,6 +458,7 @@
         txReceiptPath.value = '';               // לא יורשים קבלה מטופס קודם
         editId = tx.id;
         editingRecurringParentId = tx.recurringParentId || null;
+        editingOriginal = tx;
         originalAmount = parseFloat(tx.amount);
         modalTitle.textContent = 'עריכת עסקה';
         editModeActions.style.display = 'flex';
@@ -742,6 +744,68 @@
         submitBtn.setAttribute('aria-disabled', busy ? 'true' : 'false');
     }
 
+    // ── "בטל" אחרי עריכה (מתן, 30.9 — סבב 6, פריט 10) ──
+    // הביטול הוא עריכה נוספת עם הערכים הקודמים, ועם ‎if_match‎ — מה שהעריכה
+    // שלנו השאירה. אם מישהו שינה את העסקה מאז, השרת מחזיר 409 ולא דורס.
+    // נשמר ב-sessionStorage כי רוב העמודים מתרעננים ברענון מלא אחרי עריכה.
+    const UNDO_KEY = 'sf_undo_edit';
+    function undoSpec(before, after, message) {
+        return {
+            id: before.id,
+            message: message,
+            body: {
+                amount: parseFloat(before.amount), type: before.type,
+                category_id: before.projectId ? null : (before.categoryId || null),
+                project_category_id: before.projectId ? (before.projectCategoryId || null) : null,
+                description: before.description || '', date: before.date,
+                owner: before.userId || 'shared',
+                is_recurring: !!before.isRecurring,
+                recurring_frequency: before.isRecurring ? (before.recurringFrequency || null) : null,
+                recurring_end_date: before.isRecurring ? (before.recurringEndDate || null) : null,
+                project_id: before.projectId || null,
+            },
+            if_match: {
+                amount: after.amount, type: after.type, date: after.date,
+                description: after.description || '', category_id: after.category_id || null,
+                project_category_id: after.project_category_id || null, user_id: after.user_id || null,
+            },
+        };
+    }
+    function rememberUndo(spec) {
+        try { sessionStorage.setItem(UNDO_KEY, JSON.stringify(spec)); }
+        catch (e) { window.sfToastAfterReload(spec.message); }
+    }
+    function runUndo(spec) {
+        fetch('/api/transactions/' + spec.id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Object.assign({}, spec.body, { if_match: spec.if_match })),
+        })
+            .then(function (r) { return r.json().catch(function () { return {}; }); })
+            .then(function (d) {
+                if (d.error) { window.showToast(d.error, 'error'); return; }
+                if (document.querySelector('main[data-soft-reload]')) {
+                    window.softReload(null, 'השינוי בוטל').then(function (how) {
+                        if (how !== 'reloaded') window.showToast('השינוי בוטל');
+                    });
+                } else {
+                    window.sfToastAfterReload('השינוי בוטל');
+                    window.location.reload();
+                }
+            })
+            .catch(function () { window.showToast(window.sfNetError(), 'error'); });
+    }
+    function showPendingUndo() {
+        let spec = null;
+        try {
+            spec = JSON.parse(sessionStorage.getItem(UNDO_KEY) || 'null');
+            sessionStorage.removeItem(UNDO_KEY);
+        } catch (e) { return; }
+        if (!spec || !spec.id) return;
+        window.showToast(spec.message, undefined, { label: 'בטל', onClick: function () { runUndo(spec); } });
+    }
+    showPendingUndo();          // אחרי רענון מלא — ההודעה עם "בטל" מחכה כאן
+
     function requestSubmit() {
         if (typeof txForm.requestSubmit === 'function') txForm.requestSubmit();
         else txForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
@@ -888,6 +952,7 @@
         // מה ששייך לשמירה **הזאת**, ולא למה שפתוח כשהתשובה חוזרת
         const myForm   = formSeq;
         const myEditId = editId;
+        const myOriginal = editId ? editingOriginal : null;
         const myLabel  = '₪' + amount + (payload.description ? ' (' + payload.description + ')' : '');
         // האם הטופס של השמירה הזאת כבר לא על המסך — כי נפתח טופס אחר מאז
         function formWasReplaced() { return formSeq !== myForm; }
@@ -1043,14 +1108,20 @@
                 // 380ms הייתה שם רק כדי שהצליל יסתיים לפני שהדף נעלם —
                 // עכשיו הוא לא נעלם, אז היא מיותרת.
                 const message = followUp ? followUp.text : (myEditId ? 'העסקה עודכנה' : 'העסקה נוספה');
+                // "בטל" אחרי עריכה — לא כשהסדרה שונתה להבא, ולא אחרי כשל
+                const undo = (myOriginal && data.transaction && !(followUp && (followUp.series || followUp.error)))
+                    ? undoSpec(myOriginal, data.transaction, message) : null;
                 if (document.querySelector('main[data-soft-reload]')) {
-                    window.softReload(null, message).then(function (how) {
+                    if (undo) rememberUndo(undo);
+                    window.softReload(null, undo ? null : message).then(function (how) {
                         if (how === 'reloaded') return;   // תוצג אחרי הטעינה המלאה
+                        if (undo) { showPendingUndo(); return; }
                         window.showToast(message, followUp && followUp.error ? 'error' : undefined);
                     });
                 } else {
                     // עמוד עם גרפים או האזנות ישירות — רענון מלא, כמו קודם
-                    window.sfToastAfterReload(message);
+                    if (undo) rememberUndo(undo);
+                    else window.sfToastAfterReload(message);
                     setTimeout(function () { window.location.reload(); }, isNew ? 380 : 0);
                 }
             }
@@ -1084,7 +1155,7 @@
                             body:    JSON.stringify({ instance_id: instanceId }),
                         }).then(function (r) {
                             if (r.ok) {
-                                followUp = { text: 'העסקה עודכנה, והסכום החדש ימשיך מהחודש הזה' };
+                                followUp = { text: 'העסקה עודכנה, והסכום החדש ימשיך מהחודש הזה', series: true };
                                 return;
                             }
                             return r.json().then(function (d) { failed((d && d.error) || 'נסו שוב'); },
@@ -1613,7 +1684,8 @@
                     saveBtn.textContent = 'שמור';
                     return;
                 }
-                window.sfToastAfterReload('העסקה עודכנה');
+                if (data.transaction) rememberUndo(undoSpec(tx, data.transaction, 'העסקה עודכנה'));
+                else window.sfToastAfterReload('העסקה עודכנה');
                 window.location.reload();
             })
             .catch(function () {
