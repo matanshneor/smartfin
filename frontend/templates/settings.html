@@ -354,55 +354,12 @@
         </button>
 
         <div class="settings-group-body">
+            {# טופס יצירה אחד, בעמוד הפרויקטים (מתן, 30.9 — רעיון 13): כאן היה
+               עותק מקוצר בלי אייקון ובלי תיאור. ‎#new‎ פותח שם את הטופס. #}
             <div class="cat-manage-bar">
                 <span></span>
-                <button type="button" class="btn-sm btn-ghost" id="newProjectSettingsBtn">יצירת פרויקט חדש</button>
+                <a class="btn-sm btn-ghost" href="{{ url_for('projects') }}#new">יצירת פרויקט חדש</a>
             </div>
-
-            <form class="add-cat-form" id="newProjectSettingsForm" novalidate style="display:none; margin-top:14px;">
-                <div class="form-group">
-                    <label class="form-label" for="newProjSettingsName">שם הפרויקט</label>
-                    <input class="form-input" type="text" id="newProjSettingsName" placeholder="לדוגמה: טיול ליפן" maxlength="50" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="newProjSettingsBudget">תקציב יעד (אופציונלי)</label>
-                    <div class="amount-input-wrap">
-                        <span class="amount-currency">₪</span>
-                        <input class="form-input amount-input" type="number" inputmode="numeric" id="newProjSettingsBudget" placeholder="0" min="0" step="1">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">בעלות</label>
-                    <div class="type-toggle" style="grid-template-columns: 1fr 1fr;">
-                        <button type="button" class="toggle-btn active" id="newProjSettingsOwnerShared" data-personal="false">משותף — כל המשפחה</button>
-                        <button type="button" class="toggle-btn" id="newProjSettingsOwnerPersonal" data-personal="true">אישי — רק אני</button>
-                    </div>
-                    <p class="field-hint">תמיד אפשר להפוך פרויקט אישי למשותף מאוחר יותר (מעמוד הפרויקט)</p>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">אילו סוגי עסקאות לעקוב?</label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="newProjSettingsTrackExpense" class="checkbox-input" checked>
-                        <span class="checkbox-custom"></span>
-                        <span class="checkbox-text">הוצאות</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="newProjSettingsTrackIncome" class="checkbox-input">
-                        <span class="checkbox-custom"></span>
-                        <span class="checkbox-text">הכנסות</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="newProjSettingsTrackSavings" class="checkbox-input">
-                        <span class="checkbox-custom"></span>
-                        <span class="checkbox-text">חיסכון</span>
-                    </label>
-                </div>
-                <p class="form-error" id="newProjSettingsError" role="alert"></p>
-                <div class="edit-actions">
-                    <button type="submit" class="btn-sm btn-primary">צור פרויקט</button>
-                    <button type="button" class="btn-sm btn-ghost" id="cancelNewProjSettingsBtn">ביטול</button>
-                </div>
-            </form>
 
             {% if projects %}
             <ul class="categories-list" id="projectsSettingsList" style="margin-top:14px;">

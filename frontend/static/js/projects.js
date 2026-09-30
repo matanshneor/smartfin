@@ -18,6 +18,13 @@ let isPersonal = false;
 newBtn.addEventListener('click', function () {
     form.style.display = form.style.display === 'none' ? '' : 'none';
 });
+
+// "יצירת פרויקט חדש" בהגדרות מוביל לכאן עם ‎#new‎ — הטופס כבר פתוח
+if (window.location.hash === '#new') {
+    form.style.display = '';
+    (form.closest('.chart-card') || form).scrollIntoView({ block: 'start' });
+    document.getElementById('projectName').focus({ preventScroll: true });
+}
 cancelBtn.addEventListener('click', function () {
     form.style.display = 'none';
     form.reset();

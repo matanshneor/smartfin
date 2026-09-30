@@ -835,70 +835,10 @@ updateSentence();
 updateWorkplaceState();
 })();
 
-// ── פרויקטים (הגדרות): יצירה, עריכה במקום, מחיקה ──
+// ── פרויקטים (הגדרות): עריכה במקום ──
+// יצירה — בטופס אחד בעמוד הפרויקטים (מתן, 30.9 — רעיון 13). כאן היה טופס
+// שני, מקוצר: בלי אייקון ובלי תיאור, וכל פרויקט שנוצר ממנו קיבל 🎯.
 (function () {
-const newBtn    = document.getElementById('newProjectSettingsBtn');
-if (!newBtn) return;
-const newForm   = document.getElementById('newProjectSettingsForm');
-const cancelNew = document.getElementById('cancelNewProjSettingsBtn');
-const newError  = document.getElementById('newProjSettingsError');
-
-newBtn.addEventListener('click', function () {
-    newForm.style.display = newForm.style.display === 'none' ? '' : 'none';
-});
-cancelNew.addEventListener('click', function () {
-    newForm.style.display = 'none';
-    newForm.reset();
-    newError.textContent = '';
-    newIsPersonal = false;
-    newOwnerSharedBtn.classList.add('active');
-    newOwnerPersonalBtn.classList.remove('active');
-});
-
-const newOwnerSharedBtn   = document.getElementById('newProjSettingsOwnerShared');
-const newOwnerPersonalBtn = document.getElementById('newProjSettingsOwnerPersonal');
-let newIsPersonal = false;
-
-[newOwnerSharedBtn, newOwnerPersonalBtn].forEach(function (btn) {
-    btn.addEventListener('click', function () {
-        newOwnerSharedBtn.classList.toggle('active', btn === newOwnerSharedBtn);
-        newOwnerPersonalBtn.classList.toggle('active', btn === newOwnerPersonalBtn);
-        newIsPersonal = btn.dataset.personal === 'true';
-    });
-});
-
-newForm.addEventListener('submit', function (e) {
-    e.preventDefault();
-    newError.textContent = '';
-    const name = document.getElementById('newProjSettingsName').value.trim();
-    const budgetVal = document.getElementById('newProjSettingsBudget').value;
-    const trackExpense = document.getElementById('newProjSettingsTrackExpense').checked;
-    const trackIncome  = document.getElementById('newProjSettingsTrackIncome').checked;
-    const trackSavings = document.getElementById('newProjSettingsTrackSavings').checked;
-    if (!name) { newError.textContent = 'נא להזין שם לפרויקט'; return; }
-    if (!trackExpense && !trackIncome && !trackSavings) {
-        newError.textContent = 'יש לבחור לפחות סוג עסקה אחד למעקב';
-        return;
-    }
-    const newSubmitBtn = newForm.querySelector('button[type="submit"]');
-    newSubmitBtn.disabled = true;
-    fetch('/api/projects', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-            name: name, budget_target: budgetVal ? parseFloat(budgetVal) : null,
-            is_personal: newIsPersonal,
-            track_expense: trackExpense, track_income: trackIncome, track_savings: trackSavings,
-        }),
-    })
-    .then(r => r.json())
-    .then(function (data) {
-        if (data.error) { newSubmitBtn.disabled = false; newError.textContent = data.error; return; }
-        window.location.reload();
-    })
-    .catch(function () { newSubmitBtn.disabled = false; newError.textContent = window.sfNetError(); });
-});
-
 // ── מחיקת פרויקט ──
 // מחיקת פרויקט עברה לתוך הפרויקט עצמו (project-edit.js).
 //

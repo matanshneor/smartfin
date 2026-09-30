@@ -600,3 +600,18 @@ def test_tapping_a_month_in_the_compare_chart_opens_it():
     js = _strip_comments(_read("frontend/static/js/months.js"))
     assert "getElementsAtEventForMode(evt, 'index', { intersect: false }, true)" in js
     assert "'/month?year=' + d.year + '&month=' + d.month" in js
+
+
+def test_there_is_one_form_for_a_new_project():
+    """מתן (30.9, רעיון 13): ההגדרות מובילות לטופס המלא בעמוד הפרויקטים,
+    ולא מחזיקות עותק מקוצר בלי אייקון ובלי תיאור."""
+    settings = _read("frontend/templates/settings.html")
+    assert "newProjectSettingsForm" not in settings
+    assert "href=\"{{ url_for('projects') }}#new\"" in settings
+    js = _strip_comments(_read("frontend/static/js/projects.js"))
+    assert "window.location.hash === '#new'" in js
+    # עריכת פרויקט בהגדרות ממשיכה לעבוד — הקוד שלה ישב אחרי יציאה מוקדמת
+    # שתלויה בכפתור היצירה שהוסר
+    sjs = _strip_comments(_read("frontend/static/js/settings.js"))
+    assert "newProjectSettingsBtn" not in sjs
+    assert "closest('.edit-project-settings-btn')" in sjs
