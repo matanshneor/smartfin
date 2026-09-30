@@ -73,7 +73,8 @@ def test_a_closed_month_does_not_offer_to_budget_it():
     """השאלה של מתן."""
     rows = [_row(1240)]
 
-    assert "קביעת תקציב לקטגוריה" not in _render(rows, is_current=False)
+    html = _render(rows, is_current=False)
+    assert 'id="budgetsOpen"' not in html and "קביעת תקציב לקטגוריה" not in html
 
 
 def test_the_current_month_still_offers_it():
@@ -82,7 +83,9 @@ def test_the_current_month_still_offers_it():
     מאחורי ארבעה מסכים."""
     rows = [_row(1240)]
 
-    assert "קביעת תקציב לקטגוריה" in _render(rows, is_current=True)
+    # כפתור אחד בראש הכרטיס (מתן, 30.9) — לא קישור אחרי כל שורה
+    html = _render(rows, is_current=True)
+    assert 'id="budgetsOpen"' in html and 'id="sf-budgets"' in html
 
 
 # ─── הניסוח ──────────────────────────────────────────────────────────────────

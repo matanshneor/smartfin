@@ -4872,3 +4872,18 @@ body > .color-sheet { z-index: 180; }
 }
 @keyframes sk-shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
 @media (prefers-reduced-motion: reduce) { .sk-card { animation: none; } }
+
+/* חלון התקציבים בעמוד החודש (מתן, 30.9) — אותו חלון-מלמטה כמו בחירת הצבע */
+.budget-sheet-card { max-height: 86vh; }
+.budget-sheet-list { overflow-y: auto; display: flex; flex-direction: column; min-height: 0; }
+.budget-sheet-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 10px 0; border-top: 1px solid var(--divider-subtle); cursor: default;
+}
+.budget-sheet-row:first-child { border-top: 0; }
+.budget-sheet-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.budget-sheet-name { font-weight: 600; font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.budget-sheet-spent { font-size: 0.75rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.budget-sheet-amount { flex: none; width: 128px; }
+.budget-sheet-amount .amount-input { font-size: 1rem; padding-block: 8px; }
+.budget-sheet-actions { margin-top: 4px; }

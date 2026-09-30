@@ -67,30 +67,30 @@ def test_the_owner_field_still_hides_the_same_way():
 # ─── 2. אפשר לקבוע תקציב מהמקום שבו מבינים שצריך ─────────────────────────────
 
 def test_the_month_page_offers_to_set_a_budget():
-    """עד עכשיו לא הייתה מעמוד החודש **שום** הפניה להגדרות."""
+    """עד עכשיו לא הייתה מעמוד החודש **שום** הפניה להגדרות. מאז (מתן, 30.9)
+    זה כפתור אחד שפותח חלון לכל הקטגוריות — לא קישור אחרי כל שורה."""
     html = _read("frontend/templates/month.html")
 
-    assert "cat-budget-cta" in html
-    assert "url_for('settings') }}#budget-" in html
+    assert 'id="budgetsOpen"' in html
+    assert "cat-budget-cta" not in html
+    assert "קביעת תקציב לקטגוריה" not in html
 
 
-def test_the_offer_only_appears_where_it_makes_sense():
-    """קטגוריה שכבר יש לה תקציב לא צריכה את ההצעה, וקטגוריה בלי הוצאה
-    לא מזמינה אותה.
-
-    הבדיקה נעלה קודם את המחרוזת המדויקת של התנאי, ולכן נפלה ברגע
-    שנוסף לו תנאי שלישי נכון (‎is_current‎). בודקים את השמירות עצמן,
-    לא את הניסוח שלהן."""
+def test_the_budget_button_only_appears_in_the_current_month():
+    """התקציב נשמר לקטגוריה ולא לחודש — מתוך מרץ הוא היה משפיע מהיום והלאה."""
     html = _read("frontend/templates/month.html")
-    block = html[html.index("{% if item.budget %}"):]
-    block = block[:block.index("cat-budget-cta") + 200]
+    before = html[:html.index('id="budgetsOpen"')]
 
-    # ה-‎elif‎ האחרון לפני הקישור — יש עוד אחד לפניו, בתוך טקסט התקציב.
-    guard = block[block.rindex("{% elif", 0, block.index("cat-budget-cta")):]
-    guard = guard[:guard.index("%}")]
+    assert before.rstrip().endswith('<button type="button" class="btn-sm btn-ghost"')
+    assert before[before.rindex("{%"):].startswith("{% if is_current %}")
 
-    assert "item.category_id" in guard, "מוצע גם לשורות בלי קטגוריה"
-    assert "item.total > 0" in guard, "מוצע גם לקטגוריה שלא הוצאו בה כלום"
+
+def test_the_window_only_sends_what_changed():
+    js = _strip_comments(_read("frontend/static/js/month.js"))
+    part = js[js.index("closest('#budgetsOpen')") - 3000:]
+
+    assert "if (v === inp.dataset.old) return;" in part
+    assert "limits[inp.dataset.cat] = null" in part          # ריק = הסרה
 
 
 def test_settings_lands_on_the_right_category():

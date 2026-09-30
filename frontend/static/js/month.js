@@ -406,3 +406,136 @@ window.addEventListener('sf:refreshed', paint);
     build();
     window.addEventListener('sf:refreshed', build);
 })();
+
+
+/* ═══ קביעת תקציבים — חלון אחד לכל הקטגוריות (מתן, 30.9) ═══
+ *
+ * במקום "קביעת תקציב לקטגוריה" אחרי כל שורה, ששלח להגדרות. כל קטגוריית
+ * הוצאה עם כמה יצא עליה החודש ושדה לתקציב החודשי; ריק = בלי תקציב. שמירה
+ * אחת שולחת רק מה שהשתנה. הנתונים נקראים ב**פתיחה** (‎sf-budgets‎ בתוך
+ * ‎main‎) — אחרי רענון רך הם כבר החדשים. */
+(function () {
+    let sheet = null;
+
+    function budgetMoney(v) { return '₪' + window.sfMoney(v); }
+
+    function buildBudgets(rows) {
+        if (sheet) sheet.remove();
+        sheet = document.createElement('div');
+        sheet.className = 'color-sheet budget-sheet';
+        sheet.setAttribute('role', 'dialog');
+        sheet.setAttribute('aria-modal', 'true');
+        sheet.setAttribute('aria-labelledby', 'budgetSheetTitle');
+        const card = document.createElement('div');
+        card.className = 'color-sheet-card budget-sheet-card';
+        card.innerHTML = '<p class="color-sheet-title" id="budgetSheetTitle">תקציב חודשי לכל קטגוריה</p>'
+            + '<p class="color-sheet-hint">סכום לחודש. שדה ריק — בלי תקציב לקטגוריה.</p>';
+        const list = document.createElement('div');
+        list.className = 'budget-sheet-list';
+        rows.forEach(function (r) {
+            const row = document.createElement('label');
+            row.className = 'budget-sheet-row';
+            const info = document.createElement('span');
+            info.className = 'budget-sheet-info';
+            const name = document.createElement('span');
+            name.className = 'budget-sheet-name';
+            name.textContent = (r.icon || '📦') + ' ' + r.name;
+            const spent = document.createElement('span');
+            spent.className = 'budget-sheet-spent';
+            spent.textContent = 'החודש: ' + budgetMoney(r.total || 0);
+            info.append(name, spent);
+            const wrap = document.createElement('span');
+            wrap.className = 'amount-input-wrap budget-sheet-amount';
+            wrap.innerHTML = '<span class="amount-currency">₪</span>';
+            const input = document.createElement('input');
+            input.className = 'form-input amount-input';
+            input.type = 'number';
+            input.inputMode = 'numeric';
+            input.min = '0';
+            input.step = '1';
+            input.placeholder = 'אין';
+            input.value = r.budget ? Math.round(r.budget) : '';
+            input.dataset.cat = r.category_id;
+            input.dataset.old = r.budget ? String(Math.round(r.budget)) : '';
+            input.dataset.alert = r.budget_alert === false ? 'false' : 'true';
+            input.setAttribute('aria-label', 'תקציב חודשי ל' + r.name);
+            wrap.appendChild(input);
+            row.append(info, wrap);
+            list.appendChild(row);
+        });
+        card.appendChild(list);
+        const err = document.createElement('p');
+        err.className = 'form-error';
+        err.setAttribute('role', 'alert');
+        card.appendChild(err);
+        const actions = document.createElement('div');
+        actions.className = 'edit-actions budget-sheet-actions';
+        actions.innerHTML = '<button type="button" class="btn-sm btn-primary" data-save>שמירה</button>'
+                          + '<button type="button" class="btn-sm btn-ghost" data-cancel>ביטול</button>';
+        card.appendChild(actions);
+        sheet.appendChild(card);
+        document.body.appendChild(sheet);
+
+        sheet.addEventListener('click', function (e) {
+            if (e.target === sheet || e.target.closest('[data-cancel]')) { closeBudgets(); return; }
+            if (!e.target.closest('[data-save]')) return;
+            const limits = {};
+            let bad = false;
+            sheet.querySelectorAll('input[data-cat]').forEach(function (inp) {
+                const v = inp.value.trim();
+                if (v === inp.dataset.old) return;
+                if (v === '' || Number(v) === 0) { limits[inp.dataset.cat] = null; return; }
+                const n = Number(v);
+                if (!isFinite(n) || n < 0) { bad = true; inp.setAttribute('aria-invalid', 'true'); return; }
+                limits[inp.dataset.cat] = { amount: Math.round(n), alert: inp.dataset.alert !== 'false' };
+            });
+            if (bad) { err.textContent = 'נא להזין סכומים חיוביים בלבד'; return; }
+            if (!Object.keys(limits).length) { closeBudgets(); return; }
+            const save = e.target.closest('[data-save]');
+            save.disabled = true;
+            save.textContent = 'שומר…';
+            fetch('/api/family/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ limits: limits }),
+            })
+                .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
+                .then(function (res) {
+                    if (!res.ok) {
+                        err.textContent = res.d.error || 'שמירת התקציבים נכשלה';
+                        save.disabled = false; save.textContent = 'שמירה';
+                        return;
+                    }
+                    closeBudgets();
+                    if (window.sfForgetCategories) window.sfForgetCategories();
+                    window.softReload(null, 'התקציבים נשמרו').then(function (how) {
+                        if (how !== 'reloaded') window.showToast('התקציבים נשמרו');
+                    });
+                })
+                .catch(function () {
+                    err.textContent = window.sfNetError();
+                    save.disabled = false; save.textContent = 'שמירה';
+                });
+        });
+    }
+
+    function closeBudgets() {
+        if (sheet) { sheet.remove(); sheet = null; }
+        const btn = document.getElementById('budgetsOpen');
+        if (btn) btn.focus({ preventScroll: true });
+    }
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest || !e.target.closest('#budgetsOpen')) return;
+        let rows = [];
+        try { rows = JSON.parse((document.getElementById('sf-budgets') || {}).textContent || '[]'); }
+        catch (err) { rows = []; }
+        if (!rows.length) return;
+        buildBudgets(rows);
+        const first = sheet.querySelector('input');
+        if (first) first.focus({ preventScroll: true });
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && sheet) closeBudgets();
+    });
+})();

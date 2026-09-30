@@ -198,7 +198,19 @@
 {% set expense_active = expense_breakdown | selectattr('total', 'gt', 0) | list %}
 {% set expense_zero   = expense_breakdown | rejectattr('total', 'gt', 0) | list %}
 <section class="chart-card" id="expense-breakdown">
-    <h2 class="chart-title">הוצאות לפי קטגוריה</h2>
+    {# כפתור אחד לכל התקציבים, במקום קישור לתקציב אחרי כל שורה (מתן,
+       30.9). רק בחודש הנוכחי: התקציב נשמר לקטגוריה ולא לחודש, אז קביעה מתוך
+       מרץ הייתה משפיעה מהיום והלאה — בזמן שהמסך מרמז שמתקצבים את מרץ. #}
+    <div class="chart-title-row">
+        <h2 class="chart-title">הוצאות לפי קטגוריה</h2>
+        {% if is_current %}
+        <button type="button" class="btn-sm btn-ghost" id="budgetsOpen" aria-haspopup="dialog">קביעת תקציבים</button>
+        {% endif %}
+    </div>
+    {% if is_current %}
+    {# הקטגוריות לחלון התקציבים — בתוך ‎main‎, כדי שיתעדכנו ברענון רך #}
+    <script type="application/json" id="sf-budgets">{{ expense_breakdown | selectattr('category_id') | list | tojson }}</script>
+    {% endif %}
     {% if expense_active %}
     <div class="doughnut-wrap">
         <canvas id="expenseChart" role="img" aria-label="גרף הוצאות לפי קטגוריה"></canvas>
@@ -273,22 +285,6 @@
                     {% endif %}
                 </p>
             </div>
-            {% elif is_current and item.category_id and item.total > 0 %}
-            {# רק בחודש הנוכחי. התקציב נשמר לקטגוריה ולא לחודש, אז
-               לחיצה מתוך מרץ הייתה קובעת סכום שמשפיע מהיום והלאה —
-               בזמן שהמסך מרמז שמתקצבים את החודש שרואים. הבטחה שלא
-               מתקיימת, על המסך שכולו עבר.
-
-               קישור לקביעת תקציב, כאן ולא רק בהגדרות.
-               זה הרגע שבו אדם מבין שהוא צריך תקציב — הוא רואה ₪1,240
-               על מכולת. עד עכשיו לא הייתה מהעמוד הזה שום הפניה
-               להגדרות בכלל, אז התכונה המרכזית שמוכרת את האפליקציה
-               הייתה מוסתרת מאחורי: ניווט ← הגדרות ← פתיחת אקורדיון ←
-               גלילה עד הקטגוריה. #}
-            <a class="cat-budget-cta"
-               href="{{ url_for('settings') }}#budget-{{ item.category_id }}">
-                קביעת תקציב לקטגוריה
-            </a>
             {% endif %}
             {% if cat_txs %}
             <ul class="cat-tx-list">
