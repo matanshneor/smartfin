@@ -87,3 +87,19 @@ def test_a_month_with_no_income_is_not_shown_as_a_deficit(hero):
 
     assert "deficit" not in block.split(">")[0]
     assert "-₪" not in block and "₪120" in block
+
+
+# ─── המספר הגדול בשקלים שלמים (מתן, 30.9) ─────────────────────────────────
+
+@pytest.mark.parametrize("income,expense,shown,countup", [
+    (34567.89, 33086.52, "₪1,481", 'data-countup="1481"'),    # 1,481.37
+    (1000.00, 498.50, "₪502", 'data-countup="502"'),          # 501.50 → 502
+    (1000.00, 1001.60, "-₪2", 'data-countup="2"'),            # גירעון של 1.60
+], ids=["rounds-down", "half-rounds-up", "deficit"])
+def test_the_big_balance_has_no_agorot(hero, income, expense, shown, countup):
+    block = hero(income, expense)
+    number = block[block.index(">") + 1:block.index("</p>")]
+
+    assert shown in number.replace(" ", "").replace("\n", ""), number
+    assert "." not in number, "אגורות במספר הגדול"
+    assert countup in block

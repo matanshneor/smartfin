@@ -41,10 +41,14 @@
     {# גירעון לפי המספר **שמוצג** (מעוגל לשקל), לא לפי המדויק: 40 אגורות של
        גירעון הוצגו "-₪0" באדום — הצבע אמר גירעון, המספר אמר אפס. #}
     {% set deficit = not no_income_yet and (summary.remaining | round) < 0 %}
+    {# המספר הגדול בשקלים שלמים (מתן, 30.9) — היתרה במבט אחד. בשאר המקומות
+       האגורות מוצגות כשיש (‎format_money‎). מספר שלם ב-‎data-countup‎ גם
+       גורם לאנימציה לספור בלי אגורות (‎motion.js‎). #}
+    {% set shown_whole = (shown | abs) | round | int %}
     <p class="hero-amount {% if deficit %}deficit{% endif %}"
-       data-countup="{{ (shown | abs) | round(2) }}"
+       data-countup="{{ shown_whole }}"
        {% if deficit %}data-prefix="-"{% endif %}>
-        {% if deficit %}-{% endif %}₪{{ (shown | abs) | money }}
+        {% if deficit %}-{% endif %}₪{{ shown_whole | money }}
     </p>
     <p class="hero-sub">
         {%- if no_income_yet -%}
