@@ -1812,7 +1812,7 @@ a.submit-btn {
 /* ─── Months comparison ───────────────────────────────────────── */
 /* טבלה אחת: שורה לחודש, עמודה לסוג (מתן, 30.9) */
 
-.months-table-card { padding: 6px 12px 14px; }
+.months-table-card { padding: 6px 12px 10px; margin-bottom: 0; }
 
 .months-table {
     width: 100%;
@@ -1857,12 +1857,25 @@ a.submit-btn {
 .months-table .bal.surplus { color: var(--color-income); }
 .months-table .bal.deficit { color: var(--color-expense); }
 
-.months-table .year-row th {
-    padding: 14px 2px 4px;
-    font-size: 0.8rem;
+/* השנה מעל הטבלה שלה, עם קו זהב — כמו מפריד השנים הקודם */
+.year-block { margin-bottom: 4px; }
+
+.year-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 18px 4px 10px;
+    font-size: 1.15rem;
     font-weight: 700;
     color: var(--color-gold-text);
     letter-spacing: 0.04em;
+}
+
+.year-title::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to left, var(--color-gold-dim), transparent);
 }
 
 .months-table .month-row { cursor: pointer; }
@@ -1882,7 +1895,7 @@ a.submit-btn {
 }
 
 .months-table-note {
-    margin: 8px 2px 0;
+    margin: 10px 4px 0;
     font-size: 0.68rem;
     color: var(--color-text-muted);
 }

@@ -482,7 +482,10 @@ def test_the_compare_page_is_one_table():
     """מתן (30.9) בחר בטבלה: שורה לחודש, עמודה לסוג. בכרטיס לכל חודש המאזן
     דרס את "חיסכון" ברוחב טלפון. בדפדפן: tests/browser/months_table.py."""
     html = re.sub(r"\{#.*?#\}", "", _read("frontend/templates/months.html"), flags=re.S)
-    assert html.count('<table class="months-table">') == 1
+    # טבלה לכל שנה (בתוך הלולאה על השנים), והשנה מעליה ולא בתוכה
+    loop = html[html.index("groupby('year')"):]
+    assert loop.index('class="year-title"') < loop.index('<table class="months-table">')
+    assert "year-row" not in html
     heads = re.findall(r'<th scope="col"[^>]*>([^<]+)</th>', html)
     assert heads == ["חודש", "הכנסות", "הוצאות", "חיסכון", "מאזן"]
     assert "month-stats" not in html and "month-link" not in html

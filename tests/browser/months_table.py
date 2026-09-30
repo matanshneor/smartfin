@@ -48,12 +48,14 @@ try:
         cats = page.request.get(BASE + "/api/categories").json()
         by_type = {}
         for c in cats: by_type.setdefault(c["type"], c["id"])
-        data = {"07": (3865, 10174.30, 10000), "08": (8195, 3665.80, 8000),
-                "09": (11527, 4459.80, 8000), "10": (0, 800, 0)}
+        data = {"2026-07": (3865, 10174.30, 10000), "2026-08": (8195, 3665.80, 8000),
+                "2026-09": (11527, 4459.80, 8000), "2026-10": (0, 800, 0),
+                "2025-12": (5000, 1200, 0), "2025-11": (5000, 900, 0), "2025-10": (5000, 700, 0),
+                "2024-05": (4000, 500, 0)}
         for mm, (inc, exp, sav) in data.items():
             for amount, kind in ((inc, "income"), (exp, "expense"), (sav, "savings")):
                 if amount:
-                    api("POST", "/api/transactions", {"amount": amount, "type": kind, "date": f"2026-{mm}-05",
+                    api("POST", "/api/transactions", {"amount": amount, "type": kind, "date": f"{mm}-05",
                                                       "description": "TABLE-TEST", "category_id": by_type[kind]})
         OVER = """() => {
             const W = document.documentElement.clientWidth, out = [];
@@ -75,6 +77,14 @@ try:
             const r = el => { const g = document.createRange(); g.selectNodeContents(el); const b = g.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.right)]; };
             return {header: r(th), number: r(td), align: getComputedStyle(th).textAlign};
         }"""))
+        years = """() => [...document.querySelectorAll('.year-block')].map(y => y.querySelector('.year-title').textContent.trim()
+            + ':' + (y.offsetParent !== null ? [...y.querySelectorAll('tr.month-row')].filter(r => r.offsetParent !== null).length : 'hidden'))"""
+        print("years before 'show more':", page.evaluate(years),
+              "| title above table:", page.evaluate("[...document.querySelectorAll('.year-block')].every(y => y.querySelector('.year-title').compareDocumentPosition(y.querySelector('table')) & Node.DOCUMENT_POSITION_FOLLOWING)"))
+        page.click("#showMoreMonths"); page.wait_for_timeout(300)
+        print("years after 'show more':", page.evaluate(years))
+        page.screenshot(path="/tmp/months_years.png", full_page=True)
+        page.click("#showMoreMonths"); page.wait_for_timeout(300)
         page.locator("tr.month-row").nth(1).locator("td.exp").click()
         page.wait_for_url("**/month?*", timeout=5000)
         print("tapping a row opens:", page.url.split("/")[-1])
