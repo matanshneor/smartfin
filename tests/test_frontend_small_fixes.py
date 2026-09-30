@@ -319,7 +319,8 @@ def test_amount_cards_shrink_instead_of_pushing_the_page_sideways():
         assert "minmax(0, 1fr)" in rule(grid), grid
     assert "cqi" in rule(".summary-card .card-amount")
     assert "cqi" in rule(".kpi-chip .kpi-value")
-    assert "flex-wrap: wrap" in rule(".month-stats")
+    # עמוד ההשוואה: טבלה בעמודות קבועות במקום שורה שגלשה (ראו test_the_compare_page_is_one_table)
+    assert "table-layout: fixed" in rule(".months-table")
 
 
 def test_the_onboarding_points_to_a_settings_group_that_exists():
@@ -475,3 +476,13 @@ def test_the_squares_share_the_row_evenly(chips, columns):
     rule = html[html.index("{% set columns"):html.index("%}", html.index("{% set columns")) + 2]
     out = app.jinja_env.from_string(rule + "{{ [columns, 1] | max }}").render(chip_count=chips)
     assert out.strip() == str(columns)
+
+
+def test_the_compare_page_is_one_table():
+    """מתן (30.9) בחר בטבלה: שורה לחודש, עמודה לסוג. בכרטיס לכל חודש המאזן
+    דרס את "חיסכון" ברוחב טלפון. בדפדפן: tests/browser/months_table.py."""
+    html = re.sub(r"\{#.*?#\}", "", _read("frontend/templates/months.html"), flags=re.S)
+    assert html.count('<table class="months-table">') == 1
+    heads = re.findall(r'<th scope="col"[^>]*>([^<]+)</th>', html)
+    assert heads == ["חודש", "הכנסות", "הוצאות", "חיסכון", "מאזן"]
+    assert "month-stats" not in html and "month-link" not in html

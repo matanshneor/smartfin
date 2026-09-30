@@ -83,4 +83,12 @@ if (moreBtn) {
         moreBtn.setAttribute('aria-expanded', open);
     });
 }
+
+// לחיצה בכל מקום בשורה פותחת את החודש. הקישור עצמו (שם החודש) הוא מה
+// שמקלדת וקורא מסך פוגשים; השורה רק מגדילה את אזור הלחיצה לאצבע.
+document.addEventListener('click', function (e) {
+    const row = e.target.closest('.months-table tr.month-row[data-href]');
+    if (!row || e.target.closest('a')) return;
+    window.location.href = row.dataset.href;
+});
 })();

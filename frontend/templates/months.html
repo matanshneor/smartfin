@@ -27,84 +27,49 @@
 </section>
 
 <!-- Month list — מציג 6 חודשים אחרונים; השאר מאחורי "הצג עוד" -->
-<div id="monthsArchive">
-{% set current_year = namespace(val=None) %}
-{% set mcount = namespace(i=0) %}
-{% for entry in archive %}
-
-    {# חודשים מעבר ל-6 הראשונים (וכל שנה שכולה מעבר לכך) מוסתרים כברירת מחדל #}
-    {% set is_extra = mcount.i >= 6 %}
-
-    {% if entry.year != current_year.val %}
-        {% if current_year.val is not none %}</ul>{% endif %}
-        {% set current_year.val = entry.year %}
-        <div class="year-divider {% if is_extra %}month-extra{% endif %}">
-            <span class="year-label">{{ entry.year }}</span>
-        </div>
-        <ul class="months-list {% if is_extra %}month-extra{% endif %}">
-    {% endif %}
-
-    {# היתרה הנטו של החודש = "נשאר בעו״ש": הכנסות פחות הוצאות פחות חיסכון
-       (חיסכון גם יוצא מהעו״ש), עקבי עם חישוב ה-remaining בדשבורד. #}
-    {% set balance = (entry.income | float) - (entry.expense | float) - (entry.savings | float) %}
-    {% set is_surplus = balance >= 0 %}
-
-    <li class="month-item {% if is_extra %}month-extra{% endif %}">
-        <a href="{{ url_for('month_view', year=entry.year, month=entry.month) }}"
-           class="month-link" aria-label="נתוני {{ _HEBREW_MONTHS[entry.month] }} {{ entry.year }}">
-
-            <!-- Status dot -->
-            <div class="month-dot {% if is_surplus %}surplus{% else %}deficit{% endif %}">
-                {% if is_surplus %}
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="18 15 12 9 6 15"/>
-                </svg>
-                {% else %}
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="6 9 12 15 18 9"/>
-                </svg>
-                {% endif %}
-            </div>
-
-            <!-- Month name + breakdown -->
-            <div class="month-info">
-                <div class="month-name-row">
-                    <span class="month-name">{{ _HEBREW_MONTHS[entry.month] }}{% if entry.year == today_year and entry.month == today_month %}<span class="current-month-badge">החודש</span>{% endif %}</span>
-                </div>
-
-                <div class="month-stats">
-                    <span class="stat income">
-                        <span class="stat-label">הכנסות</span>
-                        ₪{{ (entry.income | float) | money }}
-                    </span>
-                    <span class="stat expense">
-                        <span class="stat-label">הוצאות</span>
-                        ₪{{ (entry.expense | float) | money }}
-                    </span>
-                    <span class="stat savings">
-                        <span class="stat-label">חיסכון</span>
-                        ₪{{ (entry.savings | float) | money }}
-                    </span>
-                </div>
-            </div>
-
-            <!-- Net balance — ממורכז אנכית בצד שמאל -->
-            <span class="month-balance {% if is_surplus %}surplus{% else %}deficit{% endif %}">
-                {% if is_surplus %}+{% else %}-{% endif %}₪{{ (balance | abs) | money }}
-            </span>
-
-            <!-- Chevron -->
-            <div class="month-chevron">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="15 18 9 12 15 6"/>
-                </svg>
-            </div>
-        </a>
-    </li>
-    {% set mcount.i = mcount.i + 1 %}
-
-{% endfor %}
-</ul>
+{# טבלה אחת (מתן, 30.9 — הצעה ג): שורה לחודש, עמודה לסוג. כרטיס לכל חודש
+   עם חמישה פריטים בשורה אחת גרם למאזן לדרוס את "חיסכון" ברוחב טלפון.
+   שקלים שלמים — זו סקירה; האגורות בעמוד של כל חודש. #}
+<div id="monthsArchive" class="chart-card months-table-card">
+    <table class="months-table">
+        <colgroup><col class="c-month"><col><col><col><col class="c-balance"></colgroup>
+        <thead>
+            <tr>
+                <th scope="col">חודש</th>
+                <th scope="col" class="n">הכנסות</th>
+                <th scope="col" class="n">הוצאות</th>
+                <th scope="col" class="n">חיסכון</th>
+                <th scope="col" class="n">מאזן</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% set current_year = namespace(val=None) %}
+        {% for entry in archive %}
+            {# חודשים מעבר ל-6 הראשונים מוסתרים עד "הצג עוד" #}
+            {% set is_extra = loop.index0 >= 6 %}
+            {% if entry.year != current_year.val %}
+                {% set current_year.val = entry.year %}
+                <tr class="year-row {% if is_extra %}month-extra{% endif %}"><th colspan="5" scope="rowgroup">{{ entry.year }}</th></tr>
+            {% endif %}
+            {# המאזן = "נשאר בעו״ש": הכנסות פחות הוצאות פחות חיסכון (חיסכון גם
+               יוצא מהעו״ש), עקבי עם הדשבורד. הסימן לפי המספר המעוגל שמוצג. #}
+            {% set balance = ((entry.income | float) - (entry.expense | float) - (entry.savings | float)) | round | int %}
+            {% set is_current = entry.year == today_year and entry.month == today_month %}
+            <tr class="month-row {% if is_extra %}month-extra{% endif %}{% if is_current %} is-current{% endif %}"
+                data-href="{{ url_for('month_view', year=entry.year, month=entry.month) }}">
+                <td class="m">
+                    <a href="{{ url_for('month_view', year=entry.year, month=entry.month) }}">{{ _HEBREW_MONTHS[entry.month] }}</a>
+                    {% if is_current %}<span class="current-month-badge">החודש</span>{% endif %}
+                </td>
+                <td class="n inc">{{ (entry.income | float) | round | int | money }}</td>
+                <td class="n exp">{{ (entry.expense | float) | round | int | money }}</td>
+                <td class="n sav">{{ (entry.savings | float) | round | int | money }}</td>
+                <td class="n bal {% if balance < 0 %}deficit{% else %}surplus{% endif %}">{% if balance > 0 %}+{% elif balance < 0 %}-{% endif %}{{ (balance | abs) | money }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <p class="months-table-note">בשקלים שלמים · לחיצה על חודש פותחת אותו</p>
 
 {% if archive | length > 6 %}
 <button type="button" class="show-more-months" id="showMoreMonths"
