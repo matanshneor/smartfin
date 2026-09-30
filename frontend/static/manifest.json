@@ -2,7 +2,8 @@
   "name": "SmartFin – ניהול תקציב משפחתי",
   "short_name": "SmartFin",
   "description": "ניהול תקציב משפחתי חכם",
-  "start_url": "/",
+  "id": "/",
+  "start_url": "/?app=1",
   "scope": "/",
   "display": "standalone",
   "background_color": "#F7F4ED",
@@ -14,7 +15,7 @@
     {
       "name": "הוסף עסקה",
       "short_name": "הוספה",
-      "url": "/?add=1"
+      "url": "/?add=1&app=1"
     }
   ],
   "icons": [

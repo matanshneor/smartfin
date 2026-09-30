@@ -931,7 +931,7 @@ document.addEventListener('click', function (e) {
                 <label class="form-label">תקציב יעד (אופציונלי)</label>
                 <div class="amount-input-wrap">
                     <span class="amount-currency">₪</span>
-                    <input class="form-input amount-input proj-edit-budget" type="number" min="0" step="1">
+                    <input class="form-input amount-input proj-edit-budget" type="number" inputmode="numeric" min="0" step="1">
                 </div>
             </div>
             <div class="form-group">

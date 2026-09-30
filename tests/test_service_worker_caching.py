@@ -87,7 +87,8 @@ def test_the_installed_app_gets_our_offline_page_not_the_browsers():
     manifest = json.loads((Path(__file__).resolve().parent.parent
                            / "frontend/static/manifest.json").read_text(encoding="utf-8"))
 
-    assert manifest["start_url"] == "/"
+    # ‎?app=1‎ מסמן פתיחה מהאייקון; ה-Service Worker מסתכל על ‎pathname‎ בלבד
+    assert manifest["start_url"].split("?")[0] == "/"
     assert "/" not in _cacheable()
     # ‎/‎ נופל למסלול ה-fetch-with-fallback ולא ל-return מוקדם
     assert "e.respondWith(fetch(e.request).catch(() => offlinePage()));" in _SW

@@ -1049,7 +1049,12 @@ def dashboard():
     הנכונה לאורח, ולא למי שרק רצה להיכנס לתקציב שלו. ‎?intro=1 הוא הדרך
     לראות את דף הנחיתה בכל זאת — משם מגיע כפתור "חזרה" שבדף ההתחברות."""
     if "user_id" not in session:
-        if _device_is_known() and not request.args.get("intro"):
+        # ‎?app=1‎ — נפתח מהאייקון במסך הבית (start_url במניפסט). מי שהתקין
+        # את האפליקציה כבר בחר בה; דף שיווק הוא לא מה שהוא צריך לראות. זה
+        # קרה למי שהתקין לפני שהתחבר: לאפליקציה המותקנת באייפון יש עוגיות
+        # משלה, ו-‎sf_returning‎ עוד לא היה בהן.
+        opened_as_app = request.args.get("app") == "1"
+        if (_device_is_known() or opened_as_app) and not request.args.get("intro"):
             response = redirect(url_for("login"))
         else:
             # החודש נגזר מהשעון ולא מקודד בתבנית. "ספטמבר 2026" קבוע

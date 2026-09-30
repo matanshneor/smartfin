@@ -120,7 +120,7 @@
                 <div class="form-group">
                     <label class="form-label" for="familyName">שם המשפחה</label>
                     <input class="form-input" type="text" id="familyName" maxlength="50"
-                           value="{{ family.get('name', 'המשפחה שלי') }}" placeholder="לדוגמה: משפחת כהן">
+                           value="{{ '' if family.get('name', 'המשפחה שלי') == 'המשפחה שלי' else family.get('name') }}" placeholder="לדוגמה: משפחת כהן">
                 </div>
 
                 <div class="onboarding-actions">
