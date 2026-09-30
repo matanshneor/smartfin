@@ -48,7 +48,7 @@ def hero(monkeypatch):
     for fn, val in (("get_family_settings", dict(db.DEFAULT_FAMILY_SETTINGS)),
                     ("get_categories", [{"id": "c", "name": "x", "type": "expense"}]),
                     ("get_family_members", []), ("family_has_no_transactions", False),
-                    ("get_recent_transactions", [])):
+                    ("get_recent_transactions", []), ("week_spending", None)):
         monkeypatch.setattr(db, fn, lambda *a, _v=val, **k: _v)
 
     def render(income, expense):

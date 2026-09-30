@@ -456,3 +456,20 @@ document.addEventListener('click', function (e) {
             });
     });
 });
+
+
+// ── "השבוע" בדף הבית: נגיעה ביום מציגה את העסקאות שלו (מתן, 30.9) ──
+// בהאצלה — הכרטיס מתחלף ברענון רך
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest && e.target.closest('.week-day');
+    if (!btn || btn.disabled) return;
+    const card = btn.closest('.week-card');
+    card.querySelectorAll('.week-day').forEach(function (b) {
+        const on = b === btn;
+        b.classList.toggle('is-selected', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    card.querySelectorAll('.week-detail').forEach(function (d) {
+        d.hidden = d.dataset.day !== btn.dataset.day;
+    });
+});

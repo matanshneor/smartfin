@@ -4887,3 +4887,41 @@ body > .color-sheet { z-index: 180; }
 .budget-sheet-amount { flex: none; width: 128px; }
 .budget-sheet-amount .amount-input { font-size: 1rem; padding-block: 8px; }
 .budget-sheet-actions { margin-top: 4px; }
+
+/* "השבוע" בדף הבית (מתן, 30.9) */
+.week-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.week-head .chart-title { margin: 0; }
+.week-range { font-size: 0.75rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.week-total { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 10px; margin: 6px 0 4px; }
+.week-sum { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+.week-cmp { font-size: 0.78rem; font-weight: 600; padding: 2px 9px; border-radius: 99px; }
+.week-cmp.down { color: var(--color-income); background: color-mix(in srgb, var(--color-income) 12%, transparent); }
+.week-cmp.up   { color: var(--color-expense); background: color-mix(in srgb, var(--color-expense) 12%, transparent); }
+.week-cmp.same { color: var(--color-text-muted); background: var(--color-input); }
+.week-bars {
+    display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px;
+    align-items: end; height: 122px; margin-top: 10px;
+}
+.week-day {
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px;
+    height: 100%; min-width: 0; background: none; border: 0; padding: 0; cursor: pointer; font: inherit;
+}
+.week-day:disabled { cursor: default; }
+.week-amt { font-size: 0.62rem; font-weight: 600; color: var(--color-text-muted); min-height: 1em; font-variant-numeric: tabular-nums; }
+.week-bar { width: 100%; max-width: 30px; border-radius: 7px 7px 3px 3px; background: color-mix(in srgb, var(--color-gold) 55%, var(--color-card)); }
+.week-day.today .week-bar { background: var(--color-gold); }
+.week-day.zero .week-bar { background: var(--color-input); }
+.week-day.future .week-bar { background: none; border: 1.5px dashed var(--color-input); }
+.week-day.is-selected .week-bar { outline: 2px solid var(--color-gold-border); outline-offset: 2px; }
+.week-lbl { font-size: 0.72rem; font-weight: 600; color: var(--color-text-muted); }
+.week-day.today .week-lbl { color: var(--color-gold-text); }
+.week-detail { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--divider-subtle); }
+.week-detail-head {
+    display: flex; justify-content: space-between; gap: 8px; margin: 0 0 4px;
+    font-size: 0.82rem; font-weight: 600; color: var(--color-text-soft); font-variant-numeric: tabular-nums;
+}
+.week-detail-list { list-style: none; margin: 0; padding: 0; }
+.week-detail-list li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; font-size: 0.85rem; }
+.week-detail-list li span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.week-detail-amount { color: var(--color-expense); font-weight: 600; flex: none; font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+.week-empty { margin: 0; font-size: 0.8rem; color: var(--color-text-muted); }

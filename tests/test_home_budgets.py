@@ -90,7 +90,7 @@ def home(monkeypatch):
                "remaining": 7000.0, "expense_pct": 30}
     for fn, val in (("get_categories", _CATS), ("get_family_members", []),
                     ("family_has_no_transactions", False), ("get_recent_transactions", []),
-                    ("get_monthly_summary", summary)):
+                    ("get_monthly_summary", summary), ("week_spending", None)):
         monkeypatch.setattr(db, fn, lambda *a, _v=val, **k: _v)
 
     def render(settings, transactions):

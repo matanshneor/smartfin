@@ -1141,6 +1141,11 @@ def dashboard():
     transactions = sorted(transactions, key=lambda t: str(t.get("date") or "")[:10], reverse=True)
     home_budgets = db.get_home_budgets(family_id, now.year, now.month,
                                        batch["settings"], batch["categories"])
+    # "השבוע" (מתן, 30.9) — קישוט: תקלה בו לא מפילה את דף הבית
+    try:
+        week = db.week_spending(family_id)
+    except db.DataUnavailable:
+        week = None
 
     # מיחזור תוצאות המקבץ ל-context-processors ו-_member_colors (בלי שליפה חוזרת)
     _prime_request_cache(family_id, settings=batch["settings"], categories=batch["categories"], members=batch["members"])
@@ -1152,6 +1157,7 @@ def dashboard():
         summary=batch["summary"],
         transactions=transactions,
         home_budgets=home_budgets,
+        week=week,
         categories=batch["categories"],
         member_colors=_member_colors(family_id),
         month_label=_month_label(now.year, now.month),

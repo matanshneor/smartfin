@@ -1073,6 +1073,58 @@ def get_monthly_summary(family_id: str, year: int, month: int) -> dict:
         raise DataUnavailable("get_monthly_summary") from e
 
 
+_WEEK_LABELS = ("א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳")
+
+
+def week_spending(family_id: str, today=None) -> dict:
+    """כרטיס "השבוע" בדף הבית (מתן, 30.9): הוצאות מראשון עד שבת, יום-יום.
+
+    הוצאות הבית בלבד — בלי פרויקטים, ובלי עסקאות קבועות (תבנית או מופע):
+    שכר דירה של ₪5,500 ביום אחד היה מגמד את כל השאר, והשבוע אמור להראות
+    את ההוצאות השוטפות. ‎last_week‎ — אותו טווח בשבוע שעבר (ראשון עד אותו יום
+    בשבוע), כדי שיום רביעי לא יושווה לשבוע שלם; ‎None‎ כשאין אז נתונים."""
+    from datetime import timedelta
+    today = today or clock.today()
+    start = today - timedelta(days=(today.weekday() + 1) % 7)     # ראשון
+    prev_start = start - timedelta(days=7)
+    prev_end = today - timedelta(days=7)
+    empty = {"days": [], "total": 0.0, "last_week": None, "diff": None}
+    client = get_client()
+    if not client:
+        return empty
+    try:
+        rows = client.table("transactions") \
+            .select("amount, date, description, category_id, is_recurring, recurring_parent_id, "
+                    "project_id, categories(name, icon)") \
+            .eq("family_id", family_id).eq("type", "expense").is_("project_id", "null") \
+            .gte("date", prev_start.isoformat()) \
+            .lte("date", (start + timedelta(days=6)).isoformat()).execute().data or []
+    except Exception as e:
+        raise DataUnavailable("week_spending") from e
+
+    rows = [r for r in rows if not r.get("project_id")
+            and not r.get("is_recurring") and not r.get("recurring_parent_id")]
+    days = []
+    for i in range(7):
+        d = start + timedelta(days=i)
+        txs = [r for r in rows if str(r["date"])[:10] == d.isoformat()]
+        days.append({
+            "date": d.isoformat(), "label": _WEEK_LABELS[i], "day": d.day, "month": d.month,
+            "today": d == today, "future": d > today,
+            "total": round(sum(float(r["amount"]) for r in txs), 2),
+            "transactions": [{"icon": (r.get("categories") or {}).get("icon") or "📦",
+                              "name": (r.get("categories") or {}).get("name") or _NO_CATEGORY,
+                              "description": r.get("description") or "",
+                              "amount": float(r["amount"])} for r in txs],
+        })
+    total = round(sum(d["total"] for d in days if not d["future"]), 2)
+    prev = [r for r in rows if prev_start.isoformat() <= str(r["date"])[:10] <= prev_end.isoformat()]
+    last = round(sum(float(r["amount"]) for r in prev), 2) if prev else None
+    return {"days": days, "total": total, "last_week": last,
+            "diff": round(total - last, 2) if last is not None else None,
+            "max": max([d["total"] for d in days] + [0])}
+
+
 def get_home_budgets(family_id: str, year: int, month: int,
                      settings: dict, categories: list, limit: int = 3) -> list:
     """כרטיס "תקציבים החודש" בדף הבית (מתן, 30.9): עד ‎limit‎ קטגוריות עם
