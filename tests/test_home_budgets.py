@@ -86,6 +86,9 @@ def home(monkeypatch):
     monkeypatch.setattr(db, "materialize_recurring", lambda fid: (0, True))
     monkeypatch.setattr(db, "get_family", lambda *a, **k: {"id": _FAM})
     monkeypatch.setattr(app_module, "family_settings", lambda: dict(db.DEFAULT_FAMILY_SETTINGS))
+    # העסקאות בספטמבר — השעון קבוע בספטמבר, ולא "היום" (שבר את הבדיקה ב-1.10)
+    import datetime
+    monkeypatch.setattr(app_module.clock, "now", lambda: datetime.datetime(2026, 9, 30, 12, 0))
     summary = {"income": 10000.0, "expense": 3000.0, "savings": 0.0, "balance": 7000.0,
                "remaining": 7000.0, "expense_pct": 30}
     for fn, val in (("get_categories", _CATS), ("get_family_members", []),

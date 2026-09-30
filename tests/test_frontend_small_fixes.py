@@ -624,7 +624,8 @@ def test_pull_to_refresh_only_in_the_installed_app_and_only_from_the_top():
     assert "if (!isStandalone || !('ontouchstart' in window)) return;" in js
     assert "return busy || window.scrollY > 0" in part
     assert "if (dy < 0 || Math.abs(dx) > Math.abs(dy))" in part
-    assert "document.querySelector('.modal-overlay.open, .transaction-item.open')" in part
+    assert "'.modal-overlay.open, .transaction-item.open, .confirm-overlay.open, '" in part
+    assert "document.querySelector(OPEN_WINDOWS)" in part
     assert "document.querySelector('main[data-soft-reload]') && window.softReload" in part
 
 
