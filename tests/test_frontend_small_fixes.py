@@ -711,3 +711,14 @@ def test_the_date_chips_include_the_day_before_yesterday():
     chips = chips[:chips.index("</div>")]
     assert [d for d in ("0", "-1", "-2") if f'data-days="{d}"' in chips] == ["0", "-1", "-2"]
     assert ">שלשום<" in chips
+
+
+def test_the_month_header_stays_on_top_once_the_balance_scrolls_away():
+    """מתן (30.9, סבב 6 פריט 12). רק כשהמאזן יצא למעלה, והסכום הסופי —
+    לא מספר הביניים של אנימציית הספירה."""
+    js = _strip_comments(_read("frontend/static/js/month.js"))
+    assert "bar.hidden = e.isIntersecting || e.boundingClientRect.top > 0;" in js
+    assert "window.sfMoney(valueEl.dataset.countup)" in js
+    assert "window.addEventListener('sf:refreshed', build);" in js
+    css = _read("frontend/static/css/style.css")
+    assert "padding: calc(env(safe-area-inset-top, 0px) + 10px) 18px 10px;" in css

@@ -354,3 +354,55 @@ window.addEventListener('sf:refreshed', paint);
         setManaging(list, btn, !list.classList.contains('managing'));
     });
 })();
+
+
+/* ═══ כותרת שנשארת למעלה בגלילה (מתן, 30.9 — סבב 6, פריט 12) ═══
+ *
+ * כשהמאזן החודשי יוצא מהמסך, בראש המסך מופיעה שורה דקה: שם החודש והמאזן.
+ * נגיעה בה מחזירה לראש העמוד. נבנית מחדש אחרי רענון רך — אז הערכים חדשים.
+ * הסכום נקרא מ-‎data-countup‎ ולא מהטקסט: באמצע אנימציית הספירה הטקסט הוא
+ * מספר ביניים. */
+(function () {
+    let bar = null, observer = null;
+
+    function build() {
+        if (observer) { observer.disconnect(); observer = null; }
+        const net = document.querySelector('.month-net');
+        const title = document.querySelector('.hero-title');
+        if (!net || !title || !('IntersectionObserver' in window)) { if (bar) bar.hidden = true; return; }
+        if (!bar) {
+            bar = document.createElement('button');
+            bar.type = 'button';
+            bar.className = 'month-sticky';
+            bar.hidden = true;
+            bar.setAttribute('aria-label', 'חזרה לראש החודש');
+            bar.addEventListener('click', function () {
+                const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                window.scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' });
+            });
+            document.body.appendChild(bar);
+        }
+        const valueEl = net.querySelector('.month-net-value');
+        let value = valueEl ? valueEl.textContent.trim() : '';
+        if (valueEl && valueEl.dataset.countup) {
+            value = (valueEl.dataset.prefix || '') + '₪' + window.sfMoney(valueEl.dataset.countup);
+        }
+        bar.innerHTML = '';
+        const t = document.createElement('span');
+        t.className = 'month-sticky-title';
+        t.textContent = title.textContent.trim();
+        const v = document.createElement('span');
+        v.className = 'month-sticky-value' + (net.classList.contains('deficit') ? ' deficit'
+                                            : net.classList.contains('surplus') ? ' surplus' : '');
+        v.textContent = 'מאזן ' + value;
+        bar.append(t, v);
+        observer = new IntersectionObserver(function (entries) {
+            // מופיעה רק כשהמאזן יצא **למעלה** — לא כשהוא עוד לא הגיע למסך
+            const e = entries[0];
+            bar.hidden = e.isIntersecting || e.boundingClientRect.top > 0;
+        });
+        observer.observe(net);
+    }
+    build();
+    window.addEventListener('sf:refreshed', build);
+})();

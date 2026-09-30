@@ -4788,3 +4788,19 @@ body.search-open { overflow: hidden; }
 .icon-picker-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 12px; }
 input.emoji-input { cursor: pointer; caret-color: transparent; }
 input.emoji-input[data-free-typing] { cursor: text; caret-color: auto; }
+
+/* הכותרת שנשארת למעלה בעמוד החודש (מתן, 30.9 — סבב 6, פריט 12).
+   בצבעי ה-hero, מתחת לאזור השעה והסוללה, מתחת לחלון העסקה (100). */
+.month-sticky {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: calc(env(safe-area-inset-top, 0px) + 10px) 18px 10px;
+    background: linear-gradient(170deg, var(--hero-bg), var(--hero-bg-2));
+    color: var(--hero-text); border: 0; font: inherit; text-align: start; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+.month-sticky[hidden] { display: none; }
+.month-sticky-title { font-weight: 700; font-size: 1rem; }
+.month-sticky-value { font-weight: 700; font-size: 0.95rem; font-variant-numeric: tabular-nums; direction: rtl; }
+.month-sticky-value.surplus { color: var(--color-income-light); }
+.month-sticky-value.deficit { color: var(--color-expense-light); }

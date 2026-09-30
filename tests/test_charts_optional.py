@@ -85,6 +85,7 @@ g.document = {
     addEventListener: (type) => listeners.push(type),
     getElementById:   () => null,
     querySelectorAll: () => [],
+    querySelector:    () => null,
 };
 g.window = g;
 // ‎sfMoney‎ מ-core.js עצמו (נחלץ בזמן ריצה), לא עותק
@@ -204,6 +205,7 @@ g.document = {
     addEventListener() {},
     createElement: () => ({ className: '', innerHTML: '' }),
     querySelectorAll: () => [],
+    querySelector:    () => null,
     getElementById: (id) =>
         (id === 'monthStrip' || id === 'txSearch') ? null :
         (id === 'overviewLegend' ? { appendChild: (li) => legend.push(li.innerHTML) } : el(id)),
