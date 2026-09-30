@@ -3109,7 +3109,9 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
             "severity": "danger",
             "text": f'ההוצאות החודש (₪{format_money(summary["expense"])}) גבוהות מההכנסות (₪{format_money(summary["income"])})',
         })
-    elif summary.get("remaining", 0) < 0:
+    # רק כשיש הכנסות, ולפי המספר המעוגל — אותו כלל כמו המאזן שמוצג: בלי
+    # הכנסות הוא "—" ולא גירעון (מתן, 30.9), ו-40 אגורות מוצגות ‎₪0‎
+    elif summary.get("income", 0) > 0 and round(summary.get("remaining", 0)) < 0:
         alerts.append({
             "severity": "danger",
             "text": "המאזן החודשי שלילי — ההוצאות והחיסכון עברו את ההכנסות",
