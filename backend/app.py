@@ -568,6 +568,10 @@ _OWNER_HEX  = {
     5: "#8A6A52",  # חום-טאופ
 }
 _SHARED_HEX = "#78716C"
+_EXTRA_INCOME_HEX = "#B8B0A2"   # "הכנסות נוספות" — אפור בהיר, שונה ממשכורת משותפת
+# יעדי חיסכון — גוונים של זהב, צבע החיסכון באפליקציה. הפלטה של ההוצאות נתנה
+# ליעד השני ירוק, וירוק כאן פירושו הכנסה.
+_SAVINGS_HEX = ("#A67C00", "#D6AE34", "#6E5200", "#E8CF7A", "#8C6A12", "#C4A45A")
 
 
 # ─── Auth routes ──────────────────────────────────────────────────────────────
@@ -1151,7 +1155,7 @@ def month_view():
             member_colors={}, month_label=_month_label(year, month), year=year, month=month,
             strip_months=[{"year": year, "month": month}], hebrew_months=_HEBREW_MONTHS,
             is_current=is_current, is_future=is_future, summary_data=db._empty_summary(),
-            expense_data=[], members_data=[],
+            expense_data=[], members_data=[], income_data=[], savings_data=[], savings_home=[],
             # התבנית ניגשת ל-project_month ללא תנאי. המסלול הזה נשכח כשנוספו
             # הפרויקטים, ומשתמש בלי משפחה קיבל 500 במקום העמוד הריק המיועד.
             project_month={"expense": 0, "income": 0, "savings": 0,
@@ -1238,6 +1242,22 @@ def month_view():
     # גרף חלוקה בין בני משפחה לכל סוג עסקה שהמשפחה הפעילה בו שיוך
     _type_labels = {"expense": "הוצאות", "income": "הכנסות", "savings": "חיסכון"}
     mcolors = _member_colors(family_id)
+
+    # כרטיסי ההכנסות והחיסכון — גרף עגול כמו ההוצאות (מתן, 30.9). משכורת בצבע
+    # של בן המשפחה (אותו צבע כמו התג עם השם), והכנסות נוספות באפור ניטרלי.
+    # האחוזים מסתכמים ל-100 בדיוק (‎share_map‎).
+    income_sources = db.income_sources(month_transactions)
+    income_pcts = share_map([{"name": s["label"], "total": s["total"]} for s in income_sources])
+    for src in income_sources:
+        idx = mcolors.get(src["transactions"][0].get("user_id")) if src["who"] else None
+        src["color"] = _OWNER_HEX.get(idx, _SHARED_HEX) if idx is not None else (
+            _SHARED_HEX if src["kind"] == "משכורת" else _EXTRA_INCOME_HEX)
+        src["pct"] = income_pcts.get(src["label"], 0)
+    savings_home = [c for c in savings_breakdown if c.get("total", 0) > 0 and not c.get("is_project")]
+    savings_pcts = share_map(savings_home)
+    for i, c in enumerate(savings_home):
+        c["share"] = savings_pcts.get(c["name"], 0)
+        c["color"] = _SAVINGS_HEX[i % len(_SAVINGS_HEX)]
     member_breakdowns = []
     for t in active_types:
         # ‎mb‎ ולא ‎rows‎: ‎rows‎ הוא שורות החודש, ודריסה שלו כאן הייתה
@@ -1256,7 +1276,8 @@ def month_view():
         summary=summary,
         expense_breakdown=expense_breakdown,
         income_breakdown=income_breakdown,
-        income_sources=db.income_sources(month_transactions),
+        income_sources=income_sources,
+        savings_home=savings_home,
         savings_breakdown=savings_breakdown,
         member_breakdowns=member_breakdowns,
         anomalies=anomalies,
@@ -1274,6 +1295,10 @@ def month_view():
         # רק קטגוריות פעילות (total>0) — כדי שאינדקסי הצבעים בגרף העגול
         # יתאמו למקרא (שגם הוא מסונן ל-active), ובלי פרוסות ברוחב 0.
         expense_data=[c for c in expense_breakdown if c.get("total", 0) > 0],
+        income_data=[{"name": s["label"], "total": s["total"], "color": s["color"], "pct": s["pct"]}
+                     for s in income_sources],
+        savings_data=[{"name": c["name"], "total": c["total"], "pct": c["share"], "color": c["color"]}
+                      for c in savings_home],
         members_data=member_breakdowns,
     )
 

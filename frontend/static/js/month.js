@@ -254,6 +254,40 @@ if (expenseData.length > 0) {
     }
 }
 
+// ── 3–4. חיסכון והכנסות — אותו גרף עגול כמו ההוצאות (מתן, 30.9) ──
+// הצבעים מהשרת: בהכנסות — בן המשפחה, או אפור ל"הכנסות נוספות"; בחיסכון — זהב.
+[['savingsChart', SF_VIEW.savings || [], 'color'], ['incomeChart', SF_VIEW.income || [], 'color']]
+.forEach(function (spec) {
+    const ctx = document.getElementById(spec[0]);
+    const data = spec[1];
+    if (!ctx || !data.length) return;
+    drawn.push(new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.map(d => d.name),
+            datasets: [{
+                data:            data.map(d => d.total),
+                backgroundColor: spec[2] ? data.map(d => d[spec[2]]) : COLORS.slice(0, data.length),
+                borderColor:     '#FFFFFF',
+                borderWidth:     2,
+                borderRadius:    4,
+                spacing:         2,
+                hoverOffset:     6,
+            }]
+        },
+        options: {
+            cutout: '70%',
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: c => ` ₪${window.sfMoney(c.parsed)} (${data[c.dataIndex].pct}%)`
+                    }
+                }
+            }
+        }
+    }));
+});
+
 // ── 5. חלוקה בין בני המשפחה — גרף נפרד לכל סוג שהמשפחה הפעילה בו שיוך ──
 SF_VIEW.members.forEach(function (mb) {
     const ctx = document.getElementById('membersChart-' + mb.type);

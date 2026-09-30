@@ -2612,6 +2612,7 @@ def income_sources(transactions: list) -> list:
         out.append(extra)
     for src in out:
         src["total"] = round(src["total"], 2)
+        src["label"] = f'{src["kind"]} {src["who"]}'.strip()
     return out
 
 

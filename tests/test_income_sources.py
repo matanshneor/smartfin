@@ -54,22 +54,31 @@ def test_no_income_no_rows():
     assert db.income_sources([_tx(50, "סופר", type_="expense")]) == []
 
 
-def test_the_month_page_shows_the_total_then_the_sources():
-    """הצעה ד: "נכנס החודש" בראש, ואז השורות. בדפדפן: tests/browser/income_sources.py."""
+def _section(sec_id):
     from pathlib import Path
     html = (Path(__file__).resolve().parent.parent / "frontend/templates/month.html").read_text(encoding="utf-8")
-    section = html[html.index('id="income-breakdown"'):]
-    section = section[:section.index("</section>")]
-    assert section.index("נכנס החודש") < section.index("{% for src in income_sources %}")
-    assert "income_active" not in section, "הפירוט לפי קטגוריה עדיין שם"
+    section = html[html.index(f'id="{sec_id}"'):]
+    return section[:section.index("</section>")]
 
 
-def test_the_savings_section_shows_the_total_share_of_income_and_share_per_goal():
-    """הצעה ב לחיסכון (מתן, 30.9). בדפדפן: tests/browser/savings_section.py."""
-    from pathlib import Path
-    html = (Path(__file__).resolve().parent.parent / "frontend/templates/month.html").read_text(encoding="utf-8")
-    section = html[html.index('id="savings-breakdown"'):]
-    section = section[:section.index("</section>")]
-    assert "הופרש החודש" in section and "% מההכנסות החודש" in section
-    assert "savings_shares.get(item.name, 0) }}% מהחיסכון" in section
-    assert "breakdown-fill savings" not in section, "הפסים עדיין שם"
+def test_the_income_card_is_a_doughnut_like_expenses():
+    """מתן (30.9): כותרת "הכנסות" בלבד, גרף עגול כמו ההוצאות, ולכל מקור צבע
+    (בן המשפחה, או אפור) ואחוז. בדפדפן: tests/browser/income_sources.py."""
+    section = _section("income-breakdown")
+    assert '<h2 class="chart-title">הכנסות</h2>' in section
+    assert 'id="incomeChart"' in section and "נכנס החודש" in section
+    assert "{{ src.pct }}%" in section and "background: {{ src.color }}" in section
+
+
+def test_the_savings_card_is_a_doughnut_with_its_share_of_income():
+    """מתן (30.9): "חיסכון" בלבד, גרף עגול, "X% מההכנסות החודש", ואחוז לכל יעד.
+    בדפדפן: tests/browser/savings_section.py."""
+    section = _section("savings-breakdown")
+    assert '<h2 class="chart-title">חיסכון</h2>' in section
+    assert 'id="savingsChart"' in section and "הופרש החודש" in section
+    assert "% מההכנסות החודש" in section and "{{ item.share }}%" in section
+
+
+def test_the_label_names_the_person():
+    sources = db.income_sources([_tx(100, "משכורת", "u1", "אור"), _tx(50, "מתנה")])
+    assert [s["label"] for s in sources] == ["משכורת אור", "הכנסות נוספות"]

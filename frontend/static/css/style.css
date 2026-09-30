@@ -1809,43 +1809,15 @@ a.submit-btn {
 
 .delete-tx-btn:disabled { opacity: 0.6; }
 
-/* ─── הכנסות — מאיפה הגיעו (הצעה ד): סך הכול ואז הפירוט ───────── */
-.income-total {
+/* ─── הכנסות וחיסכון — גרף עגול כמו ההוצאות (מתן, 30.9) ─────────── */
+.doughnut-total.income  { color: var(--color-income); }
+.doughnut-total.savings { color: var(--color-savings); }
+
+.savings-of-income {
     text-align: center;
-    padding: 2px 0 14px;
-    margin-bottom: 12px;
-    border-bottom: 1px solid rgba(28, 25, 23, 0.07);
-}
-
-.income-total-label {
-    font-size: 0.74rem;
+    font-size: 0.78rem;
     color: var(--color-text-muted);
-    margin-bottom: 2px;
-}
-
-.income-total-value {
-    font-size: 1.7rem;
-    font-weight: 700;
-    color: var(--color-income);
-    font-variant-numeric: tabular-nums;
-    direction: ltr;
-}
-
-.income-who { font-weight: 700; }
-
-/* חיסכון (הצעה ב) — אותו ראש כמו ההכנסות, בזהב, ואחוז מתחת לכל יעד */
-.income-total-value.savings { color: var(--color-savings); }
-
-.income-total-sub {
-    font-size: 0.74rem;
-    color: var(--color-text-muted);
-    margin-top: 2px;
-}
-
-.breakdown-share {
-    font-size: 0.72rem;
-    color: var(--color-text-muted);
-    margin-top: 2px;
+    margin: -4px 0 10px;
 }
 
 /* ─── Months comparison ───────────────────────────────────────── */

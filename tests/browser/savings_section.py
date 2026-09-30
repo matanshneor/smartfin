@@ -56,10 +56,11 @@ try:
                                               "description": "SAV-TEST", "category_id": cat})
         page.goto(BASE + "/month"); page.wait_for_timeout(1500)
         sec = page.locator("#savings-breakdown")
-        print("top:", sec.locator(".income-total-value").inner_text(), "|", sec.locator(".income-total-sub").inner_text())
-        print("rows:", list(zip(sec.locator(".breakdown-bar-row:not(.zero-cat-row) .breakdown-name").all_inner_texts(),
-                                sec.locator(".breakdown-bar-row:not(.zero-cat-row) .breakdown-share").all_inner_texts())))
-        sec.locator(".breakdown-main.clickable").first.click(); page.wait_for_timeout(400)
+        print("title:", sec.locator(".chart-title").inner_text(), "| center:", sec.locator(".doughnut-total").inner_text(),
+              "|", sec.locator(".savings-of-income").inner_text(),
+              "| chart drawn:", page.evaluate("!!(window.Chart && Chart.getChart(document.getElementById('savingsChart')))"))
+        print("rows:", list(zip(sec.locator(".legend-name").all_inner_texts(), sec.locator(".legend-pct").all_inner_texts())))
+        sec.locator(".legend-item.clickable").first.click(); page.wait_for_timeout(400)
         print("expanded:", sec.locator(".cat-tx-row:visible").count(), "transaction(s)")
         for w in (320, 390):
             page.set_viewport_size({"width": w, "height": 800}); page.wait_for_timeout(300)

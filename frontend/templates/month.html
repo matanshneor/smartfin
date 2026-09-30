@@ -404,70 +404,41 @@
 </section>
 {% endif %}
 
-<!-- Chart 3: חיסכון לפי יעד -->
+<!-- Chart 3: חיסכון — גרף עגול כמו ההוצאות (מתן, 30.9) -->
 <section class="chart-card" id="savings-breakdown">
-    <h2 class="chart-title">חיסכון — לאן הופרש</h2>
-    {% set savings_active = savings_breakdown | selectattr('total', 'gt', 0) | list %}
-    {% set savings_zero   = savings_breakdown | rejectattr('total', 'gt', 0) | list %}
-    {# הצעה ב (מתן, 30.9): כמה הופרש החודש ואיזה חלק מההכנסות זה, ומתחת לכל
-       יעד — איזה חלק מהחיסכון. האחוזים מחושבים על החיסכון של הבית (בלי
-       פרויקטים), כמו ‎summary.savings‎. #}
-    {% set savings_home = savings_active | rejectattr('is_project') | list %}
+    <h2 class="chart-title">חיסכון</h2>
+    {# כמה הופרש, איזה חלק מההכנסות, ולכל יעד — איזה חלק מהחיסכון (‎savings_home‎,
+       בלי פרויקטים). צבעי היעדים — גוונים של זהב (‎_SAVINGS_HEX‎). #}
+    {% set savings_home = savings_home | default([]) %}
     {% set savings_total = savings_home | sum(attribute='total') %}
-    {% set savings_shares = savings_home | share_map %}
-    {% if savings_total > 0 %}
-    <div class="income-total savings-total">
-        <p class="income-total-label">הופרש החודש</p>
-        <p class="income-total-value savings">₪{{ savings_total | money }}</p>
-        {% if summary.income > 0 %}
-        <p class="income-total-sub">{{ ((savings_total / summary.income) * 100) | round | int }}% מההכנסות החודש</p>
-        {% endif %}
+    {% if savings_home %}
+    <div class="doughnut-wrap">
+        <canvas id="savingsChart" role="img" aria-label="חיסכון לפי יעד"></canvas>
+        <div class="doughnut-center">
+            <p class="doughnut-total savings">₪{{ savings_total | money }}</p>
+            <p class="doughnut-label">הופרש החודש</p>
+        </div>
     </div>
+    {% if summary.income > 0 %}
+    <p class="savings-of-income">{{ ((savings_total / summary.income) * 100) | round | int }}% מההכנסות החודש</p>
     {% endif %}
-    <ul class="breakdown-bars">
-        {% for item in savings_active %}
-        {% if item.is_project %}
-        <li class="breakdown-bar-row">
-            {% if item.project_id %}
-            <a class="breakdown-main clickable" href="{{ url_for('project_detail', project_id=item.project_id) }}">
-            {% else %}
-            <div class="breakdown-main">
-            {% endif %}
-                <span class="breakdown-icon">{{ item.icon }}</span>
-                <div class="breakdown-info">
-                    <div class="breakdown-name-row">
-                        <span class="breakdown-name">{{ item.name }}</span>
-                        <span class="breakdown-amount savings">₪{{ item.total | money }}</span>
-                    </div>
-                    <p class="breakdown-share">חיסכון בפרויקט</p>
-                </div>
-            {% if item.project_id %}
-            </a>
-            {% else %}
-            </div>
-            {% endif %}
-        </li>
-        {% else %}
+    {% else %}
+    <div class="chart-empty"><p>💰</p><p>אין הפרשות לחיסכון החודש</p></div>
+    {% endif %}
+    <ul class="legend-list">
+        {% for item in savings_home %}
         {% set cat_txs = month_transactions | selectattr('type', 'equalto', 'savings')
                                             | selectattr('category_name', 'equalto', item.name) | list %}
-        <li class="breakdown-bar-row">
-            <div class="breakdown-main {% if cat_txs %}clickable{% endif %}" {% if cat_txs %}role="button" tabindex="0" aria-expanded="false"{% endif %}>
-                <span class="breakdown-icon">{{ item.icon }}</span>
-                <div class="breakdown-info">
-                    <div class="breakdown-name-row">
-                        <span class="breakdown-name">{{ item.name }}</span>
-                        <span class="breakdown-amount savings">₪{{ item.total | money }}
-                            {% if cat_txs %}
-                            <span class="expand-chevron" aria-hidden="true">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                            </span>
-                            {% endif %}
-                        </span>
-                    </div>
-                    {% if savings_total > 0 %}
-                    <p class="breakdown-share">{{ savings_shares.get(item.name, 0) }}% מהחיסכון</p>
-                    {% endif %}
-                </div>
+        <li class="legend-item-wrap">
+            <div class="legend-item {% if cat_txs %}clickable{% endif %}" {% if cat_txs %}role="button" tabindex="0" aria-expanded="false"{% endif %}>
+                <span class="legend-dot" style="background: {{ item.color }};"></span>
+                <span class="legend-icon">{{ item.icon }}</span>
+                <span class="legend-name">{{ item.name }}</span>
+                <span class="legend-pct">{{ item.share }}%</span>
+                <span class="legend-amount">₪{{ item.total | money }}</span>
+                {% if cat_txs %}<span class="expand-chevron" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>{% endif %}
             </div>
             {% if cat_txs %}
             <ul class="cat-tx-list">
@@ -479,7 +450,7 @@
                     data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
                     data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
                     <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
-                    <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.is_recurring or tx.recurring_parent_id %} · 🔁 {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
+                    <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}</span>
                     {% if family_settings.owner_attribution.savings %}
                     {% set color = member_colors.get(tx.user_id) %}
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
@@ -490,63 +461,49 @@
             </ul>
             {% endif %}
         </li>
-        {% endif %}
         {% endfor %}
-        {% if not savings_active %}
-        <div class="chart-empty"><p>💰</p><p>אין הפרשות לחיסכון החודש</p></div>
-        {% endif %}
-        {% if savings_zero %}
-        <li class="zero-toggle" role="button" tabindex="0" aria-expanded="false">
-            <span>עוד {{ savings_zero | length | count_of('קטגוריה אחת', 'קטגוריות') }} ללא פעילות</span>
-            <span class="expand-chevron" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </span>
-        </li>
-        {% for item in savings_zero %}
-        <li class="breakdown-bar-row zero-cat-row">
-            <div class="breakdown-main">
-                <span class="breakdown-icon">{{ item.icon }}</span>
-                <div class="breakdown-info">
-                    <div class="breakdown-name-row">
-                        <span class="breakdown-name">{{ item.name }}</span>
-                        <span class="breakdown-amount">₪0</span>
-                    </div>
-                    <div class="breakdown-track"><div class="breakdown-fill" style="width:0;"></div></div>
-                </div>
-            </div>
+        {% for item in savings_breakdown | selectattr('total', 'gt', 0) | selectattr('is_project') %}
+        <li class="legend-item-wrap">
+            {% if item.project_id %}<a class="legend-item clickable" href="{{ url_for('project_detail', project_id=item.project_id) }}">{% else %}<div class="legend-item">{% endif %}
+                <span class="legend-dot" style="background: var(--color-savings);"></span>
+                <span class="legend-icon">{{ item.icon }}</span>
+                <span class="legend-name">{{ item.name }}</span>
+                <span class="legend-pct">פרויקט</span>
+                <span class="legend-amount">₪{{ item.total | money }}</span>
+            {% if item.project_id %}</a>{% else %}</div>{% endif %}
         </li>
         {% endfor %}
-        {% endif %}
     </ul>
 </section>
 
-<!-- Chart 4: הכנסות לפי מקור -->
+<!-- Chart 4: הכנסות — גרף עגול כמו ההוצאות (מתן, 30.9) -->
 <section class="chart-card" id="income-breakdown">
-    <h2 class="chart-title">הכנסות — מאיפה הגיעו</h2>
-    {# הצעה ד (מתן, 30.9): קודם כמה נכנס החודש, ומתחת משכורת לכל אחד וכל השאר
-       ביחד (‎income_sources‎). הכנסות של פרויקטים — שורה משלהן, עם קישור. #}
-    {% set income_projects = income_breakdown | selectattr('total', 'gt', 0) | selectattr('is_project') | list %}
+    <h2 class="chart-title">הכנסות</h2>
+    {# משכורת לכל אחד, בצבע של בן המשפחה, וכל השאר ביחד באפור (‎income_sources‎) #}
+    {% set income_sources = income_sources | default([]) %}
     {% if income_sources %}
-    <div class="income-total">
-        <p class="income-total-label">נכנס החודש</p>
-        <p class="income-total-value">₪{{ (income_sources | sum(attribute='total')) | money }}</p>
+    <div class="doughnut-wrap">
+        <canvas id="incomeChart" role="img" aria-label="הכנסות לפי מקור"></canvas>
+        <div class="doughnut-center">
+            <p class="doughnut-total income">₪{{ (income_sources | sum(attribute='total')) | money }}</p>
+            <p class="doughnut-label">נכנס החודש</p>
+        </div>
     </div>
+    {% else %}
+    <div class="chart-empty"><p>💼</p><p>אין הכנסות רשומות החודש</p></div>
     {% endif %}
-    <ul class="breakdown-bars income-sources">
+    <ul class="legend-list">
         {% for src in income_sources %}
-        <li class="breakdown-bar-row">
-            <div class="breakdown-main clickable" role="button" tabindex="0" aria-expanded="false">
-                <span class="breakdown-icon">{{ src.icon }}</span>
-                <div class="breakdown-info">
-                    <div class="breakdown-name-row">
-                        <span class="breakdown-name">{{ src.kind }}{% if src.who %} <span class="income-who">{{ src.who }}</span>{% endif %}</span>
-                        <span class="breakdown-amount income">₪{{ src.total | money }}
-                            <span class="expand-chevron" aria-hidden="true">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                            </span>
-                        </span>
-                    </div>
-                </div>
+        <li class="legend-item-wrap">
+            <div class="legend-item clickable" role="button" tabindex="0" aria-expanded="false">
+                <span class="legend-dot" style="background: {{ src.color }};"></span>
+                <span class="legend-icon">{{ src.icon }}</span>
+                <span class="legend-name">{{ src.label }}</span>
+                <span class="legend-pct">{{ src.pct }}%</span>
+                <span class="legend-amount">₪{{ src.total | money }}</span>
+                <span class="expand-chevron" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
             </div>
             <ul class="cat-tx-list">
                 {% for tx in src.transactions %}
@@ -557,7 +514,7 @@
                     data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
                     data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
                     <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
-                    <span class="cat-tx-desc">{{ tx.description or tx.category_name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.is_recurring or tx.recurring_parent_id %} · 🔁 {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
+                    <span class="cat-tx-desc">{{ tx.description or tx.category_name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}</span>
                     {% if family_settings.owner_attribution.income %}
                     {% set color = member_colors.get(tx.user_id) %}
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
@@ -568,33 +525,17 @@
             </ul>
         </li>
         {% endfor %}
-        {% for item in income_projects %}
-        <li class="breakdown-bar-row">
-            {% if item.project_id %}
-            <a class="breakdown-main clickable" href="{{ url_for('project_detail', project_id=item.project_id) }}">
-            {% else %}
-            <div class="breakdown-main">
-            {% endif %}
-                <span class="breakdown-icon">{{ item.icon }}</span>
-                <div class="breakdown-info">
-                    <div class="breakdown-name-row">
-                        <span class="breakdown-name">{{ item.name }}</span>
-                        <span class="breakdown-amount income">₪{{ item.total | money }}</span>
-                    </div>
-                    <div class="breakdown-track">
-                        <div class="breakdown-fill income" style="width: {{ item.pct }}%;"></div>
-                    </div>
-                </div>
-            {% if item.project_id %}
-            </a>
-            {% else %}
-            </div>
-            {% endif %}
+        {% for item in income_breakdown | selectattr('total', 'gt', 0) | selectattr('is_project') %}
+        <li class="legend-item-wrap">
+            {% if item.project_id %}<a class="legend-item clickable" href="{{ url_for('project_detail', project_id=item.project_id) }}">{% else %}<div class="legend-item">{% endif %}
+                <span class="legend-dot" style="background: var(--color-income);"></span>
+                <span class="legend-icon">{{ item.icon }}</span>
+                <span class="legend-name">{{ item.name }}</span>
+                <span class="legend-pct">פרויקט</span>
+                <span class="legend-amount">₪{{ item.total | money }}</span>
+            {% if item.project_id %}</a>{% else %}</div>{% endif %}
         </li>
         {% endfor %}
-        {% if not income_sources and not income_projects %}
-        <div class="chart-empty"><p>💼</p><p>אין הכנסות רשומות החודש</p></div>
-        {% endif %}
     </ul>
 </section>
 
@@ -678,7 +619,7 @@
 <script src="{{ url_for('static', filename='js/chart-setup.js') }}"></script>
 
 <script type="application/json" id="sf-view-data">
-    {{ {'summary': summary_data, 'expense': expense_data, 'members': members_data} | tojson }}
+    {{ {'summary': summary_data, 'expense': expense_data, 'income': income_data | default([]), 'savings': savings_data | default([]), 'members': members_data} | tojson }}
 </script>
 <script src="{{ url_for('static', filename='js/month.js') }}"></script>
 {% endblock %}

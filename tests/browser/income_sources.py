@@ -59,11 +59,12 @@ try:
                                                       "description": "INC-TEST", "category_id": cat, "owner": owner})
         page.goto(BASE + "/month"); page.wait_for_timeout(1500)
         sec = page.locator("#income-breakdown")
-        print("total:", sec.locator(".income-total-value").inner_text(),
-              "| rows:", sec.locator(".income-sources .breakdown-name").all_inner_texts(),
-              "| amounts:", sec.locator(".income-sources .breakdown-amount").all_inner_texts())
-        sec.locator(".income-sources .breakdown-main").last.click(); page.wait_for_timeout(400)
-        print("expanded extra shows:", sec.locator(".income-sources .breakdown-bar-row").last.locator(".cat-tx-row:visible").count(), "transactions")
+        print("title:", sec.locator(".chart-title").inner_text(), "| center:", sec.locator(".doughnut-total").inner_text(),
+              "| chart drawn:", page.evaluate("!!(window.Chart && Chart.getChart(document.getElementById('incomeChart')))"))
+        print("rows:", list(zip(sec.locator(".legend-name").all_inner_texts(), sec.locator(".legend-pct").all_inner_texts(),
+                                sec.locator(".legend-dot").evaluate_all("ds => ds.map(d => getComputedStyle(d).backgroundColor)"))))
+        sec.locator(".legend-item.clickable").last.click(); page.wait_for_timeout(400)
+        print("expanded extra shows:", sec.locator(".cat-tx-row:visible").count(), "transactions")
         for w in (320, 390):
             page.set_viewport_size({"width": w, "height": 800}); page.wait_for_timeout(300)
             print(w, "sideways:", page.evaluate("document.documentElement.scrollWidth > innerWidth"))
