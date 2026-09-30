@@ -69,3 +69,36 @@ def test_a_new_familys_name_field_starts_empty():
     with app.test_request_context():
         assert 'value=""' in render_template_string(tag, family={"name": "המשפחה שלי"})
         assert 'value="משפחת כהן"' in render_template_string(tag, family={"name": "משפחת כהן"})
+
+
+# ─── האייקון ────────────────────────────────────────────────────────────────
+#
+# לאייקון הקודם היו פינות מעוגלות ומסגרת משלו, עם פינות שקופות. אייפון
+# ואנדרואיד מעגלים בעצמם: עיגול כפול, מסגרת חתוכה, ופינות שקופות שהטלפון
+# צובע. ו-"any maskable" על אותו קובץ חתך באנדרואיד את קצה החץ.
+
+@pytest.mark.parametrize("name", ["icon-180.png", "icon-192.png", "icon-512.png", "icon-maskable-512.png"])
+def test_home_screen_icons_have_no_transparent_corners(name):
+    data = (_ROOT / "frontend/static/icons" / name).read_bytes()
+    assert data[:8] == b"\x89PNG\r\n\x1a\n"
+    color_type = data[25]                      # IHDR: 2 = RGB, 6 = RGBA
+    assert color_type == 2, f"{name}: יש ערוץ שקיפות"
+
+
+def test_the_maskable_icon_is_its_own_file():
+    purposes = {i["src"].rsplit("/", 1)[-1]: i["purpose"] for i in _MANIFEST["icons"]}
+    assert purposes["icon-maskable-512.png"] == "maskable"
+    assert all(p == "any" for n, p in purposes.items() if n != "icon-maskable-512.png")
+
+
+def test_the_maskable_arrow_stays_inside_the_android_safe_zone():
+    """אנדרואיד מבטיח רק עיגול ברדיוס 40% מהמרכז; מה שמחוצה לו עלול להיחתך."""
+    svg = (_ROOT / "frontend/static/icons/icon-maskable.svg").read_text(encoding="utf-8")
+    tx, ty, k = map(float, re.search(r"translate\(([\d.]+) ([\d.]+)\) scale\(([\d.]+)\)", svg).groups())
+    stroke = float(re.search(r'stroke-width="([\d.]+)"', svg).group(1))
+    points = [tuple(map(float, p)) for p in re.findall(r"(\d+)[ ,](\d+)", " ".join(re.findall(r'd="([^"]+)"', svg)))]
+    # "H158" ו-"V100" נותנים את הפינה (158, 60) — כבר בין הנקודות
+    for x, y in points:
+        px, py = tx + (x - tx) * k, ty + (y - ty) * k
+        reach = ((px - 96) ** 2 + (py - 96) ** 2) ** 0.5 + stroke * k / 2
+        assert reach <= 0.40 * 192, (x, y, round(reach, 1))
