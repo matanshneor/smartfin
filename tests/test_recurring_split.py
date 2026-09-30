@@ -26,7 +26,13 @@ def _table(name):
 
 
 @pytest.fixture
-def series(family_a):
+def series(family_a, monkeypatch):
+    # השעון קבוע: הסדרה כתובה ביד עד ספטמבר 2026, ובשעון האמיתי המנוע
+    # יוצר בצדק את אוקטובר — והבדיקה נשברה לבד ב-1.10.
+    import datetime as _dt
+    from backend import clock as _clock
+    monkeypatch.setattr(_clock, "today", lambda: _dt.date(2026, 9, 30))
+    monkeypatch.setattr(_clock, "now", lambda: _dt.datetime(2026, 9, 30, 12, 0))
     db.set_auth_token(family_a["token"])
     fid = family_a["family_id"]
     marker = f"SPLIT-{uuid.uuid4().hex[:8]}"
