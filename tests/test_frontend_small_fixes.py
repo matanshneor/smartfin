@@ -734,3 +734,13 @@ def test_a_slow_page_change_shows_a_skeleton_and_a_fast_one_does_not():
     assert "window.addEventListener('pageshow', hide);" in js
     assert "if (e.defaultPrevented" in js
     assert "js/skeleton.js" in _read("frontend/templates/base.html")
+
+
+def test_every_page_is_a_pixel_taller_than_the_screen():
+    """מתן (30.9): באפליקציה המותקנת התפריט התחתון "עלה" בעמוד הפרויקטים —
+    העמוד היחיד שהיה קצר מהמסך. ‎lvh‎ (המסך הגדול) ולא ‎dvh‎."""
+    css = _read("frontend/static/css/style.css")
+    body = css[css.index("\nbody {"):]
+    body = body[:body.index("}")]
+    assert "min-height: calc(100lvh + 1px);" in body
+    assert "100dvh" not in body

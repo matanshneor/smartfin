@@ -163,8 +163,13 @@ body {
     font-family: var(--font-body);
     background: var(--color-bg);
     color: var(--color-text);
-    min-height: 100vh;
-    min-height: 100dvh;
+    /* פיקסל אחד יותר מהמסך — גם בעמוד קצר (מתן, 30.9). באפליקציה המותקנת
+       באייפון, עמוד שאין בו מה לגלול מקבל מסך שנגמר מעל קו הבית, והתפריט
+       התחתון — שכבר מוסיף את השוליים של קו הבית — "עלה" פעמיים את הגובה
+       הזה. זה קרה רק בעמוד הפרויקטים, כשכל הפרויקטים כבר הסתיימו. עמוד
+       שנגלל, ולו בפיקסל, מקבל את המסך המלא — כמו כל שאר העמודים. */
+    min-height: calc(100vh + 1px);
+    min-height: calc(100lvh + 1px);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
 }
