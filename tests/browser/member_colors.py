@@ -45,13 +45,22 @@ try:
             page.goto(BASE + "/settings"); page.wait_for_timeout(900)
             page.locator(".settings-group-header", has_text="המשפחה שלי").click(); page.wait_for_timeout(300)
         open_family()
-        dots = page.locator(".member-settings-row.is-me .member-color")
-        print("dots:", dots.count(), "| current:", page.locator(".member-settings-row.is-me .member-color.is-current").get_attribute("data-color"))
-        page.locator(".member-settings-row.is-me").screenshot(path="/tmp/member_colors.png")
-        dots.nth(6).click(); page.wait_for_timeout(2000)
+        print("no dots under names:", page.locator(".member-colors").count() == 0,
+              "| button only on my row:", page.locator(".member-settings-row.is-me #memberColorOpen").count(),
+              page.locator(".member-color-open").count())
+        page.click("#memberColorOpen"); page.wait_for_timeout(300)
+        opts = page.locator(".color-option")
+        print("window open:", page.is_visible("#memberColorSheet"), "| options:", opts.count(),
+              "| preview:", opts.first.locator(".owner-pill").inner_text(),
+              "| current note:", page.locator(".color-option.is-current .color-option-note").inner_text())
+        page.screenshot(path="/tmp/color_sheet.png")
+        opts.nth(6).click(); page.wait_for_timeout(2000)
         open_family()
-        print("after pick:", page.locator(".member-settings-row.is-me .member-color.is-current").get_attribute("data-color"),
-              "| toast:", page.locator("#appToast .toast-msg").all_inner_texts())
+        page.click("#memberColorOpen"); page.wait_for_timeout(300)
+        print("after pick:", page.locator(".color-option.is-current").get_attribute("data-color"),
+              "| button swatch:", page.locator(".member-color-swatch").get_attribute("style"))
+        page.keyboard.press("Escape"); page.wait_for_timeout(200)
+        print("escape closes:", not page.is_visible("#memberColorSheet"))
         page.goto(BASE + "/"); page.wait_for_timeout(1000)
         print("home pill class:", page.locator(".owner-pill").first.get_attribute("class") if page.locator(".owner-pill").count() else "(no pills — attribution off)")
         b.close()

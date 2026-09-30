@@ -76,10 +76,11 @@ def test_a_taken_color_is_refused(client):
     assert res.status_code == 409 and "תפוס" in res.get_json()["error"]
 
 
-def test_only_the_manager_chooses_for_others(client):
+def test_nobody_chooses_for_someone_else_not_even_the_manager(client):
+    """מתן (30.9): כל אחד את הצבע של עצמו בלבד."""
     assert _pick(client, _KID, 6).status_code == 403
     client.state["manager"] = _ME
-    assert _pick(client, _KID, 6).status_code == 200
+    assert _pick(client, _KID, 6).status_code == 403
 
 
 @pytest.mark.parametrize("color", [-1, 8, "2", None, 2.5])
@@ -88,7 +89,6 @@ def test_bad_colors_are_refused(client, color):
 
 
 def test_someone_outside_the_family_is_refused(client):
-    client.state["manager"] = _ME
     assert _pick(client, "55555555-5555-5555-5555-555555555555", 6).status_code == 404
 
 
@@ -104,6 +104,15 @@ def test_every_color_has_a_pill_in_both_themes():
 def test_the_settings_page_offers_the_colors():
     from pathlib import Path
     tpl = (Path(__file__).resolve().parent.parent / "frontend/templates/settings.html").read_text(encoding="utf-8")
-    assert 'class="member-colors"' in tpl
-    assert "{% if taken %}disabled" in tpl
-    assert "m.id == user.id or family.get('manager_id') == user.id" in tpl
+    # כפתור בשורה שלי בלבד, וחלון עם תג השם בכל צבע — לא עיגולים מתחת לשם
+    assert 'class="member-colors"' not in tpl
+    assert "{% if member_colors and m.id == user.id %}" in tpl
+    assert 'id="memberColorSheet"' in tpl and 'class="owner-pill owner-{{ idx }}"' in tpl
+    assert "{% if taken %}disabled{% endif %}" in tpl
+
+
+def test_the_color_window_opens_above_everything():
+    """בתוך קבוצת ההגדרות החלון נכלא מתחת לתפריט התחתון ולכפתור +."""
+    from pathlib import Path
+    js = (Path(__file__).resolve().parent.parent / "frontend/static/js/settings.js").read_text(encoding="utf-8")
+    assert "document.body.appendChild(sheet);" in js

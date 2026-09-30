@@ -3063,8 +3063,8 @@ def update_family_settings_route():
 @limiter.limit("30 per minute")
 @login_required
 def set_member_color():
-    """בחירת צבע לבן משפחה (מתן, 30.9 — סבב 6, פריט 13). לעצמי — כל אחד;
-    לאחרים — מנהל המשפחה. צבע של מישהו אחר — תפוס."""
+    """בחירת צבע לבן משפחה (מתן, 30.9 — סבב 6, פריט 13). כל אחד לעצמו בלבד —
+    גם מנהל המשפחה לא בוחר לאחרים (מתן). צבע של מישהו אחר — תפוס."""
     user = get_current_user()
     if not user["family_id"]:
         return jsonify({"error": "לא מצאנו את המשפחה שלך — רעננו את הדף"}), 400
@@ -3076,9 +3076,7 @@ def set_member_color():
     if member_id not in {m["id"] for m in members}:
         return jsonify({"error": "בן המשפחה לא נמצא"}), 404
     if member_id != user["id"]:
-        family = db.get_family(user["family_id"]) or {}
-        if family.get("manager_id") != user["id"]:
-            return jsonify({"error": "רק מנהל המשפחה בוחר צבע לאחרים"}), 403
+        return jsonify({"error": "כל אחד בוחר רק את הצבע של עצמו"}), 403
     chosen = dict((family_settings() or {}).get("member_colors") or {})
     now = assign_member_colors(members, chosen)
     if any(c == color and mid != member_id for mid, c in now.items()):

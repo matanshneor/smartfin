@@ -153,20 +153,14 @@
                         {% if m.phone %}<p class="member-settings-meta">{{ m.phone }}</p>{% endif %}
                         {% if m.workplace %}<p class="member-settings-meta">{{ m.workplace }}</p>{% endif %}
                         {% endif %}
-                        {# הצבע שלו בתגי השם ובגרפים (מתן, 30.9 — סבב 6, פריט 13). לעצמי —
-                           כל אחד; לאחרים — מנהל המשפחה. צבע של מישהו אחר חסום. #}
-                        {% if member_colors and (m.id == user.id or family.get('manager_id') == user.id) %}
+                        {# הצבע שלי בתגי השם ובגרפים — כפתור שפותח חלון עם דוגמה (מתן, 30.9).
+                           כל אחד לעצמו בלבד. #}
+                        {% if member_colors and m.id == user.id %}
                         {% set mine = member_colors.get(m.id) %}
-                        <div class="member-colors" role="group" aria-label="הצבע של {{ m.full_name }}">
-                            {% for idx, hex in color_hex | dictsort %}
-                            {% set taken = idx != mine and idx in member_colors.values() | list %}
-                            <button type="button" class="member-color{% if idx == mine %} is-current{% endif %}"
-                                    style="background: {{ hex }};" data-member="{{ m.id }}" data-color="{{ idx }}"
-                                    aria-pressed="{{ 'true' if idx == mine else 'false' }}"
-                                    aria-label="צבע {{ loop.index }}{% if taken %} — תפוס{% endif %}"
-                                    {% if taken %}disabled title="תפוס"{% endif %}></button>
-                            {% endfor %}
-                        </div>
+                        <button type="button" class="member-color-open" id="memberColorOpen" aria-haspopup="dialog">
+                            <span class="member-color-swatch" style="background: {{ color_hex[mine] }};"></span>
+                            בחירת צבע
+                        </button>
                         {% endif %}
                     </div>
                     {% if m.id == user.id %}
@@ -179,6 +173,31 @@
                 </li>
                 {% endfor %}
             </ul>
+
+            {# חלון בחירת הצבע: כל צבע עם דוגמה של תג השם שלי בצבע הזה #}
+            {% if member_colors and user.id in member_colors %}
+            {% set me = members | selectattr('id', 'equalto', user.id) | first %}
+            {% set mine = member_colors.get(user.id) %}
+            <div class="color-sheet" id="memberColorSheet" role="dialog" aria-modal="true" aria-labelledby="memberColorTitle" hidden>
+                <div class="color-sheet-card">
+                    <p class="color-sheet-title" id="memberColorTitle">הצבע שלך</p>
+                    <p class="color-sheet-hint">כך יופיע השם שלך ליד עסקאות ובגרפים</p>
+                    <div class="color-sheet-grid">
+                        {% for idx, hex in color_hex | dictsort %}
+                        {% set taken = idx != mine and idx in member_colors.values() | list %}
+                        <button type="button" class="color-option{% if idx == mine %} is-current{% endif %}"
+                                data-member="{{ user.id }}" data-color="{{ idx }}"
+                                aria-pressed="{{ 'true' if idx == mine else 'false' }}"
+                                {% if taken %}disabled{% endif %}>
+                            <span class="owner-pill owner-{{ idx }}">{{ me.name if me else user.name }}</span>
+                            <span class="color-option-note">{% if idx == mine %}הצבע שלך{% elif taken %}תפוס{% endif %}</span>
+                        </button>
+                        {% endfor %}
+                    </div>
+                    <button type="button" class="btn-sm btn-ghost color-sheet-close" id="memberColorClose">סגירה</button>
+                </div>
+            </div>
+            {% endif %}
 
             <!-- עריכת הפרטים שלי -->
             <div class="account-edit" id="profileEdit">
