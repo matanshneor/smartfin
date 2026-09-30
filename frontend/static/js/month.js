@@ -1,14 +1,5 @@
 const SF_VIEW = window.sfData('sf-view-data');
 
-// "לאן הלך הכסף": כל הכסף שיצא, והחלוקה בין הוצאות לחיסכון. בלי קשר
-// להכנסות — זה מה שיצא, לא כמה נשאר. מחושב פעם אחת ברמת הקובץ כי גם
-// המקרא וגם הדונאט צריכים בדיוק את אותה רשימה, והמקרא נבנה גם כשאין
-// ספרייה לצייר בה.
-const OVERVIEW_PARTS = [
-    { label: 'הוצאות', value: (SF_VIEW.summary || {}).expense || 0, color: '#A04545' },
-    { label: 'חיסכון', value: (SF_VIEW.summary || {}).savings || 0, color: '#A67C00' },
-].filter(p => p.value > 0);
-const OVERVIEW_TOTAL = OVERVIEW_PARTS.reduce((s, p) => s + p.value, 0);
 
 // מרכוז החודש הנוכחי ברצועה בטעינה. ה"מגנט" עצמו כולו CSS — כאן רק
 // ממקמים את נקודת ההתחלה.
@@ -71,37 +62,6 @@ document.addEventListener('click', function (e) {
     toggle.setAttribute('aria-expanded', String(shown));
 });
 
-// ── המקרא של "לאן הלך הכסף" ──
-// נבנה כאן ולא עם הגרף: אלה המספרים עצמם (הוצאות מול חיסכון, בשקלים
-// ובאחוזים), והם השווים ביותר בכרטיס. הדונאט רק מצייר אותם.
-//
-// נבנה מחדש אחרי רענון רך: ה-HTML הטרי מביא ‎<ul>‎ ריק, אז בלי זה
-// הכרטיס נשאר עם דונאט ובלי המספרים שהוא מצייר.
-function buildOverviewLegend() {
-    const legend = document.getElementById('overviewLegend');
-    if (!legend) return;
-    const view = window.sfData('sf-view-data');
-    const parts = [
-        { label: 'הוצאות', value: (view.summary || {}).expense || 0, color: '#A04545' },
-        { label: 'חיסכון', value: (view.summary || {}).savings || 0, color: '#A67C00' },
-    ].filter(p => p.value > 0);
-    const total = parts.reduce((sum, p) => sum + p.value, 0);
-
-    legend.innerHTML = '';
-    if (total <= 0) return;
-    parts.forEach(p => {
-        const li = document.createElement('li');
-        li.className = 'legend-item';
-        li.innerHTML = `
-            <span class="legend-dot" style="background:${p.color}"></span>
-            <span class="legend-name">${p.label}</span>
-            <span class="legend-pct">${Math.round(p.value / total * 100)}%</span>
-            <span class="legend-amount">₪${window.sfMoney(p.value)}</span>`;
-        legend.appendChild(li);
-    });
-}
-buildOverviewLegend();
-window.addEventListener('sf:refreshed', buildOverviewLegend);
 
 // ── מהריבועים (וכרטיסי הבית) אל הפירוט: גלילה והבהוב ──
 // ‎:target‎ לא מתעדכן ב-‎replaceState‎, אז ההבהוב במחלקה. הגעה מהבית היא
@@ -183,43 +143,7 @@ drawn = [];
 // נתוני התצוגה מגיעים מאי-נתונים ב-HTML, ואותו HTML הוחלף — אז
 // קוראים אותו מחדש ולא מסתמכים על מה שנקרא בטעינה.
 const view = window.sfData('sf-view-data');
-const parts = [
-    { label: 'הוצאות', value: (view.summary || {}).expense || 0, color: '#A04545' },
-    { label: 'חיסכון', value: (view.summary || {}).savings || 0, color: '#A67C00' },
-].filter(p => p.value > 0);
-const OVERVIEW_TOTAL = parts.reduce((s, p) => s + p.value, 0);
 const SF_VIEW = view;
-if (parts.length) {
-    const outTotal = OVERVIEW_TOTAL;
-    const ctx = document.getElementById('overviewChart');
-    if (ctx) {
-        drawn.push(new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: parts.map(p => p.label),
-                datasets: [{
-                    data:            parts.map(p => p.value),
-                    backgroundColor: parts.map(p => p.color),
-                    borderColor:     '#FFFFFF',
-                    borderWidth:     2,
-                    borderRadius:    4,
-                    spacing:         2,
-                    hoverOffset:     6,
-                }]
-            },
-            options: {
-                cutout: '70%',
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: c => ` ${c.label}: ₪${window.sfMoney(c.parsed)} (${Math.round(c.parsed / outTotal * 100)}%)`
-                        }
-                    }
-                }
-            }
-        }));
-    }
-}
 
 // ── 2. הוצאות לפי קטגוריה ──
 const expenseData = SF_VIEW.expense;

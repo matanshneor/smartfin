@@ -191,21 +191,7 @@
 </section>
 {% endif %}
 
-<!-- Chart 1: לאן הלך הכסף (חלוקת ההכנסות) -->
-<section class="chart-card">
-    <h2 class="chart-title">הוצאות מול חיסכון</h2>
-    {% if summary.expense > 0 or summary.savings > 0 %}
-    <div class="doughnut-wrap">
-        <canvas id="overviewChart" role="img" aria-label="לאן הלך הכסף: הוצאות מול חיסכון"></canvas>
-        <div class="doughnut-center">
-            <p class="doughnut-caption">פילוח החודש</p>
-        </div>
-    </div>
-    <ul class="legend-list" id="overviewLegend"></ul>
-    {% else %}
-    <div class="chart-empty"><p>💸</p><p>אין הוצאות או חיסכון החודש</p></div>
-    {% endif %}
-</section>
+{# "הוצאות מול חיסכון" הוסר (מתן, 30.9): "מרגיש לי לא רלוונטי" #}
 
 <!-- Chart 2: הוצאות לפי קטגוריה -->
 {% set expense_active = expense_breakdown | selectattr('total', 'gt', 0) | list %}

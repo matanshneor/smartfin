@@ -53,8 +53,9 @@ try:
         page.goto(BASE + "/month")
         state = lambda: page.evaluate("""() => ({
             chartLib: typeof Chart !== 'undefined',
-            overviewDrawn: typeof Chart !== 'undefined' && !!Chart.getChart(document.getElementById('overviewChart')),
-            legend: [...document.querySelectorAll('#overviewLegend .legend-amount')].map(e => e.textContent)})""")
+            // "הוצאות מול חיסכון" הוסר (30.9) — בודקים את גרף ההוצאות לפי קטגוריה
+            overviewDrawn: typeof Chart !== 'undefined' && !!Chart.getChart(document.getElementById('expenseChart')),
+            legend: [...document.querySelectorAll('#expense-breakdown .doughnut-total')].map(e => e.textContent.trim())})""")
         print("empty month:", state())
 
         def add(amount, desc):

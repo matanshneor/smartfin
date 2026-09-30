@@ -232,9 +232,8 @@ def test_the_month_charts_are_still_drawn_when_the_library_is_there():
     תרגיש. שלושת הגרפים והמקרא — בדיוק כמו לפניו."""
     result = _run_node(_WITH_CHART, "chart-setup.js", "month.js")
 
+    # "הוצאות מול חיסכון" הוסר (מתן, 30.9)
     assert result["drawn"] == [
-        {"el": "overviewChart",        "type": "doughnut", "points": 2},
         {"el": "expenseChart",         "type": "doughnut", "points": 2},
         {"el": "membersChart-expense", "type": "bar",      "points": 1},
     ]
-    assert result["legend"] == 2, "המקרא של לאן הלך הכסף לא נבנה"

@@ -11,6 +11,7 @@
 **"פרויקטים החודש"** — רשימה שטוחה של כל עסקאות הפרויקטים יחד. בחודש עם
 שיפוץ וטיול אי אפשר היה להפריד ביניהם, וזו בדיוק השאלה שנשאלת.
 """
+import re
 from pathlib import Path
 
 import pytest
@@ -142,10 +143,14 @@ def test_the_recurring_rows_carry_what_the_editor_needs():
         assert field in block, f"{field} חסר בשורת העסקה הקבועה"
 
 
-def test_the_overview_card_says_what_it_draws():
-    """הגרף הוא שתי פרוסות — הוצאות מול חיסכון."""
-    assert "הוצאות מול חיסכון" in _HTML
-    assert "לאן הלך הכסף החודש" not in _HTML
+def test_there_is_no_expenses_versus_savings_chart():
+    """מתן (30.9): "אני רוצה שלא יהיה גרף של הוצאות מול חיסכון, זה מרגיש לי
+    לא רלוונטי"."""
+    html = re.sub(r"\{#.*?#\}", "", _HTML, flags=re.S)
+    assert "הוצאות מול חיסכון" not in html
+    assert "overviewChart" not in html and "overviewLegend" not in html
+    js = (_ROOT / "frontend/static/js/month.js").read_text(encoding="utf-8")
+    assert "overviewChart" not in js and "buildOverviewLegend" not in js
 
 
 def _section(title):

@@ -101,9 +101,8 @@ def test_the_month_page_repaints_its_charts_after_a_refresh():
         "מופעים קודמים לא נהרסים — new Chart על canvas תפוס זורק"
 
 
-def test_the_month_page_rebuilds_its_legend_after_a_refresh():
-    """המקרא נבנה ב-JS לתוך ‎<ul>‎ ריק. ה-HTML הטרי מביא אותו ריק שוב,
-    אז בלי בנייה מחדש הכרטיס נשאר עם דונאט ובלי המספרים שהוא מצייר."""
+def test_the_month_page_redraws_its_charts_after_a_refresh():
+    """ה-HTML הטרי מביא ‎<canvas>‎ ריקים — בלי ציור מחדש הכרטיסים נשארים ריקים."""
     js = (_JS / "month.js").read_text(encoding="utf-8")
 
-    assert re.search(r"addEventListener\(\s*'sf:refreshed'\s*,\s*buildOverviewLegend\s*\)", js)
+    assert re.search(r"addEventListener\(\s*'sf:refreshed'\s*,\s*paint\s*\)", js)
