@@ -626,3 +626,12 @@ def test_pull_to_refresh_only_in_the_installed_app_and_only_from_the_top():
     assert "if (dy < 0 || Math.abs(dx) > Math.abs(dy))" in part
     assert "document.querySelector('.modal-overlay.open, .transaction-item.open')" in part
     assert "document.querySelector('main[data-soft-reload]') && window.softReload" in part
+
+
+def test_the_category_card_draws_the_average_and_this_month_lighter():
+    """מתן (30.9, סבב 6 פריט 1): "לפי קטגוריה" בעמוד ההשוואה."""
+    js = _strip_comments(_read("frontend/static/js/months.js"))
+    assert "c.avg == null ? [] : c.values.map(() => c.avg)" in js
+    assert "(isNow && i === months.length - 1) ? BAR_NOW : BAR" in js
+    tpl = _read("frontend/templates/months.html")
+    assert "'cat_trend': cat_trend" in tpl and 'id="categoryChart"' in tpl

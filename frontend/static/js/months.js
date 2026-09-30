@@ -96,6 +96,100 @@ if (trendData.length > 0) {
     }
 }
 
+// ── לפי קטגוריה (מתן, 30.9) ──
+// אותם חודשים כמו הגרף שמעל, מימין לשמאל כמו הוא. הסכום מעל כל עמודה, קו
+// מקווקו בגובה הממוצע, והחודש הנוכחי בהיר יותר — הוא עוד לא נגמר.
+const catTrend = SF_VIEW.cat_trend;
+const catCanvas = document.getElementById('categoryChart');
+if (catTrend && catTrend.categories.length && catCanvas) {
+    const months = catTrend.months;
+    const money = v => '₪' + window.sfMoney(Math.round(v));
+    const isNow = months.length && (function () {
+        const d = new Date(), last = months[months.length - 1];
+        return last.year === d.getFullYear() && last.month === d.getMonth() + 1;
+    })();
+    const BAR = 'rgba(160,69,69,0.9)', BAR_NOW = 'rgba(160,69,69,0.35)';
+
+    // הסכום מעל כל עמודה — בלי תוסף: שורה אחת שמציירת אחרי העמודות
+    const valuesOnTop = {
+        id: 'sfValuesOnTop',
+        afterDatasetsDraw: function (chart) {
+            const ctx = chart.ctx, meta = chart.getDatasetMeta(0);
+            ctx.save();
+            ctx.fillStyle = TEXT_MUTED;
+            ctx.font = '600 12px ' + getComputedStyle(document.body).fontFamily;
+            ctx.textAlign = 'center';
+            meta.data.forEach(function (bar, i) {
+                const v = chart.data.datasets[0].data[i];
+                if (v > 0) ctx.fillText(Math.round(v).toLocaleString('en-US'), bar.x, bar.y - 6);
+            });
+            ctx.restore();
+        },
+    };
+
+    const chart = new Chart(catCanvas, {
+        type: 'bar',
+        data: {
+            labels: months.map(m => m.label),
+            datasets: [
+                { label: 'הוצאה', data: [], borderRadius: 5,
+                  backgroundColor: months.map((m, i) => (isNow && i === months.length - 1) ? BAR_NOW : BAR),
+                  categoryPercentage: 0.86, barPercentage: 0.8, order: 2 },
+                { type: 'line', label: 'ממוצע', data: [], borderColor: TEXT_MUTED, borderWidth: 1.2,
+                  borderDash: [4, 4], pointRadius: 0, pointHitRadius: 0, fill: false, order: 1 },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: { top: 20 } },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    filter: item => item.datasetIndex === 0,
+                    callbacks: {
+                        title: items => months[items[0].dataIndex].name,
+                        label: c => ' ' + money(c.parsed.y),
+                    },
+                },
+            },
+            scales: {
+                x: { reverse: true, grid: { display: false },
+                     ticks: { font: { size: 13 }, maxRotation: 0, autoSkip: false } },
+                y: { display: false, beginAtZero: true, grid: { display: false } },
+            },
+        },
+        plugins: [valuesOnTop],
+    });
+
+    const stats = document.getElementById('catTrendStats');
+    function show(key) {
+        const c = catTrend.categories.find(x => x.key === key) || catTrend.categories[0];
+        chart.data.datasets[0].data = c.values;
+        // קו הממוצע לכל רוחב הגרף; בלי חודש שנגמר — אין ממוצע
+        chart.data.datasets[1].data = c.avg == null ? [] : c.values.map(() => c.avg);
+        chart.options.scales.y.suggestedMax = Math.max.apply(null, c.values) * 1.12;
+        chart.update();
+        const cell = (label, value) => '<div>' + label + '<b>' + value + '</b></div>';
+        stats.innerHTML =
+            cell('ממוצע לחודש', c.avg == null ? '—' : '<span class="num">' + money(c.avg) + '</span>') +
+            cell('הכי יקר' + (c.max_label ? ' · ' + c.max_label : ''),
+                 c.max_label ? '<span class="num">' + money(c.max) + '</span>' : '—') +
+            (c.current == null ? '' : cell('החודש', '<span class="num">' + money(c.current) + '</span>'));
+    }
+    show(catTrend.categories[0].key);
+
+    document.addEventListener('click', function (e) {
+        const chip = e.target.closest && e.target.closest('.cat-trend-chips .tx-cat-chip');
+        if (!chip) return;
+        document.querySelectorAll('.cat-trend-chips .tx-cat-chip').forEach(function (b) {
+            b.classList.toggle('active', b === chip);
+            b.setAttribute('aria-pressed', b === chip ? 'true' : 'false');
+        });
+        show(chip.dataset.key);
+    });
+}
+
 })();
 
 

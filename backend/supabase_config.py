@@ -2817,6 +2817,74 @@ def monthly_trend(archive: list, num_months: int = 12, today=None) -> list:
     return trend
 
 
+_SHORT_MONTHS = ["", "ינו׳", "פבר׳", "מרץ", "אפר׳", "מאי", "יוני",
+                 "יולי", "אוג׳", "ספט׳", "אוק׳", "נוב׳", "דצמ׳"]
+_FULL_MONTHS = ["", "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני",
+                "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"]
+
+
+def category_trend(family_id: str, months: list, categories: list, today=None) -> dict:
+    """כרטיס "לפי קטגוריה" בעמוד ההשוואה (מתן, 30.9): כמה יצא על כל קטגוריה
+    בכל אחד מ-‎months‎ — אותם חודשים כמו הגרף שמעליו, מהישן לחדש.
+
+    הוצאות הבית בלבד (בלי פרויקטים), כמו כל סיכום חודשי. ממוצע והחודש הכי
+    יקר — מהחודשים שנגמרו: החודש הנוכחי עוד לא נגמר, והוא היה מוריד את
+    הממוצע ונראה "חסכוני" בכל אמצע חודש. קטגוריה בלי אף שקל בחלון — בחוץ."""
+    today = today or clock.today()
+    if not months:
+        return {"months": [], "categories": []}
+    client = get_client()
+    if not client:
+        return {"months": [], "categories": []}
+    (y0, m0), (y1, m1) = months[0], months[-1]
+    try:
+        rows = _fetch_all(lambda: client.table("transactions")
+                          .select("id, amount, category_id, date")
+                          .eq("family_id", family_id)
+                          .eq("type", "expense")
+                          .is_("project_id", "null")
+                          .gte("date", f"{y0}-{m0:02d}-01")
+                          .lt("date", _next_month(y1, m1))
+                          .order("id"))
+    except Exception as e:
+        raise DataUnavailable("category_trend") from e
+
+    index = {(y, m): i for i, (y, m) in enumerate(months)}
+    names = {c["id"]: c for c in categories}
+    totals = {}
+    for r in rows:
+        d = str(r["date"])
+        i = index.get((int(d[:4]), int(d[5:7])))
+        if i is None:
+            continue
+        key = r.get("category_id") or "none"
+        totals.setdefault(key, [0.0] * len(months))[i] += float(r["amount"])
+
+    finished = [i for i, (y, m) in enumerate(months) if (y, m) < (today.year, today.month)]
+    out = []
+    for key, vals in totals.items():
+        vals = [round(v, 2) for v in vals]
+        cat = names.get(key) or {}
+        done = [vals[i] for i in finished]
+        top = max(finished, key=lambda i: vals[i]) if finished else None
+        out.append({
+            "key": key,
+            "name": cat.get("name") or _NO_CATEGORY,
+            "icon": cat.get("icon") or "📦",
+            "values": vals,
+            "avg": round(sum(done) / len(done), 2) if done else None,
+            "max": vals[top] if top is not None else None,
+            "max_label": _FULL_MONTHS[months[top][1]] if top is not None else None,
+            # "החודש" רק כשהחודש האחרון בחלון הוא באמת החודש הנוכחי
+            "current": vals[-1] if months[-1] == (today.year, today.month) else None,
+            "total": round(sum(vals), 2),
+        })
+    out.sort(key=lambda c: (-c["total"], c["name"]))
+    return {"months": [{"year": y, "month": m, "label": _SHORT_MONTHS[m], "name": _FULL_MONTHS[m]}
+                       for y, m in months],
+            "categories": out}
+
+
 def _category_history_averages(family_id: str, year: int, month: int):
     """השאילתה של get_anomalies: מחזירה
     (current, history, labels) — סכום החודש הנוכחי לכל קטגוריית הוצאה,

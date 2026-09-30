@@ -26,6 +26,24 @@
     </div>
 </section>
 
+{# לפי קטגוריה (מתן, 30.9 — אפשרות א): בוחרים קטגוריה ורואים כמה יצא עליה
+   בכל חודש. אותם חודשים כמו הגרף שמעל. הנתונים ב-‎sf-view-data‎. #}
+{% if cat_trend and cat_trend.categories %}
+<section class="chart-card cat-trend-card">
+    <h2 class="chart-title">לפי קטגוריה</h2>
+    <div class="tx-cat-chips cat-trend-chips" role="group" aria-label="בחירת קטגוריה">
+        {% for c in cat_trend.categories %}
+        <button type="button" class="date-chip tx-cat-chip{% if loop.first %} active{% endif %}"
+                data-key="{{ c.key }}" aria-pressed="{{ 'true' if loop.first else 'false' }}">{{ c.icon }} {{ c.name }}</button>
+        {% endfor %}
+    </div>
+    <div class="cat-trend-stats" id="catTrendStats" aria-live="polite"></div>
+    <div class="line-chart-wrap cat-trend-wrap">
+        <canvas id="categoryChart" role="img" aria-label="הוצאה בקטגוריה שנבחרה בכל חודש"></canvas>
+    </div>
+</section>
+{% endif %}
+
 <!-- Month list — מציג 6 חודשים אחרונים; השאר מאחורי "הצג עוד" -->
 {# טבלה לכל שנה, והשנה מעליה (מתן, 30.9 — הצעה ג): שורה לחודש, עמודה לסוג.
    השנה הנוכחית (ומה שאחריה) פתוחה במלואה; שנים קודמות הן כותרת בלבד,
@@ -97,7 +115,7 @@
 <script src="{{ url_for('static', filename='js/chart-setup.js') }}"></script>
 
 <script type="application/json" id="sf-view-data">
-    {{ {'trend': trend_data} | tojson }}
+    {{ {'trend': trend_data, 'cat_trend': cat_trend} | tojson }}
 </script>
 <script src="{{ url_for('static', filename='js/months.js') }}"></script>
 {% endif %}

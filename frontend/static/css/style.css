@@ -4598,3 +4598,15 @@ body.no-fab .fab { display: none; }
 .ptr.spinning svg { animation: ptr-spin .8s linear infinite; }
 @keyframes ptr-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .ptr.spinning svg { animation-duration: 2.4s; } }
+
+/* לפי קטגוריה בעמוד ההשוואה (מתן, 30.9) */
+.cat-trend-stats {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
+    margin: 4px 0 10px; font-size: 0.78rem; color: var(--color-text-muted);
+}
+.cat-trend-stats b {
+    display: block; margin-top: 2px; font-size: 1rem; color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+}
+.cat-trend-stats .num { direction: ltr; unicode-bidi: isolate; }
+.line-chart-wrap.cat-trend-wrap { height: 200px; margin-inline: -10px; }
