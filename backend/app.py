@@ -1451,8 +1451,10 @@ def projects():
     user      = get_current_user()
     family_id = user["family_id"]
     project_list = db.get_projects(family_id, user["id"]) if family_id else []
+    # "פרויקטים שהסתיימו" — חלק סגור בתחתית (מתן, 30.9)
+    finished = db.get_projects(family_id, user["id"], archived=True) if family_id else []
     return render_template("projects.html", active_page="projects", user=user,
-                           projects=project_list)
+                           projects=project_list, finished_projects=finished)
 
 
 def _member_names(family_id) -> dict:
@@ -1697,8 +1699,26 @@ def unshare_project_route(project_id):
 @app.route("/api/projects", methods=["GET"])
 @login_required
 def list_projects_route():
+    """‎?include_archived=1‎ — טופס העסקה: גם פרויקטים שהסתיימו, מסומנים, כדי
+    שעסקה ישנה שנערכת לא תיפול מהפרויקט שלה."""
     user = get_current_user()
-    return jsonify(db.get_projects(user["family_id"], user["id"]) if user["family_id"] else [])
+    archived = None if request.args.get("include_archived") == "1" else False
+    return jsonify(db.get_projects(user["family_id"], user["id"], archived=archived)
+                   if user["family_id"] else [])
+
+
+@app.route("/api/projects/<project_id>/archive", methods=["PUT"])
+@login_required
+@project_access_required
+def archive_project_route(project_id):
+    """"הפרויקט הסתיים" (‎archived: true‎) / "החזרה לפעילים" (‎false‎)."""
+    user = get_current_user()
+    archived = (request.get_json(silent=True) or {}).get("archived")
+    if not isinstance(archived, bool):
+        return jsonify({"error": "ערך לא תקין"}), 422
+    if not db.set_project_archived(project_id, user["family_id"], archived):
+        return jsonify({"error": "הפרויקט לא נמצא — ייתכן שנמחק בינתיים"}), 404
+    return jsonify({"status": "ok", "archived": archived})
 
 
 @app.route("/api/projects/<project_id>/categories", methods=["GET"])

@@ -195,7 +195,8 @@ def test_the_management_page_is_one_container():
 def test_every_section_became_a_block_inside_it():
     """כל חלק נשאר חלק — רק בלי מסגרת משלו."""
     blocks = _EDIT.count("project-settings-block")
-    assert blocks == 4, f"נמצאו {blocks} בלוקים במקום 4"
+    # 5 מאז "סיום הפרויקט" (מתן, 30.9)
+    assert blocks == 5, f"נמצאו {blocks} בלוקים במקום 5"
 
 
 def test_the_sections_are_separated_by_a_line_and_not_by_a_gap():
@@ -203,7 +204,7 @@ def test_the_sections_are_separated_by_a_line_and_not_by_a_gap():
     body = _EDIT[_EDIT.index('class="project-settings"'):]
     dividers = body.count('class="group-divider"')
 
-    assert dividers == 3, f"{dividers} קווי הפרדה בין 4 חלקים"
+    assert dividers == 4, f"{dividers} קווי הפרדה בין 5 חלקים"
 
 
 def test_the_delete_section_is_part_of_the_same_menu():

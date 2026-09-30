@@ -2109,17 +2109,21 @@ def reorder_categories(family_id: str, type_: str, ordered_ids: list) -> bool:
 
 # ─── Projects (תקציבי פרויקטים — משותפים או אישיים לבן משפחה אחד) ─────────────
 
-def get_projects(family_id: str, viewer_user_id: str) -> list:
+def get_projects(family_id: str, viewer_user_id: str, archived=False) -> list:
     """פרויקטים גלויים לצופה הנוכחי: כל הפרויקטים המשותפים + הפרויקטים
     האישיים ששייכים לו עצמו. פרויקט אישי של בן משפחה אחר לא נכלל כאן בכלל —
-    זו הפרטיות המבוקשת (לא רק מוסתר בתצוגה, אלא לא נשלף כלל)."""
+    זו הפרטיות המבוקשת (לא רק מוסתר בתצוגה, אלא לא נשלף כלל).
+
+    ‎archived‎: ‎False‎ — הפעילים (ברירת המחדל, כל רשימה רגילה); ‎True‎ —
+    "פרויקטים שהסתיימו"; ‎None‎ — כולם, מסומנים (טופס העסקה, לעסקה ישנה)."""
     client = get_client()
     if not client or not family_id:
         return []
     try:
-        projects = client.table("projects").select("*") \
-            .eq("family_id", family_id).eq("archived", False) \
-            .order("created_at", desc=True).execute().data
+        query = client.table("projects").select("*").eq("family_id", family_id)
+        if archived is not None:
+            query = query.eq("archived", bool(archived))
+        projects = query.order("created_at", desc=True).execute().data
         visible = [p for p in projects if not p.get("owner_id") or p["owner_id"] == viewer_user_id]
 
         totals = _project_totals(family_id)
@@ -2140,6 +2144,7 @@ def get_projects(family_id: str, viewer_user_id: str) -> list:
                 "track_expense": p.get("track_expense", True),
                 "track_income": p.get("track_income", False),
                 "track_savings": p.get("track_savings", False),
+                "archived": bool(p.get("archived")),
             })
         return out
     except Exception as e:
@@ -2192,6 +2197,22 @@ def add_project(family_id: str, name: str, created_by: str, budget_target: float
         return project, None
     except Exception as e:
         return None, str(e)
+
+
+def set_project_archived(project_id: str, family_id: str, archived: bool) -> bool:
+    """"הפרויקט הסתיים" / "החזרה לפעילים" (מתן, 30.9). העסקאות לא נוגעות —
+    רק הדגל, שמוציא את הפרויקט מהרשימות ומטופס ההוספה. ‎False‎ כששום שורה
+    לא נגעה (נמחק בינתיים, או לא של המשפחה)."""
+    client = get_client()
+    if not client:
+        return False
+    try:
+        res = client.table("projects").update({"archived": bool(archived)}) \
+            .eq("id", project_id).eq("family_id", family_id).execute()
+        return bool(res.data)
+    except Exception:
+        logger.exception("set_project_archived")
+        return False
 
 
 def update_project(project_id: str, family_id: str, name: str, budget_target: float = None,
@@ -2389,6 +2410,7 @@ def get_project_detail(project_id: str, family_id: str, viewer_user_id: str) -> 
             "created_by": proj.get("created_by"),
             "track_expense": proj["track_expense"], "track_income": proj["track_income"],
             "track_savings": proj["track_savings"],
+            "archived": bool(proj.get("archived")),
             "budget_target": float(budget) if budget is not None else None,
             "spent": round(spent, 2),
             "income": round(totals["income"], 2),

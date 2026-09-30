@@ -153,6 +153,30 @@
 
 <div class="group-divider"></div>
 
+{# הפרויקט הסתיים (מתן, 30.9 — סבב 6, פריט 3): יוצא מהרשימות ומטופס ההוספה,
+   ושום דבר לא נמחק. מעל המחיקה — זו הדרך הרכה, ורוב מי שחושב למחוק
+   פרויקט שנגמר בעצם רוצה רק שהוא לא יפריע. #}
+<div class="project-settings-block">
+    <div class="group-row">
+        <div class="group-row-info">
+            <p class="group-row-label">{{ 'הפרויקט הסתיים' if project.archived else 'סיום הפרויקט' }}</p>
+            <p class="group-row-hint">
+                {% if project.archived %}
+                    לא מופיע ברשימת הפרויקטים ובטופס ההוספה. העסקאות והסכומים שמורים.
+                {% else %}
+                    יוצא מהרשימה ומטופס ההוספה. העסקאות והסכומים נשמרים, ואפשר להחזיר אותו.
+                {% endif %}
+            </p>
+        </div>
+        <button type="button" class="btn-sm btn-ghost" data-archive-project="{{ project.id }}"
+                data-archived="{{ 'false' if project.archived else 'true' }}" data-name="{{ project.name }}">
+            {{ 'החזרה לפעילים' if project.archived else 'הפרויקט הסתיים' }}
+        </button>
+    </div>
+</div>
+
+<div class="group-divider"></div>
+
 {# מחיקת הפרויקט.
    הכפתור ישב קודם כ-✕ ברשימת הפרויקטים, במרחק נגיעה אחת מהשם ובלי שום
    הקשר על מה עומד להימחק. כאן, בתוך הפרויקט, כבר ראית את הסכומים ואת

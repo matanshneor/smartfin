@@ -80,6 +80,14 @@
     'biweekly':   'כל שבועיים'
 } %}
 
+{% if project.archived %}
+{# פרויקט שהסתיים (מתן, 30.9): הכל נשאר כמו שהוא, רק אומרים את זה #}
+<div class="project-archived-banner" role="status">
+    <span>✓ הפרויקט הסתיים</span>
+    <button type="button" class="btn-sm btn-ghost" data-archive-project="{{ project.id }}"
+            data-archived="false" data-name="{{ project.name }}">החזרה לפעילים</button>
+</div>
+{% endif %}
 <div style="display:flex; justify-content:flex-end; margin-bottom:2px;">
     <a href="{{ url_for('project_edit', project_id=project.id) }}" class="btn-sm btn-ghost">ערוך הגדרות פרויקט</a>
 </div>

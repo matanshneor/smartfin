@@ -196,7 +196,8 @@ def test_no_function_is_called_from_outside_the_block_that_defines_it():
                     break
 
         for name, (a, b) in defined.items():
-            for m in re.finditer(r"\b" + re.escape(name) + r"\s*\(", src):
+            # ‎(?<!\.)‎ — ‎r.json()‎ היא מתודה של התשובה, לא הפונקציה ‎json‎ של בלוק אחר
+            for m in re.finditer(r"(?<!\.)\b" + re.escape(name) + r"\s*\(", src):
                 if a < m.start() < b:
                     continue
                 if src[max(0, m.start() - 10):m.start()].rstrip().endswith("function"):

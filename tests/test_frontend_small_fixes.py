@@ -648,3 +648,12 @@ def test_the_search_screen_sits_outside_main_and_rows_open_for_editing():
     assert "window.addEventListener('sf:refreshed'" in js
     css = _read("frontend/static/css/style.css")
     assert "position: fixed; inset: 0; z-index: 95;" in css
+
+
+def test_a_finished_project_is_not_offered_but_an_old_transaction_keeps_it():
+    """מתן (30.9, סבב 6 פריט 3). בלי זה, עריכת סכום של עסקה בפרויקט שהסתיים
+    הייתה מוציאה אותה ממנו אל הוצאות הבית — הוא פשוט לא היה ברשימה."""
+    js = _strip_comments(_read("frontend/static/js/transactions.js"))
+    assert "window.sfFetchList('/api/projects?include_archived=1')" in js
+    assert "(p[trackKey] && !p.archived)" in js
+    assert "|| (keepOriginal && p.id === selectedProjectId)" in js

@@ -413,3 +413,46 @@ window.softReload = function (selector, pendingToast) {
         })
         .catch(fullReload);
 };
+
+
+// ── "הפרויקט הסתיים" / "החזרה לפעילים" (מתן, 30.9 — סבב 6, פריט 3) ──
+// הכפתור בעמוד העריכה ובפס של פרויקט שהסתיים. סיום שואל קודם; החזרה לא —
+// היא לא מסתירה כלום.
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest && e.target.closest('[data-archive-project]');
+    if (!btn || btn.disabled) return;
+    const archived = btn.dataset.archived === 'true';
+    const ask = archived ? window.appConfirm({
+        title: 'לסמן את "' + btn.dataset.name + '" כפרויקט שהסתיים?',
+        message: 'הוא לא יופיע יותר בטופס ההוספה וברשימת הפרויקטים, אבל כל העסקאות '
+               + 'והסכומים נשמרים, ואפשר להחזיר אותו בכל רגע.',
+        confirmText: 'סיום הפרויקט',
+        danger: false,
+    }) : Promise.resolve(true);
+    ask.then(function (ok) {
+        if (!ok) return;
+        btn.disabled = true;
+        fetch('/api/projects/' + btn.dataset.archiveProject + '/archive', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ archived: archived }),
+        })
+            .then(function (r) {
+                return r.json().catch(function () { return {}; }).then(function (d) {
+                    if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+                });
+            })
+            .then(function () {
+                try {
+                    window.sfToastAfterReload(archived ? 'הפרויקט סומן כפרויקט שהסתיים'
+                                                       : 'הפרויקט חזר לפעילים');
+                } catch (err) { /* בלי טוסט — לא בלי הרענון */ }
+                window.location.reload();
+            })
+            .catch(function (err) {
+                btn.disabled = false;
+                window.showToast(err && err.message && !/^HTTP/.test(err.message)
+                                 ? err.message : window.sfNetError(), 'error');
+            });
+    });
+});

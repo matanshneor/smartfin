@@ -144,7 +144,8 @@
 
     function loadProjects() {
         if (projectsCache) return Promise.resolve(projectsCache);
-        return window.sfFetchList('/api/projects')
+        // גם פרויקטים שהסתיימו, מסומנים — עסקה ישנה בהם שנערכת נשארת בהם
+        return window.sfFetchList('/api/projects?include_archived=1')
             .then(function (projects) { projectsCache = projects; return projects; });
     }
 
@@ -264,7 +265,8 @@
         const trackKey = { expense: 'track_expense', income: 'track_income', savings: 'track_savings' }[currentType];
         // פרויקט שהפסיק לעקוב אחרי הסוג לא מוצע לעסקה חדשה — אבל עסקה שכבר
         // בו נשארת בו. אחרת עריכת הסכום שלה הוציאה אותה אל הוצאות הבית.
-        const projects = (projectsCache || []).filter(p => p[trackKey]
+        // פרויקט שהסתיים לא מוצע לעסקה חדשה — רק עסקה שכבר בו נשארת בו
+        const projects = (projectsCache || []).filter(p => (p[trackKey] && !p.archived)
             || (keepOriginal && p.id === selectedProjectId));
 
         // השדה מוסתר כשאין לאן לשייך.
@@ -437,7 +439,7 @@
                 // אחריו — פרויקט של הכנסות בלבד לא נפתח על "הוצאה" (רעיון 8)
                 const here = document.getElementById('sfPageProject');
                 const project = here && (projectsCache || [])
-                    .find(function (p) { return p.id === here.dataset.projectId; });
+                    .find(function (p) { return p.id === here.dataset.projectId && !p.archived; });
                 const type = !project || project.track_expense ? 'expense'
                            : project.track_income ? 'income' : 'savings';
                 setType(type, undefined, undefined, project ? project.id : undefined);

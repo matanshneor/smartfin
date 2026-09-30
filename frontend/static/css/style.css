@@ -4655,3 +4655,19 @@ body.search-open { overflow: hidden; }
 .search-list { display: block; background: var(--color-card); border-radius: var(--radius); padding: 2px 12px; }
 /* ה-✕ של הדפדפן בשדה חיפוש — יש לנו כפתור סגירה משלנו לידו */
 .search-input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+
+/* פרויקט שהסתיים (מתן, 30.9 — סבב 6, פריט 3) */
+.project-archived-banner {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    /* רקע מלא: הפס יושב על קצה ה-hero הכהה, ורקע שקוף היה בלתי קריא שם */
+    background: var(--color-card); border: 1px solid var(--color-gold-border);
+    box-shadow: var(--shadow-card);
+    color: var(--color-gold-text); font-weight: 600; font-size: 0.9rem;
+    border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px;
+}
+.finished-projects { margin-top: 18px; border-top: 1px solid var(--color-border, rgba(28,25,23,0.08)); padding-top: 12px; }
+.finished-projects > summary {
+    cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--color-text-soft);
+    min-height: 40px; display: flex; align-items: center;
+}
+.finished-projects .project-row.is-finished { opacity: 0.75; }
