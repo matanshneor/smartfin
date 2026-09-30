@@ -433,7 +433,14 @@
         withLoadingTrigger(fabBtn, Promise.all([loadCategories(), loadMembers(), loadProjects()]))
             .then(function () {
                 if (mySeq !== formSeq) return;      // נלחצה בינתיים עסקה — היא קובעת
-                setType('expense');
+                // בעמוד פרויקט: הפרויקט כבר בחור, והסוג הוא סוג שהוא עוקב
+                // אחריו — פרויקט של הכנסות בלבד לא נפתח על "הוצאה" (רעיון 8)
+                const here = document.getElementById('sfPageProject');
+                const project = here && (projectsCache || [])
+                    .find(function (p) { return p.id === here.dataset.projectId; });
+                const type = !project || project.track_expense ? 'expense'
+                           : project.track_income ? 'income' : 'savings';
+                setType(type, undefined, undefined, project ? project.id : undefined);
                 openModal();
             })
             .catch(function () {
@@ -525,9 +532,11 @@
         }
     });
 
-    toggleExp.addEventListener('click', () => setType('expense'));
-    toggleInc.addEventListener('click', () => setType('income'));
-    toggleSav.addEventListener('click', () => setType('savings'));
+    // החלפת סוג שומרת את הפרויקט שנבחר, אם הוא עוקב גם אחרי הסוג החדש
+    // (‎buildProjectSelect‎ מוריד אותו אם לא). קודם כל החלפה איפסה אותו.
+    toggleExp.addEventListener('click', () => setType('expense', undefined, undefined, txProject.value));
+    toggleInc.addEventListener('click', () => setType('income', undefined, undefined, txProject.value));
+    toggleSav.addEventListener('click', () => setType('savings', undefined, undefined, txProject.value));
 
     // Owner toggle
     ownerToggle.addEventListener('click', function (e) {

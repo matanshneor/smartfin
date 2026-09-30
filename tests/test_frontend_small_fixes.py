@@ -581,3 +581,15 @@ def test_the_form_date_chips_ignore_other_chips_on_the_page():
     js = _strip_comments(_read("frontend/static/js/transactions.js"))
     assert "querySelectorAll('.date-chip')" not in js
     assert js.count("querySelectorAll('.date-quick-chips .date-chip')") == 2
+
+
+def test_the_plus_on_a_project_page_starts_in_that_project():
+    """מתן (30.9, רעיון 8): הפרויקט כבר בחור, והסוג הוא סוג שהוא עוקב אחריו."""
+    tpl = _read("frontend/templates/project_detail.html")
+    assert '<span id="sfPageProject" data-project-id="{{ project.id }}" hidden></span>' in tpl
+    js = _strip_comments(_read("frontend/static/js/transactions.js"))
+    assert "document.getElementById('sfPageProject')" in js
+    assert "setType(type, undefined, undefined, project ? project.id : undefined)" in js
+    assert ": project.track_income ? 'income' : 'savings'" in js
+    # החלפת סוג לא מאפסת את הפרויקט
+    assert "setType('income', undefined, undefined, txProject.value)" in js

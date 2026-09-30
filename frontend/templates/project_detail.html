@@ -69,6 +69,9 @@
 {% endblock %}
 
 {% block content %}
+{# + בעמוד הפרויקט פותח טופס שהפרויקט כבר בחור בו (מתן, 30.9 — רעיון 8).
+   בתוך ‎main‎, כדי שיתחלף יחד עם העמוד ברענון רך. #}
+<span id="sfPageProject" data-project-id="{{ project.id }}" hidden></span>
 {% set freq_labels = {
     'monthly_same': 'כל חודש',
     'monthly_1':  'כל 1 לחודש',
