@@ -391,3 +391,11 @@ def test_the_card_you_jump_to_stays_visible():
     rule = css[css.index(".chart-card.flash {"):]
     rule = rule[:rule.index("}")]
     assert "opacity: 1" in rule
+
+
+def test_the_card_you_jump_to_stops_below_the_iphone_status_bar():
+    """‎scroll-margin-top: 14px‎ עצר את הפירוט מתחת לשעון ולאי הדינמי."""
+    css = re.sub(r"/\*.*?\*/", "", _read("frontend/static/css/style.css"), flags=re.S)
+    rule = css[css.index("#savings-breakdown {"):]
+    rule = rule[:rule.index("}")]
+    assert "scroll-margin-top" in rule and "safe-area-inset-top" in rule

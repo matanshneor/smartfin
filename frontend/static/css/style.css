@@ -543,7 +543,9 @@ a.kpi-chip:active { transform: scale(0.97); }
 #income-breakdown,
 #expense-breakdown,
 #savings-breakdown {
-    scroll-margin-top: 14px;
+    /* באפליקציה המותקנת באייפון הדף מצויר גם מתחת לשעון ולאי הדינמי,
+       אז 14px מראש המסך הם בתוך הפס — מתן: "האי ממש דורך על זה" */
+    scroll-margin-top: calc(14px + env(safe-area-inset-top, 0px));
 }
 
 .chart-card.flash {
