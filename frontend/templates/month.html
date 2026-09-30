@@ -143,19 +143,19 @@
     <div class="fixed-summary">
         {% if fixed.expense %}
         <div class="fixed-figure">
-            <span class="fixed-label">יוצא</span>
+            <span class="fixed-label">הוצאות</span>
             <span class="fixed-amount expense">₪{{ fixed.expense | money }}</span>
         </div>
         {% endif %}
         {% if fixed.income %}
         <div class="fixed-figure">
-            <span class="fixed-label">נכנס</span>
+            <span class="fixed-label">הכנסות</span>
             <span class="fixed-amount income">₪{{ fixed.income | money }}</span>
         </div>
         {% endif %}
         {% if fixed.savings %}
         <div class="fixed-figure">
-            <span class="fixed-label">מופרש</span>
+            <span class="fixed-label">חיסכון</span>
             <span class="fixed-amount savings">₪{{ fixed.savings | money }}</span>
         </div>
         {% endif %}

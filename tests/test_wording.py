@@ -113,3 +113,10 @@ def test_the_route_knows_a_future_month():
     src = inspect.getsource(app_module.month_view)
     assert "is_future = (year, month) > (now.year, now.month)" in src
     assert src.count("is_future=is_future") == 2
+
+
+def test_fixed_costs_use_the_same_words_as_the_rest_of_the_app():
+    """מתן (30.9): בעסקאות הקבועות "הוצאות/חיסכון" ולא "יוצא/מופרש"."""
+    html = (_ROOT / "frontend/templates/month.html").read_text(encoding="utf-8")
+    labels = re.findall(r'class="fixed-label">([^<]+)<', html)
+    assert labels == ["הוצאות", "הכנסות", "חיסכון"], labels
