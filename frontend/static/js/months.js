@@ -188,7 +188,7 @@ if (catTrend && catTrend.categories.length && catCanvas) {
         sub.className = 'color-sheet-hint';
         sub.textContent = items.length
             ? window.sfCount(items.length, 'עסקה אחת', 'עסקאות') + ' · ' + money(current.values[i])
-            : 'לא בוצעו עסקאות בקטגוריה הזאת בחודש הזה';
+            : 'לא בוצעו עסקאות בקטגוריה בחודש זה';
         card.append(title, sub);
         if (items.length) {
             const ul = document.createElement('ul');
@@ -214,7 +214,7 @@ if (catTrend && catTrend.categories.length && catCanvas) {
         const link = document.createElement('a');
         link.className = 'btn-sm btn-ghost';
         link.href = '/month?year=' + m.year + '&month=' + m.month + '#expense-breakdown';
-        link.textContent = 'לכל ' + m.name;
+        link.textContent = 'לעמוד החודש';
         const close = document.createElement('button');
         close.type = 'button';
         close.className = 'btn-sm btn-primary';

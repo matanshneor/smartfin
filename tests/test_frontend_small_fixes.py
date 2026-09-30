@@ -751,4 +751,5 @@ def test_tapping_a_month_in_the_category_chart_opens_its_expenses():
     js = _strip_comments(_read("frontend/static/js/months.js"))
     assert "chart.options.onClick = function (evt)" in js
     assert "const items = (current.items || [])[i] || [];" in js
-    assert "'לא בוצעו עסקאות בקטגוריה הזאת בחודש הזה'" in js
+    assert "'לא בוצעו עסקאות בקטגוריה בחודש זה'" in js
+    assert "link.textContent = 'לעמוד החודש';" in js
