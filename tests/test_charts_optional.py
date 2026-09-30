@@ -81,7 +81,7 @@ const listeners = [];
 const g = globalThis;
 
 g.document = {
-    documentElement: { style: { setProperty() {} } },
+    documentElement: { style: { setProperty() {} }, getAttribute() { return null; } },
     addEventListener: (type) => listeners.push(type),
     getElementById:   () => null,
     querySelectorAll: () => [],
@@ -200,7 +200,7 @@ g.Chart.defaults = { font: {}, color: null, animation: {},
                      plugins: { legend: {}, tooltip: {} } };
 
 g.document = {
-    documentElement: { style: { setProperty() {} } },
+    documentElement: { style: { setProperty() {} }, getAttribute() { return null; } },
     addEventListener() {},
     createElement: () => ({ className: '', innerHTML: '' }),
     querySelectorAll: () => [],

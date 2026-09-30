@@ -581,6 +581,35 @@
         </div>
     </section>
 
+    <!-- ═══ תצוגה — לכל טלפון בנפרד (מתן, 30.9 — סבב 6) ═══ -->
+    <section class="settings-group" id="display-settings">
+        <button type="button" class="settings-group-header" aria-expanded="false">
+            <span class="group-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+            </span>
+            <span class="group-text">
+                <span class="group-title">תצוגה</span>
+                <span class="group-sub">בטלפון הזה בלבד</span>
+            </span>
+            <span class="group-chevron">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+        </button>
+
+        <div class="settings-group-body">
+            <div class="form-group">
+                <label class="form-label" id="themeLabel">מראה</label>
+                {# ידני בלבד: האפליקציה בהירה עד שבוחרים כהה (החלטת מתן) #}
+                <div class="type-toggle" role="group" aria-labelledby="themeLabel">
+                    <button type="button" class="toggle-btn theme-choice" data-theme-choice="light" aria-pressed="true">בהיר</button>
+                    <button type="button" class="toggle-btn theme-choice" data-theme-choice="dark" aria-pressed="false">כהה</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- ═══ קבוצה 4: אבטחה וחשבון ═══ -->
     <section class="settings-group">
         <button type="button" class="settings-group-header" aria-expanded="false">

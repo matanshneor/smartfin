@@ -1317,3 +1317,29 @@ document.addEventListener('click', function (e) {
         if (amount) amount.focus({ preventScroll: true });
     });
 })();
+
+
+// ── תצוגה: בהיר / כהה (מתן, 30.9 — סבב 6, פריט 4) ──
+// נשמר בטלפון בלבד. ‎data-theme‎ על ‎<html>‎ מחליף את כל הצבעים מיד — בלי
+// רענון; את השאר (גרפים) theme.js קובע בטעינה הבאה של כל עמוד.
+(function () {
+    const buttons = document.querySelectorAll('.theme-choice');
+    if (!buttons.length) return;
+    function show(theme) {
+        buttons.forEach(function (b) {
+            const on = b.dataset.themeChoice === theme;
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+    }
+    show(document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
+    buttons.forEach(function (b) {
+        b.addEventListener('click', function () {
+            const theme = b.dataset.themeChoice;
+            if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+            else document.documentElement.removeAttribute('data-theme');
+            try { localStorage.setItem('sf_theme', theme); } catch (e) { /* לא נזכר — רק לעמוד הזה */ }
+            show(theme);
+        });
+    });
+})();

@@ -56,14 +56,24 @@
     --gradient-danger:     linear-gradient(135deg, #DC2626, #B91C1C);
     --color-primary:       #A67C00;
 
+    /* דיו לקווים ולרקעים עדינים (‎rgba(var(--ink-rgb), 0.07)‎) — מתהפך במצב כהה */
+    --ink-rgb:             28, 25, 23;
+    /* התראות וכרטיסי אזהרה */
+    --alert-warn-bg:       #FDF6E7;
+    --alert-warn-ink:      #6E5200;
+    --alert-danger-bg:     #FCEDED;
+    --alert-danger-ink:    #8E1A1A;
+    --toggle-off:          #D8D2C4;
+    --dock-bg:             rgba(255, 255, 255, 0.97);
+
     /* Borders & shadows */
-    --border-subtle:       1px solid rgba(28, 25, 23, 0.07);
+    --border-subtle:       1px solid rgba(var(--ink-rgb), 0.07);
     --border-gold:         1px solid var(--color-gold-border);
     --shadow-card:         0 1px 2px rgba(31, 24, 8, 0.04), 0 4px 14px rgba(31, 24, 8, 0.05);
     --shadow-lift:         0 8px 28px rgba(31, 24, 8, 0.09), 0 2px 6px rgba(31, 24, 8, 0.05);
     --shadow-gold:         0 6px 18px rgba(166, 124, 0, 0.28);
     --shadow-dock:         0 8px 26px rgba(31, 24, 8, 0.10), 0 1px 4px rgba(31, 24, 8, 0.05);
-    --divider-subtle:      rgba(28, 25, 23, 0.06);
+    --divider-subtle:      rgba(var(--ink-rgb), 0.06);
 
     /* Layout */
     --radius:              14px;
@@ -75,6 +85,56 @@
     --font-body:           'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --font-display:        'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
+
+/* ═══ מצב כהה — ידני בלבד, מהגדרות → תצוגה (מתן, 30.9 — סבב 6, פריט 4) ═══
+   אותו סגנון: חום-כהה במקום לבן, אותו זהב. ירוק, אדום וזהב בהירים יותר —
+   הגוונים של הבהיר נותנים על רקע כהה ניגודיות נמוכה מדי לטקסט.
+   ‎data-theme‎ נקבע ב-js/theme.js, ב-<head>, לפני הציור. */
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --hero-bg:             #0B0904;
+    --hero-bg-2:           #1A1306;
+
+    --color-bg:            #15110A;
+    --color-bg-elevated:   #1B160E;
+    --color-card:          #211B12;
+    --color-card-hover:    #282115;
+    --color-input:         #2B2418;
+
+    --color-gold-text:     #E3BE55;
+    --color-gold-dim:      rgba(212, 175, 55, 0.14);
+    --color-gold-border:   rgba(212, 175, 55, 0.35);
+
+    --color-text:          #F4EFE4;
+    --color-text-soft:     #D9D1C2;
+    --color-text-muted:    #A69D8C;
+
+    --color-income:        #4ADE80;
+    --color-expense:       #F87171;
+    --color-warn:          #F2A94B;
+    --color-savings:       #E8C96A;
+
+    --ink-rgb:             255, 244, 214;
+    --alert-warn-bg:       #2E2412;
+    --alert-warn-ink:      #F0CF7A;
+    --alert-danger-bg:     #361A18;
+    --alert-danger-ink:    #FCA5A5;
+    --toggle-off:          #3A3223;
+    --dock-bg:             rgba(33, 27, 18, 0.97);
+
+    --border-subtle:       1px solid rgba(255, 244, 214, 0.08);
+    --shadow-card:         0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 14px rgba(0, 0, 0, 0.30);
+    --shadow-lift:         0 8px 28px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.30);
+    --shadow-dock:         0 8px 26px rgba(0, 0, 0, 0.50), 0 1px 4px rgba(0, 0, 0, 0.30);
+    --divider-subtle:      rgba(255, 244, 214, 0.07);
+}
+/* תגי "של מי" — הגוונים הכהים של הבהיר לא נקראים על כרטיס כהה */
+:root[data-theme="dark"] .owner-0 { background: rgba(96, 165, 250, 0.16);  color: #93C5FD; }
+:root[data-theme="dark"] .owner-1 { background: rgba(167, 139, 250, 0.16); color: #C4B5FD; }
+:root[data-theme="dark"] .owner-2 { background: rgba(236, 120, 190, 0.16); color: #F0A6D3; }
+:root[data-theme="dark"] .owner-3 { background: rgba(234, 140, 100, 0.16); color: #F4B08F; }
+:root[data-theme="dark"] .owner-4 { background: rgba(148, 170, 200, 0.16); color: #B8C8DD; }
+:root[data-theme="dark"] .owner-5 { background: rgba(190, 160, 130, 0.16); color: #D7BFA6; }
 
 /* ─── Reset & base ─────────────────────────────────────────────── */
 
@@ -517,8 +577,8 @@ ul { list-style: none; }
     display: flex;
     justify-content: space-around;
     align-items: center;
-    background: rgba(255, 255, 255, 0.97);
-    border: 1px solid rgba(28, 25, 23, 0.08);
+    background: var(--dock-bg);
+    border: 1px solid rgba(var(--ink-rgb), 0.08);
     border-radius: 16px;
     box-shadow: var(--shadow-dock);
     padding: 0 6px;
@@ -698,7 +758,7 @@ a.kpi-chip:active { transform: scale(0.97); }
 .balance-bar-track {
     height: 8px;
     border-radius: 99px;
-    background: rgba(28, 25, 23, 0.08);
+    background: rgba(var(--ink-rgb), 0.08);
     overflow: hidden;
 }
 
@@ -949,7 +1009,7 @@ li.transaction-item.open.swipe-ready > .swipe-content {
 .owner-3 { background: rgba(168, 92, 62, 0.12);  color: #A85C3E; }  /* טרקוטה */
 .owner-4 { background: rgba(94, 115, 145, 0.12); color: #5E7391; }  /* כחול-אפור צפחה */
 .owner-5 { background: rgba(138, 106, 82, 0.12); color: #8A6A52; }  /* חום-טאופ */
-.owner-shared { background: rgba(28, 25, 23, 0.07); color: var(--color-text-muted); }
+.owner-shared { background: rgba(var(--ink-rgb), 0.07); color: var(--color-text-muted); }
 
 /* תג קבלה מצורפת — לחיצה פותחת את התמונה, לא את עריכת העסקה */
 .receipt-badge {
@@ -1086,15 +1146,15 @@ li.transaction-item.open.swipe-ready > .swipe-content {
 }
 
 .alert-card.warning {
-    background: #FDF6E7;
+    background: var(--alert-warn-bg);
     border-inline-start-color: var(--color-gold);
-    color: #6E5200;
+    color: var(--alert-warn-ink);
 }
 
 .alert-card.danger {
-    background: #FCEDED;
+    background: var(--alert-danger-bg);
     border-inline-start-color: var(--color-expense);
-    color: #8E1A1A;
+    color: var(--alert-danger-ink);
 }
 
 /* ─── FAB ─────────────────────────────────────────────────────── */
@@ -1311,7 +1371,9 @@ body:has(.modal-overlay.open) .toast {
 }
 
 .confirm-yes {
-    background: var(--color-expense);
+    /* ‎--gradient-danger‎ ולא ‎--color-expense‎: במצב כהה האדום של הטקסט
+       בהיר, ולבן עליו לא נקרא */
+    background: var(--gradient-danger);
     color: #FFFFFF;
 }
 
@@ -1374,7 +1436,7 @@ body:has(.modal-overlay.open) .toast {
     width: 44px;
     height: 4px;
     border-radius: 99px;
-    background: rgba(28, 25, 23, 0.15);
+    background: rgba(var(--ink-rgb), 0.15);
     margin: 0 auto 16px;
 }
 
@@ -1480,7 +1542,7 @@ body:has(.modal-overlay.open) .toast {
     padding: 10px 4px;
     border-radius: var(--radius-sm);
     background: var(--color-card);
-    border: 1px solid rgba(28, 25, 23, 0.10);
+    border: 1px solid rgba(var(--ink-rgb), 0.10);
     font-size: 0.88rem;
     font-weight: 500;
     color: var(--color-text-soft);
@@ -1596,7 +1658,7 @@ body:has(.modal-overlay.open) .toast {
     padding: 12px 14px;
     border-radius: var(--radius-sm);
     background: var(--color-card);
-    border: 1px solid rgba(28, 25, 23, 0.14);
+    border: 1px solid rgba(var(--ink-rgb), 0.14);
     color: var(--color-text);
     font-size: 1rem;
     font-family: inherit;
@@ -1699,7 +1761,7 @@ input[type="number"] {
     padding: 10px 4px;
     border-radius: var(--radius-sm);
     background: var(--color-card);
-    border: 1px solid rgba(28, 25, 23, 0.10);
+    border: 1px solid rgba(var(--ink-rgb), 0.10);
     font-size: 0.7rem;
     font-weight: 500;
     color: var(--color-text-soft);
@@ -1736,7 +1798,7 @@ input[type="number"] {
     width: 22px;
     height: 22px;
     border-radius: 7px;
-    border: 1.5px solid rgba(28, 25, 23, 0.25);
+    border: 1.5px solid rgba(var(--ink-rgb), 0.25);
     background: var(--color-card);
     flex-shrink: 0;
     display: flex;
@@ -1887,7 +1949,7 @@ a.submit-btn {
     text-align: center;
     padding: 2px 0 14px;
     margin-bottom: 4px;
-    border-bottom: 1px solid rgba(28, 25, 23, 0.07);
+    border-bottom: 1px solid rgba(var(--ink-rgb), 0.07);
 }
 
 .savings-total-label {
@@ -1934,7 +1996,7 @@ a.submit-btn {
 
 .months-table td {
     padding: 12px 2px;
-    border-top: 1px solid rgba(28, 25, 23, 0.07);
+    border-top: 1px solid rgba(var(--ink-rgb), 0.07);
     white-space: nowrap;
 }
 
@@ -1977,7 +2039,7 @@ a.submit-btn {
 }
 
 .year-title::-webkit-details-marker { display: none; }
-.year-block[open] > .year-title { border-bottom: 1px solid rgba(28, 25, 23, 0.07); }
+.year-block[open] > .year-title { border-bottom: 1px solid rgba(var(--ink-rgb), 0.07); }
 
 .year-chevron { display: flex; color: var(--color-gold-text); transition: transform 0.2s; }
 .year-chevron svg { width: 18px; height: 18px; }
@@ -2261,7 +2323,7 @@ a.submit-btn {
 .cat-tx-row:last-child { border-bottom: none; }
 
 .cat-tx-row:active {
-    background: rgba(28, 25, 23, 0.05);
+    background: rgba(var(--ink-rgb), 0.05);
 }
 
 .cat-tx-date {
@@ -2325,7 +2387,7 @@ li.zero-cat-row { display: none; }
 .zero-cat-row .legend-item,
 .zero-cat-row .breakdown-main { opacity: 0.6; }
 
-.legend-dot-zero { background: rgba(28, 25, 23, 0.18); }
+.legend-dot-zero { background: rgba(var(--ink-rgb), 0.18); }
 
 /* כל העסקאות */
 .all-tx-title {
@@ -2401,7 +2463,7 @@ li.zero-cat-row { display: none; }
 .breakdown-track {
     height: 6px;
     border-radius: 99px;
-    background: rgba(28, 25, 23, 0.07);
+    background: rgba(var(--ink-rgb), 0.07);
     overflow: hidden;
 }
 
@@ -2538,7 +2600,7 @@ li.zero-cat-row { display: none; }
 
 .group-divider {
     height: 1px;
-    background: rgba(28, 25, 23, 0.06);
+    background: rgba(var(--ink-rgb), 0.06);
     margin: 8px 0;
 }
 
@@ -2993,7 +3055,7 @@ li.project-row {
     justify-content: space-between;
     align-items: center;
     padding: 8px 0;
-    border-bottom: 1px solid rgba(28, 25, 23, 0.06);
+    border-bottom: 1px solid rgba(var(--ink-rgb), 0.06);
     font-weight: 600;
     font-size: 0.9rem;
 }
@@ -3088,7 +3150,7 @@ li.project-row {
     font-size: 0.8rem;
     line-height: 1.55;
     color: var(--color-expense);
-    background: #FCEDED;
+    background: var(--alert-danger-bg);
     border-inline-start: 3px solid var(--color-expense);
     border-radius: var(--radius-sm);
     padding: 10px 12px;
@@ -3791,7 +3853,7 @@ li.project-row {
 .pref-slider {
     position: absolute;
     inset: 0;
-    background: #D8D2C4;
+    background: var(--toggle-off);
     border-radius: 26px;
     cursor: pointer;
     transition: background 0.2s ease;
@@ -4665,7 +4727,7 @@ body.search-open { overflow: hidden; }
     color: var(--color-gold-text); font-weight: 600; font-size: 0.9rem;
     border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px;
 }
-.finished-projects { margin-top: 18px; border-top: 1px solid var(--color-border, rgba(28,25,23,0.08)); padding-top: 12px; }
+.finished-projects { margin-top: 18px; border-top: 1px solid var(--color-border, rgba(var(--ink-rgb), 0.08)); padding-top: 12px; }
 .finished-projects > summary {
     cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--color-text-soft);
     min-height: 40px; display: flex; align-items: center;

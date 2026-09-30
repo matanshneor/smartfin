@@ -212,7 +212,7 @@ if (expenseData.length > 0) {
                 datasets: [{
                     data:            expenseData.map(d => d.total),
                     backgroundColor: COLORS.slice(0, expenseData.length),
-                    borderColor:     '#FFFFFF',
+                    borderColor:     window.sfCharts.surface,
                     borderWidth:     2,
                     borderRadius:    4,
                     spacing:         2,
@@ -247,7 +247,7 @@ if (expenseData.length > 0) {
             datasets: [{
                 data:            data.map(d => d.total),
                 backgroundColor: spec[2] ? data.map(d => d[spec[2]]) : COLORS.slice(0, data.length),
-                borderColor:     '#FFFFFF',
+                borderColor:     window.sfCharts.surface,
                 borderWidth:     2,
                 borderRadius:    4,
                 spacing:         2,

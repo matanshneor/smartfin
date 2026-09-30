@@ -17,8 +17,13 @@ window.sfCharts = (function () {
         '#A67C00', '#3D6B54', '#A04545', '#44609B',
         '#75588F', '#3E7373', '#9C6A3C', '#8F5470'
     ];
-    var MUTED = '#78716C';
-    var GRID  = 'rgba(28,25,23,0.07)';
+    // מהעיצוב הפעיל ולא קבועים: במצב כהה (סבב 6, פריט 4) אפור כהה על רקע
+    // כהה לא נקרא, וקווי רשת בצבע הדיו נעלמים
+    var dark  = document.documentElement.getAttribute('data-theme') === 'dark';
+    var MUTED = dark ? '#A69D8C' : '#78716C';
+    var GRID  = dark ? 'rgba(255,244,214,0.08)' : 'rgba(28,25,23,0.07)';
+    // צבע הכרטיס — הקו שמפריד בין פלחי הדונאט
+    var SURFACE = dark ? '#211B12' : '#FFFFFF';
 
     // צבעי הגרפים זמינים גם ל-CSS: חלק מהמקראות מרונדרות בשרת, והנקודה
     // לצד כל קטגוריה נצבעת מהמשתנים האלה. לכן זה קורה גם בלי ספרייה —
@@ -44,7 +49,7 @@ window.sfCharts = (function () {
             // הקנבס אין לו גובה להתמקם בתוכו, והוא היה נופל על הטקסט
             wrap.classList.add('chart-unavailable');
         });
-        return { ready: false, colors: COLORS, muted: MUTED, grid: GRID };
+        return { ready: false, colors: COLORS, muted: MUTED, grid: GRID, surface: SURFACE };
     }
 
     Chart.defaults.font.family = "'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
@@ -56,5 +61,5 @@ window.sfCharts = (function () {
     Chart.defaults.plugins.tooltip.titleColor = '#FAF7F0';
     Chart.defaults.plugins.tooltip.bodyColor = '#E7E0D2';
 
-    return { ready: true, colors: COLORS, muted: MUTED, grid: GRID };
+    return { ready: true, colors: COLORS, muted: MUTED, grid: GRID, surface: SURFACE };
 })();

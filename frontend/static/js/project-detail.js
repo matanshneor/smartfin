@@ -44,7 +44,7 @@ const breakdown = SF_VIEW.breakdown;
             datasets: [{
                 data:            items.map(d => d.total),
                 backgroundColor: COLORS.slice(0, items.length),
-                borderColor:     '#FFFFFF',
+                borderColor:     window.sfCharts.surface,
                 borderWidth:     2,
                 borderRadius:    4,
                 spacing:         2,
