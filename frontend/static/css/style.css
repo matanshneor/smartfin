@@ -836,16 +836,6 @@ a.kpi-chip:active { transform: scale(0.97); }
     gap: 9px;
 }
 
-/* כותרת יום בעסקאות האחרונות (מתן, 30.9) */
-.tx-day {
-    list-style: none;
-    margin-top: 8px;
-    padding-inline: 4px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--color-text-muted);
-}
-.tx-day:first-child { margin-top: 0; }
 
 /* השורה עצמה היא מיכל אנכי: כותרת (.tx-head) + עורך מתקפל (.tx-editor).
    הריפוד עבר ל-.tx-head כדי שהעורך יוכל להיפתח בלי רווח כפול. */

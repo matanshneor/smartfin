@@ -1,7 +1,8 @@
-""""עסקאות אחרונות" בדף הבית, מחולקות לפי יום (מתן, 30.9 — רעיון 2).
+""""עסקאות אחרונות" בדף הבית (מתן, 30.9).
 
-כותרת קטנה מעל כל יום — "היום", "אתמול", "ראשון, 27.9" — במקום תאריך
-בכל שורה.
+עשר האחרונות שהוזנו, בסדר ההזנה — החדשה למעלה. היום כתוב בתוך כל שורה:
+"היום · רמי לוי", "אתמול", "ראשון, 27.9". (קודם היו כותרות לפי יום, אבל
+בסדר הזנה הן חוזרות על עצמן.)
 """
 import datetime
 
@@ -71,29 +72,25 @@ def home(monkeypatch):
     return render
 
 
-def test_one_header_per_day_in_order(home):
-    lst = home([_tx(1, "2026-09-30", "רמי לוי"), _tx(2, "2026-09-30"),
-                _tx(3, "2026-09-29"), _tx(4, "2026-09-27")])
+def test_entry_order_is_kept_and_the_day_is_in_the_row(home):
+    """השרת מחזיר לפי סדר ההזנה — ואותו סדר מוצג, גם כשהתאריכים לא לפי הסדר."""
+    lst = home([_tx(1, "2026-09-27", "מסעדה"), _tx(2, "2026-09-30", "רמי לוי"), _tx(3, "2026-09-29")])
 
-    assert lst.count('class="tx-day') == 3
-    assert lst.index("היום") < lst.index("קט1") < lst.index("קט2") < lst.index("אתמול") \
-        < lst.index("קט3") < lst.index("ראשון, 27.9") < lst.index("קט4")
+    assert 'class="tx-day' not in lst
+    assert lst.index("קט1") < lst.index("קט2") < lst.index("קט3")
+    assert "ראשון, 27.9 · מסעדה" in lst
+    assert "היום · רמי לוי" in lst
+    assert "אתמול" in lst
 
 
-def test_the_row_no_longer_repeats_the_date(home):
+def test_the_old_numeric_date_is_gone(home):
     lst = home([_tx(1, "2026-09-30", "רמי לוי"), _tx(2, "2026-09-29")])
 
     assert "30.09" not in lst and "29.09" not in lst
-    assert "רמי לוי" in lst
 
 
-def test_newest_date_first_even_when_entered_out_of_order(home):
-    """השרת מחזיר לפי סדר ההזנה. מי שהזין קודם את היום ואחר כך את
-    אתמול היה מקבל "היום", "אתמול", ושוב "היום"."""
-    lst = home([_tx(1, "2026-09-27"), _tx(2, "2026-09-29"), _tx(3, "2026-09-30"),
-                _tx(4, "2026-09-30")])
-
-    assert lst.count('class="tx-day') == 3
-    assert lst.index("היום") < lst.index("אתמול") < lst.index("ראשון, 27.9")
-    # בתוך יום — סדר ההזנה נשמר
-    assert lst.index("קט3") < lst.index("קט4")
+def test_ten_rows_are_asked_for(monkeypatch):
+    """"טיפה יותר עסקאות" — עשר במקום חמש."""
+    from pathlib import Path
+    src = (Path(__file__).resolve().parent.parent / "backend/app.py").read_text(encoding="utf-8")
+    assert "db.get_recent_transactions(family_id, limit=10," in src

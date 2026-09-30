@@ -1,4 +1,4 @@
-"""בדיקת דפדפן אמיתי: "עסקאות אחרונות" מחולקות לפי יום (מתן, 30.9 — רעיון 2).
+"""בדיקת דפדפן אמיתי: "עסקאות אחרונות" בסדר ההזנה, עשר, והיום בתוך השורה (מתן, 30.9).
 
 הרצה (Playwright מותקן בפייתון של המערכת, לא ב-.venv):
     /Library/Frameworks/Python.framework/Versions/3.14/bin/python3 tests/browser/recent_by_day.py
@@ -50,19 +50,18 @@ try:
                                               "date": (today - datetime.timedelta(days=days)).isoformat(),
                                               "description": desc})
         page.goto(BASE + "/"); page.wait_for_timeout(1500)
-        print("days:", page.locator(".tx-day").all_inner_texts())
-        # הוספה דרך הטופס: השורה הזמנית נכנסת מתחת ל"היום"
-        page.click("#fabBtn") if page.locator("#fabBtn").count() else page.click(".fab")
-        page.wait_for_timeout(800)
+        metas = lambda: [m for m in page.locator(".transactions-list .tx-meta").all_inner_texts() if "DAY-TEST" in m]
+        print("rows (entry order, newest first):", metas())
+        print("day headers:", page.locator(".tx-day").count())
+        page.click("#fabBtn"); page.wait_for_timeout(800)
         page.fill("#txAmount", "77")
         page.fill("#txDescription", "DAY-TEST חדשה")
         page.click("#submitBtn")
         page.wait_for_timeout(150)
-        first_two = page.locator(".transactions-list > li").evaluate_all(
-            "els => els.slice(0,2).map(e => e.className + ' | ' + e.innerText.split('\\n')[0])")
-        print("right after add:", first_two)
+        print("right after add, top row:", page.locator(".transactions-list > li .tx-meta").first.inner_text())
         page.wait_for_timeout(2500)
-        print("after refresh:", page.locator(".tx-day").all_inner_texts())
+        print("after refresh, top row:", page.locator(".transactions-list > li .tx-meta").first.inner_text(),
+              "| rows:", page.locator(".transactions-list > li.transaction-item").count())
         for w in (320, 390):
             page.set_viewport_size({"width": w, "height": 800}); page.wait_for_timeout(300)
             print(w, "sideways:", page.evaluate("document.documentElement.scrollWidth > innerWidth"))

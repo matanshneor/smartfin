@@ -722,8 +722,11 @@
                 '<div class="tx-side"><p class="tx-amount ' + currentType + '"></p></div>' +
             '</div>';
         li.querySelector('.tx-name').textContent = name;
-        // התאריך בכותרת היום ולא בשורה (מתן, 30.9)
-        li.querySelector('.tx-meta').textContent = desc;
+        // היום בתוך השורה, כמו בשורות מהשרת (מתן, 30.9)
+        const day = txDate.value === todayStr() ? 'היום'
+                  : txDate.value === dateStr(-1) ? 'אתמול'
+                  : (txDate.value || '').slice(8, 10).replace(/^0/, '') + '.' + (txDate.value || '').slice(5, 7).replace(/^0/, '');
+        li.querySelector('.tx-meta').textContent = day + (desc ? ' · ' + desc : '');
         li.querySelector('.tx-amount').textContent = sign + '₪' + window.sfMoney(amount);
         return li;
     }
@@ -973,17 +976,8 @@
             // בחיים של המשתמש נכשלה בלי שום סימן על המסך.
             if (list) {
                 placeholderRow = buildPlaceholderTxRow(amount);
-                // מתחת לכותרת "היום" — ואם עוד אין כזאת, יוצרים אותה
-                let todayHead = list.querySelector('.tx-day[data-today]');
-                if (!todayHead && txDate.value === todayStr()) {
-                    todayHead = document.createElement('li');
-                    todayHead.className = 'tx-day';
-                    todayHead.setAttribute('data-today', '');
-                    todayHead.textContent = 'היום';
-                    list.insertBefore(todayHead, list.firstChild);
-                }
-                list.insertBefore(placeholderRow,
-                    todayHead && todayHead === list.firstElementChild ? todayHead.nextSibling : list.firstChild);
+                // בראש הרשימה — הרשימה בסדר ההזנה, החדשה למעלה
+                list.insertBefore(placeholderRow, list.firstChild);
                 closeModal();
                 setSubmitBusy(false);
                 updateSubmitLabel();

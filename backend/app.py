@@ -1134,11 +1134,11 @@ def dashboard():
         return redirect(url_for("onboarding"))
 
     # "עסקאות אחרונות" תלויות בהעדפות — נשלפות אחרי שיש לנו אותן
-    transactions = db.get_recent_transactions(family_id, settings=batch["settings"], viewer_user_id=user["id"])
-    # חמש האחרונות **שהוזנו**, מוצגות לפי התאריך שלהן — הרשימה מחולקת לפי
-    # יום (מתן, 30.9), ובסדר ההזנה אותו יום היה מופיע פעמיים. המיון יציב,
-    # אז בתוך יום נשמר סדר ההזנה (החדשה למעלה).
-    transactions = sorted(transactions, key=lambda t: str(t.get("date") or "")[:10], reverse=True)
+    # עשר האחרונות **שהוזנו**, בסדר ההזנה — החדשה למעלה (מתן, 30.9). היום
+    # כתוב בתוך כל שורה ("היום · רמי לוי"), כי בסדר הזנה כותרות לפי יום היו
+    # חוזרות על עצמן.
+    transactions = db.get_recent_transactions(family_id, limit=10, settings=batch["settings"],
+                                               viewer_user_id=user["id"])
     home_budgets = db.get_home_budgets(family_id, now.year, now.month,
                                        batch["settings"], batch["categories"])
     # "השבוע" (מתן, 30.9) — קישוט: תקלה בו לא מפילה את דף הבית
