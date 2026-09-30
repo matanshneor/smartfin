@@ -522,3 +522,12 @@ def test_within_each_month_income_is_on_the_right_then_expenses_then_savings():
     labels = re.findall(r"label:\s*'([^']+)'", js[js.index("datasets: ["):])[:3]
     assert labels == ["חיסכון", "הוצאות", "הכנסות"]
     assert "maxRotation: 0" in js
+
+
+def test_the_compare_chart_fills_its_card():
+    """מתן (30.9): "להגדיל את הגרף ואת הכיתוב שיתפוס את כל הריבוע הלבן"."""
+    css = _read("frontend/static/css/style.css")
+    assert ".line-chart-wrap.compare-chart-wrap { height: 320px; }" in css
+    js = _read("frontend/static/js/months.js")
+    assert "font: { size: 13 }" in js and "font: { size: 14 }" in js
+    assert "SHORT_MONTHS[d.month]" in js, "בגופן הגדול השמות המלאים נדבקים זה לזה"

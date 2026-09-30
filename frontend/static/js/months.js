@@ -9,6 +9,7 @@ const TEXT_MUTED = window.sfCharts.muted;
 const GRID_LINE  = window.sfCharts.grid;
 
 const trendData = SF_VIEW.trend;
+const SHORT_MONTHS = ['', 'ינו׳', 'פבר׳', 'מרץ', 'אפר׳', 'מאי', 'יוני', 'יולי', 'אוג׳', 'ספט׳', 'אוק׳', 'נוב׳', 'דצמ׳'];
 
 // ── השוואת חודשים ──
 if (trendData.length > 0) {
@@ -18,7 +19,9 @@ if (trendData.length > 0) {
         new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: last6.map(d => d.month_name),
+                // שמות מקוצרים מתחת לעמודות: בגופן 13 המלאים נדבקו זה לזה
+                // ("אוגוסטספטמבר"). השם המלא — בחלונית כשנוגעים בעמודה.
+                labels: last6.map(d => SHORT_MONTHS[d.month] || d.month_name),
                 // בסדר הפוך: Chart.js מסדר את העמודות בכל חודש משמאל לימין, וכך
                 // ההכנסות יוצאות מימין — כמו במקרא ובקריאה בעברית
                 datasets: [
@@ -49,10 +52,11 @@ if (trendData.length > 0) {
                     legend: {
                         display:  true,
                         position: 'bottom',
-                        labels: { boxWidth: 12, padding: 16, font: { size: 12 }, color: TEXT_MUTED }
+                        labels: { boxWidth: 14, padding: 18, font: { size: 14 }, color: TEXT_MUTED }
                     },
                     tooltip: {
                         callbacks: {
+                            title: items => last6[items[0].dataIndex].month_name,
                             label: c => ` ${c.dataset.label}: ₪${window.sfMoney(c.parsed.y)}`
                         }
                     }
@@ -62,11 +66,11 @@ if (trendData.length > 0) {
                 scales: {
                     x: { reverse: true, grid: { display: false },
                          // שמות ישרים ולא מוטים — המוטה נחתך בקצה
-                         ticks: { font: { size: 11 }, maxRotation: 0, autoSkip: false } },
+                         ticks: { font: { size: 13 }, maxRotation: 0, autoSkip: false } },
                     y: {
                         position: 'right',
                         grid: { color: GRID_LINE },
-                        ticks: { font: { size: 11 }, callback: v => '₪' + v.toLocaleString('en-US') }
+                        ticks: { font: { size: 13 }, callback: v => '₪' + v.toLocaleString('en-US') }
                     }
                 }
             }
