@@ -1,0 +1,71 @@
+"""בדיקת דפדפן אמיתי: שלד טעינה — רק ברשת איטית (מתן, 30.9 — סבב 6, פריט 14).
+
+הרצה (Playwright מותקן בפייתון של המערכת, לא ב-.venv):
+    /Library/Frameworks/Python.framework/Versions/3.14/bin/python3 tests/browser/skeleton.py
+"""
+import os, json, time, datetime, subprocess, signal, sys
+from playwright.sync_api import sync_playwright
+
+ROOT = os.getcwd()
+def _dotenv(path):
+    out = {}
+    for line in open(path, encoding="utf-8"):
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1); out[k.strip()] = v.strip().strip('"').strip("'")
+    return out
+env = {**os.environ, **{k: v for k, v in _dotenv(os.path.join(ROOT, ".env")).items() if v}}
+env["PORT"] = "8099"
+srv = subprocess.Popen([os.path.join(ROOT, ".venv/bin/python3"), "-m", "backend.app"], cwd=ROOT, env=env,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       start_new_session=True)   # במצב פיתוח Flask מוליד תהליך-בן שחייב למות איתו
+BASE = "http://127.0.0.1:8099"
+
+
+
+try:
+    for _ in range(40):
+        try:
+            import urllib.request; urllib.request.urlopen(BASE + "/health", timeout=1); break
+        except Exception: time.sleep(0.5)
+    with sync_playwright() as p:
+        b = p.chromium.launch()
+        # ‎service_workers="block"‎: עיכוב הרשת של הדפדפן לא חל על בקשות שה-SW עושה,
+        # אז בלי זה הניווט "מהיר" והבדיקה לא בודקת כלום
+        page = b.new_context(viewport={"width": 390, "height": 844}, service_workers="block").new_page()
+        page.goto(BASE + "/login")
+        page.fill("#identifier", env.get("RLS_TEST_EMAIL_A", "rls-test-family-a@smartfin.test"))
+        page.fill("#password", env["RLS_TEST_PASSWORD_A"])
+        page.click("button.submit-btn")
+        page.wait_for_url(lambda u: "/login" not in u, timeout=15000)
+        page.wait_for_timeout(800)
+
+        # רשת מהירה: השלד לא מופיע בכלל
+        page.evaluate("""() => { window.__sk = 0; new MutationObserver(m => m.forEach(r => r.addedNodes.forEach(n => {
+            if (n.classList && n.classList.contains('skeleton-screen')) window.__sk++; }))).observe(document.body, {childList: true}); }""")
+        seen = []
+        page.on("framenavigated", lambda f: None)
+        page.locator(".bottom-nav a").nth(1).click()
+        page.wait_for_load_state("load"); page.wait_for_timeout(300)
+        print("fast network — landed:", page.url.replace(BASE, ""), "| skeleton on new page:", page.locator(".skeleton-screen").count())
+
+        # רשת איטית: עיכוב של 1.5 שניות על כל טעינת עמוד
+        # "רשת איטית": השלד כבר קיבל את הלחיצה, ואז הניווט נעצר — כלומר העמוד
+        # הבא "לא מגיע". (עיכוב הרשת של הדפדפן לא חל על שרת מקומי, והחזקת
+        # הבקשה ב-Playwright תוקעת את הבדיקה עצמה.)
+        page.evaluate("""() => document.addEventListener('click', e => {
+            if (e.target.closest('.bottom-nav a')) e.preventDefault(); }, { once: true })""")
+        page.locator(".bottom-nav a").nth(2).click()
+        page.wait_for_timeout(100)
+        print("after 0.1s — not yet:", page.locator(".skeleton-screen").count() == 0)
+        page.wait_for_timeout(400)
+        print("slow network — skeleton showing:", page.locator(".skeleton-screen").count())
+        page.screenshot(path="/tmp/skeleton.png")
+        page.goto(BASE + "/months"); page.wait_for_timeout(1000)
+        print("then the page arrives — skeleton gone:", page.locator(".skeleton-screen").count() == 0)
+        page.go_back(); page.wait_for_timeout(1200)
+        print("back button — no leftover skeleton:", page.locator(".skeleton-screen:visible").count() == 0)
+        b.close()
+finally:
+    os.killpg(os.getpgid(srv.pid), signal.SIGTERM)
+    time.sleep(2)

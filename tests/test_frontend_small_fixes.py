@@ -722,3 +722,15 @@ def test_the_month_header_stays_on_top_once_the_balance_scrolls_away():
     assert "window.addEventListener('sf:refreshed', build);" in js
     css = _read("frontend/static/css/style.css")
     assert "padding: calc(env(safe-area-inset-top, 0px) + 10px) 18px 10px;" in css
+
+
+def test_a_slow_page_change_shows_a_skeleton_and_a_fast_one_does_not():
+    """מתן (30.9, סבב 6 פריט 14): רק אחרי רבע שנייה, רק לעמודים שיש להם צורה,
+    ולא נשאר תקוע כשחוזרים אחורה מהמטמון של הדפדפן."""
+    js = _strip_comments(_read("frontend/static/js/skeleton.js"))
+    assert "const DELAY = 250;" in js
+    for page in ("'/'", "'/month'", "'/months'", "'/projects'", "'/settings'"):
+        assert page + ":" in js
+    assert "window.addEventListener('pageshow', hide);" in js
+    assert "if (e.defaultPrevented" in js
+    assert "js/skeleton.js" in _read("frontend/templates/base.html")
