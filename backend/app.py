@@ -1550,6 +1550,19 @@ def _parse_project_body(body: dict):
     }, None
 
 
+@app.route("/api/search", methods=["GET"])
+@login_required
+def search_route():
+    """חיפוש בכל החודשים — הזכוכית המגדלת בדף הבית (מתן, 30.9)."""
+    user = get_current_user()
+    if not user["family_id"]:
+        return jsonify({"results": [], "count": 0, "truncated": False,
+                        "totals": {"expense": 0, "income": 0, "savings": 0}})
+    q = (request.args.get("q") or "")[:80]
+    return jsonify(db.search_transactions(user["family_id"], user["id"], q,
+                                          settings=family_settings()))
+
+
 @app.route("/api/projects", methods=["POST"])
 @login_required
 def add_project_route():

@@ -147,6 +147,17 @@ ul { list-style: none; }
     margin-bottom: 12px;
 }
 
+/* הזכוכית המגדלת ליד האות בדף הבית (מתן, 30.9) */
+.hero-actions { display: flex; align-items: center; gap: 10px; }
+.hero-icon-btn {
+    width: 42px; height: 42px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #F4EFE4;
+}
+.hero-icon-btn svg { width: 20px; height: 20px; }
+
 .greeting {
     color: var(--hero-text-muted);
     font-size: 0.88rem;
@@ -4610,3 +4621,37 @@ body.no-fab .fab { display: none; }
 }
 .cat-trend-stats .num { direction: ltr; unicode-bidi: isolate; }
 .line-chart-wrap.cat-trend-wrap { height: 200px; margin-inline: -10px; }
+
+/* מסך החיפוש בכל החודשים (מתן, 30.9 — סבב 6, פריט 2). מעל העמוד ומתחת
+   לחלון העריכה (z-index 100), כדי שנגיעה בתוצאה תפתח אותו מעליו. */
+.search-screen {
+    position: fixed; inset: 0; z-index: 95;
+    background: var(--color-bg);
+    display: flex; flex-direction: column;
+    padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 0;
+}
+.search-screen[hidden] { display: none; }
+body.search-open { overflow: hidden; }
+.search-bar {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--color-card); border: var(--border-subtle);
+    border-radius: 14px; padding: 4px 6px 4px 12px; box-shadow: var(--shadow-card);
+}
+.search-bar-icon { width: 20px; height: 20px; color: var(--color-text-muted); flex: none; }
+.search-input {
+    flex: 1; min-width: 0; border: 0; background: transparent; outline: none;
+    font: inherit; font-size: 1rem; padding: 10px 0; color: var(--color-text);
+}
+.search-close {
+    width: 40px; height: 40px; border-radius: 50%; border: 0; flex: none;
+    background: var(--color-input); color: var(--color-text-soft); font-size: 1rem;
+}
+.search-summary { margin: 12px 4px 4px; font-size: 0.85rem; color: var(--color-text-muted); }
+.search-results {
+    flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+}
+.search-month { margin: 16px 4px 6px; font-size: 0.85rem; font-weight: 700; color: var(--color-text-soft); }
+.search-list { display: block; background: var(--color-card); border-radius: var(--radius); padding: 2px 12px; }
+/* ה-✕ של הדפדפן בשדה חיפוש — יש לנו כפתור סגירה משלנו לידו */
+.search-input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }

@@ -1115,6 +1115,58 @@ def _filter_hidden_personal_projects(rows: list, viewer_user_id: str) -> list:
     ]
 
 
+def search_transactions(family_id: str, viewer_user_id: str, q: str,
+                        settings: dict = None, limit: int = 100) -> dict:
+    """חיפוש בכל החודשים (מתן, 30.9 — סבב 6, פריט 2).
+
+    מחפש בתיאור, בשם הקטגוריה, במקום העבודה ובשם הפרויקט. מספר ("690") מוצא
+    גם עסקאות בסכום הזה בדיוק. ההתאמה ב-Python ולא ב-PostgREST: שם הקטגוריה
+    והפרויקט יושבים בטבלאות אחרות, ו-‎or‎ על עמודות של טבלה מקושרת לא נתמך.
+    בהיקף של משפחה (אלפי שורות) זו שליפה אחת קלה.
+
+    ‎count‎ ו-‎totals‎ — של כל מה שנמצא; ‎results‎ — עד ‎limit‎, מהחדש לישן."""
+    empty = {"results": [], "count": 0, "truncated": False,
+             "totals": {"expense": 0.0, "income": 0.0, "savings": 0.0}}
+    needle = " ".join((q or "").split()).lower()
+    amount = None
+    try:
+        amount = float(needle.replace(",", "").replace("₪", ""))
+    except ValueError:
+        pass
+    if len(needle) < 2 and amount is None:
+        return empty
+    client = get_client()
+    if not client:
+        return empty
+    try:
+        rows = _fetch_all(lambda: client.table("transactions")
+                          .select("*, categories(name, icon), project_categories(name, icon), "
+                                  "profiles(name, workplace), projects(owner_id, name, icon)")
+                          .eq("family_id", family_id)
+                          .order("id"))
+    except Exception as e:
+        raise DataUnavailable("search_transactions") from e
+
+    def hit(r):
+        if amount is not None and abs(float(r.get("amount") or 0) - amount) < 0.005:
+            return True
+        cat = (r.get("project_categories") if r.get("project_category_id") else r.get("categories")) or {}
+        text = " ".join(str(x) for x in (
+            r.get("description"), r.get("workplace"), cat.get("name"),
+            (r.get("projects") or {}).get("name")) if x).lower()
+        return needle in text
+
+    found = [r for r in _filter_hidden_personal_projects(rows, viewer_user_id) if hit(r)]
+    found.sort(key=lambda r: (str(r.get("date") or ""), str(r.get("created_at") or "")), reverse=True)
+    totals = {"expense": 0.0, "income": 0.0, "savings": 0.0}
+    for r in found:
+        if r.get("type") in totals:
+            totals[r["type"]] += float(r.get("amount") or 0)
+    return {"results": _format_transactions(found[:limit], settings),
+            "count": len(found), "truncated": len(found) > limit,
+            "totals": {k: round(v, 2) for k, v in totals.items()}}
+
+
 _UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$")
 
 

@@ -635,3 +635,16 @@ def test_the_category_card_draws_the_average_and_this_month_lighter():
     assert "(isNow && i === months.length - 1) ? BAR_NOW : BAR" in js
     tpl = _read("frontend/templates/months.html")
     assert "'cat_trend': cat_trend" in tpl and 'id="categoryChart"' in tpl
+
+
+def test_the_search_screen_sits_outside_main_and_rows_open_for_editing():
+    """מתן (30.9, סבב 6 פריט 2): מחוץ ל-‎main‎ כדי שרענון רך לא יסגור אותו,
+    ומתחת לחלון העריכה כדי שנגיעה בתוצאה תפתח אותו מעליו."""
+    tpl = _read("frontend/templates/index.html")
+    assert tpl.index('id="searchScreen"') > tpl.index("{% block scripts %}")
+    assert 'id="searchOpen"' in tpl
+    js = _strip_comments(_read("frontend/static/js/search.js"))
+    assert "li.className = 'cat-tx-row'" in js and "d.id = tx.id" in js
+    assert "window.addEventListener('sf:refreshed'" in js
+    css = _read("frontend/static/css/style.css")
+    assert "position: fixed; inset: 0; z-index: 95;" in css

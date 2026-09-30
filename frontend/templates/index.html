@@ -17,9 +17,15 @@
         <p class="greeting">שלום, {{ user.name }}</p>
         <h1 class="month-title">{{ month_label }}</h1>
     </div>
-    <a href="{{ url_for('settings') }}" class="avatar-circle" title="הגדרות וחשבון">
-        {{ user.avatar_initial }}
-    </a>
+    <div class="hero-actions">
+        {# חיפוש בכל החודשים (מתן, 30.9 — סבב 6, פריט 2) #}
+        <button type="button" class="hero-icon-btn" id="searchOpen" aria-label="חיפוש בכל העסקאות" aria-haspopup="dialog">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+        </button>
+        <a href="{{ url_for('settings') }}" class="avatar-circle" title="הגדרות וחשבון">
+            {{ user.avatar_initial }}
+        </a>
+    </div>
 </div>
 
 {% if is_new_family %}
@@ -235,4 +241,20 @@
     {% endif %}
 </section>
 
+{% endblock %}
+
+{% block scripts %}
+{# מסך החיפוש — מחוץ ל-‎main‎, כדי שרענון רך (אחרי עריכה מתוך התוצאות) לא
+   יסגור אותו באמצע #}
+<div class="search-screen" id="searchScreen" role="dialog" aria-modal="true" aria-label="חיפוש בכל העסקאות" hidden>
+    <div class="search-bar">
+        <svg class="search-bar-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+        <input type="search" class="search-input" id="searchInput" placeholder="חיפוש בכל החודשים…"
+               aria-label="מה לחפש" autocomplete="off" enterkeyhint="search" maxlength="80">
+        <button type="button" class="search-close" id="searchClose" aria-label="סגירת החיפוש">✕</button>
+    </div>
+    <p class="search-summary" id="searchSummary" aria-live="polite">תיאור, קטגוריה, מקום עבודה, פרויקט או סכום</p>
+    <div class="search-results" id="searchResults"></div>
+</div>
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>
 {% endblock %}
