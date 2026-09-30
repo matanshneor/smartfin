@@ -105,3 +105,14 @@ def test_the_page_renders_both_lists(client):
     finished = html[html.index('id="finishedProjects"'):]
     assert "טיול" in active and "שיפוץ" not in active
     assert "שיפוץ" in finished
+
+
+def test_finished_projects_have_no_arrow_but_still_open(client):
+    """מתן (30.9): בלי החץ הקטן, אבל עדיין קישור לעמוד הפרויקט."""
+    html = client.get("/projects").get_data(as_text=True)
+    active = html[html.index('id="activeProjects"'):html.index('id="finishedProjects"')]
+    finished = html[html.index('id="finishedProjects"'):]
+    finished = finished[:finished.index("</section>")]
+    assert "project-chevron" in active
+    assert "project-chevron" not in finished
+    assert f'href="/projects/{_P_DONE}"' in finished

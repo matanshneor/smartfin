@@ -18,7 +18,7 @@
    דורש הקשר שאין כאן (מתוך כמה? על פני כמה זמן?), והמחיקה — הפעולה הבלתי
    הפיכה ביותר בעמוד — ישבה במרחק נגיעה אחת מהשם, בלי שום הקשר על מה עומד
    להימחק. שניהם עברו לתוך הפרויקט: שם הסכום מלווה בפירוט, ושם רואים מה יאבד. #}
-{% macro project_row(p) %}
+{% macro project_row(p, chevron=True) %}
         <li class="project-row" data-id="{{ p.id }}">
             <a class="project-main clickable" href="{{ url_for('project_detail', project_id=p.id) }}">
                 <span class="breakdown-icon">{{ p.icon or ('🔒' if p.is_personal else '🎯') }}</span>
@@ -26,9 +26,11 @@
                     <span class="project-name">{{ p.name }}</span>
                     {% if p.description %}<span class="project-sub">{{ p.description }}</span>{% endif %}
                 </div>
+                {% if chevron %}
                 <span class="project-chevron" aria-hidden="true">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </span>
+                {% endif %}
             </a>
         </li>
 {% endmacro %}
@@ -113,7 +115,8 @@
 <section class="chart-card finished-projects" id="finishedProjects">
     <h2 class="chart-title">פרויקטים שהסתיימו</h2>
     <ul class="breakdown-bars">
-        {% for p in finished_projects %}{{ project_row(p) }}{% endfor %}
+        {# בלי החץ — עדיין לחיץ ונכנס לפרויקט (מתן, 30.9) #}
+        {% for p in finished_projects %}{{ project_row(p, chevron=False) }}{% endfor %}
     </ul>
 </section>
 {% endif %}
