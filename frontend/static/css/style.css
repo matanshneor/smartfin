@@ -3458,6 +3458,12 @@ li.project-row {
     margin-inline-end: 10px;
 }
 
+.invite-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .group-row-stack {
     flex-direction: column;
     align-items: stretch;

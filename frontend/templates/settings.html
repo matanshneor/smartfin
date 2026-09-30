@@ -193,7 +193,9 @@
             <!-- הזמנת בן משפחה -->
             {% if family.get('invite_code') %}
             <div class="group-divider"></div>
-            <div class="group-row">
+            {# שתי קומות: בשורה אחת, עם הקוד ושני כפתורים, ההסבר נמעך למילה
+               בשורה (נראה ב-390, 30.9) #}
+            <div class="group-row group-row-stack">
                 <div class="group-row-info">
                     <p class="group-row-label">הזמנת בן משפחה</p>
                     <p class="group-row-hint">
@@ -204,10 +206,11 @@
                         {% if invite_expired %}
                             <strong>הקוד פג. הפיקו חדש כדי להזמין.</strong>
                         {% elif invite_expires_in is not none %}
-                            תקף עוד {{ invite_expires_in }} ימים.
+                            תקף עוד {{ invite_expires_in | count_of('יום אחד', 'ימים') }}.
                         {% endif %}
                     </p>
                 </div>
+                <div class="invite-actions">
                 <span class="invite-code-inline" id="inviteCode">{{ family['invite_code'] }}</span>
                 <button class="btn-sm btn-ghost" id="copyCodeBtn">העתק</button>
                 {# החלפת קוד פוסלת גם הזמנות שכבר נשלחו, ולכן היא של המנהל.
@@ -215,6 +218,7 @@
                 {% if user.id == family.get('manager_id') %}
                 <button class="btn-sm btn-ghost" id="rotateCodeBtn">קוד חדש</button>
                 {% endif %}
+                </div>
             </div>
             {% endif %}
 

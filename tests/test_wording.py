@@ -66,7 +66,7 @@ def test_messages_address_the_family_not_one_man(masculine):
 @pytest.mark.parametrize("template,phrase", [
     ("settings.html", "}} חברים"), ("settings.html", "}} פרויקטים"),
     ("settings.html", "}} עסקאות חוזרות"), ("month.html", "}} קטגוריות ללא"),
-    ("project_edit.html", "}} עסקאות"),
+    ("project_edit.html", "}} עסקאות"), ("settings.html", "}} ימים"),
 ])
 def test_no_bare_number_before_a_plural(template, phrase):
     """"{{ n }} חברים" הוא "1 חברים" כש-n=1."""
