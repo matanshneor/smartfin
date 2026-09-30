@@ -4752,3 +4752,30 @@ body.search-open { overflow: hidden; }
     border-radius: var(--radius-sm);
 }
 .category-row.dragging .cat-drag-handle { cursor: grabbing; color: var(--color-gold-text); }
+
+/* בחירת אייקון מתוך רשת (מתן, 30.9 — סבב 6, פריט 8). מעל חלון העסקה (100)
+   ומתחת לאישור (200). */
+.icon-picker {
+    position: fixed; inset: 0; z-index: 180;
+    background: rgba(12, 9, 4, 0.45);
+    display: flex; align-items: flex-end; justify-content: center;
+}
+.icon-picker[hidden] { display: none; }
+.icon-picker-card {
+    width: 100%; max-width: 560px; max-height: 80vh; overflow-y: auto;
+    background: var(--color-card); border-radius: 20px 20px 0 0;
+    padding: 16px 14px calc(env(safe-area-inset-bottom, 0px) + 16px);
+    box-shadow: var(--shadow-lift);
+}
+.icon-picker-title { margin: 0 0 10px; font-weight: 700; font-size: 1rem; }
+.icon-picker-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.icon-picker-label { flex: none; width: 4.2em; font-size: 0.78rem; color: var(--color-text-muted); font-weight: 600; }
+.icon-picker-grid { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 2px; }
+.icon-picker-btn {
+    aspect-ratio: 1; min-height: 36px; border: 0; border-radius: 10px;
+    background: transparent; font-size: 1.35rem; line-height: 1; cursor: pointer;
+}
+.icon-picker-btn:hover, .icon-picker-btn:focus-visible { background: var(--color-input); }
+.icon-picker-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 12px; }
+input.emoji-input { cursor: pointer; caret-color: transparent; }
+input.emoji-input[data-free-typing] { cursor: text; caret-color: auto; }
