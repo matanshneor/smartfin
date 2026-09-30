@@ -702,3 +702,12 @@ def test_an_edit_can_be_undone_from_the_toast():
     assert "!(followUp && (followUp.series || followUp.error))" in js
     assert "rememberUndo(undoSpec(tx, data.transaction, 'העסקה עודכנה'))" in js
     assert "{ label: 'בטל', onClick: function () { runUndo(spec); } }" in js
+
+
+def test_the_date_chips_include_the_day_before_yesterday():
+    """מתן (30.9, סבב 6 פריט 11)."""
+    tpl = _read("frontend/templates/base.html")
+    chips = tpl[tpl.index('class="date-quick-chips"'):]
+    chips = chips[:chips.index("</div>")]
+    assert [d for d in ("0", "-1", "-2") if f'data-days="{d}"' in chips] == ["0", "-1", "-2"]
+    assert ">שלשום<" in chips
