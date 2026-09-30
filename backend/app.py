@@ -1134,6 +1134,8 @@ def month_view():
     _sync_recurring(family_id)
 
     is_current = (year == now.year and month == now.month)
+    # כיוון החץ של "חזרה לחודש הנוכחי": מחודש עתידי החודש הנוכחי הוא אחורה
+    is_future = (year, month) > (now.year, now.month)
 
     if not family_id:
         return render_template(
@@ -1142,7 +1144,7 @@ def month_view():
             savings_breakdown=[], member_breakdowns=[], anomalies=[], month_transactions=[],
             member_colors={}, month_label=_month_label(year, month), year=year, month=month,
             strip_months=[{"year": year, "month": month}], hebrew_months=_HEBREW_MONTHS,
-            is_current=is_current, summary_data=db._empty_summary(),
+            is_current=is_current, is_future=is_future, summary_data=db._empty_summary(),
             expense_data=[], members_data=[],
             # התבנית ניגשת ל-project_month ללא תנאי. המסלול הזה נשכח כשנוספו
             # הפרויקטים, ומשתמש בלי משפחה קיבל 500 במקום העמוד הריק המיועד.
@@ -1260,7 +1262,7 @@ def month_view():
         month=month,
         strip_months=strip_months,
         hebrew_months=_HEBREW_MONTHS,
-        is_current=is_current,
+        is_current=is_current, is_future=is_future,
         summary_data=summary,
         # רק קטגוריות פעילות (total>0) — כדי שאינדקסי הצבעים בגרף העגול
         # יתאמו למקרא (שגם הוא מסונן ל-active), ובלי פרוסות ברוחב 0.

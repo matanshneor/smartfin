@@ -20,7 +20,7 @@
     <div>
         <h1 class="hero-title">{{ month_label }}</h1>
         <p class="hero-subtitle">
-            {% if is_current %}החודש הנוכחי{% else %}<a href="{{ url_for('month_view') }}" class="back-to-current">חזרה לחודש הנוכחי ←</a>{% endif %}
+            {% if is_current %}החודש הנוכחי{% else %}<a href="{{ url_for('month_view') }}" class="back-to-current">{% if is_future %}→ חזרה לחודש הנוכחי{% else %}חזרה לחודש הנוכחי ←{% endif %}</a>{% endif %}
         </p>
     </div>
     <div class="stats-month-nav">

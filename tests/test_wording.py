@@ -78,3 +78,38 @@ def test_one_name_for_savings_and_for_shared():
     strings = list(_visible_strings())
     assert not [n for n, l in strings if "חסכונות" in l]
     assert not [n for n, l in strings if re.search(r"['\"]משותף['\"]", l)]
+
+
+# ─── חצים ב-RTL: קדימה ←, אחורה → ────────────────────────────────────────────
+
+@pytest.mark.parametrize("page", ["privacy.html", "terms.html"])
+def test_back_points_right(page):
+    html = (_ROOT / "frontend/templates" / page).read_text(encoding="utf-8")
+    assert ">→ חזרה<" in html and "← חזרה" not in html
+
+
+def test_a_sequence_of_steps_reads_right_to_left():
+    html = (_ROOT / "frontend/templates/project_detail.html").read_text(encoding="utf-8")
+    assert '"שייך לפרויקט" ←' in html
+
+
+@pytest.mark.parametrize("is_future,arrow", [(False, "חזרה לחודש הנוכחי ←"),
+                                              (True, "→ חזרה לחודש הנוכחי")],
+                         ids=["from-the-past", "from-the-future"])
+def test_back_to_this_month_points_the_right_way(is_future, arrow):
+    """מנובמבר, כשספטמבר הוא החודש הנוכחי, החזרה היא אחורה בזמן."""
+    from jinja2 import Environment
+    src = (_ROOT / "frontend/templates/month.html").read_text(encoding="utf-8")
+    line = src[src.index("{% if is_current %}"):]
+    line = line[:line.index("</p>")]
+    html = Environment().from_string(line).render(is_current=False, is_future=is_future,
+                                                  url_for=lambda *a, **k: "/month")
+    assert arrow in html
+
+
+def test_the_route_knows_a_future_month():
+    import inspect
+    from backend import app as app_module
+    src = inspect.getsource(app_module.month_view)
+    assert "is_future = (year, month) > (now.year, now.month)" in src
+    assert src.count("is_future=is_future") == 2
