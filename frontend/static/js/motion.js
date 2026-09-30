@@ -27,9 +27,12 @@
             const target = parseFloat(el.dataset.countup);
             if (isNaN(target)) return;
             const prefix = el.dataset.prefix || '';
-            // אגורות אם הסכום הסופי כולל אגורות — אחרת היעד עוגל בסוף לשקל
-            const cents = target !== Math.round(target);
-            const format = v => prefix + '₪' + window.sfMoney(v, cents);
+            // הספירה עצמה בשקלים שלמים תמיד, ורק הערך הסופי כמו שהוא — עם
+            // אגורות אם יש לו. מתן (30.9): "הכסף נספר באגורות ואז מוצג מעוגל",
+            // ו"שאנימציית הספירה תהיה בלי אגורות גם". ערכי הביניים שבורים
+            // (‎1,203.57‎), ו-‎sfMoney‎ מציג אגורות כשיש — אז הן הבהבו לאורך הספירה.
+            const step  = v => prefix + '₪' + window.sfMoney(Math.round(v));
+            const final = prefix + '₪' + window.sfMoney(target);
 
             const key  = keyFor(el, seen);
             const prev = lastShown[key];
@@ -41,7 +44,7 @@
             const from = (prev && prev.prefix === prefix) ? prev.value : 0;
 
             if (reduceMotion || from === target) {
-                el.textContent = format(target);
+                el.textContent = final;
                 return;
             }
 
@@ -50,7 +53,7 @@
             function tick(now) {
                 const p = Math.min((now - start) / duration, 1);
                 const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
-                el.textContent = format(from + (target - from) * eased);
+                el.textContent = p < 1 ? step(from + (target - from) * eased) : final;
                 if (p < 1) requestAnimationFrame(tick);
             }
             requestAnimationFrame(tick);

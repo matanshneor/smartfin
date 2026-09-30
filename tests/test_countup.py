@@ -10,6 +10,7 @@
 לא עדכון.
 """
 import json
+import re
 import shutil
 import os
 import subprocess
@@ -173,3 +174,27 @@ def test_reduced_motion_still_skips_everything():
 
     assert first == ["₪5,000"]
     assert second == ["₪4,900"]
+
+
+# ─── הספירה לא מחליפה צורה באמצע (מתן, 30.9) ───────────────────────────────
+#
+# "הכסף נספר באגורות ואז מוצג מעוגל": יעד בשקלים שלמים, אבל ערכי הביניים של
+# האנימציה שבורים (1,203.57), ו-‎sfMoney‎ מציג אגורות כשיש — אז הן הופיעו
+# לאורך הספירה ונעלמו בסוף.
+
+def test_a_whole_shekel_target_counts_in_whole_shekels():
+    frames = [f for g in _run([[1481, ""]]) for f in g]
+
+    assert len(frames) > 3, "אין אנימציה לבדוק"
+    assert not [f for f in frames if "." in f], [f for f in frames if "." in f][:5]
+    assert frames[-1] == "₪1,481"
+
+
+def test_a_target_with_agorot_counts_in_whole_shekels_and_lands_exactly():
+    """"שאנימציית הספירה תהיה בלי אגורות גם": גם כשהסכום הסופי כולל אגורות,
+    הספירה בשקלים שלמים — והאגורות מופיעות רק בערך הסופי."""
+    frames = [f for g in _run([[1481.37, ""]]) for f in g]
+
+    assert len(frames) > 3, "אין אנימציה לבדוק"
+    assert frames[-1] == "₪1,481.37"
+    assert not [f for f in frames[:-1] if "." in f], [f for f in frames[:-1] if "." in f][:5]
