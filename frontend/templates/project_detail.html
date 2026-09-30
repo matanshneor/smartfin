@@ -51,6 +51,16 @@
     </div>
     {% endif %}
 </div>
+{# מאזן הפרויקט — הכנסות פחות הוצאות, בשורה נפרדת (מתן, 30.9): הריבועים
+   אמרו כמה נכנס וכמה יצא, אבל לא מה יצא מזה. רק בפרויקט שעוקב אחרי שניהם —
+   בפרויקט של הוצאות בלבד זה סתם מינוס של ההוצאות. חיסכון לא נכלל. #}
+{% if project.track_income and project.track_expense %}
+{% set net = ((project.income or 0) - (project.spent or 0)) | round(2) %}
+<div class="project-net {% if net > 0 %}surplus{% elif net < 0 %}deficit{% endif %}">
+    <p class="kpi-label">מאזן הפרויקט · הכנסות פחות הוצאות</p>
+    <p class="project-net-value">{% if net > 0 %}+{% elif net < 0 %}-{% endif %}₪{{ (net | abs) | money }}</p>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block content %}

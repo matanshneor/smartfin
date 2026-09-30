@@ -410,6 +410,33 @@ ul { list-style: none; }
     margin-top: 16px;
 }
 
+/* מאזן הפרויקט — שורה רחבה מתחת לריבועים */
+.project-net {
+    margin-top: 10px;
+    background: var(--hero-chip-bg);
+    border: 1px solid var(--hero-chip-border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    text-align: center;
+}
+
+.project-net .kpi-label {
+    font-size: 0.72rem;
+    color: var(--hero-text-muted);
+    margin-bottom: 2px;
+}
+
+.project-net-value {
+    font-weight: 700;
+    font-size: 1.35rem;
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+    color: var(--hero-text);
+}
+
+.project-net.surplus .project-net-value { color: var(--color-income-light); }
+.project-net.deficit .project-net-value { color: var(--color-expense-light); }
+
 /* Settings hero profile */
 .hero-profile {
     display: flex;

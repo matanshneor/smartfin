@@ -435,3 +435,26 @@ def test_the_show_all_button_works_without_the_chart_library():
     handler = js.index("#showAllProjectTx")
     charts_block_end = js.index("})();", charts_guard)
     assert handler > charts_block_end
+
+
+@pytest.mark.parametrize("track_income,income,spent,expected", [
+    (True, 1000.50, 300.25, "+₪700.25"),
+    (True, 100, 350, "-₪250"),
+    (True, 100, 100, "₪0"),
+    (False, 0, 50, None),
+], ids=["surplus", "deficit", "even", "expense-only-project"])
+def test_the_project_shows_income_minus_expenses(track_income, income, spent, expected):
+    """מתן (30.9): מאזן הפרויקט בנפרד, הכנסות פחות הוצאות. בדפדפן:
+    tests/browser/project_net.py."""
+    from backend.app import app
+    html = _read("frontend/templates/project_detail.html")
+    start = html.index("{% if project.track_income and project.track_expense %}")
+    end = html.index("</div>\n{% endif %}", start) + len("</div>\n{% endif %}")   # הסוגר של הבלוק, לא של הסימן
+    project = {"track_income": track_income, "track_expense": True, "income": income, "spent": spent}
+    out = app.jinja_env.from_string(html[start:end]).render(project=project)
+
+    if expected is None:
+        assert "project-net" not in out
+    else:
+        value = out[out.index('class="project-net-value">') + 26:out.index("</p>", out.index("project-net-value"))]
+        assert value.strip() == expected, value
