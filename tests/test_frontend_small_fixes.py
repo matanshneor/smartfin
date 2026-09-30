@@ -348,3 +348,16 @@ def test_the_link_next_to_recent_transactions_says_where_it_goes():
     link = link[link.index(">") + 1:link.index("</a>")]
 
     assert link == "לכל החודש"
+
+
+def test_a_successful_save_releases_the_save_button():
+    """אחרי הצלחה הכפתור נשאר "שומר…", וברענון רך העריכה הבאה לא נשלחה
+    (מתן, 30.9: "לפעמים זה לא נותן לי ללחוץ על שמירת שינויים").
+    בדפדפן: tests/browser/edit_twice.py."""
+    js = _strip_comments(_read("frontend/static/js/transactions.js"))
+    finish = js[js.index("function finish()"):]
+    finish = finish[:finish.index("closeModal();")]
+    assert "setSubmitBusy(false)" in finish
+    for opener in ("function openAddModal()", "function openEditModal("):
+        body = js[js.index(opener):]
+        assert "setSubmitBusy(false)" in body[:body.index("formSeq++") + 60], opener

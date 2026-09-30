@@ -415,6 +415,7 @@
     function openAddModal() {
         scanSeq++;
         formSeq++;
+        setSubmitBusy(false);                   // טופס חדש לא "באמצע שמירה" — ראו ‎finish‎
         editId = null;
         editingRecurringParentId = null;
         originalAmount = null;
@@ -437,6 +438,7 @@
     function openEditModal(tx, triggerEl) {
         scanSeq++;
         formSeq++;
+        setSubmitBusy(false);                   // טופס חדש לא "באמצע שמירה" — ראו ‎finish‎
         txReceiptPath.value = '';               // לא יורשים קבלה מטופס קודם
         editId = tx.id;
         editingRecurringParentId = tx.recurringParentId || null;
@@ -912,7 +914,15 @@
 
             function finish() {
                 // אם בינתיים נפתח טופס חדש — הוא של המשתמש, לא שלנו
-                if (!formWasReplaced()) closeModal();
+                if (!formWasReplaced()) {
+                    // הכפתור נשאר "שומר…" אחרי הצלחה. בעמוד שמתרענן ברענון
+                    // רך (הבית) ה-JS לא נטען מחדש, אז העריכה הבאה נתקלה
+                    // בכפתור תקוע: הלחיצה לא עשתה כלום ובלי שום הודעה. מתן:
+                    // "לפעמים זה לא נותן לי ללחוץ על שמירת שינויים".
+                    setSubmitBusy(false);
+                    updateSubmitLabel();
+                    closeModal();
+                }
                 // רענון רך: מחליף את תוכן העמוד בלי ניווט, בלי ניתוח מחדש
                 // של ה-CSS וה-JS, ובלי לאבד את מיקום הגלילה. ההשהיה של
                 // 380ms הייתה שם רק כדי שהצליל יסתיים לפני שהדף נעלם —
