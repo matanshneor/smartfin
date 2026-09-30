@@ -107,6 +107,13 @@ def test_the_page_renders_both_lists(client):
     assert "שיפוץ" in finished
 
 
+def test_no_active_projects_says_only_that(client, fake):
+    """מתן (1.10): "אין כרגע פרויקטים פעילים" — בלי ההסבר שאחריו."""
+    client.put(f"/api/projects/{_P_ACTIVE}/archive", json={"archived": True})
+    html = client.get("/projects").get_data(as_text=True)
+    assert '<p class="projects-none-active">אין כרגע פרויקטים פעילים</p>' in html
+
+
 def test_finished_projects_have_no_arrow_but_still_open(client):
     """מתן (30.9): בלי החץ הקטן, אבל עדיין קישור לעמוד הפרויקט."""
     html = client.get("/projects").get_data(as_text=True)
