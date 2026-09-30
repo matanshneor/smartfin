@@ -399,3 +399,19 @@ def test_the_card_you_jump_to_stops_below_the_iphone_status_bar():
     rule = css[css.index("#savings-breakdown {"):]
     rule = rule[:rule.index("}")]
     assert "scroll-margin-top" in rule and "safe-area-inset-top" in rule
+
+
+def test_the_project_field_is_last_in_the_form():
+    """מתן (30.9): רוב העסקאות לא בפרויקט, אז השדה לא יושב אחרי הסכום.
+    בדפדפן: tests/browser/project_field_at_bottom.py."""
+    base = _read("frontend/templates/base.html")
+    form = base[base.index('id="txForm"'):base.index('id="submitBtn"')]
+    assert form.index('id="projectGroup"') > form.index('id="txRecurring"')
+    assert form.index('id="projectGroup"') > form.index('id="categoryGrid"')
+
+
+def test_choosing_a_project_takes_you_to_its_categories():
+    js = _strip_comments(_read("frontend/static/js/transactions.js"))
+    handler = js[js.index("txProject.addEventListener('change'"):]
+    handler = handler[:handler.index("});")]
+    assert "scrollIntoView" in handler and "refreshCategoryGrid()" in handler

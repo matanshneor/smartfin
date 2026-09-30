@@ -557,13 +557,19 @@ a.kpi-chip:active { transform: scale(0.97); }
     animation: breakdown-flash 1.6s ease-out;
 }
 
+.category-grid.flash {
+    border-radius: var(--radius-sm);
+    animation: breakdown-flash 1.6s ease-out;
+}
+
 @keyframes breakdown-flash {
     0%, 30% { box-shadow: 0 0 0 3px var(--color-gold), var(--shadow-card); }
     100%    { box-shadow: 0 0 0 0 transparent, var(--shadow-card); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .chart-card.flash { animation: none; outline: 3px solid var(--color-gold); outline-offset: 2px; }
+    .chart-card.flash,
+    .category-grid.flash { animation: none; outline: 3px solid var(--color-gold); outline-offset: 2px; }
 }
 
 .summary-card:active {

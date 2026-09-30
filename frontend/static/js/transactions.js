@@ -20,6 +20,7 @@
     const duplicateBtn = document.getElementById('duplicateTxBtn');
     const categoryGrid = document.getElementById('categoryGrid');
     const projectGroup = document.getElementById('projectGroup');
+    const categoryLabel = document.getElementById('categoryLabel');
     const txProject    = document.getElementById('txProject');
     const ownerGroup   = document.getElementById('ownerGroup');
     const ownerToggle  = document.getElementById('ownerToggle');
@@ -156,6 +157,9 @@
     // שלו; אחרת — קטגוריות המשפחה הרגילות לפי סוג העסקה הנוכחי.
     function refreshCategoryGrid(selectedId, keepOriginal) {
         const projectId = txProject.value;
+        // מאיפה הקטגוריות — הבחירה בפרויקט יושבת רחוק מתחת
+        const chosen = projectId && txProject.options[txProject.selectedIndex];
+        categoryLabel.textContent = chosen ? 'קטגוריה בפרויקט "' + chosen.textContent + '"' : 'קטגוריה';
         if (projectId) {
             const forType = currentType;
             loadProjectCategories(projectId, forType).then(function (cats) {
@@ -556,8 +560,16 @@
     });
 
     // שינוי בחירת הפרויקט מרענן את מקור הקטגוריות (קטגוריות הפרויקט או המשפחה)
+    // השדה בתחתית הטופס, והקטגוריות מעליו מתחלפות לקטגוריות הפרויקט — אז
+    // לוקחים את המשתמש אליהן, במקום להשאיר אותו עם קטגוריה של הבית שכבר
+    // לא מסומנת ורשת חדשה שהוא לא רואה
     txProject.addEventListener('change', function () {
         refreshCategoryGrid();
+        const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        categoryLabel.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' });
+        categoryGrid.classList.remove('flash');
+        void categoryGrid.offsetWidth;
+        categoryGrid.classList.add('flash');
     });
 
     // Recurring

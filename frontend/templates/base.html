@@ -158,13 +158,6 @@
                     </div>
                 </div>
 
-                <div class="form-group" id="projectGroup" style="display:none;">
-                    <label class="form-label" for="txProject">שייך לפרויקט (אופציונלי)</label>
-                    <select class="form-input" id="txProject">
-                        <option value="">ללא</option>
-                    </select>
-                </div>
-
                 <div class="form-group">
                     <label class="form-label" id="categoryLabel">קטגוריה</label>
                     <div class="category-grid" id="categoryGrid" role="radiogroup" aria-label="בחירת קטגוריה"></div>
@@ -217,6 +210,16 @@
                             <input class="form-input" type="date" id="txEndDate">
                         </div>
                     </div>
+                </div>
+
+                {# בתחתית ולא אחרי הסכום (מתן, 30.9): רוב העסקאות לא בפרויקט.
+                   מוסתר לגמרי כשאין פרויקט שעוקב אחרי הסוג (‎buildProjectSelect‎).
+                   בחירה כאן מחליפה את רשת הקטגוריות שלמעלה — ה-JS גולל אליה. #}
+                <div class="form-group" id="projectGroup" style="display:none;">
+                    <label class="form-label" for="txProject">שייך לפרויקט (אופציונלי)</label>
+                    <select class="form-input" id="txProject">
+                        <option value="">ללא</option>
+                    </select>
                 </div>
 
                 <div class="form-error" id="formError" role="alert"></div>
