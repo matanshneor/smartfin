@@ -54,7 +54,7 @@ if ('serviceWorker' in navigator) {
 
     // ל-iOS אין beforeinstallprompt בכלל — מציגים הנחיה סטטית בלבד
     if (isIOS) {
-        text.textContent = 'להתקנת SmartFin: הקש על שיתוף ← הוסף למסך הבית';
+        text.textContent = 'להתקנת SmartFin: הקישו על שיתוף ← הוסף למסך הבית';
         banner.style.display = '';
     }
 })();

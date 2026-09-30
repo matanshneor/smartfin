@@ -61,7 +61,7 @@ def test_the_dashboard_does_not_show_a_zeroed_budget(broken):
             body = c.get("/").get_data(as_text=True)
 
         assert "₪0" not in body, "הדשבורד עדיין מציג תקציב מאופס בתקלה"
-        assert "שגיאה" in body or "נסה שוב" in body
+        assert "שגיאה" in body or "נסו שוב" in body
     finally:
         app.config["TESTING"] = True
 

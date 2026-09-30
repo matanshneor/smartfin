@@ -14,7 +14,7 @@
     <div class="member-avatar-lg">{{ user.avatar_initial }}</div>
     <div>
         <p class="hero-profile-name">{{ account.full_name }}</p>
-        <p class="hero-profile-sub">חשבון משפחתי · {{ members | length }} חברים</p>
+        <p class="hero-profile-sub">חשבון משפחתי · {{ members | length | count_of('חבר אחד', 'חברים') }}</p>
     </div>
 </div>
 {% endblock %}
@@ -93,8 +93,8 @@
                 </svg>
             </span>
             <span class="group-text">
-                <span class="group-title">המשפחה</span>
-                <span class="group-sub">{{ family.get('name', 'המשפחה שלי') }} · {{ members | length }} חברים</span>
+                <span class="group-title">המשפחה שלי</span>
+                <span class="group-sub">{{ family.get('name', 'המשפחה שלי') }} · {{ members | length | count_of('חבר אחד', 'חברים') }}</span>
             </span>
             <span class="group-chevron">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -284,7 +284,7 @@
             </span>
             <span class="group-text">
                 <span class="group-title">קטגוריות</span>
-                <span class="group-sub">{{ categories | length }} קטגוריות בשלושה סוגים</span>
+                <span class="group-sub">{{ categories | length | count_of('קטגוריה אחת', 'קטגוריות') }} בשלושה סוגים</span>
             </span>
             <span class="group-chevron">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -342,7 +342,7 @@
             </span>
             <span class="group-text">
                 <span class="group-title">פרויקטים</span>
-                <span class="group-sub">{{ projects | length }} פרויקטים פעילים</span>
+                <span class="group-sub">{{ projects | length | count_of('פרויקט פעיל אחד', 'פרויקטים פעילים') }}</span>
             </span>
             <span class="group-chevron">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -361,7 +361,7 @@
                     <input class="form-input" type="text" id="newProjSettingsName" placeholder="לדוגמה: טיול ליפן" maxlength="50" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="newProjSettingsBudget">יעד תקציב (אופציונלי)</label>
+                    <label class="form-label" for="newProjSettingsBudget">תקציב יעד (אופציונלי)</label>
                     <div class="amount-input-wrap">
                         <span class="amount-currency">₪</span>
                         <input class="form-input amount-input" type="number" id="newProjSettingsBudget" placeholder="0" min="0" step="1">
@@ -571,7 +571,7 @@
             </span>
             <span class="group-text">
                 <span class="group-title">עסקאות קבועות</span>
-                <span class="group-sub">{{ recurring | length }} עסקאות חוזרות פעילות</span>
+                <span class="group-sub">{{ recurring | length | count_of('עסקה חוזרת פעילה אחת', 'עסקאות חוזרות פעילות') }}</span>
             </span>
             <span class="group-chevron">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>

@@ -132,7 +132,7 @@ def test_login_is_refused_when_the_profile_cannot_be_read(client, monkeypatch):
     response = _login(client)
 
     assert response.status_code != 302, "נכנס למרות שהפרופיל לא נקרא"
-    assert "נסה שוב" in response.get_data(as_text=True)
+    assert "נסו שוב" in response.get_data(as_text=True)
     with client.session_transaction() as sess:
         assert not sess.get("user_id"), "נפתח session בלי פרופיל"
 

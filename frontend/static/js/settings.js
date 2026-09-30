@@ -614,7 +614,7 @@ if (toggleResetBtn) {
         // מגיעה מהשרת עם העמוד; אם היא לא הצליחה, לא ממציאים מספר.
         const txCount = parseInt((resetForm.dataset.txCount || ''), 10);
         const count   = (resetScope === 'family' && !isNaN(txCount))
-            ? ' ' + txCount + ' עסקאות יימחקו.'
+            ? ' ' + window.sfCount(txCount, 'עסקה אחת תימחק.', 'עסקאות יימחקו.')
             : '';
         window.appConfirm({
             title: resetScope === 'family'
@@ -928,7 +928,7 @@ document.addEventListener('click', function (e) {
                 <input class="form-input proj-edit-name" type="text" maxlength="50">
             </div>
             <div class="form-group">
-                <label class="form-label">יעד תקציב (אופציונלי)</label>
+                <label class="form-label">תקציב יעד (אופציונלי)</label>
                 <div class="amount-input-wrap">
                     <span class="amount-currency">₪</span>
                     <input class="form-input amount-input proj-edit-budget" type="number" min="0" step="1">

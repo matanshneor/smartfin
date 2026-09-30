@@ -1031,17 +1031,17 @@ def scan_receipt(image_bytes: bytes, content_type: str, category_names: list):
             except (TypeError, ValueError):
                 amount = 0
             if amount <= 0:
-                return None, "לא הצלחתי לקרוא את הקבלה — נסה שוב או הזן ידנית"
+                return None, "לא הצלחתי לקרוא את הקבלה — נסו שוב או הזינו ידנית"
             return {
                 "amount":         amount,
                 "merchant":       (data.get("merchant") or "").strip(),
                 "date":           (data.get("date") or "").strip() or None,
                 "category_name":  (data.get("category_name") or "").strip() or None,
             }, None
-        return None, "לא הצלחתי לקרוא את הקבלה — נסה שוב או הזן ידנית"
+        return None, "לא הצלחתי לקרוא את הקבלה — נסו שוב או הזינו ידנית"
     except Exception as e:
         logger.exception("scan_receipt")
-        return None, "שגיאה בסריקת הקבלה — נסה שוב"
+        return None, "שגיאה בסריקת הקבלה — נסו שוב"
 
 
 # ─── Transactions ─────────────────────────────────────────────────────────────
@@ -1261,7 +1261,7 @@ def materialize_recurring(family_id: str) -> int:
     ומכאן נוצרים מופעים רגילים (is_recurring=False) לפי התדירות, עד היום
     או עד תאריך הסיום. הפונקציה אידמפוטנטית — מופע שכבר קיים לא ייווצר שוב.
     מחזירה ‎(created, ok)‎. ‎ok=False‎ פירושו שהריצה נכשלה — וזה חשוב, כי
-    הקורא מסמן "סונכרן להיום" ולא ינסה שוב עד מחר. כשל שנראה כהצלחה
+    הקורא מסמן "סונכרן להיום" ולא ינסו שוב עד מחר. כשל שנראה כהצלחה
     משאיר חודש בלי משכורת ובלי הוראות קבע עד למחרת."""
     from datetime import date
 
@@ -1366,7 +1366,7 @@ def materialize_recurring(family_id: str) -> int:
                 # את כולן. ההנחה שהסיבה היחידה היא אצווה זהה לגמרי נכונה רק
                 # בחפיפה מלאה: אם בקשה אחרת הספיקה ליצור את המשכורת ולא את
                 # שכר הדירה, שתיהן נזרקות — ו-‎_sync_recurring‎ מסמן "סונכרן
-                # להיום", כך שאף אחד לא ינסה שוב עד מחר. חודש שלם בלי שכר
+                # להיום", כך שאף אחד לא ינסו שוב עד מחר. חודש שלם בלי שכר
                 # דירה, בלי שום סימן.
                 #
                 # אז חוזרים שורה-שורה: מה שכבר קיים מדולג, והשאר נכנס.
@@ -2993,7 +2993,7 @@ def _format_transactions(rows: list, settings: dict = None) -> list:
             "category_name":        cat.get("name", "אחר"),
             "category_icon":        cat.get("icon", "📦"),
             "user_id":              row.get("user_id"),
-            "user_name":            first_name(user.get("name", "")) if row.get("user_id") else "משותף",
+            "user_name":            first_name(user.get("name", "")) if row.get("user_id") else "משותפת",
             # מיקום העבודה מוצג רק על הכנסות משכורת, ורק אם המשפחה בחרה בכך.
             # מעדיפים תיעוד קפוא על העסקה עצמה (row.workplace) — כדי ששינוי
             # מקום עבודה עתידי לא ישנה בטעות היסטוריה; NULL (עסקאות ישנות

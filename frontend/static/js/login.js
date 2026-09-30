@@ -82,7 +82,7 @@ if (window.location.hash.includes('type=recovery')) {
                 forgotError.textContent = res.data.error || 'השליחה נכשלה — נסו שוב בעוד רגע';
                 return;
             }
-            forgotSuccess.textContent = 'אם האימייל רשום במערכת — קישור איפוס נשלח אליו עכשיו. בדוק גם בספאם.';
+            forgotSuccess.textContent = 'אם האימייל רשום במערכת — קישור איפוס נשלח אליו עכשיו. כדאי לבדוק גם בספאם.';
         })
         .catch(function () {
             forgotError.textContent = window.sfNetError();

@@ -10,22 +10,8 @@
     </div>
 </div>
 
-{% if archive %}
-<div class="hero-totals">
-    <div class="kpi-chip">
-        <p class="kpi-label">סה"כ הכנסות</p>
-        <p class="kpi-value income" data-countup="{{ ((archive | sum(attribute='income') | float)) | round(2) }}">₪{{ (archive | sum(attribute='income') | float) | money }}</p>
-    </div>
-    <div class="kpi-chip">
-        <p class="kpi-label">סה"כ הוצאות</p>
-        <p class="kpi-value expense" data-countup="{{ ((archive | sum(attribute='expense') | float)) | round(2) }}">₪{{ (archive | sum(attribute='expense') | float) | money }}</p>
-    </div>
-    <div class="kpi-chip">
-        <p class="kpi-label">סה"כ חיסכון</p>
-        <p class="kpi-value savings" data-countup="{{ ((archive | sum(attribute='savings') | float)) | round(2) }}">₪{{ (archive | sum(attribute='savings') | float) | money }}</p>
-    </div>
-</div>
-{% endif %}
+{# בלי סכום כולל של כל החודשים (החלטה של מתן, 30.9): העמוד משווה חודשים
+   זה לזה, וסכום של כל התקופה — בלי לומר איזו — לא עונה על שום שאלה שלו. #}
 {% endblock %}
 
 {% block content %}

@@ -331,7 +331,7 @@
 
         {% if expense_zero %}
         <li class="zero-toggle" role="button" tabindex="0">
-            <span>עוד {{ expense_zero | length }} קטגוריות ללא פעילות</span>
+            <span>עוד {{ expense_zero | length | count_of('קטגוריה אחת', 'קטגוריות') }} ללא פעילות</span>
             <span class="expand-chevron" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </span>
@@ -481,7 +481,7 @@
         {% endif %}
         {% if savings_zero %}
         <li class="zero-toggle" role="button" tabindex="0">
-            <span>עוד {{ savings_zero | length }} קטגוריות ללא פעילות</span>
+            <span>עוד {{ savings_zero | length | count_of('קטגוריה אחת', 'קטגוריות') }} ללא פעילות</span>
             <span class="expand-chevron" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </span>
@@ -584,7 +584,7 @@
         {% endif %}
         {% if income_zero %}
         <li class="zero-toggle" role="button" tabindex="0">
-            <span>עוד {{ income_zero | length }} קטגוריות ללא פעילות</span>
+            <span>עוד {{ income_zero | length | count_of('קטגוריה אחת', 'קטגוריות') }} ללא פעילות</span>
             <span class="expand-chevron" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </span>

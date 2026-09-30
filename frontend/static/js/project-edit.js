@@ -56,7 +56,7 @@ if (shareBtn) {
     shareBtn.addEventListener('click', function () {
         window.appConfirm({
             title: 'להפוך את הפרויקט למשותף?',
-            message: 'כל בני המשפחה יראו את הפרויקט, וההוצאות/הכנסות שכבר נרשמו בו יהפכו לשיוך משותף. תמיד תוכל להחזיר אותו להיות אישי בעצמך בעתיד.',
+            message: 'כל בני המשפחה יראו את הפרויקט, וההוצאות/הכנסות שכבר נרשמו בו יהפכו לשיוך משותף. תמיד אפשר להחזיר אותו להיות אישי בעצמך בעתיד.',
             confirmText: 'הפוך למשותף',
             danger: false,
         }).then(function (ok) {
@@ -80,9 +80,9 @@ if (unshareBtn) {
         window.appConfirm({
             title: 'להחזיר את הפרויקט להיות אישי?',
             message: others
-                ? others + '. אחרי ההחזרה רק אתה תראה את הפרויקט — '
+                ? others + '. אחרי ההחזרה הפרויקט יהיה גלוי רק לך — '
                   + 'גם את העסקאות האלה, והן יסומנו "נרשם ע״י".'
-                : 'רק אתה תראה את הפרויקט מעכשיו. עסקאות שכבר נרשמו כמשותפות יישארו כך.',
+                : 'מעכשיו הפרויקט גלוי רק לך. עסקאות שכבר נרשמו כמשותפות יישארו כך.',
             confirmText: 'החזר להיות אישי',
             danger: !!others,
         }).then(function (ok) {
@@ -321,7 +321,7 @@ document.addEventListener('click', function (e) {
             const wiped = res.d.deleted || 0;
             try {
                 window.sfToastAfterReload(wiped
-                    ? 'הפרויקט נמחק, ואיתו ' + wiped + ' עסקאות'
+                    ? 'הפרויקט נמחק, ואיתו ' + window.sfCount(wiped, 'עסקה אחת', 'עסקאות')
                     : 'הפרויקט נמחק');
             } catch (e) { /* אין אחסון — נוותר על הטוסט, לא על הניווט */ }
             window.location.href = '/projects';

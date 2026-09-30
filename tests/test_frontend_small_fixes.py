@@ -320,3 +320,31 @@ def test_amount_cards_shrink_instead_of_pushing_the_page_sideways():
     assert "cqi" in rule(".summary-card .card-amount")
     assert "cqi" in rule(".kpi-chip .kpi-value")
     assert "flex-wrap: wrap" in rule(".month-stats")
+
+
+def test_the_onboarding_points_to_a_settings_group_that_exists():
+    """מסך הפתיחה אומר "הגדרות ← המשפחה שלי" — והקבוצה נקראה "המשפחה".
+    מתן בחר לשנות את שם הקבוצה (30.9), כך שההפניה נכונה."""
+    onboarding = _read("frontend/templates/onboarding.html")
+    titles = re.findall(r'class="group-title">([^<]+)<', _read("frontend/templates/settings.html"))
+
+    for target in re.findall(r"הגדרות ← ([^.<,\n]+)", onboarding):
+        assert target.strip() in titles, target
+
+
+def test_the_compare_page_compares_and_does_not_sum_everything():
+    """מתן (30.9): "זה עמוד השוואה בין החודשים בלבד, מבלי לסכום". הסכום
+    הכולל גם לא אמר על איזו תקופה הוא."""
+    html = re.sub(r"\{#.*?#\}", "", _read("frontend/templates/months.html"), flags=re.S)
+
+    assert 'סה"כ' not in html and "סה״כ" not in html
+    assert "archive | sum(" not in html
+
+
+def test_the_link_next_to_recent_transactions_says_where_it_goes():
+    """האחרונות הן מכל החודשים; הקישור פותח רק את החודש הנוכחי."""
+    html = _read("frontend/templates/index.html")
+    link = html[html.index('class="see-all-link"'):]
+    link = link[link.index(">") + 1:link.index("</a>")]
+
+    assert link == "לכל החודש"

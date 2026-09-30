@@ -66,8 +66,8 @@ try:
         page.route("**/api/family/members/**", hold)
 
         page.goto(BASE + "/settings")
-        # קבוצת "המשפחה" בהגדרות מקופלת; פותחים אותה כמו משתמש
-        page.click("button:has(.group-title:text-is('המשפחה'))")
+        # קבוצת "המשפחה שלי" בהגדרות מקופלת; פותחים אותה כמו משתמש
+        page.click("button:has(.group-title:text-is('המשפחה שלי'))")
         page.wait_for_timeout(400)
         print("icon next to members:", page.locator(".remove-member-btn").count())
         print("remove button visible before opening:", page.is_visible("#removeMemberBtn"))

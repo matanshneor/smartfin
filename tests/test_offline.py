@@ -143,7 +143,7 @@ def test_nothing_is_shown_while_the_connection_is_fine():
     steps = _run("online")
 
     assert steps["start"]["banners"] == 0
-    assert steps["start"]["message"] == "שגיאת רשת — נסה שוב"
+    assert steps["start"]["message"] == "שגיאת רשת — נסו שוב"
 
 
 def test_the_banner_appears_when_the_connection_drops():
@@ -173,7 +173,7 @@ def test_the_error_message_changes_with_the_connection():
     steps = _run("online")
 
     assert steps["wentOffline"]["message"] == "אין חיבור לאינטרנט — נסו שוב כשהחיבור יחזור"
-    assert steps["cameBack"]["message"]    == "שגיאת רשת — נסה שוב"
+    assert steps["cameBack"]["message"]    == "שגיאת רשת — נסו שוב"
 
 
 def test_only_a_definite_offline_counts():

@@ -14,6 +14,7 @@ import re
 import time
 from . import supabase_config as db
 from .money import format_money
+from .wording import count_of
 from . import clock
 from . import logs
 
@@ -239,6 +240,7 @@ def _asset_version(filename: str) -> str:
 
 # סכום כסף בתבניות: ‎{{ x | money }}‎ — אגורות רק כשיש (ראו backend/money.py)
 app.jinja_env.filters["money"] = format_money
+app.jinja_env.filters["count_of"] = count_of
 
 
 @app.context_processor
@@ -352,7 +354,7 @@ def inject_auth():
             # לא מנתקים. שתי סיבות שונות מגיעות לכאן, ושתיהן בנות-שחזור:
             # תקלה זמנית (רשת, 5xx), או דחייה בזמן שטוקן הגישה עדיין בתוקף —
             # שזה בדיוק מה שקורה כשבקשה מקבילה כבר סובבה את הטוקן לפנינו.
-            # הבקשה הזאת ממשיכה עם טוקן הגישה הקיים, והבאה תנסה שוב; אם
+            # הבקשה הזאת ממשיכה עם טוקן הגישה הקיים, והבאה תנסו שוב; אם
             # הדחייה אמיתית, הניתוק יקרה מעצמו כשטוקן הגישה יפוג.
             logger.warning("token refresh failed, keeping session: %s", err)
             _do_not_rewrite_session_cookie()
@@ -688,7 +690,7 @@ def login():
             # משפחה חדשה ודורס את השיוך הקיים — ניתוק לצמיתות מכל
             # ההיסטוריה בגלל תקלה של שתי שניות. כישלון שאפשר לנסות שוב
             # אחריו הוא התוצאה הנכונה.
-            error = "לא הצלחנו לטעון את הפרטים שלך — נסה שוב בעוד רגע"
+            error = "לא הצלחנו לטעון את הפרטים שלך — נסו שוב בעוד רגע"
 
         elif not err:
             session.permanent = True  # stay signed in until explicit logout
@@ -710,7 +712,7 @@ def login():
                 # לעשות בה כלום, ובניסיון הבא הוא ינסה ליצור משפחה שוב —
                 # אז עדיף לא להיכנס מאשר להיכנס למצב תקוע.
                 session.clear()
-                error = "לא הצלחנו לטעון את הפרטים שלך — נסה שוב בעוד רגע"
+                error = "לא הצלחנו לטעון את הפרטים שלך — נסו שוב בעוד רגע"
 
             else:
                 # מכאן והלאה המכשיר מוכר: גם אם ה-session ייגמר יום אחד,
@@ -777,13 +779,13 @@ def signup():
                     error = ("הרשמה נכשלה — ייתכן שכבר יש חשבון עם הפרטים האלה. "
                              "נסו להתחבר, או לאפס סיסמה.")
                 elif "invalid" in err_lower and "email" in err_lower:
-                    error = "הרשמה נכשלה – כתובת המייל אינה תקינה, בדוק שהזנת אותה נכון"
+                    error = "הרשמה נכשלה – כתובת המייל אינה תקינה, בדקו שהיא הוזנה נכון"
                 elif "rate limit" in err_lower:
-                    error = "יותר מדי ניסיונות הרשמה בזמן קצר — נסה שוב בעוד כמה דקות"
+                    error = "יותר מדי ניסיונות הרשמה בזמן קצר — נסו שוב בעוד כמה דקות"
                 else:
                     # לא מדליפים את השגיאה הפנימית למשתמש — רק ללוג השרת
                     logger.error("signup: %s", err)
-                    error = "הרשמה נכשלה — נסה שוב בעוד כמה רגעים"
+                    error = "הרשמה נכשלה — נסו שוב בעוד כמה רגעים"
             else:
                 # הצטרפות למשפחה קיימת לפי קוד ההזמנה. כישלון כאן לא מבטל את
                 # ההרשמה — המשתמש כבר נוצר ב-Auth ואסור להשאיר אותו בלי דרך
@@ -908,7 +910,7 @@ def reset_password_submit():
     ok, err = db.update_password(access_token, password)
     if not ok:
         logger.error("reset password: %s", err)
-        return jsonify({"error": "האיפוס נכשל — נסה לבקש קישור חדש"}), 400
+        return jsonify({"error": "האיפוס נכשל — נסו לבקש קישור חדש"}), 400
     return jsonify({"status": "ok"})
 
 
@@ -1002,7 +1004,7 @@ def onboarding_complete():
     count, err = db.bulk_add_categories(user["family_id"], categories)
     if err:
         logger.error("onboarding bulk_add_categories: %s", err)
-        return jsonify({"error": "שמירת הקטגוריות נכשלה — נסה שוב"}), 500
+        return jsonify({"error": "שמירת הקטגוריות נכשלה — נסו שוב"}), 500
 
     return jsonify({"status": "ok", "categories_created": count})
 
@@ -1475,7 +1477,7 @@ def _parse_project_body(body: dict):
     if body.get("budget_target") not in (None, ""):
         budget_target, err = _parse_amount(body.get("budget_target"))
     if err:
-        return None, "יעד תקציב חייב להיות מספר"
+        return None, "תקציב היעד חייב להיות מספר"
 
     description = _text(body.get("description"))[:200] or None
     icon = _text(body.get("icon"))[:16] or None
@@ -1511,7 +1513,7 @@ def add_project_route():
     proj, err = db.add_project(user["family_id"], created_by=user["id"], owner_id=owner_id, **fields)
     if err:
         logger.error("add_project route: %s", err)
-        return jsonify({"error": "יצירת הפרויקט נכשלה — נסה שוב"}), 500
+        return jsonify({"error": "יצירת הפרויקט נכשלה — נסו שוב"}), 500
     return jsonify(proj), 201
 
 
@@ -1685,7 +1687,7 @@ def add_project_category_route(project_id):
                                        icon, type_)
     if err:
         logger.error("add_project_category route: %s", err)
-        return jsonify({"error": "הוספת הקטגוריה נכשלה — נסה שוב"}), 500
+        return jsonify({"error": "הוספת הקטגוריה נכשלה — נסו שוב"}), 500
     return jsonify(cat), 201
 
 
@@ -1976,7 +1978,7 @@ def _parse_amount(raw):
         return None, "הסכום חייב להיות מספר חיובי"
     # העמודה היא NUMERIC(10,2) ומתפוצצת מעל 99,999,999.99. בלי הבדיקה
     # הזאת הקלדה שגויה של תשע ספרות מגיעה ל-Postgres, נכשלת שם, וחוזרת
-    # כ"הוספת העסקה נכשלה — נסה שוב" — כך שהמשתמש מנסה שוב את אותו קלט
+    # כ"הוספת העסקה נכשלה — נסו שוב" — כך שהמשתמש מנסו שוב את אותו קלט
     # ונכשל שוב, בלי שום רמז למה.
     if value > 99_999_999:
         return None, "הסכום גדול מדי"
@@ -2283,7 +2285,7 @@ def add_transaction():
     result, err = db.add_transaction(payload)
     if err:
         logger.error("add_transaction route: %s", err)
-        return jsonify({"error": "הוספת העסקה נכשלה — נסה שוב"}), 500
+        return jsonify({"error": "הוספת העסקה נכשלה — נסו שוב"}), 500
 
     # עסקה קבועה חדשה (גם רטרואקטיבית) — משלימים מיד את כל המופעים עד היום
     if payload["is_recurring"]:
@@ -2395,7 +2397,7 @@ def update_transaction(tx_id):
     result, err = db.update_transaction(tx_id, user["family_id"], payload)
     if err:
         logger.error("update_transaction route: %s", err)
-        return jsonify({"error": "עדכון העסקה נכשל — נסה שוב"}), 500
+        return jsonify({"error": "עדכון העסקה נכשל — נסו שוב"}), 500
     # אף שורה לא נגעה: העסקה נמחקה בינתיים על ידי בן משפחה אחר, או
     # שהמזהה שייך למשפחה אחרת. עד היום זה חזר כ-200 "נשמר", והמשתמש
     # האמין שהעריכה שלו נקלטה.
@@ -2480,7 +2482,7 @@ def stop_recurring_route(template_id):
         if err == "not found":
             return jsonify({"error": "העסקה הקבועה לא נמצאה"}), 404
         logger.error("stop_recurring route: %s", err)
-        return jsonify({"error": "ההסרה נכשלה — נסה שוב"}), 500
+        return jsonify({"error": "ההסרה נכשלה — נסו שוב"}), 500
     return jsonify({"status": "ok"})
 
 
@@ -2584,7 +2586,7 @@ def scan_receipt_route():
     if not image_bytes:
         return jsonify({"error": "לא התקבלה תמונה"}), 422
     if len(image_bytes) > 6 * 1024 * 1024:
-        return jsonify({"error": "התמונה גדולה מדי — נסה שוב עם תמונה קטנה יותר"}), 413
+        return jsonify({"error": "התמונה גדולה מדי — נסו שוב עם תמונה קטנה יותר"}), 413
 
     all_categories = db.get_categories(user["family_id"])
     expense_category_names = [c["name"] for c in all_categories if c.get("type") == "expense"]
@@ -2707,7 +2709,7 @@ def add_category():
     )
     if err:
         logger.error("add_category route: %s", err)
-        return jsonify({"error": "הוספת הקטגוריה נכשלה — נסה שוב"}), 500
+        return jsonify({"error": "הוספת הקטגוריה נכשלה — נסו שוב"}), 500
     return jsonify(cat), 201
 
 
@@ -3253,7 +3255,7 @@ def payload_too_large(e):
 
 @app.errorhandler(429)
 def too_many_requests(e):
-    msg = "יותר מדי ניסיונות בזמן קצר — נסה שוב בעוד דקה"
+    msg = "יותר מדי ניסיונות בזמן קצר — נסו שוב בעוד דקה"
     if _is_api_request():
         return jsonify({"error": msg}), 429
 
@@ -3326,7 +3328,7 @@ def data_unavailable(e):
 
 @app.errorhandler(500)
 def server_error(e):
-    msg = "אירעה שגיאה בשרת. נסה שוב בעוד כמה רגעים."
+    msg = "אירעה שגיאה בשרת. נסו שוב בעוד כמה רגעים."
     if _is_api_request():
         # בלי זה תקלת שרת אמיתית מגיעה למשתמש כ"שגיאת רשת", והוא מנסה
         # שוב ושוב בקשה שלעולם לא תצליח — ואנחנו לא שומעים על התקלה.

@@ -80,7 +80,7 @@ try:
                 page.goto(BASE + path)
                 page.wait_for_timeout(900)
                 if path == "/settings":
-                    page.click("button:has(.group-title:text-is('המשפחה'))"); page.wait_for_timeout(400)
+                    page.click("button:has(.group-title:text-is('המשפחה שלי'))"); page.wait_for_timeout(400)
                 print(width, path, page.evaluate(CHECK))
                 page.screenshot(path=f"/tmp/w{width}{path.replace('/', '_') or '_home'}.png", full_page=True)
         b.close()

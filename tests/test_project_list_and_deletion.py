@@ -263,6 +263,18 @@ def test_the_budget_field_is_called_the_same_thing_in_both_places():
         assert "יעד תקציב" not in shown, f"השם הישן עדיין מוצג ב{name}"
 
 
+def test_the_old_budget_name_is_gone_everywhere():
+    """הבדיקה למעלה כיסתה שני עמודים, והשם הישן שרד בשלושה אחרים — טופס
+    פרויקט חדש, ההגדרות, והודעת השגיאה מהשרת (נמצא ב-30.9)."""
+    places = list((_ROOT / "frontend/templates").glob("*.html")) + \
+        list((_ROOT / "frontend/static/js").glob("*.js")) + [_ROOT / "backend/app.py"]
+    for f in places:
+        text = f.read_text(encoding="utf-8")
+        text = re.sub(r"\{#.*?#\}|<!--.*?-->|/\*.*?\*/", "", text, flags=re.S)
+        text = "\n".join(l for l in text.split("\n") if not l.strip().startswith(("#", "//")))
+        assert "יעד תקציב" not in text, f.name
+
+
 def test_the_budget_field_explains_what_it_does():
     """שדה סכום בלי הסבר משאיר את המשתמש לנחש אם זה תקרה, תחזית או
     כסף שכבר הופרש."""

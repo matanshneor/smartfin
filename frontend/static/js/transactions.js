@@ -636,7 +636,7 @@
             const previous = txReceiptPath.value;
             resetScanUI();
             if (!result.ok || result.data.error) {
-                formError.textContent = (result.data && result.data.error) || 'לא הצלחתי לקרוא את הקבלה — נסה שוב או הזן ידנית';
+                formError.textContent = (result.data && result.data.error) || 'לא הצלחתי לקרוא את הקבלה — נסו שוב או הזינו ידנית';
                 return;
             }
             const data = result.data;
@@ -1073,7 +1073,7 @@
 
             return window.appConfirm({
                 title:       'למחוק את זו וכל הבאות?',
-                message:     later + ' עסקאות יימחקו, והסדרה תיעצר כאן. '
+                message:     window.sfCount(later, 'עסקה אחת תימחק', 'עסקאות יימחקו') + ', והסדרה תיעצר כאן. '
                              + 'מה שנרשם בחודשים קודמים יישאר.',
                 confirmText: 'מחק ' + later,
             }).then(function (sure) {
@@ -1105,7 +1105,7 @@
                 const n = d.deleted || total;
                 window.showToast(mode === 'one'
                     ? 'העסקה נמחקה. שאר הסדרה נשארה'
-                    : n + ' עסקאות נמחקו, והסדרה נעצרה');
+                    : window.sfCount(n, 'עסקה אחת נמחקה', 'עסקאות נמחקו') + ', והסדרה נעצרה');
                 clearTimeout(pendingDeleteReload);
                 pendingDeleteReload = setTimeout(refreshAfterDelete, 2500);
             })
@@ -1199,7 +1199,7 @@
                 txData.hadReceipt ? 'העסקה שוחזרה — בלי הקבלה' : 'העסקה שוחזרה');
             window.location.reload();
         })
-        .catch(function () { window.showToast('שחזור נכשל — נסה שוב', 'error'); });
+        .catch(function () { window.showToast('שחזור נכשל — נסו שוב', 'error'); });
     }
 
     // "הוסף שוב" (שכפול): הופך את מודל העריכה הפתוח למודל הוספה חדש עם
@@ -1362,7 +1362,7 @@
             '</div>' +
             '<div class="tx-editor-row">' +
                 '<label class="form-label">קטגוריה</label>' +
-                '<div class="category-grid inline-cats" role="radiogroup" aria-label="בחר קטגוריה"></div>' +
+                '<div class="category-grid inline-cats" role="radiogroup" aria-label="בחירת קטגוריה"></div>' +
             '</div>' +
             (hasOwner
                 ? '<div class="tx-editor-row">' +

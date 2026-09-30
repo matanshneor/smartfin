@@ -37,6 +37,13 @@ window.sfMoney = function (value, withCents) {
  * הקריאה הזאת ישבה בלי הגנה בתוך ‎.then‎ של שמירה שכבר הצליחה — והחריגה
  * נפלה ל-‎.catch‎ של הרשת: המשתמש ראה "שגיאת רשת", הכפתור השתחרר, והוא
  * לחץ שוב ויצר עותק. בלי אחסון מוותרים על ההודעה, לא על הטעינה. */
+/* "מספר + שם עצם" — אותו כלל כמו ‎count_of‎ ב-backend/wording.py:
+ * ‎sfCount(1, 'עסקה אחת', 'עסקאות')‎ → "עסקה אחת", ‎sfCount(3, …)‎ → "3 עסקאות". */
+window.sfCount = function (n, one, many) {
+    n = parseInt(n, 10) || 0;
+    return n === 1 ? one : n + ' ' + many;
+};
+
 window.sfToastAfterReload = function (message) {
     try { sessionStorage.setItem('sf_toast', message); } catch (e) { /* בלי הודעה, לא בלי טעינה */ }
 };

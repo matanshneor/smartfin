@@ -120,7 +120,7 @@
                 <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
             </svg>
         </div>
-        <p class="card-label">חסכונות</p>
+        <p class="card-label">חיסכון</p>
         <p class="card-amount">₪{{ summary.savings | money }}</p>
     </article>
 </section>
@@ -129,7 +129,7 @@
 <section class="transactions-section">
     <div class="section-header">
         <h2>עסקאות אחרונות</h2>
-        <a href="{{ url_for('month_view') }}" class="see-all-link">הכל</a>
+        <a href="{{ url_for('month_view') }}" class="see-all-link">לכל החודש</a>
     </div>
 
     {% if transactions %}
