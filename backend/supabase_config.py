@@ -2580,6 +2580,41 @@ def category_breakdown_from_rows(rows: list, categories: list, type_: str) -> li
     return out
 
 
+# קטגוריית משכורת מזוהה לפי השם — כמו בחירת ברירת המחדל בטופס (‎transactions.js‎)
+_SALARY_WORD = "משכורת"
+
+
+def income_sources(transactions: list) -> list:
+    """"הכנסות — מאיפה הגיעו" בעמוד החודש (מתן, 30.9): שורה לכל משכורת לפי מי
+    שרשום עליה ("משכורת מתן", "משכורת אור"), ושורה אחת "הכנסות נוספות" לכל
+    השאר. משכורות קודם, מהגדולה לקטנה; הנוספות אחרונות.
+
+    מקבלת את עסקאות הבית של החודש (בלי פרויקטים — כמו ‎month_transactions‎).
+    משכורת בלי בעלים (שיוך כבוי, או משותפת) היא פשוט "משכורת", בלי שם."""
+    salaries, extra = {}, None
+    for t in transactions:
+        if t.get("type") != "income":
+            continue
+        if _SALARY_WORD in (t.get("category_name") or ""):
+            key = t.get("user_id") or ""
+            src = salaries.setdefault(key, {
+                "kind": _SALARY_WORD, "who": t.get("user_name") if t.get("user_id") else "",
+                "icon": t.get("category_icon") or "💼", "total": 0.0, "transactions": []})
+        else:
+            if extra is None:
+                extra = {"kind": "הכנסות נוספות", "who": "", "icon": "➕",
+                         "total": 0.0, "transactions": []}
+            src = extra
+        src["total"] += float(t["amount"])
+        src["transactions"].append(t)
+    out = sorted(salaries.values(), key=lambda s: -s["total"])
+    if extra:
+        out.append(extra)
+    for src in out:
+        src["total"] = round(src["total"], 2)
+    return out
+
+
 def member_breakdown_from_rows(rows: list, type_: str) -> list:
     """סכום לכל בן משפחה. נגזר רק לסוגים שהמשפחה הפעילה בהם שיוך.
 

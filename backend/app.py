@@ -1145,7 +1145,7 @@ def month_view():
     if not family_id:
         return render_template(
             "month.html", active_page="month", user=user,
-            summary=db._empty_summary(), expense_breakdown=[], income_breakdown=[],
+            summary=db._empty_summary(), expense_breakdown=[], income_breakdown=[], income_sources=[],
             savings_breakdown=[], member_breakdowns=[], anomalies=[], month_transactions=[],
             member_colors={}, month_label=_month_label(year, month), year=year, month=month,
             strip_months=[{"year": year, "month": month}], hebrew_months=_HEBREW_MONTHS,
@@ -1255,6 +1255,7 @@ def month_view():
         summary=summary,
         expense_breakdown=expense_breakdown,
         income_breakdown=income_breakdown,
+        income_sources=db.income_sources(month_transactions),
         savings_breakdown=savings_breakdown,
         member_breakdowns=member_breakdowns,
         anomalies=anomalies,
