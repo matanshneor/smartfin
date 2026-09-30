@@ -170,7 +170,7 @@
         </div>
         <button type="button" class="btn-sm btn-ghost" data-archive-project="{{ project.id }}"
                 data-archived="{{ 'false' if project.archived else 'true' }}" data-name="{{ project.name }}">
-            {{ 'החזרה לפעילים' if project.archived else 'הפרויקט הסתיים' }}
+            {{ 'פתיחה מחדש' if project.archived else 'הפרויקט הסתיים' }}
         </button>
     </div>
 </div>

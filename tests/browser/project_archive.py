@@ -1,4 +1,4 @@
-"""בדיקת דפדפן אמיתי: "הפרויקט הסתיים" והחזרה לפעילים (מתן, 30.9 — סבב 6, פריט 3).
+"""בדיקת דפדפן אמיתי: "הפרויקט הסתיים" ופתיחה מחדש (מתן, 30.9 — סבב 6, פריט 3).
 
 הרצה (Playwright מותקן בפייתון של המערכת, לא ב-.venv):
     /Library/Frameworks/Python.framework/Versions/3.14/bin/python3 tests/browser/project_archive.py

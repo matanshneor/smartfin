@@ -2200,7 +2200,7 @@ def add_project(family_id: str, name: str, created_by: str, budget_target: float
 
 
 def set_project_archived(project_id: str, family_id: str, archived: bool) -> bool:
-    """"הפרויקט הסתיים" / "החזרה לפעילים" (מתן, 30.9). העסקאות לא נוגעות —
+    """"הפרויקט הסתיים" / "פתיחה מחדש" (מתן, 30.9). העסקאות לא נוגעות —
     רק הדגל, שמוציא את הפרויקט מהרשימות ומטופס ההוספה. ‎False‎ כששום שורה
     לא נגעה (נמחק בינתיים, או לא של המשפחה)."""
     client = get_client()

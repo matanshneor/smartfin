@@ -415,7 +415,7 @@ window.softReload = function (selector, pendingToast) {
 };
 
 
-// ── "הפרויקט הסתיים" / "החזרה לפעילים" (מתן, 30.9 — סבב 6, פריט 3) ──
+// ── "הפרויקט הסתיים" / "פתיחה מחדש" (מתן, 30.9 — סבב 6, פריט 3) ──
 // הכפתור בעמוד העריכה ובפס של פרויקט שהסתיים. סיום שואל קודם; החזרה לא —
 // היא לא מסתירה כלום.
 document.addEventListener('click', function (e) {
@@ -445,7 +445,7 @@ document.addEventListener('click', function (e) {
             .then(function () {
                 try {
                     window.sfToastAfterReload(archived ? 'הפרויקט סומן כפרויקט שהסתיים'
-                                                       : 'הפרויקט חזר לפעילים');
+                                                       : 'הפרויקט נפתח מחדש');
                 } catch (err) { /* בלי טוסט — לא בלי הרענון */ }
                 window.location.reload();
             })

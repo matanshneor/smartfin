@@ -657,3 +657,12 @@ def test_a_finished_project_is_not_offered_but_an_old_transaction_keeps_it():
     assert "window.sfFetchList('/api/projects?include_archived=1')" in js
     assert "(p[trackKey] && !p.archived)" in js
     assert "|| (keepOriginal && p.id === selectedProjectId)" in js
+
+
+def test_a_finished_project_is_reopened_not_returned_to_the_active():
+    """מתן (30.9): "החזרה לפעילים" לא מצא חן — "פתיחה מחדש"."""
+    for f in ("frontend/templates/project_edit.html", "frontend/templates/project_detail.html",
+              "frontend/static/js/core.js"):
+        assert "לפעילים" not in _read(f), f
+    assert "פתיחה מחדש" in _read("frontend/templates/project_detail.html")
+    assert "'הפרויקט נפתח מחדש'" in _read("frontend/static/js/core.js")

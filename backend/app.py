@@ -1711,7 +1711,7 @@ def list_projects_route():
 @login_required
 @project_access_required
 def archive_project_route(project_id):
-    """"הפרויקט הסתיים" (‎archived: true‎) / "החזרה לפעילים" (‎false‎)."""
+    """"הפרויקט הסתיים" (‎archived: true‎) / "פתיחה מחדש" (‎false‎)."""
     user = get_current_user()
     archived = (request.get_json(silent=True) or {}).get("archived")
     if not isinstance(archived, bool):
