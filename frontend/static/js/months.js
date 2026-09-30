@@ -73,17 +73,6 @@ if (trendData.length > 0) {
 /* ═══ האינטראקטיביות של העמוד ═══ */
 (function () {
 
-// "הצג עוד" — חושף את כל החודשים שמעבר ל-6 הראשונים (או מכווץ בחזרה)
-const moreBtn = document.getElementById('showMoreMonths');
-if (moreBtn) {
-    const archive = document.getElementById('monthsArchive');
-    moreBtn.addEventListener('click', function () {
-        const open = archive.classList.toggle('show-all');
-        moreBtn.textContent = open ? moreBtn.dataset.less : moreBtn.dataset.more;
-        moreBtn.setAttribute('aria-expanded', open);
-    });
-}
-
 // לחיצה בכל מקום בשורה פותחת את החודש. הקישור עצמו (שם החודש) הוא מה
 // שמקלדת וקורא מסך פוגשים; השורה רק מגדילה את אזור הלחיצה לאצבע.
 document.addEventListener('click', function (e) {

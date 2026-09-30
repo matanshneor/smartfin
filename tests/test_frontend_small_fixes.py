@@ -486,6 +486,10 @@ def test_the_compare_page_is_one_table():
     loop = html[html.index("groupby('year')"):]
     assert loop.index('class="year-title"') < loop.index('<table class="months-table">')
     assert "year-row" not in html
+    # השנה הנוכחית פתוחה, שנים קודמות רק ככותרת שנפתחת (מתן, 30.9)
+    assert '<details class="year-block" {% if year_group.grouper >= today_year %}open{% endif %}>' in html
+    assert '<summary class="year-title">' in html
+    assert "showMoreMonths" not in html
     heads = re.findall(r'<th scope="col"[^>]*>([^<]+)</th>', html)
     assert heads == ["חודש", "הכנסות", "הוצאות", "חיסכון", "מאזן"]
     assert "month-stats" not in html and "month-link" not in html

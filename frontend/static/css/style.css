@@ -1857,7 +1857,7 @@ a.submit-btn {
 .months-table .bal.surplus { color: var(--color-income); }
 .months-table .bal.deficit { color: var(--color-expense); }
 
-/* השנה מעל הטבלה שלה, עם קו זהב — כמו מפריד השנים הקודם */
+/* השנה מעל הטבלה שלה, עם קו זהב. שנה קודמת סגורה — לחיצה על הכותרת פותחת */
 .year-block { margin-bottom: 4px; }
 
 .year-title {
@@ -1869,14 +1869,24 @@ a.submit-btn {
     font-weight: 700;
     color: var(--color-gold-text);
     letter-spacing: 0.04em;
+    cursor: pointer;
+    list-style: none;
+    min-height: 44px;
 }
+
+.year-title::-webkit-details-marker { display: none; }
 
 .year-title::after {
     content: "";
     flex: 1;
     height: 1px;
     background: linear-gradient(to left, var(--color-gold-dim), transparent);
+    order: 2;
 }
+
+.year-chevron { order: 3; display: flex; color: var(--color-gold-text); transition: transform 0.2s; }
+.year-chevron svg { width: 18px; height: 18px; }
+.year-block[open] > .year-title .year-chevron { transform: rotate(180deg); }
 
 .months-table .month-row { cursor: pointer; }
 .months-table .month-row:active td { background: var(--color-card-hover); }
@@ -1900,21 +1910,6 @@ a.submit-btn {
     color: var(--color-text-muted);
 }
 
-/* חודשים מעבר ל-6 הראשונים — מוסתרים עד לחיצה על "הצג עוד" */
-#monthsArchive:not(.show-all) .month-extra { display: none; }
-
-.show-more-months {
-    display: block;
-    margin: 14px auto 0;
-    padding: 8px 22px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--color-gold-text);
-    background: var(--color-gold-dim);
-    border-radius: 99px;
-}
-
-.show-more-months:active { transform: scale(0.98); }
 
 /* ─── Charts & KPI (light cards) ──────────────────────────────── */
 

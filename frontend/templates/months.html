@@ -28,16 +28,19 @@
 
 <!-- Month list — מציג 6 חודשים אחרונים; השאר מאחורי "הצג עוד" -->
 {# טבלה לכל שנה, והשנה מעליה (מתן, 30.9 — הצעה ג): שורה לחודש, עמודה לסוג.
-   בכרטיס לכל חודש, עם חמישה פריטים בשורה אחת, המאזן דרס את "חיסכון" ברוחב
-   טלפון. שקלים שלמים — זו סקירה; האגורות בעמוד של כל חודש. #}
+   השנה הנוכחית (ומה שאחריה) פתוחה במלואה; שנים קודמות הן כותרת בלבד,
+   ולחיצה פותחת אותן. ‎<details>‎ — פתיחה וסגירה בלי JS, ונגיש מעצמו.
+   שקלים שלמים — זו סקירה; האגורות בעמוד של כל חודש. #}
 <div id="monthsArchive">
-{% set seen = namespace(i=0) %}
 {% for year_group in archive | groupby('year') | reverse %}
-    {# ‎groupby‎ ממיין לפי השנה ושומר את סדר החודשים בתוכה (מהחדש לישן).
-       שנה שכל החודשים שלה מעבר ל-6 הראשונים מוסתרת כולה עד "הצג עוד". #}
-    {% set year_is_extra = seen.i >= 6 %}
-    <section class="year-block {% if year_is_extra %}month-extra{% endif %}" aria-label="{{ year_group.grouper }}">
-        <h2 class="year-title">{{ year_group.grouper }}</h2>
+    {# ‎groupby‎ ממיין לפי השנה ושומר את סדר החודשים בתוכה (מהחדש לישן) #}
+    <details class="year-block" {% if year_group.grouper >= today_year %}open{% endif %}>
+        <summary class="year-title">
+            <span>{{ year_group.grouper }}</span>
+            <span class="year-chevron" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+        </summary>
         <div class="chart-card months-table-card">
             <table class="months-table">
                 <colgroup><col class="c-month"><col><col><col><col class="c-balance"></colgroup>
@@ -52,12 +55,11 @@
                 </thead>
                 <tbody>
                 {% for entry in year_group.list %}
-                    {% set is_extra = seen.i >= 6 %}
                     {# המאזן = "נשאר בעו״ש": הכנסות פחות הוצאות פחות חיסכון (חיסכון
                        גם יוצא מהעו״ש), עקבי עם הדשבורד. הסימן לפי המספר המעוגל. #}
                     {% set balance = ((entry.income | float) - (entry.expense | float) - (entry.savings | float)) | round | int %}
                     {% set is_current = entry.year == today_year and entry.month == today_month %}
-                    <tr class="month-row {% if is_extra %}month-extra{% endif %}{% if is_current %} is-current{% endif %}"
+                    <tr class="month-row{% if is_current %} is-current{% endif %}"
                         data-href="{{ url_for('month_view', year=entry.year, month=entry.month) }}">
                         <td class="m">
                             <a href="{{ url_for('month_view', year=entry.year, month=entry.month) }}">{{ _HEBREW_MONTHS[entry.month] }}</a>
@@ -68,19 +70,13 @@
                         <td class="n sav">{{ (entry.savings | float) | round | int | money }}</td>
                         <td class="n bal {% if balance < 0 %}deficit{% else %}surplus{% endif %}">{% if balance > 0 %}+{% elif balance < 0 %}-{% endif %}{{ (balance | abs) | money }}</td>
                     </tr>
-                    {% set seen.i = seen.i + 1 %}
                 {% endfor %}
                 </tbody>
             </table>
         </div>
-    </section>
+    </details>
 {% endfor %}
     <p class="months-table-note">בשקלים שלמים · לחיצה על חודש פותחת אותו</p>
-
-{% if archive | length > 6 %}
-<button type="button" class="show-more-months" id="showMoreMonths"
-        aria-expanded="false" data-more="הצג עוד" data-less="הצג פחות">הצג עוד</button>
-{% endif %}
 </div>
 
 {% else %}

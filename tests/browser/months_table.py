@@ -78,13 +78,11 @@ try:
             return {header: r(th), number: r(td), align: getComputedStyle(th).textAlign};
         }"""))
         years = """() => [...document.querySelectorAll('.year-block')].map(y => y.querySelector('.year-title').textContent.trim()
-            + ':' + (y.offsetParent !== null ? [...y.querySelectorAll('tr.month-row')].filter(r => r.offsetParent !== null).length : 'hidden'))"""
-        print("years before 'show more':", page.evaluate(years),
-              "| title above table:", page.evaluate("[...document.querySelectorAll('.year-block')].every(y => y.querySelector('.year-title').compareDocumentPosition(y.querySelector('table')) & Node.DOCUMENT_POSITION_FOLLOWING)"))
-        page.click("#showMoreMonths"); page.wait_for_timeout(300)
-        print("years after 'show more':", page.evaluate(years))
+            + ':' + (y.open ? [...y.querySelectorAll('tr.month-row')].filter(r => r.offsetParent !== null).length + ' months shown' : 'closed'))"""
+        print("on arrival:", page.evaluate(years))
+        page.locator(".year-title", has_text="2025").click(); page.wait_for_timeout(300)
+        print("after tapping 2025:", page.evaluate(years))
         page.screenshot(path="/tmp/months_years.png", full_page=True)
-        page.click("#showMoreMonths"); page.wait_for_timeout(300)
         page.locator("tr.month-row").nth(1).locator("td.exp").click()
         page.wait_for_url("**/month?*", timeout=5000)
         print("tapping a row opens:", page.url.split("/")[-1])
