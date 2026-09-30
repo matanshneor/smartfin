@@ -493,3 +493,15 @@ def test_the_compare_page_is_one_table():
     heads = re.findall(r'<th scope="col"[^>]*>([^<]+)</th>', html)
     assert heads == ["חודש", "הכנסות", "הוצאות", "חיסכון", "מאזן"]
     assert "month-stats" not in html and "month-link" not in html
+
+
+def test_a_receipt_does_not_make_the_row_taller():
+    """מתן (30.9). בדפדפן: tests/browser/receipt_row_height.py."""
+    home = _read("frontend/templates/index.html")
+    row = home[home.index('<div class="tx-amount-row">'):]
+    row = row[:row.index("</div>")]
+    assert 'class="receipt-badge"' in row, "הסיכה לא באותה שורה עם הסכום"
+    css = re.sub(r"/\*.*?\*/", "", _read("frontend/static/css/style.css"), flags=re.S)
+    rule = css[css.index(".tx-amount-row .receipt-badge {"):]
+    rule = rule[:rule.index("}")]
+    assert "margin-block: -4px" in rule

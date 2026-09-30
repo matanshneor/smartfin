@@ -254,9 +254,9 @@ if (expenseData.length > 0) {
     }
 }
 
-// ── 3–4. חיסכון והכנסות — אותו גרף עגול כמו ההוצאות (מתן, 30.9) ──
-// הצבעים מהשרת: בהכנסות — בן המשפחה, או אפור ל"הכנסות נוספות"; בחיסכון — זהב.
-[['savingsChart', SF_VIEW.savings || [], 'color'], ['incomeChart', SF_VIEW.income || [], 'color']]
+// ── 4. הכנסות — אותו גרף עגול כמו ההוצאות (מתן, 30.9). לחיסכון אין גרף ──
+// הצבעים מהשרת: בן המשפחה, או אפור ל"הכנסות נוספות".
+[['incomeChart', SF_VIEW.income || [], 'color']]
 .forEach(function (spec) {
     const ctx = document.getElementById(spec[0]);
     const data = spec[1];

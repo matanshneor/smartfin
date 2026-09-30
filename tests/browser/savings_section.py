@@ -56,9 +56,9 @@ try:
                                               "description": "SAV-TEST", "category_id": cat})
         page.goto(BASE + "/month"); page.wait_for_timeout(1500)
         sec = page.locator("#savings-breakdown")
-        print("title:", sec.locator(".chart-title").inner_text(), "| center:", sec.locator(".doughnut-total").inner_text(),
+        print("title:", sec.locator(".chart-title").inner_text(), "| center:", sec.locator(".savings-total-value").inner_text(),
               "|", sec.locator(".savings-of-income").inner_text(),
-              "| chart drawn:", page.evaluate("!!(window.Chart && Chart.getChart(document.getElementById('savingsChart')))"))
+              "| canvas:", sec.locator("canvas").count())
         print("rows:", list(zip(sec.locator(".legend-name").all_inner_texts(), sec.locator(".legend-pct").all_inner_texts())))
         sec.locator(".legend-item.clickable").first.click(); page.wait_for_timeout(400)
         print("expanded:", sec.locator(".cat-tx-row:visible").count(), "transaction(s)")

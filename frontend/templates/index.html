@@ -161,19 +161,23 @@
                     </p>
                 </div>
                 <div class="tx-side">
+                    {# הקבלה באותה שורה עם הסכום ולא בשורה משלה מתחתיו — בשורה
+                       משלה היא הגביהה את כל השורה ב-9px (מתן, 30.9) #}
+                    <div class="tx-amount-row">
+                    {% if tx.has_receipt %}
+                    <a class="receipt-badge" href="{{ url_for('view_receipt', tx_id=tx.id) }}"
+                       target="_blank" rel="noopener"
+                       title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</a>
+                    {% endif %}
                     <p class="tx-amount {{ tx.type }}">
                         {% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ tx.amount | money }}
                     </p>
+                    </div>
                     {% if family_settings.owner_attribution[tx.type] %}
                     {% set color = member_colors.get(tx.user_id) %}
                     <span class="owner-pill owner-{{ color if color is not none else 'shared' }}">
                         {{ tx.user_name if tx.user_id else 'משותפת' }}
                     </span>
-                    {% endif %}
-                    {% if tx.has_receipt %}
-                    <a class="receipt-badge" href="{{ url_for('view_receipt', tx_id=tx.id) }}"
-                       target="_blank" rel="noopener"
-                       title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</a>
                     {% endif %}
                 </div>
             </div>

@@ -75,7 +75,8 @@ def test_the_savings_card_is_a_doughnut_with_its_share_of_income():
     בדפדפן: tests/browser/savings_section.py."""
     section = _section("savings-breakdown")
     assert '<h2 class="chart-title">חיסכון</h2>' in section
-    assert 'id="savingsChart"' in section and "הופרש החודש" in section
+    # בלי גרף עגול (מתן, 30.9): "אין כאן עניין של השוואה"
+    assert "<canvas" not in section and "סה״כ חיסכון החודש" in section
     assert "% מההכנסות החודש" in section and "{{ item.share }}%" in section
 
 

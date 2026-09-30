@@ -404,24 +404,22 @@
 </section>
 {% endif %}
 
-<!-- Chart 3: חיסכון — גרף עגול כמו ההוצאות (מתן, 30.9) -->
+<!-- Chart 3: חיסכון — סך הכול ופירוט, בלי גרף (מתן, 30.9) -->
 <section class="chart-card" id="savings-breakdown">
     <h2 class="chart-title">חיסכון</h2>
     {# כמה הופרש, איזה חלק מההכנסות, ולכל יעד — איזה חלק מהחיסכון (‎savings_home‎,
        בלי פרויקטים). צבעי היעדים — גוונים של זהב (‎_SAVINGS_HEX‎). #}
     {% set savings_home = savings_home | default([]) %}
     {% set savings_total = savings_home | sum(attribute='total') %}
+    {# בלי גרף עגול: אין כאן השוואה, רק לאן הלך הכסף (מתן) #}
     {% if savings_home %}
-    <div class="doughnut-wrap">
-        <canvas id="savingsChart" role="img" aria-label="חיסכון לפי יעד"></canvas>
-        <div class="doughnut-center">
-            <p class="doughnut-total savings">₪{{ savings_total | money }}</p>
-            <p class="doughnut-label">הופרש החודש</p>
-        </div>
+    <div class="savings-total">
+        <p class="savings-total-label">סה״כ חיסכון החודש</p>
+        <p class="savings-total-value">₪{{ savings_total | money }}</p>
+        {% if summary.income > 0 %}
+        <p class="savings-of-income">{{ ((savings_total / summary.income) * 100) | round | int }}% מההכנסות החודש</p>
+        {% endif %}
     </div>
-    {% if summary.income > 0 %}
-    <p class="savings-of-income">{{ ((savings_total / summary.income) * 100) | round | int }}% מההכנסות החודש</p>
-    {% endif %}
     {% else %}
     <div class="chart-empty"><p>💰</p><p>אין הפרשות לחיסכון החודש</p></div>
     {% endif %}

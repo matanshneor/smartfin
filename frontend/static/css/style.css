@@ -936,6 +936,23 @@ li.transaction-item.open.swipe-ready > .swipe-content {
 
 .receipt-badge:hover { background: var(--color-gold-border); }
 
+/* בשורות עסקה הסיכה בגובה הטקסט, כדי שלא תגביה את השורה (מתן, 30.9).
+   אזור הלחיצה נשאר 44px דרך ‎::before‎, שלא תופס מקום בפריסה. */
+.cat-tx-row .receipt-badge,
+.tx-amount-row .receipt-badge {
+    width: 18px;
+    height: 18px;
+    font-size: 0.68rem;
+    margin-block: -4px;     /* לא תורם לגובה השורה — גם לא פיקסל */
+}
+
+.tx-amount-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
 /* ─── Empty state ─────────────────────────────────────────────── */
 
 .empty-state {
@@ -1813,11 +1830,32 @@ a.submit-btn {
 .doughnut-total.income  { color: var(--color-income); }
 .doughnut-total.savings { color: var(--color-savings); }
 
-.savings-of-income {
+/* חיסכון: סך הכול בראש הכרטיס, בלי גרף */
+.savings-total {
     text-align: center;
-    font-size: 0.78rem;
+    padding: 2px 0 14px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid rgba(28, 25, 23, 0.07);
+}
+
+.savings-total-label {
+    font-size: 0.76rem;
     color: var(--color-text-muted);
-    margin: -4px 0 10px;
+    margin-bottom: 2px;
+}
+
+.savings-total-value {
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: var(--color-savings);
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+}
+
+.savings-of-income {
+    font-size: 0.76rem;
+    color: var(--color-text-muted);
+    margin-top: 2px;
 }
 
 /* ─── Months comparison ───────────────────────────────────────── */
