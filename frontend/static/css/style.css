@@ -632,6 +632,13 @@ ul { list-style: none; }
     font-weight: 600;
     color: var(--color-gold-text);
     text-decoration: none;
+    /* 20px גובה היה קטן מדי לאצבע; הריפוד מגדיל את אזור הלחיצה ל-44
+       והשוליים השליליים משאירים את הטקסט במקומו */
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 10px;
+    margin: -12px -10px;
 }
 
 .transactions-list {
@@ -1077,6 +1084,13 @@ li.transaction-item.open.swipe-ready > .swipe-content {
 .toast.show {
     opacity: 1;
     transform: translate(-50%, 0);
+}
+
+/* כשחלון העסקה פתוח, הטוסט בתחתית נחת על שדה התאריך. למעלה הוא לא
+   מסתיר שום שדה. */
+body:has(.modal-overlay.open) .toast {
+    bottom: auto;
+    top: calc(14px + env(safe-area-inset-top, 0px));
 }
 
 .toast.error {

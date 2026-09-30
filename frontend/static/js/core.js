@@ -109,6 +109,25 @@ window.escapeHtml = function (s) {
 (function () {
     const toast = document.getElementById('appToast');
     let toastTimer = null;
+    let toastHide = null;
+
+    // האם הפעולה האחרונה הייתה במקלדת — כדי להעביר את המיקוד ל"בטל" רק
+    // למי שמנווט במקלדת, ולא לקפוץ למי שנגע במסך
+    let lastInputWasKeyboard = false;
+    document.addEventListener('keydown', function () { lastInputWasKeyboard = true; }, true);
+    document.addEventListener('pointerdown', function () { lastInputWasKeyboard = false; }, true);
+
+    // "בטל" לא נעלם מתחת לאצבע או למיקוד: 6 שניות לא מספיקות למי שהגיע
+    // אליו במקלדת או מתלבט עם העכבר מעליו
+    function holdToast() { clearTimeout(toastTimer); }
+    function releaseToast() {
+        clearTimeout(toastTimer);
+        if (toastHide) toastTimer = setTimeout(toastHide, 2500);
+    }
+    toast.addEventListener('mouseenter', holdToast);
+    toast.addEventListener('mouseleave', releaseToast);
+    toast.addEventListener('focusin', holdToast);
+    toast.addEventListener('focusout', releaseToast);
 
     // action = { label, onClick } — כפתור פעולה אופציונלי (למשל "בטל" למחיקה).
     // כשמוצג כפתור, הטוסט נשאר 6 שניות כדי לתת זמן להגיב.
@@ -135,7 +154,12 @@ window.escapeHtml = function (s) {
             duration = 6000;
         }
         toast.classList.add('show');
-        toastTimer = setTimeout(function () { toast.classList.remove('show'); }, duration);
+        toastHide = function () { toast.classList.remove('show'); toastHide = null; };
+        toastTimer = setTimeout(toastHide, duration);
+        // מי שמחק במקלדת איבד את המיקוד יחד עם השורה; "בטל" הוא המקום
+        // הטבעי שלו עכשיו — אחרת הוא צריך לעבור את כל העמוד ב-Tab ב-6 שניות
+        const actionBtn = toast.querySelector('.toast-action');
+        if (actionBtn && lastInputWasKeyboard) actionBtn.focus({ preventScroll: true });
     };
 
     // הודעה שנשמרה לפני רענון דף — מוצגת עכשיו

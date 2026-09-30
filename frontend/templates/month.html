@@ -193,7 +193,7 @@
     <h2 class="chart-title">הוצאות מול חיסכון</h2>
     {% if summary.expense > 0 or summary.savings > 0 %}
     <div class="doughnut-wrap">
-        <canvas id="overviewChart" aria-label="לאן הלך הכסף: הוצאות מול חיסכון"></canvas>
+        <canvas id="overviewChart" role="img" aria-label="לאן הלך הכסף: הוצאות מול חיסכון"></canvas>
         <div class="doughnut-center">
             <p class="doughnut-caption">פילוח החודש</p>
         </div>
@@ -211,7 +211,7 @@
     <h2 class="chart-title">הוצאות לפי קטגוריה</h2>
     {% if expense_active %}
     <div class="doughnut-wrap">
-        <canvas id="expenseChart" aria-label="גרף הוצאות לפי קטגוריה"></canvas>
+        <canvas id="expenseChart" role="img" aria-label="גרף הוצאות לפי קטגוריה"></canvas>
         <div class="doughnut-center">
             <p class="doughnut-total">₪{{ summary.expense | money }}</p>
             <p class="doughnut-label">הוצאות</p>
@@ -330,7 +330,7 @@
         {% endfor %}
 
         {% if expense_zero %}
-        <li class="zero-toggle" role="button" tabindex="0">
+        <li class="zero-toggle" role="button" tabindex="0" aria-expanded="false">
             <span>עוד {{ expense_zero | length | count_of('קטגוריה אחת', 'קטגוריות') }} ללא פעילות</span>
             <span class="expand-chevron" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -480,7 +480,7 @@
         <div class="chart-empty"><p>💰</p><p>אין הפרשות לחיסכון החודש</p></div>
         {% endif %}
         {% if savings_zero %}
-        <li class="zero-toggle" role="button" tabindex="0">
+        <li class="zero-toggle" role="button" tabindex="0" aria-expanded="false">
             <span>עוד {{ savings_zero | length | count_of('קטגוריה אחת', 'קטגוריות') }} ללא פעילות</span>
             <span class="expand-chevron" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -583,7 +583,7 @@
         <div class="chart-empty"><p>💼</p><p>אין הכנסות רשומות החודש</p></div>
         {% endif %}
         {% if income_zero %}
-        <li class="zero-toggle" role="button" tabindex="0">
+        <li class="zero-toggle" role="button" tabindex="0" aria-expanded="false">
             <span>עוד {{ income_zero | length | count_of('קטגוריה אחת', 'קטגוריות') }} ללא פעילות</span>
             <span class="expand-chevron" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -612,7 +612,7 @@
 <section class="chart-card">
     <h2 class="chart-title">{{ mb.label }} לפי בן משפחה</h2>
     <div class="line-chart-wrap">
-        <canvas id="membersChart-{{ mb.type }}" aria-label="{{ mb.label }} לפי בן משפחה"></canvas>
+        <canvas id="membersChart-{{ mb.type }}" role="img" aria-label="{{ mb.label }} לפי בן משפחה"></canvas>
     </div>
 </section>
 {% endfor %}

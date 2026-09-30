@@ -67,6 +67,8 @@ document.addEventListener('click', function (e) {
     if (!toggle) return;
     const shown = toggle.parentElement.classList.toggle('show-zeros');
     toggle.classList.toggle('open', shown);
+    // קורא מסך לא רואה את החץ שמתהפך — צריך לשמוע "מורחב"/"מכווץ"
+    toggle.setAttribute('aria-expanded', String(shown));
 });
 
 // ── המקרא של "לאן הלך הכסף" ──

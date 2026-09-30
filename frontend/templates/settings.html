@@ -472,7 +472,7 @@
                     <p class="group-row-hint">משוב קצר כשעסקה נכנסת. ההגדרה נשמרת במכשיר הזה בלבד</p>
                 </div>
                 <label class="pref-switch">
-                    <input type="checkbox" id="feedbackToggle">
+                    <input type="checkbox" aria-label="צליל ורטט בשמירה" id="feedbackToggle">
                     <span class="pref-slider"></span>
                 </label>
             </div>
@@ -482,7 +482,7 @@
                     <p class="group-row-hint">בוחרים "של מי" כל הוצאה, ובעמוד החודש מופיע גרף חלוקה</p>
                 </div>
                 <label class="pref-switch">
-                    <input type="checkbox" data-pref-type="expense"
+                    <input type="checkbox" aria-label="שיוך הוצאות" data-pref-type="expense"
                            {% if family_settings.owner_attribution.expense %}checked{% endif %}>
                     <span class="pref-slider"></span>
                 </label>
@@ -493,7 +493,7 @@
                     <p class="group-row-hint">בוחרים "של מי" כל הכנסה, ובעמוד החודש מופיע גרף חלוקה</p>
                 </div>
                 <label class="pref-switch">
-                    <input type="checkbox" data-pref-type="income"
+                    <input type="checkbox" aria-label="שיוך הכנסות" data-pref-type="income"
                            {% if family_settings.owner_attribution.income %}checked{% endif %}>
                     <span class="pref-slider"></span>
                 </label>
@@ -504,7 +504,7 @@
                     <p class="group-row-hint">בוחרים "של מי" כל חיסכון, ובעמוד החודש מופיע גרף חלוקה</p>
                 </div>
                 <label class="pref-switch">
-                    <input type="checkbox" data-pref-type="savings"
+                    <input type="checkbox" aria-label="שיוך חיסכון" data-pref-type="savings"
                            {% if family_settings.owner_attribution.savings %}checked{% endif %}>
                     <span class="pref-slider"></span>
                 </label>
@@ -518,7 +518,7 @@
                     <p class="group-row-hint">התרעה כשקטגוריית הוצאה גבוהה בהרבה מהרגיל שלה בשלושת החודשים האחרונים</p>
                 </div>
                 <label class="pref-switch">
-                    <input type="checkbox" id="anomalyEnabled"
+                    <input type="checkbox" aria-label="התראות על חריגות" id="anomalyEnabled"
                            {% if family_settings.anomaly.enabled %}checked{% endif %}>
                     <span class="pref-slider"></span>
                 </label>
@@ -556,7 +556,7 @@
                     <p class="group-row-hint" id="workplaceNote">מוצג בקטן מתחת למשכורת של כל בן משפחה</p>
                 </div>
                 <label class="pref-switch">
-                    <input type="checkbox" id="showWorkplace"
+                    <input type="checkbox" aria-label="מקום עבודה על שורות משכורת" id="showWorkplace"
                            {% if family_settings.show_workplace %}checked{% endif %}>
                     <span class="pref-slider"></span>
                 </label>

@@ -88,7 +88,7 @@
     <section class="chart-card">
         <h2 class="chart-title">{{ chart_titles[typ] }}</h2>
         <div class="doughnut-wrap">
-            <canvas id="chart-{{ typ }}" aria-label="{{ chart_titles[typ] }}"></canvas>
+            <canvas id="chart-{{ typ }}" role="img" aria-label="{{ chart_titles[typ] }}"></canvas>
             <div class="doughnut-center">
                 <p class="doughnut-total">₪{{ type_totals[typ] | money }}</p>
                 <p class="doughnut-label">{{ type_labels[typ] }}</p>
@@ -168,7 +168,10 @@
                        target="_blank" rel="noopener"
                        title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</a>
             {% endif %}
-            <span class="cat-tx-amount {{ tx.type }}">₪{{ tx.amount | money }}</span>
+            {# סימן ולא רק צבע: ברשימה הזאת הכנסות והוצאות מעורבבות, ולמי שלא
+               מבחין בין ירוק לאדום (~8% מהגברים) הצבע לבדו לא אומר כלום.
+               אותו סימון כמו ברשימת האחרונות בבית. #}
+            <span class="cat-tx-amount {{ tx.type }}">{% if tx.type == 'income' %}+{% elif tx.type == 'expense' %}-{% endif %}₪{{ tx.amount | money }}</span>
         </li>
         {% endfor %}
     </ul>
