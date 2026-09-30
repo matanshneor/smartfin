@@ -69,7 +69,7 @@
            לשמוע כשהוא שומע "התקדמות", וזה גם מה שהאדום מודד. #}
         <div class="balance-bar-track balance-bar-split" role="progressbar"
              aria-valuenow="{{ spent_pct }}" aria-valuemin="0" aria-valuemax="100"
-             aria-label="הוצאתם {{ spent_pct }}% מההכנסות, וחסכתם {{ saved_pct }}%">
+             aria-label="הוצאתם {{ spent_pct }}% מההכנסות, וחסכתם {{ saved_pct }}% מההכנסות">
             <div class="balance-bar-fill spent {% if spent_pct > 90 %}danger{% endif %}"
                  style="width: {{ [spent_pct, 100] | min }}%;"></div>
             <div class="balance-bar-fill saved"
@@ -80,7 +80,7 @@
            לדרוש ממישהו להרכיב את שתי השורות בראש. עכשיו זה כתוב במילים. #}
         <div class="balance-bar-legend">
             <span><span class="bar-key spent"></span> הוצאתם {{ spent_pct }}% מההכנסות</span>
-            <span><span class="bar-key saved"></span> חסכתם {{ saved_pct }}%</span>
+            <span><span class="bar-key saved"></span> חסכתם {{ saved_pct }}% מההכנסות</span>
         </div>
     </div>
     {% endif %}

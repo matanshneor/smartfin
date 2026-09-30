@@ -533,3 +533,19 @@ def test_the_compare_chart_fills_its_card():
     js = _read("frontend/static/js/months.js")
     assert "font: { size: 13 }" in js and "font: { size: 14 }" in js
     assert "SHORT_MONTHS[d.month]" in js, "בגופן הגדול השמות המלאים נדבקים זה לזה"
+
+
+def test_the_chart_canvas_fills_its_wrap_in_safari_rtl():
+    """מתן (30.9): באייפון הגרף תפס רק כ-2/3 מהרוחב. ב-Safari ב-RTL ה-canvas
+    (300px כברירת מחדל) מקבל ‎margin-left‎ מחושב, ו-Chart.js מחסיר אותו
+    מהרוחב — הגרף נתקע על 300. רוחב מפורש ל-canvas מבטל את זה."""
+    css = _read("frontend/static/css/style.css")
+    rule = re.search(r"\.line-chart-wrap canvas,\s*\.doughnut-wrap canvas\s*\{([^}]*)\}", css)
+    assert rule, "חסר כלל רוחב ל-canvas של הגרפים"
+    assert "width: 100% !important" in rule.group(1)
+
+
+def test_the_savings_legend_says_of_what():
+    """מתן (30.9): "חסכתם 67%" לא אומר ממה — כמו ההוצאות, "מההכנסות"."""
+    html = _read("frontend/templates/index.html")
+    assert "חסכתם {{ saved_pct }}% מההכנסות</span>" in html

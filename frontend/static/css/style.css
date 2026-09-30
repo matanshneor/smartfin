@@ -2383,6 +2383,16 @@ li.zero-cat-row { display: none; }
     height: 240px;
 }
 
+/* הגרף ממלא את כל רוחב המיכל שלו. באג של Safari ב-RTL: קנבס ברוחב 300
+   (ברירת המחדל) בתוך מיכל רחב יותר מקבל ב-getComputedStyle שוליים שמאליים
+   בגודל ההפרש, ו-Chart.js מחסיר אותם — כך שהגרף נתקע על 300 לתמיד, וכל הצד
+   השמאלי של הכרטיס נשאר ריק (צילום של מתן, 30.9). Chrome מחזיר 0 ולא מראה
+   את זה. רוחב 100% מבטל את ההפרש, ואיתו את השוליים המדומים. */
+.line-chart-wrap canvas,
+.doughnut-wrap canvas {
+    width: 100% !important;
+}
+
 /* עמוד ההשוואה: הגרף רחב — עד שולי הכרטיס — ולא גבוה יותר (מתן, 30.9) */
 .line-chart-wrap.compare-chart-wrap { margin-inline: -10px; }
 
