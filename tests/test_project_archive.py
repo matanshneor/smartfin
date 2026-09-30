@@ -131,3 +131,16 @@ def test_settings_says_no_active_projects_instead_of_zero():
     assert render([]) == "אין פרויקטים פעילים"
     assert render([1]) == "פרויקט פעיל אחד"
     assert render([1, 2]) == "2 פרויקטים פעילים"
+
+
+def test_settings_says_no_recurring_instead_of_zero():
+    """מתן (30.9): "אין עסקאות קבועות", לא "0 עסקאות חוזרות פעילות"."""
+    from pathlib import Path
+    from backend.app import app as flask_app
+    tpl = (Path(__file__).resolve().parent.parent / "frontend/templates/settings.html").read_text(encoding="utf-8")
+    line = tpl[tpl.index("count_of('עסקה חוזרת פעילה אחת'") - 40:]
+    line = line[:line.index("</span>")]
+    expr = line[line.index("{{") + 2:line.index("}}")]
+    render = lambda recurring: flask_app.jinja_env.from_string("{{" + expr + "}}").render(recurring=recurring)
+    assert render([]) == "אין עסקאות קבועות"
+    assert render([1, 2]) == "2 עסקאות חוזרות פעילות"
