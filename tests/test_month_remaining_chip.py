@@ -15,7 +15,7 @@ pytestmark = pytest.mark.unit
 
 def _chip(html):
     """המלבן של המאזן, מהתגית הפותחת (עליה יושב סימון הגירעון) ועד הסכום."""
-    i = html.rindex('<div class="month-net', 0, html.index("מאזן חודשי"))
+    i = html.rindex('<div class="month-net', 0, html.index("מאזן החודש"))
     return html[i:html.index("</p>", html.index("month-net-value", i)) + 4]
 
 
@@ -28,7 +28,7 @@ def test_spending_before_any_income_is_not_a_deficit(month_page):
     chip = _chip(month_page([_expense(800)]))
 
     assert "deficit" not in chip, "גירעון אדום לפני שנכנסה הכנסה"
-    assert "-" not in re.sub(r"<[^>]+>", "", chip).replace("מאזן חודשי", "")
+    assert "-" not in re.sub(r"<[^>]+>", "", chip).replace("מאזן החודש", "")
 
 
 def test_a_real_deficit_is_red_with_the_minus_before_the_shekel(month_page):

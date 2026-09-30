@@ -41,9 +41,9 @@
    בהודעה שמשהו לא בסדר. חשבונאית זה נכון; מה שקרה בפועל הוא שעדיין אין
    מה להחסיר ממנו. מציגים את מה שיצא, בניטרלי, ואומרים מה חסר. #}
 {% set no_income_yet = summary.income <= 0 %}
-<section class="hero-balance" aria-label="מאזן חודשי">
-    {# "מאזן חודשי" ולא "נשאר בעו״ש" — מתן (30.9): הביטוי לא יופיע באפליקציה #}
-    <p class="hero-label">{{ 'יצא החודש' if no_income_yet else 'מאזן חודשי' }}</p>
+<section class="hero-balance" aria-label="מאזן החודש">
+    {# "מאזן החודש" (מתן, 1.10; לפני כן "מאזן חודשי") ולא "נשאר בעו״ש" — מתן (30.9): הביטוי לא יופיע באפליקציה #}
+    <p class="hero-label">{{ 'יצא החודש' if no_income_yet else 'מאזן החודש' }}</p>
     {% set shown = (summary.expense + summary.savings) if no_income_yet else summary.remaining %}
     {# גירעון לפי המספר **שמוצג** (מעוגל לשקל), לא לפי המדויק: 40 אגורות של
        גירעון הוצגו "-₪0" באדום — הצבע אמר גירעון, המספר אמר אפס. #}

@@ -57,7 +57,7 @@
 {% set no_income_yet = summary.income <= 0 %}
 {% set deficit = not no_income_yet and (summary.remaining | round) < 0 %}
 <div class="month-net {% if deficit %}deficit{% elif not no_income_yet %}surplus{% endif %}">
-    <p class="kpi-label">מאזן חודשי</p>
+    <p class="kpi-label">מאזן החודש</p>
     {% if no_income_yet %}
     <p class="month-net-value">—</p>
     {% else %}

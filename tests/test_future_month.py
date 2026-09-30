@@ -99,7 +99,7 @@ def test_a_future_month_looks_like_any_month_with_what_is_known(future_page):
     html = future_page([], [_template("rent", 5500, "2026-01-01")])
 
     assert "לא נרשמו עסקאות" not in html
-    assert "מאזן חודשי" in html
+    assert "מאזן החודש" in html
     assert "₪5,500" in html
     assert "01.11" in html
 

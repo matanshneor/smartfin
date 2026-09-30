@@ -380,7 +380,7 @@ def test_each_summary_leads_to_its_breakdown(kind):
 def test_what_is_left_is_not_a_link():
     """המאזן החודשי לא שייך לקטגוריה אחת — מתן בחר להשאיר אותו לא לחיץ."""
     month = _read("frontend/templates/month.html")
-    label = month.index("מאזן חודשי</p>")
+    label = month.index("מאזן החודש</p>")
     opening = month[month.rindex("month-net", 0, label) - 20:label]
     assert "<a " not in opening and "kpi-link" not in opening
 
