@@ -30,18 +30,24 @@ if (trendData.length > 0) {
                         data:            last6.map(d => d.savings),
                         backgroundColor: 'rgba(166,124,0,0.9)',
                         borderRadius:    5,
+                        categoryPercentage: 0.86,   // עמודות רחבות, פחות רווח בין החודשים
+                        barPercentage:      0.92,
                     },
                     {
                         label:           'הוצאות',
                         data:            last6.map(d => d.expense),
                         backgroundColor: 'rgba(160,69,69,0.9)',
                         borderRadius:    5,
+                        categoryPercentage: 0.86,   // עמודות רחבות, פחות רווח בין החודשים
+                        barPercentage:      0.92,
                     },
                     {
                         label:           'הכנסות',
                         data:            last6.map(d => d.income),
                         backgroundColor: 'rgba(61,107,84,0.9)',
                         borderRadius:    5,
+                        categoryPercentage: 0.86,   // עמודות רחבות, פחות רווח בין החודשים
+                        barPercentage:      0.92,
                     }
                 ]
             },

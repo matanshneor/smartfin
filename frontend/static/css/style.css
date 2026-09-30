@@ -2383,8 +2383,8 @@ li.zero-cat-row { display: none; }
     height: 240px;
 }
 
-/* עמוד ההשוואה: הגרף ממלא את הכרטיס (מתן, 30.9) */
-.line-chart-wrap.compare-chart-wrap { height: 320px; }
+/* עמוד ההשוואה: הגרף רחב — עד שולי הכרטיס — ולא גבוה יותר (מתן, 30.9) */
+.line-chart-wrap.compare-chart-wrap { margin-inline: -10px; }
 
 /* ─── Settings: accordion groups ──────────────────────────────── */
 

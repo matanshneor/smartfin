@@ -525,9 +525,11 @@ def test_within_each_month_income_is_on_the_right_then_expenses_then_savings():
 
 
 def test_the_compare_chart_fills_its_card():
-    """מתן (30.9): "להגדיל את הגרף ואת הכיתוב שיתפוס את כל הריבוע הלבן"."""
+    """מתן (30.9): הגרף והכיתוב גדולים יותר, והגרף רחב — לא גבוה."""
     css = _read("frontend/static/css/style.css")
-    assert ".line-chart-wrap.compare-chart-wrap { height: 320px; }" in css
+    # רחב ולא גבוה (מתן, 30.9)
+    assert ".line-chart-wrap.compare-chart-wrap { margin-inline: -10px; }" in css
+    assert "compare-chart-wrap { height" not in css
     js = _read("frontend/static/js/months.js")
     assert "font: { size: 13 }" in js and "font: { size: 14 }" in js
     assert "SHORT_MONTHS[d.month]" in js, "בגופן הגדול השמות המלאים נדבקים זה לזה"
