@@ -1,10 +1,24 @@
 (function () {
 
 // ── אקורדיון: פתיחה/סגירה של קבוצות ──
-document.querySelectorAll('.settings-group-header').forEach(function (header) {
+// תיבה אחת פתוחה בכל רגע (מתן, 1.10): פתיחה סוגרת את מה שהיה פתוח.
+const settingsHeaders = document.querySelectorAll('.settings-group-header');
+settingsHeaders.forEach(function (header) {
     header.addEventListener('click', function () {
-        const isOpen = header.closest('.settings-group').classList.toggle('open');
+        const group = header.closest('.settings-group');
+        const isOpen = group.classList.toggle('open');
         header.setAttribute('aria-expanded', isOpen);
+        if (!isOpen) return;
+        let closedAbove = false;
+        settingsHeaders.forEach(function (other) {
+            const otherGroup = other.closest('.settings-group');
+            if (otherGroup === group || !otherGroup.classList.contains('open')) return;
+            otherGroup.classList.remove('open');
+            other.setAttribute('aria-expanded', 'false');
+            if (otherGroup.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING) closedAbove = true;
+        });
+        // תיבה פתוחה מעליה נסגרה — העמוד קפץ והתיבה החדשה ברחה למעלה.
+        if (closedAbove) group.scrollIntoView({ block: 'start', behavior: 'smooth' });
     });
 });
 

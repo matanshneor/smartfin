@@ -2518,6 +2518,8 @@ li.zero-cat-row { display: none; }
     border-radius: var(--radius);
     box-shadow: var(--shadow-card);
     overflow: hidden;
+    /* פתיחה שסוגרת תיבה מעליה גוללת לכאן — לא מתחת לשעון/לאי באייפון */
+    scroll-margin-top: calc(14px + env(safe-area-inset-top, 0px));
 }
 
 .settings-group-header {
@@ -3186,6 +3188,8 @@ li.project-row {
 }
 
 .logout-form { margin: 0; }
+/* מתחת לכל התיבות, לא בתוך "חשבון" (מתן, 1.10) */
+.settings-logout { margin-top: 18px; }
 
 /* כותרת עם פעולה בצידה (למשל "כל העסקאות" + ייצוא) */
 .chart-title-row {

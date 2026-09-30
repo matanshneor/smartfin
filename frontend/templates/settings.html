@@ -720,14 +720,6 @@
             </div>
 
             <div class="group-divider"></div>
-            {# טופס POST ולא קישור: GET /logout אפשר להפעיל מאתר אחר עם
-               ‎<img src="...">‎ ולנתק את המשתמש בלי ידיעתו. SameSite=Lax
-               מתיר בדיוק את הצורה הזאת של ניווט GET. #}
-            <form method="POST" action="{{ url_for('logout') }}" class="logout-form">
-                <button type="submit" class="logout-btn">התנתק</button>
-            </form>
-
-            <div class="group-divider"></div>
 
             <!-- איפוס חשבון: מחיקת כל העסקאות, החשבון נשמר -->
             <div class="group-row">
@@ -796,6 +788,14 @@
             </div>
         </div>
     </section>
+
+    {# התנתקות מתחת לכל התיבות, ולא בתוך "חשבון" (מתן, 1.10).
+       טופס POST ולא קישור: GET /logout אפשר להפעיל מאתר אחר עם
+       ‎<img src="...">‎ ולנתק את המשתמש בלי ידיעתו. SameSite=Lax
+       מתיר בדיוק את הצורה הזאת של ניווט GET. #}
+    <form method="POST" action="{{ url_for('logout') }}" class="logout-form settings-logout">
+        <button type="submit" class="logout-btn">התנתק</button>
+    </form>
 
     {# תמיכה. הייתה קבורה בתוך "אבטחה וחשבון", מעל שינוי סיסמה ומחיקת
        חשבון — ומי שמשהו לא עובד אצלו לא מחפש עזרה מתחת ל"אבטחה". כאן
