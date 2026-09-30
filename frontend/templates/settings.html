@@ -25,6 +25,11 @@
 {% macro category_row(cat, type_key, limit, is_manager) %}
                     <li class="category-row" data-id="{{ cat.id }}" data-custom="{{ cat.is_custom | lower }}"
                         data-name="{{ cat.name }}" data-icon="{{ cat.icon }}">
+                        {# ידית גרירה (מתן, 30.9 — סבב 6, פריט 5). ‎aria-hidden‎: במקלדת
+                           ובקורא מסך החצים ▲▼ עושים את אותו דבר #}
+                        <span class="cat-drag-handle" aria-hidden="true" title="גררו כדי לשנות את הסדר">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>
+                        </span>
                         <span class="cat-row-icon">{{ cat.icon }}</span>
                         <span class="cat-row-name">{{ cat.name }}</span>
                         {% if cat.is_custom %}

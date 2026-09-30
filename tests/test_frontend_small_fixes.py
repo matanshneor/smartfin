@@ -666,3 +666,18 @@ def test_a_finished_project_is_reopened_not_returned_to_the_active():
         assert "לפעילים" not in _read(f), f
     assert "פתיחה מחדש" in _read("frontend/templates/project_detail.html")
     assert "'הפרויקט נפתח מחדש'" in _read("frontend/static/js/core.js")
+
+
+def test_categories_can_be_dragged_into_order():
+    """מתן (30.9, סבב 6 פריט 5). ההאזנה על document: הזזת השורה ב-DOM
+    שחררה את ‎setPointerCapture‎ והגרירה נעצרה אחרי צעד אחד, בלי לשמור."""
+    tpl = _read("frontend/templates/settings.html")
+    assert 'class="cat-drag-handle" aria-hidden="true"' in tpl
+    assert 'class="cat-move-btn cat-move-up"' in tpl        # החצים נשארים
+    js = _strip_comments(_read("frontend/static/js/settings.js"))
+    part = js[js.index("closest('.cat-drag-handle')"):]
+    assert "document.addEventListener('pointermove', move)" in part
+    assert "setPointerCapture" not in part
+    assert "if (after !== before) persistCategoryOrder(panel);" in part
+    css = _read("frontend/static/css/style.css")
+    assert "touch-action: none; user-select: none;" in css

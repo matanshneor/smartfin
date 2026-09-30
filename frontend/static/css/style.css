@@ -2618,6 +2618,7 @@ li.zero-cat-row { display: none; }
 #categoriesArea:not(.managing) .edit-cat-btn,
 #categoriesArea:not(.managing) .delete-cat-btn,
 #categoriesArea:not(.managing) .cat-reorder-btns,
+#categoriesArea:not(.managing) .cat-drag-handle,
 #categoriesArea:not(.managing) #addCatForm,
 #projectCategoriesArea:not(.managing) .edit-cat-btn,
 #projectCategoriesArea:not(.managing) .delete-cat-btn,
@@ -4733,3 +4734,20 @@ body.search-open { overflow: hidden; }
     min-height: 40px; display: flex; align-items: center;
 }
 .finished-projects .project-row.is-finished { opacity: 0.75; }
+
+/* גרירת קטגוריות לסידור (מתן, 30.9 — סבב 6, פריט 5). ‎touch-action: none‎
+   על הידית בלבד: שם הגרירה מזיזה את השורה, ובכל מקום אחר — גוללת את העמוד */
+.cat-drag-handle {
+    flex: none; width: 28px; height: 36px;
+    display: grid; place-items: center;
+    color: var(--color-text-muted); cursor: grab;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.cat-drag-handle svg { width: 18px; height: 18px; }
+.category-row.dragging {
+    position: relative; z-index: 5;
+    background: var(--color-card);
+    box-shadow: var(--shadow-lift);
+    border-radius: var(--radius-sm);
+}
+.category-row.dragging .cat-drag-handle { cursor: grabbing; color: var(--color-gold-text); }

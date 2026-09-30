@@ -1,0 +1,104 @@
+"""בדיקת דפדפן אמיתי: גרירת קטגוריות לסידור, בעכבר ובאצבע (מתן, 30.9 — סבב 6, פריט 5).
+
+הרצה (Playwright מותקן בפייתון של המערכת, לא ב-.venv):
+    /Library/Frameworks/Python.framework/Versions/3.14/bin/python3 tests/browser/category_drag.py
+"""
+import os, json, time, datetime, subprocess, signal, sys
+from playwright.sync_api import sync_playwright
+
+ROOT = os.getcwd()
+def _dotenv(path):
+    out = {}
+    for line in open(path, encoding="utf-8"):
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1); out[k.strip()] = v.strip().strip('"').strip("'")
+    return out
+env = {**os.environ, **{k: v for k, v in _dotenv(os.path.join(ROOT, ".env")).items() if v}}
+env["PORT"] = "8099"
+srv = subprocess.Popen([os.path.join(ROOT, ".venv/bin/python3"), "-m", "backend.app"], cwd=ROOT, env=env,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       start_new_session=True)   # במצב פיתוח Flask מוליד תהליך-בן שחייב למות איתו
+BASE = "http://127.0.0.1:8099"
+
+
+
+try:
+    for _ in range(40):
+        try:
+            import urllib.request; urllib.request.urlopen(BASE + "/health", timeout=1); break
+        except Exception: time.sleep(0.5)
+    with sync_playwright() as p:
+        b = p.chromium.launch()
+        ctx = b.new_context(viewport={"width": 390, "height": 844}, has_touch=True)
+        page = ctx.new_page()
+        page.goto(BASE + "/login")
+        page.fill("#identifier", env.get("RLS_TEST_EMAIL_A", "rls-test-family-a@smartfin.test"))
+        page.fill("#password", env["RLS_TEST_PASSWORD_A"])
+        page.click("button.submit-btn")
+        page.wait_for_url(lambda u: "/login" not in u, timeout=15000)
+
+        def api(method, url, body=None):
+            r = page.request.fetch(BASE + url, method=method, data=json.dumps(body) if body else None,
+                                   headers={"Content-Type": "application/json"})
+            return r.status, (r.json() if r.body() else None)
+
+        for name in ("DG-א", "DG-ב", "DG-ג"):
+            api("POST", "/api/categories", {"name": name, "icon": "📦", "type": "expense"})
+
+        def open_manage():
+            page.goto(BASE + "/settings"); page.wait_for_timeout(900)
+            page.locator(".settings-group-header", has_text="קטגוריות").click(); page.wait_for_timeout(300)
+            page.click("#manageCatsBtn"); page.wait_for_timeout(300)
+
+        def order():
+            return [n for n in page.locator('[data-tab-panel="expense"] > .category-row .cat-row-name').all_inner_texts() if n.startswith("DG-")]
+
+        open_manage()
+        print("before:", order(), "| handles visible:", page.locator('[data-tab-panel="expense"] .cat-drag-handle:visible').count())
+        src = page.locator('[data-tab-panel="expense"] > .category-row', has_text="DG-ג").locator(".cat-drag-handle")
+        dst = page.locator('[data-tab-panel="expense"] > .category-row', has_text="DG-א")
+        sb, db_ = src.bounding_box(), dst.bounding_box()
+        page.mouse.move(sb["x"] + sb["width"] / 2, sb["y"] + sb["height"] / 2)
+        page.mouse.down()
+        for i in range(1, 16):
+            page.mouse.move(sb["x"] + sb["width"] / 2, sb["y"] + sb["height"] / 2 + (db_["y"] + 5 - sb["y"]) * i / 15)
+            page.wait_for_timeout(20)
+        page.mouse.up(); page.wait_for_timeout(1200)
+        print("after mouse drag:", order())
+        open_manage()
+        print("after reload (saved):", order())
+
+        # גרירה באצבע — ג׳ עולה מעל ב׳
+        cdp = ctx.new_cdp_session(page)
+        src = page.locator('[data-tab-panel="expense"] > .category-row', has_text="DG-ג").locator(".cat-drag-handle")
+        dst = page.locator('[data-tab-panel="expense"] > .category-row', has_text="DG-ב")
+        src.scroll_into_view_if_needed(); page.wait_for_timeout(200)
+        sb, db_ = src.bounding_box(), dst.bounding_box()
+        x, y0, y1 = sb["x"] + sb["width"] / 2, sb["y"] + sb["height"] / 2, db_["y"] + 5
+        scroll0 = page.evaluate("scrollY")
+        cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": x, "y": y0}]})
+        for i in range(1, 16):
+            cdp.send("Input.dispatchTouchEvent", {"type": "touchMove", "touchPoints": [{"x": x, "y": y0 + (y1 - y0) * i / 15}]})
+            page.wait_for_timeout(20)
+        cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+        page.wait_for_timeout(1200)
+        print("after touch drag:", order(), "| page did not scroll:", page.evaluate("scrollY") == scroll0)
+        page.goto(BASE + "/"); page.wait_for_timeout(700)
+        page.click("#fabBtn"); page.wait_for_timeout(900)
+        print("form order:", [t for t in page.locator("#categoryGrid .cat-btn").all_inner_texts() if "DG-" in t])
+        b.close()
+finally:
+    cleanup = "\n".join([
+        "import os, sys", "sys.path.insert(0, '.')",
+        "from dotenv import load_dotenv; load_dotenv('.env')",
+        "from backend import supabase_config as db",
+        "r, _ = db.sign_in(os.environ.get('RLS_TEST_EMAIL_A', 'rls-test-family-a@smartfin.test'), os.environ['RLS_TEST_PASSWORD_A'])",
+        "db.set_auth_token(r.session.access_token)",
+        "fid = db.get_profile(r.user.id)['family_id']",
+        "t = db.get_client().table",
+        "print('categories', len(t('categories').delete().eq('family_id', fid).like('name', 'DG-%').execute().data))",
+    ])
+    subprocess.run([os.path.join(ROOT, ".venv/bin/python3"), "-c", cleanup], cwd=ROOT)
+    os.killpg(os.getpgid(srv.pid), signal.SIGTERM)
+    time.sleep(2)

@@ -248,6 +248,52 @@ document.addEventListener('click', function (e) {
     persistCategoryOrder(panel);
 });
 
+// ── גרירה לסידור (מתן, 30.9 — סבב 6, פריט 5) ──
+// מהידית בלבד. השורה עוברת מקום ברגע שמרכז האצבע חוצה את אמצע השכנה, והסדר
+// נשמר פעם אחת בשחרור — אותה שמירה כמו החצים, שנשארים למקלדת ולקורא מסך.
+document.addEventListener('pointerdown', function (e) {
+    const handle = e.target.closest('.cat-drag-handle');
+    if (!handle) return;
+    const row   = handle.closest('.category-row');
+    const panel = handle.closest('.cat-tab-panel');
+    if (!row || !panel || row.classList.contains('editing')) return;
+    e.preventDefault();
+    const before = Array.from(panel.querySelectorAll(':scope > .category-row')).map(r => r.dataset.id).join();
+    row.classList.add('dragging');
+    // ההאזנה על document ולא על הידית: הזזת השורה ב-DOM משחררת את
+    // ‎setPointerCapture‎, והגרירה נעצרה אחרי צעד אחד — ובלי ‎pointerup‎
+    // הסדר גם לא נשמר
+    const id = e.pointerId;
+
+    function move(ev) {
+        if (ev.pointerId !== id) return;
+        const y = ev.clientY;
+        const prev = row.previousElementSibling;
+        const next = row.nextElementSibling;
+        if (prev && prev.classList.contains('category-row')) {
+            const r = prev.getBoundingClientRect();
+            if (y < r.top + r.height / 2) { panel.insertBefore(row, prev); return; }
+        }
+        if (next && next.classList.contains('category-row')) {
+            const r = next.getBoundingClientRect();
+            if (y > r.top + r.height / 2) panel.insertBefore(next, row);
+        }
+    }
+    function end(ev) {
+        if (ev.pointerId !== id) return;
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', end);
+        document.removeEventListener('pointercancel', end);
+        row.classList.remove('dragging');
+        updatePanelReorderState(panel);
+        const after = Array.from(panel.querySelectorAll(':scope > .category-row')).map(r => r.dataset.id).join();
+        if (after !== before) persistCategoryOrder(panel);
+    }
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', end);
+    document.addEventListener('pointercancel', end);
+});
+
 // ── Edit category (inline) ──
 document.addEventListener('click', function (e) {
     const btn = e.target.closest('.edit-cat-btn');
