@@ -593,3 +593,10 @@ def test_the_plus_on_a_project_page_starts_in_that_project():
     assert ": project.track_income ? 'income' : 'savings'" in js
     # החלפת סוג לא מאפסת את הפרויקט
     assert "setType('income', undefined, undefined, txProject.value)" in js
+
+
+def test_tapping_a_month_in_the_compare_chart_opens_it():
+    """מתן (30.9, רעיון 10) — לפי העמודה כולה, לא רק העמודה שנפגעה."""
+    js = _strip_comments(_read("frontend/static/js/months.js"))
+    assert "getElementsAtEventForMode(evt, 'index', { intersect: false }, true)" in js
+    assert "'/month?year=' + d.year + '&month=' + d.month" in js

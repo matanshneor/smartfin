@@ -54,6 +54,18 @@ if (trendData.length > 0) {
             options: {
                 responsive:          true,
                 maintainAspectRatio: false,
+                // נגיעה בחודש בגרף פותחת אותו, כמו שורה בטבלה (מתן, 30.9 — רעיון 10).
+                // לפי העמודה כולה ולא רק העמודה שנפגעה: חיסכון של ₪0 אין בו
+                // מה לפגוע, והאצבע רחבה מעמודה אחת
+                onClick: function (evt, _els, chart) {
+                    const hit = chart.getElementsAtEventForMode(evt, 'index', { intersect: false }, true);
+                    if (!hit.length) return;
+                    const d = last6[hit[0].index];
+                    window.location.href = '/month?year=' + d.year + '&month=' + d.month;
+                },
+                onHover: function (evt, els) {
+                    evt.native.target.style.cursor = els.length ? 'pointer' : 'default';
+                },
                 plugins: {
                     legend: {
                         display:  true,
