@@ -4576,3 +4576,25 @@ body.no-fab .fab { display: none; }
 /* מזהה ה-id נחוץ כדי לנצח את ‎.category-row:first-child‎ שמאפסת. */
 #projectCategoriesArea .category-row:first-child,
 #categoriesArea .category-row:first-child { padding-top: 10px; }
+
+/* משיכה למטה לרענון באפליקציה המותקנת (מתן, 30.9 — רעיון 14) */
+.ptr {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 6px);
+    left: 50%;
+    z-index: 900;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--color-card);
+    color: var(--color-gold);
+    box-shadow: var(--shadow-card);
+    transform: translate(-50%, -50px);
+    opacity: 0;
+    pointer-events: none;
+}
+.ptr svg { width: 20px; height: 20px; transition: transform .2s; }
+.ptr.ready svg { transform: rotate(180deg); }
+.ptr.spinning svg { animation: ptr-spin .8s linear infinite; }
+@keyframes ptr-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ptr.spinning svg { animation-duration: 2.4s; } }

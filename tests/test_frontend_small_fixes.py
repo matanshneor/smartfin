@@ -615,3 +615,14 @@ def test_there_is_one_form_for_a_new_project():
     sjs = _strip_comments(_read("frontend/static/js/settings.js"))
     assert "newProjectSettingsBtn" not in sjs
     assert "closest('.edit-project-settings-btn')" in sjs
+
+
+def test_pull_to_refresh_only_in_the_installed_app_and_only_from_the_top():
+    """מתן (30.9, רעיון 14). ב-Safari רגיל זה קיים מעצמו; כפול היה מרענן פעמיים."""
+    js = _strip_comments(_read("frontend/static/js/pwa.js"))
+    part = js[js.index("const TRIGGER = 70"):]
+    assert "if (!isStandalone || !('ontouchstart' in window)) return;" in js
+    assert "window.scrollY > 0" in part
+    assert "Math.abs(dx) > Math.abs(dy)" in part
+    assert "document.querySelector('.modal-overlay.open, .transaction-item.open')" in part
+    assert "document.querySelector('main[data-soft-reload]') && window.softReload" in part
