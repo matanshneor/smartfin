@@ -539,23 +539,6 @@ a.kpi-chip {
 
 a.kpi-chip:active { transform: scale(0.97); }
 
-/* "יש לאן ללכת": חץ קטן בפינה (‹ הוא "קדימה" ב-RTL) */
-.card-go {
-    position: absolute;
-    top: 6px;
-    left: 9px;
-    font-size: 1.05rem;
-    line-height: 1;
-    color: var(--color-text-muted);
-    opacity: 0.7;
-}
-
-.kpi-chip .card-go {
-    top: 4px;
-    left: 7px;
-    color: var(--hero-text-muted);
-}
-
 /* הפירוט שאליו הגיעו — מקום מתחת לראש המסך, והבהוב זהב קצר */
 #income-breakdown,
 #expense-breakdown,

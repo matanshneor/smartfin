@@ -54,17 +54,14 @@
     {% if has_breakdown %}<a class="kpi-chip kpi-link" href="#income-breakdown">{% else %}<div class="kpi-chip">{% endif %}
         <p class="kpi-label">הכנסות</p>
         <p class="kpi-value income" data-countup="{{ (summary.income) | round(2) }}">₪{{ summary.income | money }}</p>
-        {% if has_breakdown %}<span class="card-go" aria-hidden="true">‹</span>{% endif %}
     {% if has_breakdown %}</a>{% else %}</div>{% endif %}
     {% if has_breakdown %}<a class="kpi-chip kpi-link" href="#expense-breakdown">{% else %}<div class="kpi-chip">{% endif %}
         <p class="kpi-label">הוצאות</p>
         <p class="kpi-value expense" data-countup="{{ (summary.expense) | round(2) }}">₪{{ summary.expense | money }}</p>
-        {% if has_breakdown %}<span class="card-go" aria-hidden="true">‹</span>{% endif %}
     {% if has_breakdown %}</a>{% else %}</div>{% endif %}
     {% if has_breakdown %}<a class="kpi-chip kpi-link" href="#savings-breakdown">{% else %}<div class="kpi-chip">{% endif %}
         <p class="kpi-label">חיסכון</p>
         <p class="kpi-value savings" data-countup="{{ (summary.savings) | round(2) }}">₪{{ summary.savings | money }}</p>
-        {% if has_breakdown %}<span class="card-go" aria-hidden="true">‹</span>{% endif %}
     {% if has_breakdown %}</a>{% else %}</div>{% endif %}
     <div class="kpi-chip">
         <p class="kpi-label">נשאר בעו״ש</p>
