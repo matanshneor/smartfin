@@ -1552,6 +1552,17 @@ def _parse_project_body(body: dict):
     }, None
 
 
+@app.route("/api/transactions/precheck", methods=["POST"])
+@login_required
+def precheck_transaction_route():
+    """לפני שמירה של עסקה חדשה: כפילות? סכום חריג? (מתן, 30.9 — סבב 6, 6–7)."""
+    user = get_current_user()
+    if not user["family_id"]:
+        return jsonify({"duplicate": None, "unusual": None})
+    return jsonify(db.precheck_transaction(user["family_id"], user["id"],
+                                           request.get_json(silent=True) or {}))
+
+
 @app.route("/api/search", methods=["GET"])
 @login_required
 def search_route():

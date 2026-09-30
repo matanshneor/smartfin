@@ -1167,6 +1167,75 @@ def search_transactions(family_id: str, viewer_user_id: str, q: str,
             "totals": {k: round(v, 2) for k, v in totals.items()}}
 
 
+def precheck_transaction(family_id: str, viewer_user_id: str, body: dict, today=None) -> dict:
+    """מה לשאול לפני שמירה של עסקה חדשה (מתן, 30.9 — סבב 6, פריטים 6–7).
+
+    ‎duplicate‎ — עסקה עם אותו סכום, סוג וקטגוריה, באותו יום או יום לפני/אחרי.
+    הכי נפוץ: שני בני הזוג מזינים את אותה קנייה. ‎by‎ — רק כשמישהו אחר הזין.
+
+    ‎unusual‎ — הסכום פי 5 ומעלה מהגדול בקטגוריה בחצי השנה האחרונה, כשיש
+    לפחות 5 קודמות להשוות אליהן. לא בהכנסות: בונוס גדול הוא לא טעות.
+
+    שתיהן שאלות ולא חסימות, ולכן כל תקלה כאן מחזירה "אין מה לשאול" — עדיף
+    לשמור בלי אזהרה מאשר לא לשמור בכלל."""
+    from datetime import date, datetime, timedelta
+    none = {"duplicate": None, "unusual": None}
+    today = today or clock.today()
+    try:
+        amount = float(body.get("amount"))
+        type_ = str(body.get("type") or "")
+        day = date.fromisoformat(str(body.get("date"))[:10])
+    except (TypeError, ValueError):
+        return none
+    cat_key = "project_category_id" if body.get("project_category_id") else "category_id"
+    cat = body.get(cat_key)
+    if not cat or amount <= 0 or type_ not in ("expense", "income", "savings"):
+        return none
+    client = get_client()
+    if not client:
+        return none
+
+    def same(r):
+        return str(r.get(cat_key) or "") == str(cat)
+
+    try:
+        near = client.table("transactions").select("*, projects(owner_id)") \
+            .eq("family_id", family_id).eq("type", type_) \
+            .gte("date", (day - timedelta(days=1)).isoformat()) \
+            .lte("date", (day + timedelta(days=1)).isoformat()).execute().data or []
+        near = [r for r in _filter_hidden_personal_projects(near, viewer_user_id)
+                if same(r) and abs(float(r.get("amount") or 0) - amount) < 0.005]
+        duplicate = None
+        if near:
+            r = sorted(near, key=lambda x: str(x.get("created_at") or ""), reverse=True)[0]
+            by = None
+            if r.get("created_by") and r["created_by"] != viewer_user_id:
+                by = next((m["name"] for m in get_family_members(family_id)
+                           if m["id"] == r["created_by"]), None)
+            time_ = None
+            try:
+                time_ = datetime.fromisoformat(str(r["created_at"]).replace("Z", "+00:00")) \
+                    .astimezone(clock.ISRAEL).strftime("%H:%M")
+            except (KeyError, TypeError, ValueError):
+                pass
+            duplicate = {"amount": float(r["amount"]), "date": str(r["date"])[:10],
+                         "description": r.get("description") or "", "by": by, "time": time_}
+
+        unusual = None
+        if type_ != "income":
+            past = client.table("transactions").select("*, projects(owner_id)") \
+                .eq("family_id", family_id).eq("type", type_) \
+                .gte("date", (today - timedelta(days=183)).isoformat()).execute().data or []
+            amounts = [float(r.get("amount") or 0)
+                       for r in _filter_hidden_personal_projects(past, viewer_user_id) if same(r)]
+            if len(amounts) >= 5 and amount >= 5 * max(amounts):
+                unusual = {"min": round(min(amounts), 2), "max": round(max(amounts), 2)}
+        return {"duplicate": duplicate, "unusual": unusual}
+    except Exception:
+        logger.exception("precheck_transaction")
+        return none
+
+
 _UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$")
 
 

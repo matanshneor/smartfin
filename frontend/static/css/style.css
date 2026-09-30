@@ -1347,6 +1347,7 @@ body:has(.modal-overlay.open) .toast {
     color: var(--color-text-muted);
     margin-bottom: 18px;
     line-height: 1.5;
+    white-space: pre-line;      /* שורה שנייה בהודעה — "הוזנה ע״י אור" */
 }
 
 .cat-grid-empty {

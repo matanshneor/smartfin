@@ -762,6 +762,70 @@
         requestSubmit();
     });
 
+    // ── לפני שמירה של עסקה חדשה: כפילות? סכום חריג? (מתן, 30.9 — סבב 6, 6–7) ──
+    // שאלות ולא חסימות. תקלה ברשת כאן לא עוצרת שמירה — עדיף לשמור בלי
+    // אזהרה. אחרי אישור השליחה רצה שוב, ו-‎precheckPassed‎ מדלג על הבדיקה
+    // לאותם נתונים בדיוק.
+    let precheckPassed = null;
+    function precheckKey(p) {
+        return [formSeq, p.amount, p.type, p.category_id, p.project_category_id, p.date].join('|');
+    }
+    function chosenCategoryName() {
+        const btn = categoryGrid.querySelector('.cat-btn.active');
+        const span = btn ? btn.querySelectorAll('span')[1] : null;
+        return span ? span.textContent : 'הקטגוריה';
+    }
+    function dayWord(iso) {
+        if (iso === dateStr(0)) return 'היום';
+        if (iso === dateStr(-1)) return 'אתמול';
+        return iso.slice(8, 10) + '.' + iso.slice(5, 7);
+    }
+    function runPrecheck(payload) {
+        return fetch('/api/transactions/precheck', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        })
+            .then(function (r) { return r.ok ? r.json() : {}; })
+            .catch(function () { return {}; })
+            .then(function (res) {
+                const name = chosenCategoryName();
+                let chain = Promise.resolve(true);
+                const d = res && res.duplicate;
+                if (d) {
+                    chain = chain.then(function () {
+                        return window.appConfirm({
+                            title: 'נראה שהעסקה הזאת כבר קיימת',
+                            message: name + ' · ₪' + window.sfMoney(d.amount) + ' · ' + dayWord(d.date)
+                                + (d.description ? ' · ' + d.description : '')
+                                + (d.by ? '\nהוזנה ע״י ' + d.by + (d.time ? ' ב-' + d.time : '') : ''),
+                            confirmText: 'להוסיף בכל זאת',
+                            cancelText: 'ביטול',
+                            danger: false,
+                        }).then(function (ok) { return !!ok; });
+                    });
+                }
+                const u = res && res.unusual;
+                if (u) {
+                    chain = chain.then(function (ok) {
+                        if (!ok) return false;
+                        return window.appConfirm({
+                            title: '₪' + window.sfMoney(payload.amount) + ' על ' + name + '?',
+                            message: 'בדרך כלל אתם ' + (payload.type === 'savings' ? 'מפרישים' : 'מוציאים')
+                                + ' שם בין ₪' + window.sfMoney(u.min) + ' ל-₪' + window.sfMoney(u.max),
+                            confirmText: 'כן, זה נכון',
+                            cancelText: 'לתקן',
+                            danger: false,
+                        }).then(function (ok2) {
+                            if (!ok2) { txAmount.focus(); txAmount.select(); }
+                            return !!ok2;
+                        });
+                    });
+                }
+                return chain;
+            });
+    }
+
     txForm.addEventListener('submit', function (e) {
         e.preventDefault();
         if (isSubmitting) return;
@@ -797,6 +861,23 @@
             receipt_path:        currentType === 'expense' ? (txReceiptPath.value || null) : null,
             project_id:          txProject.value || null,
         };
+
+        if (!editId && precheckPassed !== precheckKey(payload)) {
+            const key = precheckKey(payload);
+            const mySeq = formSeq;
+            setSubmitBusy(true);
+            submitLabel.textContent = 'בודק…';
+            runPrecheck(payload).then(function (ok) {
+                if (mySeq !== formSeq) return;          // הטופס התחלף בינתיים
+                setSubmitBusy(false);
+                updateSubmitLabel();
+                if (!ok) return;
+                precheckPassed = key;
+                requestSubmit();
+            });
+            return;
+        }
+        precheckPassed = null;
 
         setSubmitBusy(true);
         submitLabel.textContent = 'שומר…';

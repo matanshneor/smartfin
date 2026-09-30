@@ -681,3 +681,14 @@ def test_categories_can_be_dragged_into_order():
     assert "if (after !== before) persistCategoryOrder(panel);" in part
     css = _read("frontend/static/css/style.css")
     assert "touch-action: none; user-select: none;" in css
+
+
+def test_a_new_transaction_is_checked_before_it_is_saved():
+    """מתן (30.9, סבב 6 פריטים 6–7): רק עסקה חדשה — לא עריכה. תקלה ברשת
+    בבדיקה לא עוצרת את השמירה."""
+    js = _strip_comments(_read("frontend/static/js/transactions.js"))
+    assert "if (!editId && precheckPassed !== precheckKey(payload))" in js
+    assert ".catch(function () { return {}; })" in js
+    assert "confirmText: 'להוסיף בכל זאת'" in js and "cancelText: 'לתקן'" in js
+    # הבדיקה לפני השמירה עצמה, ולא אחריה
+    assert js.index("precheckPassed !== precheckKey(payload)") < js.index("submitLabel.textContent = 'שומר…'")
