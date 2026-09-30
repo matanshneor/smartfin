@@ -23,7 +23,7 @@ restrained charts and motion.
 ```
 SmartFin/
 ├── backend/
-│   ├── app.py                  # all 63 routes: pages, API, auth, hardening
+│   ├── app.py                  # all 64 routes: pages, API, auth, hardening
 │   ├── clock.py                # Asia/Jerusalem — every "today" in the app comes from here
 │   ├── supabase_config.py      # data layer: queries, auth, analytics, recurring engine
 │   └── supabase/migrations/    # source of truth for the database schema (57 migrations)

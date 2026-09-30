@@ -153,6 +153,21 @@
                         {% if m.phone %}<p class="member-settings-meta">{{ m.phone }}</p>{% endif %}
                         {% if m.workplace %}<p class="member-settings-meta">{{ m.workplace }}</p>{% endif %}
                         {% endif %}
+                        {# הצבע שלו בתגי השם ובגרפים (מתן, 30.9 — סבב 6, פריט 13). לעצמי —
+                           כל אחד; לאחרים — מנהל המשפחה. צבע של מישהו אחר חסום. #}
+                        {% if member_colors and (m.id == user.id or family.get('manager_id') == user.id) %}
+                        {% set mine = member_colors.get(m.id) %}
+                        <div class="member-colors" role="group" aria-label="הצבע של {{ m.full_name }}">
+                            {% for idx, hex in color_hex | dictsort %}
+                            {% set taken = idx != mine and idx in member_colors.values() | list %}
+                            <button type="button" class="member-color{% if idx == mine %} is-current{% endif %}"
+                                    style="background: {{ hex }};" data-member="{{ m.id }}" data-color="{{ idx }}"
+                                    aria-pressed="{{ 'true' if idx == mine else 'false' }}"
+                                    aria-label="צבע {{ loop.index }}{% if taken %} — תפוס{% endif %}"
+                                    {% if taken %}disabled title="תפוס"{% endif %}></button>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                     </div>
                     {% if m.id == user.id %}
                     <button class="icon-btn" id="editProfileBtn" aria-label="ערוך את הפרטים שלי">

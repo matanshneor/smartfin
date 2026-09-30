@@ -1413,3 +1413,23 @@ document.addEventListener('click', function (e) {
         });
     });
 })();
+
+
+// ── בחירת צבע לבן משפחה (מתן, 30.9 — סבב 6, פריט 13) ──
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest && e.target.closest('.member-color');
+    if (!btn || btn.disabled || btn.classList.contains('is-current')) return;
+    btn.disabled = true;
+    fetch('/api/family/member-color', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ member_id: btn.dataset.member, color: parseInt(btn.dataset.color, 10) }),
+    })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (res) {
+            if (!res.ok) { btn.disabled = false; window.showToast(res.d.error || 'שמירת הצבע נכשלה', 'error'); return; }
+            try { window.sfToastAfterReload('הצבע נשמר'); } catch (err) { /* בלי טוסט */ }
+            window.location.reload();
+        })
+        .catch(function () { btn.disabled = false; window.showToast(window.sfNetError(), 'error'); });
+});

@@ -519,13 +519,39 @@ def inject_family_settings():
         return {"family_settings": None}
 
 
+def assign_member_colors(members: list, chosen: dict) -> dict:
+    """מזהה ← מספר צבע (‎_OWNER_HEX‎ ו-‎.owner-N‎).
+
+    מי שבחר צבע (מתן, 30.9 — סבב 6, פריט 13) מקבל אותו. כל השאר — לפי סדר
+    ההצטרפות, כמו תמיד, אבל מדלגים על צבע שמישהו כבר בחר: שני אנשים באותו
+    צבע, ואי אפשר להבדיל ביניהם. בחירה של מי שכבר לא במשפחה, או ערך שבור,
+    פשוט לא נחשבת."""
+    ids = [m["id"] for m in members]
+    size = len(_OWNER_HEX)
+    colors, taken = {}, set()
+    for mid, c in (chosen or {}).items():
+        if mid in ids and isinstance(c, int) and not isinstance(c, bool) and 0 <= c < size and c not in taken:
+            colors[mid] = c
+            taken.add(c)
+    for i, mid in enumerate(ids):
+        if mid in colors:
+            continue
+        c = i % size
+        for step in range(size):
+            if (i + step) % size not in taken:
+                c = (i + step) % size
+                break
+        colors[mid] = c
+        taken.add(c)
+    return colors
+
+
 def _member_colors(family_id):
-    """צבע קבוע לכל בן משפחה לפי סדר ההצטרפות (0=זהב, 1=ירקרק, 2=סגול, 3=כחול).
-    משמש לתגי השם הצבעוניים על עסקאות."""
+    """צבע לכל בן משפחה — לתגי השם על עסקאות ולגרפים לפי בן משפחה."""
     if not family_id:
         return {}
     members = db.get_family_members(family_id)
-    return {m["id"]: i % len(_OWNER_HEX) for i, m in enumerate(members)}
+    return assign_member_colors(members, (family_settings() or {}).get("member_colors") or {})
 
 
 def _run_queries(tasks: dict) -> dict:
@@ -568,6 +594,9 @@ _OWNER_HEX  = {
     3: "#A85C3E",  # טרקוטה
     4: "#5E7391",  # כחול-אפור צפחה
     5: "#8A6A52",  # חום-טאופ
+    # שניים נוספים — שמונה לבחירה (מתן, 30.9 — סבב 6, פריט 13)
+    6: "#4B4FA8",  # אינדיגו
+    7: "#2F7385",  # כחול-פטרול
 }
 _SHARED_HEX = "#78716C"
 _EXTRA_INCOME_HEX = "#B8B0A2"   # "הכנסות נוספות" — אפור בהיר, שונה ממשכורת משותפת
@@ -1915,6 +1944,9 @@ def settings():
         recurring=recurring,
         projects=projects,
         account=account,
+        # בחירת צבע לבן משפחה (סבב 6, פריט 13)
+        member_colors=_member_colors(family_id),
+        color_hex=_OWNER_HEX,
     )
 
 
@@ -3025,6 +3057,36 @@ def update_family_settings_route():
     if not db.update_family_settings(user["family_id"], patch):
         return jsonify({"error": "שמירת ההעדפות נכשלה"}), 500
     return jsonify({"status": "ok", "settings": db.get_family_settings(user["family_id"])})
+
+
+@app.route("/api/family/member-color", methods=["PUT"])
+@limiter.limit("30 per minute")
+@login_required
+def set_member_color():
+    """בחירת צבע לבן משפחה (מתן, 30.9 — סבב 6, פריט 13). לעצמי — כל אחד;
+    לאחרים — מנהל המשפחה. צבע של מישהו אחר — תפוס."""
+    user = get_current_user()
+    if not user["family_id"]:
+        return jsonify({"error": "לא מצאנו את המשפחה שלך — רעננו את הדף"}), 400
+    body = request.get_json(silent=True) or {}
+    member_id, color = body.get("member_id"), body.get("color")
+    if not isinstance(color, int) or isinstance(color, bool) or not 0 <= color < len(_OWNER_HEX):
+        return jsonify({"error": "צבע לא תקין"}), 422
+    members = db.get_family_members(user["family_id"])
+    if member_id not in {m["id"] for m in members}:
+        return jsonify({"error": "בן המשפחה לא נמצא"}), 404
+    if member_id != user["id"]:
+        family = db.get_family(user["family_id"]) or {}
+        if family.get("manager_id") != user["id"]:
+            return jsonify({"error": "רק מנהל המשפחה בוחר צבע לאחרים"}), 403
+    chosen = dict((family_settings() or {}).get("member_colors") or {})
+    now = assign_member_colors(members, chosen)
+    if any(c == color and mid != member_id for mid, c in now.items()):
+        return jsonify({"error": "הצבע הזה תפוס — בחרו צבע אחר"}), 409
+    chosen[member_id] = color
+    if not db.update_family_settings(user["family_id"], {"member_colors": chosen}):
+        return jsonify({"error": "שמירת הצבע נכשלה"}), 500
+    return jsonify({"status": "ok", "colors": assign_member_colors(members, chosen)})
 
 
 @app.route("/api/family", methods=["PUT"])

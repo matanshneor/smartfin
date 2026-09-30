@@ -637,7 +637,8 @@ def apply_budgets(breakdown: list, settings: dict) -> list:
 # למחוק — אז ההסרה לא נשמרה מעולם: המסך הראה תקציב כבוי, והשרת המשיך
 # להחזיק אותו. שאר המפתחות המקוננים (owner_attribution, anomaly) הם
 # רשומות עם שדות קבועים ונכון להמשיך למזג אותן.
-_WHOLE_MAP_KEYS = frozenset({"limits"})
+# ‎member_colors‎ (סבב 6, פריט 13) — המפה המלאה נשלחת תמיד, ומי שעזב יוצא ממנה
+_WHOLE_MAP_KEYS = frozenset({"limits", "member_colors"})
 
 
 def _merge_settings(base: dict, patch: dict) -> dict:

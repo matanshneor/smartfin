@@ -135,6 +135,8 @@
 :root[data-theme="dark"] .owner-3 { background: rgba(234, 140, 100, 0.16); color: #F4B08F; }
 :root[data-theme="dark"] .owner-4 { background: rgba(148, 170, 200, 0.16); color: #B8C8DD; }
 :root[data-theme="dark"] .owner-5 { background: rgba(190, 160, 130, 0.16); color: #D7BFA6; }
+:root[data-theme="dark"] .owner-6 { background: rgba(129, 140, 248, 0.16); color: #A5B4FC; }
+:root[data-theme="dark"] .owner-7 { background: rgba(94, 180, 200, 0.16);  color: #8FD0E0; }
 
 /* ─── Reset & base ─────────────────────────────────────────────── */
 
@@ -1018,6 +1020,8 @@ li.transaction-item.open.swipe-ready > .swipe-content {
 .owner-3 { background: rgba(168, 92, 62, 0.12);  color: #A85C3E; }  /* טרקוטה */
 .owner-4 { background: rgba(94, 115, 145, 0.12); color: #5E7391; }  /* כחול-אפור צפחה */
 .owner-5 { background: rgba(138, 106, 82, 0.12); color: #8A6A52; }  /* חום-טאופ */
+.owner-6 { background: rgba(75, 79, 168, 0.12);  color: #4B4FA8; }  /* אינדיגו */
+.owner-7 { background: rgba(47, 115, 133, 0.12); color: #2F7385; }  /* כחול-פטרול */
 .owner-shared { background: rgba(var(--ink-rgb), 0.07); color: var(--color-text-muted); }
 
 /* תג קבלה מצורפת — לחיצה פותחת את התמונה, לא את עריכת העסקה */
@@ -4804,3 +4808,14 @@ input.emoji-input[data-free-typing] { cursor: text; caret-color: auto; }
 .month-sticky-value { font-weight: 700; font-size: 0.95rem; font-variant-numeric: tabular-nums; direction: rtl; }
 .month-sticky-value.surplus { color: var(--color-income-light); }
 .month-sticky-value.deficit { color: var(--color-expense-light); }
+
+/* בחירת צבע לבן משפחה (מתן, 30.9 — סבב 6, פריט 13) */
+.member-colors { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.member-color {
+    width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent;
+    padding: 0; cursor: pointer; position: relative;
+    box-shadow: inset 0 0 0 2px var(--color-card);
+}
+.member-color.is-current { border-color: var(--color-text); }
+.member-color:disabled { opacity: 0.25; cursor: not-allowed; }
+.member-color:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
