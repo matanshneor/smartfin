@@ -176,7 +176,7 @@
             {% endfor %}
         </ul>
         {% else %}
-        <p class="week-empty">לא בוצעו עסקאות ביום זה</p>
+        <p class="week-empty">לא בוצעו עסקאות {{ 'היום' if d.today else 'ביום זה' }}</p>
         {% endif %}
     </div>
     {% endfor %}

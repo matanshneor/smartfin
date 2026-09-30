@@ -85,6 +85,15 @@ def test_the_card_is_placed_under_the_three_cards_and_days_can_be_tapped():
 
 
 def test_an_empty_day_says_so_in_matans_words():
+    """יום עבר בלי עסקאות: "ביום זה"; היום עצמו: "היום" (מתן, 1.10)."""
     from pathlib import Path
+    import jinja2
     tpl = (Path(__file__).resolve().parent.parent / "frontend/templates/index.html").read_text(encoding="utf-8")
-    assert '<p class="week-empty">לא בוצעו עסקאות ביום זה</p>' in tpl
+    start = tpl.index("{% for d in week.days if not d.future %}")
+    snippet = tpl[start:tpl.index("{% endfor %}", tpl.index('class="week-empty"')) + len("{% endfor %}")]
+    env = jinja2.Environment()
+    env.filters["money"] = lambda v: v
+    day = {"label": "ה׳", "day": 1, "month": 10, "total": 0, "transactions": [], "future": False}
+    html = env.from_string(snippet).render(week={"days": [dict(day, today=False), dict(day, today=True)]})
+    assert html.count('<p class="week-empty">לא בוצעו עסקאות ביום זה</p>') == 1
+    assert html.count('<p class="week-empty">לא בוצעו עסקאות היום</p>') == 1
