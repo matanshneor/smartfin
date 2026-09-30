@@ -622,7 +622,7 @@ def test_pull_to_refresh_only_in_the_installed_app_and_only_from_the_top():
     js = _strip_comments(_read("frontend/static/js/pwa.js"))
     part = js[js.index("const TRIGGER = 70"):]
     assert "if (!isStandalone || !('ontouchstart' in window)) return;" in js
-    assert "window.scrollY > 0" in part
-    assert "Math.abs(dx) > Math.abs(dy)" in part
+    assert "return busy || window.scrollY > 0" in part
+    assert "if (dy < 0 || Math.abs(dx) > Math.abs(dy))" in part
     assert "document.querySelector('.modal-overlay.open, .transaction-item.open')" in part
     assert "document.querySelector('main[data-soft-reload]') && window.softReload" in part
