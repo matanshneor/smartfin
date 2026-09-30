@@ -101,20 +101,43 @@ try {
 // בהאצלה מ-document ולא בהאזנה ישירה, ובלי לשמור את השורות מראש:
 // רענון רך מחליף את ‎main‎ כולו, וכל הפניה שנתפסה בטעינה מצביעה אחר כך
 // על אלמנטים מנותקים. החיפוש פשוט הפסיק להגיב, בלי שום סימן.
-document.addEventListener('input', function (e) {
-    if (!e.target || e.target.id !== 'txSearch') return;
+// החיפוש והסינון לפי סוג (מתן, 30.9) פועלים יחד: שורה מוצגת רק אם היא
+// מתאימה לשניהם. הסוג הפעיל נקרא מהכפתור עצמו ולא נשמר במשתנה — מאותה
+// סיבה: אחרי רענון רך הכפתורים חדשים, וחוזרים ל"הכל".
+function filterAllTx() {
     const rows = document.querySelectorAll(
         '.all-tx-header + .tx-search-wrap + .cat-tx-list .cat-tx-row');
+    const input = document.getElementById('txSearch');
     const emptyMsg = document.getElementById('txSearchEmpty');
-    const q = e.target.value.trim().toLowerCase();
+    const count = document.querySelector('.all-tx-count');
+    const activeChip = document.querySelector('.tx-type-chip.active');
+    const type = activeChip ? activeChip.dataset.type : '';
+    const q = input ? input.value.trim().toLowerCase() : '';
     let shown = 0;
     rows.forEach(function (row) {
         const desc = (row.querySelector('.cat-tx-desc') || {}).textContent || '';
-        const match = !q || desc.toLowerCase().indexOf(q) !== -1;
+        const match = (!q || desc.toLowerCase().indexOf(q) !== -1)
+                   && (!type || row.dataset.type === type);
         row.style.display = match ? '' : 'none';
         if (match) shown++;
     });
-    if (emptyMsg) emptyMsg.style.display = (q && shown === 0) ? 'block' : 'none';
+    if (emptyMsg) emptyMsg.style.display = ((q || type) && shown === 0) ? 'block' : 'none';
+    if (count) count.textContent = (q || type) ? shown : count.dataset.total;
+}
+
+document.addEventListener('input', function (e) {
+    if (e.target && e.target.id === 'txSearch') filterAllTx();
+});
+
+document.addEventListener('click', function (e) {
+    const chip = e.target.closest && e.target.closest('.tx-type-chip');
+    if (!chip) return;
+    document.querySelectorAll('.tx-type-chip').forEach(function (c) {
+        const on = c === chip;
+        c.classList.toggle('active', on);
+        c.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    filterAllTx();
 });
 
 })();

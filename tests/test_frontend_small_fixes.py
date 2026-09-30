@@ -550,3 +550,16 @@ def test_the_savings_legend_says_of_what():
     """מתן (30.9): "חסכתם 67%" לא אומר ממה — כמו ההוצאות, "מההכנסות"."""
     html = _read("frontend/templates/index.html")
     assert "חסכתם {{ saved_pct }}% מההכנסות</span>" in html
+
+
+def test_all_transactions_can_be_filtered_by_type():
+    """מתן (30.9, רעיון 5): הכל / הוצאות / הכנסות / חיסכון מעל החיפוש —
+    רק הסוגים שיש החודש, ויחד עם החיפוש (לא במקומו)."""
+    tpl = _read("frontend/templates/month.html")
+    assert 'class="date-chip tx-type-chip active" data-type=""' in tpl
+    assert "selectattr(0, 'in', present)" in tpl
+    assert "tx_types | length > 1" in tpl
+    js = _strip_comments(_read("frontend/static/js/month.js"))
+    assert "(!type || row.dataset.type === type)" in js
+    assert "(!q || desc.toLowerCase().indexOf(q) !== -1)" in js
+    assert "count.dataset.total" in js

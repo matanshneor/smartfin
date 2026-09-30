@@ -2212,6 +2212,8 @@ a.submit-btn {
 .tx-search-wrap { display: none; margin: 8px 0 4px; }
 .legend-item-wrap.open .tx-search-wrap { display: block; }
 .tx-search-input { font-size: 1rem; padding: 9px 12px; }
+.tx-type-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.tx-type-chip { min-height: 36px; }
 .tx-search-empty {
     font-size: 0.82rem;
     color: var(--color-text-muted);

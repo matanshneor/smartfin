@@ -499,12 +499,24 @@
         <li class="legend-item-wrap">
             <div class="legend-item clickable all-tx-header" role="button" tabindex="0" aria-expanded="false">
                 <span class="legend-name all-tx-title">הצג הכול</span>
-                <span class="all-tx-count">{{ month_transactions | length }}</span>
+                <span class="all-tx-count" data-total="{{ month_transactions | length }}">{{ month_transactions | length }}</span>
                 <span class="expand-chevron" aria-hidden="true">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                 </span>
             </div>
             <div class="tx-search-wrap">
+                {# סינון לפי סוג (מתן, 30.9): רק הסוגים שיש החודש, ורק כשיש יותר מאחד #}
+                {% set present = month_transactions | map(attribute='type') | list %}
+                {% set tx_types = [('expense', 'הוצאות'), ('income', 'הכנסות'), ('savings', 'חיסכון')]
+                                  | selectattr(0, 'in', present) | list %}
+                {% if tx_types | length > 1 %}
+                <div class="tx-type-chips" role="group" aria-label="סינון לפי סוג">
+                    <button type="button" class="date-chip tx-type-chip active" data-type="" aria-pressed="true">הכל</button>
+                    {% for key, label in tx_types %}
+                    <button type="button" class="date-chip tx-type-chip" data-type="{{ key }}" aria-pressed="false">{{ label }}</button>
+                    {% endfor %}
+                </div>
+                {% endif %}
                 <input type="search" class="form-input tx-search-input" id="txSearch"
                        placeholder="חיפוש עסקה…" aria-label="חיפוש בעסקאות החודש"
                        autocomplete="off" enterkeyhint="search">
