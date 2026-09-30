@@ -21,7 +21,22 @@
     </div>
 </div>
 
-<div class="hero-totals">
+{# עלות / שווי הפרויקט — הכנסות פחות הוצאות, בשורה נפרדת מעל הריבועים
+   (מתן, 30.9). רק בפרויקט שעוקב אחרי שניהם — בפרויקט של הוצאות בלבד זה סתם
+   מינוס של ההוצאות. חיסכון לא נכלל. #}
+{% if project.track_income and project.track_expense %}
+{% set net = ((project.income or 0) - (project.spent or 0)) | round(2) %}
+<div class="project-net {% if net > 0 %}surplus{% elif net < 0 %}deficit{% endif %}">
+    <p class="kpi-label">עלות / שווי הפרויקט</p>
+    <p class="project-net-value">{% if net > 0 %}+{% elif net < 0 %}-{% endif %}₪{{ (net | abs) | money }}</p>
+</div>
+{% endif %}
+{# עמודות שוות לפי מספר הריבועים: שניים — חצי-חצי (ולא שני שלישים), ארבעה —
+   שתיים על שתיים (ולא שלושה ועוד אחד בודד) #}
+{% set chip_count = (1 if project.track_expense else 0) + (1 if project.track_income else 0)
+                  + (1 if project.track_savings else 0) + (2 if project.budget_target else 0) %}
+{% set columns = 2 if chip_count == 4 else ([chip_count, 3] | min) %}
+<div class="hero-totals" style="grid-template-columns: repeat({{ [columns, 1] | max }}, minmax(0, 1fr));">
     {% if project.track_expense %}
     <div class="kpi-chip">
         <p class="kpi-label">סה"כ הוצאות</p>
@@ -51,16 +66,6 @@
     </div>
     {% endif %}
 </div>
-{# מאזן הפרויקט — הכנסות פחות הוצאות, בשורה נפרדת (מתן, 30.9): הריבועים
-   אמרו כמה נכנס וכמה יצא, אבל לא מה יצא מזה. רק בפרויקט שעוקב אחרי שניהם —
-   בפרויקט של הוצאות בלבד זה סתם מינוס של ההוצאות. חיסכון לא נכלל. #}
-{% if project.track_income and project.track_expense %}
-{% set net = ((project.income or 0) - (project.spent or 0)) | round(2) %}
-<div class="project-net {% if net > 0 %}surplus{% elif net < 0 %}deficit{% endif %}">
-    <p class="kpi-label">מאזן הפרויקט · הכנסות פחות הוצאות</p>
-    <p class="project-net-value">{% if net > 0 %}+{% elif net < 0 %}-{% endif %}₪{{ (net | abs) | money }}</p>
-</div>
-{% endif %}
 {% endblock %}
 
 {% block content %}

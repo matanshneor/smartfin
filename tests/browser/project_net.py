@@ -64,7 +64,11 @@ try:
         add(both, "income", 1000.50); add(both, "expense", 300.25)
         print("income 1000.50, expense 300.25 →", net(both))
         page.locator(".hero-totals").scroll_into_view_if_needed()
+        page.wait_for_timeout(1800)
         page.screenshot(path="/tmp/net.png", clip={"x": 0, "y": 0, "width": 390, "height": 330})
+        print("chip widths:", page.eval_on_selector_all(".hero-totals .kpi-chip", "es => es.map(e => Math.round(e.getBoundingClientRect().width))"),
+              "| net above chips:", page.evaluate("document.querySelector('.project-net').getBoundingClientRect().top < document.querySelector('.hero-totals').getBoundingClientRect().top"),
+              "| label:", page.inner_text(".project-net .kpi-label"))
         add(both, "expense", 900)
         print("+ expense 900 →", net(both))
         only_exp = project("NET-PROJ", False)

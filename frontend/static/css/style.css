@@ -412,7 +412,7 @@ ul { list-style: none; }
 
 /* מאזן הפרויקט — שורה רחבה מתחת לריבועים */
 .project-net {
-    margin-top: 10px;
+    margin-top: 14px;
     background: var(--hero-chip-bg);
     border: 1px solid var(--hero-chip-border);
     border-radius: var(--radius-sm);

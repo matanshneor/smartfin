@@ -458,3 +458,20 @@ def test_the_project_shows_income_minus_expenses(track_income, income, spent, ex
     else:
         value = out[out.index('class="project-net-value">') + 26:out.index("</p>", out.index("project-net-value"))]
         assert value.strip() == expected, value
+
+
+def test_the_project_value_sits_above_the_squares_with_its_short_name():
+    """מתן (30.9): רק "עלות / שווי הפרויקט", למעלה, ומתחת הוצאות והכנסות שווים."""
+    html = _read("frontend/templates/project_detail.html")
+    assert "<p class=\"kpi-label\">עלות / שווי הפרויקט</p>" in html
+    assert html.index('class="project-net') < html.index('<div class="hero-totals"')
+
+
+@pytest.mark.parametrize("chips,columns", [(2, 2), (3, 3), (4, 2), (5, 3), (1, 1)])
+def test_the_squares_share_the_row_evenly(chips, columns):
+    from backend.app import app
+    html = _read("frontend/templates/project_detail.html")
+    rule = html[html.index("{% set chip_count"):html.index("{% set columns")]
+    rule = html[html.index("{% set columns"):html.index("%}", html.index("{% set columns")) + 2]
+    out = app.jinja_env.from_string(rule + "{{ [columns, 1] | max }}").render(chip_count=chips)
+    assert out.strip() == str(columns)
