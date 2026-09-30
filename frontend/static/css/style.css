@@ -1812,7 +1812,6 @@ a.submit-btn {
 /* ─── Months comparison ───────────────────────────────────────── */
 /* טבלה אחת: שורה לחודש, עמודה לסוג (מתן, 30.9) */
 
-.months-table-card { padding: 6px 12px 10px; margin-bottom: 0; }
 
 .months-table {
     width: 100%;
@@ -1857,40 +1856,36 @@ a.submit-btn {
 .months-table .bal.surplus { color: var(--color-income); }
 .months-table .bal.deficit { color: var(--color-expense); }
 
-/* השנה מעל הטבלה שלה, עם קו זהב. שנה קודמת סגורה — לחיצה על הכותרת פותחת */
-.year-block { margin-bottom: 4px; }
+/* כרטיס לכל שנה: השנה בראשו, והטבלה מתחת. שנה קודמת סגורה — כרטיס עם
+   השנה בלבד, ולחיצה עליו פותחת */
+.year-block.chart-card { padding: 0; overflow: hidden; margin-bottom: 12px; }
 
 .year-title {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
-    margin: 18px 4px 10px;
-    font-size: 1.15rem;
+    padding: 14px 16px;
+    min-height: 52px;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--color-gold-text);
     letter-spacing: 0.04em;
     cursor: pointer;
     list-style: none;
-    min-height: 44px;
 }
 
 .year-title::-webkit-details-marker { display: none; }
+.year-block[open] > .year-title { border-bottom: 1px solid rgba(28, 25, 23, 0.07); }
 
-.year-title::after {
-    content: "";
-    flex: 1;
-    height: 1px;
-    background: linear-gradient(to left, var(--color-gold-dim), transparent);
-    order: 2;
-}
-
-.year-chevron { order: 3; display: flex; color: var(--color-gold-text); transition: transform 0.2s; }
+.year-chevron { display: flex; color: var(--color-gold-text); transition: transform 0.2s; }
 .year-chevron svg { width: 18px; height: 18px; }
 .year-block[open] > .year-title .year-chevron { transform: rotate(180deg); }
 
+.months-table-wrap { padding: 0 12px 8px; }
+
 .months-table .month-row { cursor: pointer; }
 .months-table .month-row:active td { background: var(--color-card-hover); }
-.months-table .month-row.is-current td.m a { color: var(--color-gold-text); }
 
 .current-month-badge {
     display: block;
@@ -1904,11 +1899,6 @@ a.submit-btn {
     border-radius: 99px;
 }
 
-.months-table-note {
-    margin: 10px 4px 0;
-    font-size: 0.68rem;
-    color: var(--color-text-muted);
-}
 
 
 /* ─── Charts & KPI (light cards) ──────────────────────────────── */

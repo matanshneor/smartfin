@@ -34,14 +34,15 @@
 <div id="monthsArchive">
 {% for year_group in archive | groupby('year') | reverse %}
     {# ‎groupby‎ ממיין לפי השנה ושומר את סדר החודשים בתוכה (מהחדש לישן) #}
-    <details class="year-block" {% if year_group.grouper >= today_year %}open{% endif %}>
+    {# השנה בראש הכרטיס של הטבלה שלה — מחוץ לכרטיס היא נראתה מנותקת ממנו #}
+    <details class="year-block chart-card" {% if year_group.grouper >= today_year %}open{% endif %}>
         <summary class="year-title">
             <span>{{ year_group.grouper }}</span>
             <span class="year-chevron" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </span>
         </summary>
-        <div class="chart-card months-table-card">
+        <div class="months-table-wrap">
             <table class="months-table">
                 <colgroup><col class="c-month"><col><col><col><col class="c-balance"></colgroup>
                 <thead>
@@ -76,7 +77,6 @@
         </div>
     </details>
 {% endfor %}
-    <p class="months-table-note">בשקלים שלמים · לחיצה על חודש פותחת אותו</p>
 </div>
 
 {% else %}
