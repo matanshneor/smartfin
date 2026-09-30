@@ -8,5 +8,10 @@
         if (localStorage.getItem('sf_theme') === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
         }
-    } catch (e) { /* אין אחסון — נשארים בבהיר */ }
+        // גודל טקסט (סבב 6, פריט 9) — אותו רגע ואותה סיבה: בלי קפיצה בטעינה
+        const size = localStorage.getItem('sf_text_size');
+        if (size === 'large' || size === 'xlarge') {
+            document.documentElement.setAttribute('data-text-size', size);
+        }
+    } catch (e) { /* אין אחסון — נשארים בבהיר ובגודל הרגיל */ }
 })();

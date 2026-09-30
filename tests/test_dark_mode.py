@@ -58,3 +58,22 @@ def test_the_settings_switch():
     assert 'data-theme-choice="light"' in tpl and 'data-theme-choice="dark"' in tpl
     js = (_ROOT / "frontend/static/js/settings.js").read_text(encoding="utf-8")
     assert "localStorage.setItem('sf_theme', theme)" in js
+
+
+# ── גודל טקסט (סבב 6, פריט 9) — באותה הגדרת "תצוגה" ובאותו קובץ טעינה ──
+
+def test_text_size_is_set_before_paint_and_scales_everything():
+    js = (_ROOT / "frontend/static/js/theme.js").read_text(encoding="utf-8")
+    assert "localStorage.getItem('sf_text_size')" in js
+    assert 'html[data-text-size="large"]  { font-size: 112.5%; }' in _CSS
+    assert 'html[data-text-size="xlarge"] { font-size: 125%; }' in _CSS
+    # גודל בפיקסלים לא גדל עם השאר
+    assert not re.findall(r"font-size:\s*\d+px", _CSS)
+
+
+def test_the_text_size_switch():
+    tpl = (_ROOT / "frontend/templates/settings.html").read_text(encoding="utf-8")
+    for size in ("normal", "large", "xlarge"):
+        assert f'data-size="{size}"' in tpl
+    js = (_ROOT / "frontend/static/js/settings.js").read_text(encoding="utf-8")
+    assert "localStorage.setItem('sf_text_size', size)" in js

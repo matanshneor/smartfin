@@ -1389,3 +1389,27 @@ document.addEventListener('click', function (e) {
         });
     });
 })();
+
+
+// ── גודל טקסט (מתן, 30.9 — סבב 6, פריט 9) ──
+(function () {
+    const buttons = document.querySelectorAll('.text-size-choice');
+    if (!buttons.length) return;
+    function show(size) {
+        buttons.forEach(function (b) {
+            const on = b.dataset.size === size;
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+    }
+    show(document.documentElement.getAttribute('data-text-size') || 'normal');
+    buttons.forEach(function (b) {
+        b.addEventListener('click', function () {
+            const size = b.dataset.size;
+            if (size === 'normal') document.documentElement.removeAttribute('data-text-size');
+            else document.documentElement.setAttribute('data-text-size', size);
+            try { localStorage.setItem('sf_text_size', size); } catch (e) { /* רק לעמוד הזה */ }
+            show(size);
+        });
+    });
+})();

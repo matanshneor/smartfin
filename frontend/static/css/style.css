@@ -147,6 +147,15 @@
 html {
     -webkit-text-size-adjust: 100%;
 }
+/* גודל טקסט — מהגדרות → תצוגה, לכל טלפון (מתן, 30.9 — סבב 6, פריט 9).
+   כל הגדלים בעמוד ב-rem, אז שינוי אחד כאן מגדיל הכל יחד. */
+html[data-text-size="large"]  { font-size: 112.5%; }
+html[data-text-size="xlarge"] { font-size: 125%; }
+/* "גדול מאוד" במסך צר: האחוז בשורת קטגוריה מפנה מקום לשם — בלעדיו "משכורת"
+   נחתכה לאות אחת ליד סכום של שש ספרות. האחוז נשאר בגרף ובשאר הגדלים. */
+@media (max-width: 380px) {
+    html[data-text-size="xlarge"] .legend-pct { display: none; }
+}
 
 body {
     font-family: var(--font-body);
@@ -3303,7 +3312,7 @@ li.project-row {
 .legend-amount .pm-amount:first-child { margin-inline-start: 0; }
 
 .cat-tx-more { justify-content: flex-start; padding-top: 10px; }
-.cat-tx-more a { font-size: 13px; color: var(--color-gold-text); text-decoration: none; font-weight: 600; }
+.cat-tx-more a { font-size: 0.8125rem; color: var(--color-gold-text); text-decoration: none; font-weight: 600; }
 .cat-tx-more a:hover { text-decoration: underline; }
 
 /* ─── עסקאות קבועות ───────────────────────────────────────────── */
@@ -4509,7 +4518,7 @@ li.transaction-item.swipe-ready > .swipe-content {
     padding: 28px 16px calc(24px + env(safe-area-inset-bottom));
     text-align: center;
 }
-.settings-contact-label { margin: 0; font-size: 13px; color: var(--color-text-muted); }
+.settings-contact-label { margin: 0; font-size: 0.8125rem; color: var(--color-text-muted); }
 
 /* ─── קישור "קביעת תקציב" מעמוד החודש ─────────────────────────────
    מוצג רק על קטגוריה שהוצאה בה כסף ואין לה תקציב. זה הרגע שבו אדם
@@ -4518,7 +4527,7 @@ li.transaction-item.swipe-ready > .swipe-content {
     display: inline-block;
     margin: 6px 0 2px;
     padding: 3px 0;
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--color-gold-text);
     text-decoration: none;
