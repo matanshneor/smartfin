@@ -14,7 +14,7 @@ import re
 import time
 from . import supabase_config as db
 from .money import format_money
-from .wording import count_of
+from .wording import count_of, share_map
 from . import clock
 from . import logs
 
@@ -241,6 +241,7 @@ def _asset_version(filename: str) -> str:
 # סכום כסף בתבניות: ‎{{ x | money }}‎ — אגורות רק כשיש (ראו backend/money.py)
 app.jinja_env.filters["money"] = format_money
 app.jinja_env.filters["count_of"] = count_of
+app.jinja_env.filters["share_map"] = share_map
 
 
 @app.context_processor

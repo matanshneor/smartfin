@@ -1833,6 +1833,21 @@ a.submit-btn {
 
 .income-who { font-weight: 700; }
 
+/* חיסכון (הצעה ב) — אותו ראש כמו ההכנסות, בזהב, ואחוז מתחת לכל יעד */
+.income-total-value.savings { color: var(--color-savings); }
+
+.income-total-sub {
+    font-size: 0.74rem;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+}
+
+.breakdown-share {
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+}
+
 /* ─── Months comparison ───────────────────────────────────────── */
 /* טבלה אחת: שורה לחודש, עמודה לסוג (מתן, 30.9) */
 

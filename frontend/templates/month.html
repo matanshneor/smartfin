@@ -409,6 +409,21 @@
     <h2 class="chart-title">חיסכון — לאן הופרש</h2>
     {% set savings_active = savings_breakdown | selectattr('total', 'gt', 0) | list %}
     {% set savings_zero   = savings_breakdown | rejectattr('total', 'gt', 0) | list %}
+    {# הצעה ב (מתן, 30.9): כמה הופרש החודש ואיזה חלק מההכנסות זה, ומתחת לכל
+       יעד — איזה חלק מהחיסכון. האחוזים מחושבים על החיסכון של הבית (בלי
+       פרויקטים), כמו ‎summary.savings‎. #}
+    {% set savings_home = savings_active | rejectattr('is_project') | list %}
+    {% set savings_total = savings_home | sum(attribute='total') %}
+    {% set savings_shares = savings_home | share_map %}
+    {% if savings_total > 0 %}
+    <div class="income-total savings-total">
+        <p class="income-total-label">הופרש החודש</p>
+        <p class="income-total-value savings">₪{{ savings_total | money }}</p>
+        {% if summary.income > 0 %}
+        <p class="income-total-sub">{{ ((savings_total / summary.income) * 100) | round | int }}% מההכנסות החודש</p>
+        {% endif %}
+    </div>
+    {% endif %}
     <ul class="breakdown-bars">
         {% for item in savings_active %}
         {% if item.is_project %}
@@ -424,9 +439,7 @@
                         <span class="breakdown-name">{{ item.name }}</span>
                         <span class="breakdown-amount savings">₪{{ item.total | money }}</span>
                     </div>
-                    <div class="breakdown-track">
-                        <div class="breakdown-fill savings" style="width: {{ item.pct }}%;"></div>
-                    </div>
+                    <p class="breakdown-share">חיסכון בפרויקט</p>
                 </div>
             {% if item.project_id %}
             </a>
@@ -451,9 +464,9 @@
                             {% endif %}
                         </span>
                     </div>
-                    <div class="breakdown-track">
-                        <div class="breakdown-fill savings" style="width: {{ item.pct }}%;"></div>
-                    </div>
+                    {% if savings_total > 0 %}
+                    <p class="breakdown-share">{{ savings_shares.get(item.name, 0) }}% מהחיסכון</p>
+                    {% endif %}
                 </div>
             </div>
             {% if cat_txs %}

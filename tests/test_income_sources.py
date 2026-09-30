@@ -62,3 +62,14 @@ def test_the_month_page_shows_the_total_then_the_sources():
     section = section[:section.index("</section>")]
     assert section.index("נכנס החודש") < section.index("{% for src in income_sources %}")
     assert "income_active" not in section, "הפירוט לפי קטגוריה עדיין שם"
+
+
+def test_the_savings_section_shows_the_total_share_of_income_and_share_per_goal():
+    """הצעה ב לחיסכון (מתן, 30.9). בדפדפן: tests/browser/savings_section.py."""
+    from pathlib import Path
+    html = (Path(__file__).resolve().parent.parent / "frontend/templates/month.html").read_text(encoding="utf-8")
+    section = html[html.index('id="savings-breakdown"'):]
+    section = section[:section.index("</section>")]
+    assert "הופרש החודש" in section and "% מההכנסות החודש" in section
+    assert "savings_shares.get(item.name, 0) }}% מהחיסכון" in section
+    assert "breakdown-fill savings" not in section, "הפסים עדיין שם"

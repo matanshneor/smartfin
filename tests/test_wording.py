@@ -120,3 +120,17 @@ def test_fixed_costs_use_the_same_words_as_the_rest_of_the_app():
     html = (_ROOT / "frontend/templates/month.html").read_text(encoding="utf-8")
     labels = re.findall(r'class="fixed-label">([^<]+)<', html)
     assert labels == ["הוצאות", "הכנסות", "חיסכון"], labels
+
+
+@pytest.mark.parametrize("totals,expected", [
+    ({"קרן": 5000, "גמל": 3000}, {"קרן": 63, "גמל": 37}),          # 62.5 + 37.5 — לא 63 + 38
+    ({"א": 1, "ב": 1, "ג": 1}, {"א": 34, "ב": 33, "ג": 33}),
+    ({"א": 100}, {"א": 100}),
+    ({"א": 0, "ב": 50}, {"ב": 100}),
+    ({}, {}),
+])
+def test_shares_always_add_up_to_a_hundred(totals, expected):
+    from backend.wording import share_map
+    got = share_map([{"name": n, "total": t} for n, t in totals.items()])
+    assert got == expected
+    assert not got or sum(got.values()) == 100
