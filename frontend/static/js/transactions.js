@@ -938,6 +938,9 @@
                 if (mySeq !== formSeq) return;          // הטופס התחלף בינתיים
                 setSubmitBusy(false);
                 updateSubmitLabel();
+                // הטופס נסגר בזמן "בודק…" — המשתמש ויתר. בלי זה העסקה נשמרה בכל
+                // זאת, ועם קבלה שהסגירה כבר מחקה.
+                if (!overlay.classList.contains('open')) return;
                 if (!ok) return;
                 precheckPassed = key;
                 requestSubmit();

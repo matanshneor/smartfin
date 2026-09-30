@@ -63,6 +63,9 @@
         if (!shape) return;
         hide();
         timer = setTimeout(function () {
+            // קוד אחר ביטל את המעבר אחרי שקיבלנו את הלחיצה — אין לאן לחכות,
+            // ושלד שהיה מופיע כאן לא היה נעלם לעולם
+            if (e.defaultPrevented) return;
             overlay = build(shape);
             document.body.appendChild(overlay);
             // הלשונית שנלחצה בתפריט התחתון כבר מסומנת — "קיבלתי, בדרך לשם"

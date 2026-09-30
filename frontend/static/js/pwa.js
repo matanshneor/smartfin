@@ -101,10 +101,15 @@ if ('serviceWorker' in navigator) {
         show(0);
         setTimeout(function () { ind.style.transition = ''; }, 220);
     }
+    // חלון פתוח — חיפוש, תקציבים, אייקונים, צבעים, אישור. בתוכו גרירה למטה
+    // היא גלילה של הרשימה שלו; קודם היא נתפסה כמשיכה, הרשימה לא זזה למעלה
+    // והעמוד שמאחור התרענן.
+    const OPEN_WINDOWS = '.modal-overlay.open, .transaction-item.open, .confirm-overlay.open, '
+                       + '.search-screen:not([hidden]), .icon-picker:not([hidden]), .color-sheet:not([hidden])';
     function blocked(target) {
         return busy || window.scrollY > 0
-            || document.querySelector('.modal-overlay.open, .transaction-item.open')
-            || (target.closest && target.closest('input, textarea, select, canvas, .tx-cat-chips'));
+            || document.querySelector(OPEN_WINDOWS)
+            || (target.closest && target.closest('input, textarea, select, canvas, .tx-cat-chips, [role="dialog"]'));
     }
 
     document.addEventListener('touchstart', function (e) {

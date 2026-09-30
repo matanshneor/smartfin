@@ -753,3 +753,28 @@ def test_tapping_a_month_in_the_category_chart_opens_its_expenses():
     assert "const items = (current.items || [])[i] || [];" in js
     assert "'לא בוצעו עסקאות בקטגוריה בחודש זה'" in js
     assert "link.textContent = 'לעמוד החודש';" in js
+
+
+# ─── סקירה של 1.10 ───────────────────────────────────────────────────────────
+
+def test_closing_the_form_during_the_check_cancels_the_save():
+    """הטופס נסגר בזמן "בודק…" — העסקה נשמרה בכל זאת, עם קבלה שהסגירה מחקה."""
+    js = _strip_comments(_read("frontend/static/js/transactions.js"))
+    part = js[js.index("runPrecheck(payload).then(function (ok) {"):]
+    part = part[:part.index("requestSubmit();")]
+    assert "if (!overlay.classList.contains('open')) return;" in part
+
+
+def test_pull_to_refresh_leaves_open_windows_alone():
+    """בתוך חיפוש/חלון, גרירה למטה היא גלילה של הרשימה — לא רענון של העמוד."""
+    js = _strip_comments(_read("frontend/static/js/pwa.js"))
+    for sel in (".search-screen:not([hidden])", ".icon-picker:not([hidden])",
+                ".color-sheet:not([hidden])", ".confirm-overlay.open"):
+        assert sel in js, sel
+    assert "document.querySelector(OPEN_WINDOWS)" in js
+
+
+def test_the_skeleton_rechecks_before_it_shows():
+    js = _strip_comments(_read("frontend/static/js/skeleton.js"))
+    part = js[js.index("timer = setTimeout(function () {"):]
+    assert part.index("if (e.defaultPrevented) return;") < part.index("overlay = build(shape);")
