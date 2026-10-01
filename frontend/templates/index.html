@@ -253,7 +253,7 @@
                     {% if tx.has_receipt %}
                     <a class="receipt-badge" href="{{ url_for('view_receipt', tx_id=tx.id) }}"
                        target="_blank" rel="noopener"
-                       title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</a>
+                       title="צפייה בקבלה" aria-label="צפייה בקבלה המצורפת">📎</a>
                     {% endif %}
                     <p class="tx-amount {{ tx.type }}">
                         {% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ tx.amount | money }}

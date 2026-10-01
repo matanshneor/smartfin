@@ -45,7 +45,7 @@
             if (d.error) {
                 errorBox.textContent = d.error;
                 btn.disabled = false;
-                btn.textContent = 'עדכן סיסמה';
+                btn.textContent = 'עדכון הסיסמה';
                 return;
             }
             window.location.href = '/login?reset=1';
@@ -53,7 +53,7 @@
         .catch(function () {
             errorBox.textContent = window.sfNetError();
             btn.disabled = false;
-            btn.textContent = 'עדכן סיסמה';
+            btn.textContent = 'עדכון הסיסמה';
         });
     });
 })();

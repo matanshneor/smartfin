@@ -306,7 +306,7 @@
                     {% if tx.has_receipt %}
                     <a class="receipt-badge" href="{{ url_for('view_receipt', tx_id=tx.id) }}"
                        target="_blank" rel="noopener"
-                       title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</a>
+                       title="צפייה בקבלה" aria-label="צפייה בקבלה המצורפת">📎</a>
                     {% endif %}
                     <span class="cat-tx-amount expense">₪{{ tx.amount | money }}</span>
                 </li>
@@ -467,7 +467,7 @@
             {% endif %}
             <span class="fixed-row-amount {{ item.type }}">₪{{ item.monthly_amount | money }}</span>
             <button class="delete-recurring-btn" data-id="{{ item.id }}"
-                    tabindex="-1" aria-label="הסר את {{ item.description or item.category_name }}">✕</button>
+                    tabindex="-1" aria-label="הסרת {{ item.description or item.category_name }}">✕</button>
         </li>
         {% endfor %}
     </ul>
@@ -500,7 +500,7 @@
     <ul class="legend-list">
         <li class="legend-item-wrap">
             <div class="legend-item clickable all-tx-header" role="button" tabindex="0" aria-expanded="false">
-                <span class="legend-name all-tx-title">הצג הכול</span>
+                <span class="legend-name all-tx-title">הצגת הכול</span>
                 <span class="all-tx-count" data-total="{{ month_transactions | length }}">{{ month_transactions | length }}</span>
                 <span class="expand-chevron" aria-hidden="true">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -561,7 +561,7 @@
                     {% if tx.has_receipt %}
                     <a class="receipt-badge" href="{{ url_for('view_receipt', tx_id=tx.id) }}"
                        target="_blank" rel="noopener"
-                       title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</a>
+                       title="צפייה בקבלה" aria-label="צפייה בקבלה המצורפת">📎</a>
                     {% endif %}
                     <span class="cat-tx-amount {{ tx.type }}">{% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ tx.amount | money }}</span>
                 </li>

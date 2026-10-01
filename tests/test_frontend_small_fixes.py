@@ -727,7 +727,7 @@ def test_an_edit_can_be_undone_from_the_toast():
     assert "Object.assign({}, spec.body, { if_match: spec.if_match })" in js
     assert "!(followUp && (followUp.series || followUp.error))" in js
     assert "rememberUndo(undoSpec(tx, data.transaction, 'העסקה עודכנה'))" in js
-    assert "{ label: 'בטל', onClick: function () { runUndo(spec); } }" in js
+    assert "{ label: 'ביטול', onClick: function () { runUndo(spec); } }" in js
 
 
 def test_the_date_chips_include_the_day_before_yesterday():

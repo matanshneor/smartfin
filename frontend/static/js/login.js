@@ -71,7 +71,7 @@ if (window.location.hash.includes('type=recovery')) {
         })
         .then(function (res) {
             btn.disabled = false;
-            btn.textContent = 'שלח קישור איפוס';
+            btn.textContent = 'שליחת קישור איפוס';
             // "נשלח" הופיע גם על 422 (מייל לא תקין), על 429 ועל מגבלת 2 המיילים
             // בשעה של Supabase — והשרת כבר ידע לומר את האמת. מי שהזין מייל
             // שגוי חיכה למייל שלא יגיע. כשהשרת אומר שנכשל, זה מה שמוצג.
@@ -87,7 +87,7 @@ if (window.location.hash.includes('type=recovery')) {
         .catch(function () {
             forgotError.textContent = window.sfNetError();
             btn.disabled = false;
-            btn.textContent = 'שלח קישור איפוס';
+            btn.textContent = 'שליחת קישור איפוס';
         });
     });
 })();
@@ -128,6 +128,6 @@ if (window.location.hash.includes('type=recovery')) {
         window.addEventListener('pageshow', function (e) { if (e.persisted) release(); });
     }
 
-    guardSubmit(document.getElementById('loginPanel'),  'מתחבר…');
-    guardSubmit(document.getElementById('signupPanel'), 'נרשם…');
+    guardSubmit(document.getElementById('loginPanel'),  'מתחברים…');
+    guardSubmit(document.getElementById('signupPanel'), 'נרשמים…');
 })();

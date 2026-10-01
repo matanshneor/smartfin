@@ -325,7 +325,7 @@
         txReceiptPath.value = '';
         scanWrapper.classList.remove('active');
         scanBtn.disabled = false;
-        scanBtn.querySelector('.scan-btn-text').textContent = 'סרוק קבלה';
+        scanBtn.querySelector('.scan-btn-text').textContent = 'סריקת קבלה';
         receiptInput.value = '';
         if (scannerThumbnail.src) {
             URL.revokeObjectURL(scannerThumbnail.src);
@@ -805,7 +805,7 @@
             sessionStorage.removeItem(UNDO_KEY);
         } catch (e) { return; }
         if (!spec || !spec.id) return;
-        window.showToast(spec.message, undefined, { label: 'בטל', onClick: function () { runUndo(spec); } });
+        window.showToast(spec.message, undefined, { label: 'ביטול', onClick: function () { runUndo(spec); } });
     }
     showPendingUndo();          // אחרי רענון מלא — ההודעה עם "בטל" מחכה כאן
 
@@ -1040,7 +1040,7 @@
                 return window.appConfirm({
                     title: 'ליצור ' + res.d.will_create + ' עסקאות אחורה?',
                     message: res.d.error,
-                    confirmText: 'כן, צור',
+                    confirmText: 'כן, ליצור',
                 }).then(function (ok) {
                     if (!ok) {
                         claimedReceipt = null;
@@ -1138,7 +1138,7 @@
                     return window.appConfirm({
                         title: 'לעדכן גם את החודשים הבאים?',
                         message: 'שיניתם את הסכום. להמשיך איתו גם בחודשים הבאים? החודשים שכבר עברו יישארו כמו שהם.',
-                        confirmText: 'עדכן להבא',
+                        confirmText: 'עדכון להבא',
                         danger: false,
                     }).then(function (ok) {
                         if (!ok) return;
@@ -1268,7 +1268,7 @@
                 title:       'למחוק את זו וכל הבאות?',
                 message:     window.sfCount(later, 'עסקה אחת תימחק', 'עסקאות יימחקו') + ', והעסקה הקבועה תיעצר כאן. '
                              + 'מה שנרשם בחודשים קודמים יישאר.',
-                confirmText: 'מחק ' + later,
+                confirmText: 'מחיקת ' + later,
             }).then(function (sure) {
                 if (sure !== true) return;
                 return sendSeriesDelete(txData, row, 'later', later, onFail);
@@ -1322,7 +1322,7 @@
         return window.appConfirm({
             title: 'למחוק את העסקה?',
             message: 'הפעולה תסיר את העסקה מכל הדוחות והגרפים.',
-            confirmText: 'מחק עסקה',
+            confirmText: 'מחיקת העסקה',
         });
     }
 
@@ -1347,7 +1347,7 @@
                 window.showToast(hadReceipt
                     ? 'העסקה נמחקה. הקבלה המצורפת נמחקה איתה ולא תחזור'
                     : 'העסקה נמחקה', null, {
-                    label: 'בטל',
+                    label: 'ביטול',
                     onClick: function () {
                         clearTimeout(pendingDeleteReload);
                         refreshWhenEditingEnds = false;
@@ -1573,9 +1573,9 @@
             '</div>' +
             '<div class="form-error inline-error" role="alert"></div>' +
             '<div class="tx-editor-actions">' +
-                '<button type="button" class="btn-sm btn-primary inline-save">שמור</button>' +
+                '<button type="button" class="btn-sm btn-primary inline-save">שמירה</button>' +
                 '<button type="button" class="btn-sm btn-ghost inline-more">עוד אפשרויות</button>' +
-                '<button type="button" class="tx-editor-delete inline-del" aria-label="מחק עסקה">🗑</button>' +
+                '<button type="button" class="tx-editor-delete inline-del" aria-label="מחיקת העסקה">🗑</button>' +
             '</div>';
 
         const amountEl = body.querySelector('.inline-amount');
@@ -1678,7 +1678,7 @@
                 if (data.error) {
                     errEl.textContent = data.error;
                     saveBtn.disabled = false;
-                    saveBtn.textContent = 'שמור';
+                    saveBtn.textContent = 'שמירה';
                     return;
                 }
                 if (data.transaction) rememberUndo(undoSpec(tx, data.transaction, 'העסקה עודכנה'));
@@ -1688,7 +1688,7 @@
             .catch(function () {
                 errEl.textContent = window.sfNetError();
                 saveBtn.disabled = false;
-                saveBtn.textContent = 'שמור';
+                saveBtn.textContent = 'שמירה';
             });
         });
 
@@ -1976,7 +1976,7 @@
         window.appConfirm({
             title: 'להסיר את העסקה הקבועה?',
             message: 'מופעים חדשים יפסיקו להיווצר. כל מה שכבר נרשם — כולל העסקה הראשונה — יישאר בהיסטוריה.',
-            confirmText: 'הסר',
+            confirmText: 'הסרה',
         }).then(function (ok) {
             if (!ok) { if (onCancel) onCancel(); return; }
             // ‎/api/recurring‎ ולא ‎/api/transactions‎: זה עוצר את הסדרה ולא מוחק

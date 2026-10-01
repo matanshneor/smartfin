@@ -57,7 +57,7 @@ if (shareBtn) {
         window.appConfirm({
             title: 'להפוך את הפרויקט למשותף?',
             message: 'כל בני המשפחה יראו את הפרויקט, וההוצאות/הכנסות שכבר נרשמו בו יהפכו לשיוך משותף. תמיד אפשר להחזיר אותו להיות אישי בעצמך בעתיד.',
-            confirmText: 'הפוך למשותף',
+            confirmText: 'הפיכה למשותף',
             danger: false,
         }).then(function (ok) {
             if (!ok) return;
@@ -83,7 +83,7 @@ if (unshareBtn) {
                 ? others + '. אחרי ההחזרה הפרויקט יהיה גלוי רק לך — '
                   + 'גם את העסקאות האלה, והן יסומנו "נרשם ע״י".'
                 : 'מעכשיו הפרויקט גלוי רק לך. עסקאות שכבר נרשמו כמשותפות יישארו כך.',
-            confirmText: 'החזר להיות אישי',
+            confirmText: 'החזרה לפרויקט אישי',
             danger: !!others,
         }).then(function (ok) {
             if (!ok) return;
@@ -109,12 +109,12 @@ function catRowInnerHTML(id, icon, name) {
     return `
         <span class="cat-row-icon">${escapeHtml(icon)}</span>
         <span class="cat-row-name">${escapeHtml(name)}</span>
-        <button class="edit-cat-btn" data-id="${escapeHtml(id)}" aria-label="ערוך קטגוריה">
+        <button class="edit-cat-btn" data-id="${escapeHtml(id)}" aria-label="עריכת הקטגוריה">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
             </svg>
         </button>
-        <button class="delete-cat-btn" data-id="${escapeHtml(id)}" aria-label="מחק קטגוריה">✕</button>
+        <button class="delete-cat-btn" data-id="${escapeHtml(id)}" aria-label="מחיקת הקטגוריה">✕</button>
     `;
 }
 
@@ -223,7 +223,7 @@ document.addEventListener('click', function (e) {
                 <input class="form-input cat-edit-name" type="text" maxlength="30" aria-label="שם קטגוריה">
             </div>
             <div class="edit-actions">
-                <button class="btn-sm btn-primary cat-edit-save" data-id="${escapeHtml(id)}">שמור</button>
+                <button class="btn-sm btn-primary cat-edit-save" data-id="${escapeHtml(id)}">שמירה</button>
                 <button class="btn-sm btn-ghost cat-edit-cancel">ביטול</button>
             </div>
         </div>

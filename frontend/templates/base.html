@@ -34,8 +34,8 @@
            הראשונה ההצעה להתקין נעלמה. ראו ‎softReload‎ ב-core.js. #}
         <div class="alert-card warning install-banner" id="installBanner" style="display:none;" role="status" data-sf-keep>
             <span class="alert-text" id="installBannerText"></span>
-            <button type="button" class="btn-sm btn-primary" id="installBannerAction" style="display:none;">התקן</button>
-            <button type="button" class="install-banner-close" id="installBannerClose" aria-label="סגור הודעה">✕</button>
+            <button type="button" class="btn-sm btn-primary" id="installBannerAction" style="display:none;">התקנה</button>
+            <button type="button" class="install-banner-close" id="installBannerClose" aria-label="סגירת ההודעה">✕</button>
         </div>
         {% block content %}{% endblock %}
     </main>
@@ -105,7 +105,7 @@
     </nav>
 
     <!-- FAB Button — global, appears on every page -->
-    <button class="fab" id="fabBtn" aria-label="הוסף עסקה חדשה" title="הוסף עסקה">
+    <button class="fab" id="fabBtn" aria-label="הוספת עסקה חדשה" title="הוספת עסקה">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
@@ -120,7 +120,7 @@
             <!-- Scan Receipt Button (הוצאות בלבד — ראה setType) -->
             <button class="scan-btn" id="scanBtn" type="button">
                 <span class="scan-btn-icon">📷</span>
-                <span class="scan-btn-text">סרוק קבלה</span>
+                <span class="scan-btn-text">סריקת קבלה</span>
             </button>
             <input type="file" id="receiptInput" accept="image/*" capture="environment" hidden>
 
@@ -246,7 +246,7 @@
 
             </form>
 
-            <button class="modal-close" id="modalClose" aria-label="סגור">✕</button>
+            <button class="modal-close" id="modalClose" aria-label="סגירה">✕</button>
         </div>
     </div>
 
@@ -266,7 +266,7 @@
             <select class="form-input confirm-choice" id="confirmChoice" hidden
                     aria-labelledby="confirmMessage"></select>
             <div class="confirm-actions">
-                <button type="button" class="btn-sm confirm-yes" id="confirmYes">מחק</button>
+                <button type="button" class="btn-sm confirm-yes" id="confirmYes">מחיקה</button>
                 <button type="button" class="btn-sm btn-ghost" id="confirmNo">ביטול</button>
             </div>
         </div>

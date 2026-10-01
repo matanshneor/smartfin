@@ -173,3 +173,20 @@ def test_verbs_address_the_family_in_plural(singular):
     ו"לך" על דברים אישיים נשארים (אפשרות ב)."""
     hits = [(name, line.strip()) for name, line in _visible_strings() if singular in line]
     assert not hits, hits
+
+
+@pytest.mark.parametrize("imperative", [
+    ">שמור<", ">שמור שינויים<", ">מחק<", ">מחק ", ">הוסף<", ">העתק<", ">העתק ", ">התחבר<", ">הירשם<",
+    ">התנתק<", ">התקן<", ">סרוק קבלה<", ">צור פרויקט<", ">עדכן סיסמה<", ">אפס ",
+    "confirmText: 'מחק", "confirmText: 'הסר'", "confirmText: 'צור", "confirmText: 'עדכן",
+    "confirmText: 'עבור", "confirmText: 'הפוך", "confirmText: 'החזר ", "label: 'בטל'",
+    "textContent = 'שמור'", "'שלח קישור איפוס'", "'העבר ומחק'",
+    'aria-label="ערוך ', 'aria-label="מחק ', 'aria-label="הסר ', 'aria-label="סגור',
+    'aria-label="הוסף ', 'aria-label="צפה ', 'aria-label="הזז ',
+    "'מתחבר…'", "'נרשם…'", "'מצטרף…'",
+])
+def test_buttons_name_the_action(imperative):
+    """מתן (1.10): כפתורים בשם פעולה — "שמירה", "מחיקה", "התחברות" — ולא
+    בציווי זכר. ובטעינה: "מתחברים…", לא "מתחבר…"."""
+    hits = [(name, line.strip()) for name, line in _visible_strings() if imperative in line]
+    assert not hits, hits

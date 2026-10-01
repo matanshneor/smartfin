@@ -251,7 +251,7 @@ def test_no_undo_is_offered_for_either():
     block = js[js.index("function sendSeriesDelete("):]
     block = block[:block.index("function deleteWithUndo(")]
 
-    assert "label: 'בטל'" not in block
+    assert "label: 'ביטול'" not in block
     assert "שאר החודשים של העסקה הקבועה נשארו" in block
 
 
@@ -287,4 +287,4 @@ def test_an_ordinary_transaction_still_gets_asked():
     block = block[:block.index("function deleteWithUndo(")]
 
     assert "הפעולה תסיר את העסקה מכל הדוחות והגרפים" in block
-    assert "confirmText: 'מחק עסקה'" in block
+    assert "confirmText: 'מחיקת העסקה'" in block

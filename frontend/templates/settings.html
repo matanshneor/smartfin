@@ -36,22 +36,22 @@
                         <span class="cat-row-icon">{{ cat.icon }}</span>
                         <span class="cat-row-name">{{ cat.name }}</span>
                         {% if cat.is_custom %}
-                        <button class="edit-cat-btn" data-id="{{ cat.id }}" aria-label="ערוך קטגוריה">
+                        <button class="edit-cat-btn" data-id="{{ cat.id }}" aria-label="עריכת הקטגוריה">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
                             </svg>
                         </button>
                         {% if is_manager %}
-                        <button class="delete-cat-btn" data-id="{{ cat.id }}" aria-label="מחק קטגוריה">✕</button>
+                        <button class="delete-cat-btn" data-id="{{ cat.id }}" aria-label="מחיקת הקטגוריה">✕</button>
                         {% endif %}
                         {% else %}
                         <span class="cat-system-badge">מובנה</span>
                         {% endif %}
                         <div class="cat-reorder-btns">
-                            <button type="button" class="cat-move-btn cat-move-up" data-id="{{ cat.id }}" aria-label="הזז למעלה">
+                            <button type="button" class="cat-move-btn cat-move-up" data-id="{{ cat.id }}" aria-label="הזזה למעלה">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
                             </button>
-                            <button type="button" class="cat-move-btn cat-move-down" data-id="{{ cat.id }}" aria-label="הזז למטה">
+                            <button type="button" class="cat-move-btn cat-move-down" data-id="{{ cat.id }}" aria-label="הזזה למטה">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                             </button>
                         </div>
@@ -81,7 +81,7 @@
                                        value="{{ limit.amount | round | int if limit else '' }}"
                                        aria-label="תקציב חודשי ל{{ cat.name }}">
                                 <button type="button" class="btn-sm btn-primary budget-save"
-                                        data-id="{{ cat.id }}" disabled>שמור</button>
+                                        data-id="{{ cat.id }}" disabled>שמירה</button>
                             </div>
                         </div>
                         {% endif %}
@@ -117,7 +117,7 @@
                     <p class="group-row-label">שם המשפחה</p>
                     <p class="group-row-value" id="familyNameDisplay">{{ family.get('name', 'המשפחה שלי') }}</p>
                 </div>
-                <button class="icon-btn" id="editFamilyNameBtn" aria-label="ערוך שם משפחה">
+                <button class="icon-btn" id="editFamilyNameBtn" aria-label="עריכת שם המשפחה">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
                     </svg>
@@ -131,7 +131,7 @@
                 <input class="form-input" type="text" id="familyNameInput"
                        value="{{ family.get('name', 'המשפחה שלי') }}" maxlength="50">
                 <div class="edit-actions">
-                    <button class="btn-sm btn-primary" id="saveFamilyNameBtn">שמור</button>
+                    <button class="btn-sm btn-primary" id="saveFamilyNameBtn">שמירה</button>
                     <button class="btn-sm btn-ghost"   id="cancelFamilyNameBtn">ביטול</button>
                 </div>
             </div>
@@ -168,7 +168,7 @@
                         {% endif %}
                     </div>
                     {% if m.id == user.id %}
-                    <button class="icon-btn" id="editProfileBtn" aria-label="ערוך את הפרטים שלי">
+                    <button class="icon-btn" id="editProfileBtn" aria-label="עריכת הפרטים שלי">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
                         </svg>
@@ -222,7 +222,7 @@
                 </div>
                 <p class="form-error" id="profileError" role="alert"></p>
                 <div class="edit-actions">
-                    <button class="btn-sm btn-primary" id="saveProfileBtn">שמור</button>
+                    <button class="btn-sm btn-primary" id="saveProfileBtn">שמירה</button>
                     <button class="btn-sm btn-ghost" id="cancelProfileBtn">ביטול</button>
                 </div>
             </div>
@@ -250,7 +250,7 @@
                 </div>
                 <div class="invite-actions">
                 <span class="invite-code-inline" id="inviteCode">{{ family['invite_code'] }}</span>
-                <button class="btn-sm btn-ghost" id="copyCodeBtn">העתק</button>
+                <button class="btn-sm btn-ghost" id="copyCodeBtn">העתקה</button>
                 {# החלפת קוד פוסלת גם הזמנות שכבר נשלחו, ולכן היא של המנהל.
                    הכלל נאכף בשרת ממילא; ההסתרה כאן רק לא מציעה פעולה שתיכשל. #}
                 {% if user.id == family.get('manager_id') %}
@@ -366,7 +366,7 @@
                                placeholder="🏷" maxlength="2" value="🏷" aria-label="אייקון">
                         <input class="form-input" type="text" id="newCatName"
                                placeholder="שם קטגוריה חדשה" maxlength="30" required aria-label="שם קטגוריה חדשה">
-                        <button type="submit" class="btn-sm btn-primary">הוסף</button>
+                        <button type="submit" class="btn-sm btn-primary">הוספה</button>
                     </div>
                     <p class="form-error" id="addCatError" role="alert"></p>
                 </form>
@@ -533,7 +533,7 @@
                     <p class="recurring-amount {{ tx.type }}">
                         {% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ tx.amount | money }}
                     </p>
-                    <button class="delete-recurring-btn" data-id="{{ tx.id }}" aria-label="הסר עסקה קבועה">✕</button>
+                    <button class="delete-recurring-btn" data-id="{{ tx.id }}" aria-label="הסרת העסקה הקבועה">✕</button>
                 </li>
                 {% endfor %}
             </ul>
@@ -670,7 +670,7 @@
                 <p class="field-hint">אפשר להתחבר גם עם המספר הזה במקום המייל</p>
                 <p class="form-error" id="phoneError" role="alert"></p>
                 <div class="edit-actions">
-                    <button class="btn-sm btn-primary" id="savePhoneBtn">שמור</button>
+                    <button class="btn-sm btn-primary" id="savePhoneBtn">שמירה</button>
                     <button class="btn-sm btn-ghost" id="cancelPhoneBtn">ביטול</button>
                 </div>
             </div>
@@ -701,7 +701,7 @@
                 <p class="form-error" id="passwordError" role="alert"></p>
                 <p class="form-success" id="passwordSuccess"></p>
                 <div class="edit-actions">
-                    <button class="btn-sm btn-primary" id="changePasswordBtn">עדכן סיסמה</button>
+                    <button class="btn-sm btn-primary" id="changePasswordBtn">עדכון הסיסמה</button>
                     <button class="btn-sm btn-ghost" id="cancelPasswordBtn">ביטול</button>
                 </div>
             </div>
@@ -714,7 +714,7 @@
                     <p class="group-row-label">איפוס חשבון</p>
                     <p class="group-row-hint">מחיקת כל העסקאות — החשבון, הקטגוריות וההגדרות נשמרים</p>
                 </div>
-                <button class="btn-sm btn-ghost btn-danger-ghost" id="toggleResetAccountBtn">אפס חשבון</button>
+                <button class="btn-sm btn-ghost btn-danger-ghost" id="toggleResetAccountBtn">איפוס החשבון</button>
             </div>
 
             <div class="password-form" id="resetAccountForm" data-tx-count="{{ family_tx_count }}">
@@ -741,7 +741,7 @@
                 </div>
                 <p class="form-error" id="resetAccountError" role="alert"></p>
                 <div class="edit-actions">
-                    <button class="btn-sm btn-danger" id="confirmResetAccountBtn">אפס עסקאות</button>
+                    <button class="btn-sm btn-danger" id="confirmResetAccountBtn">איפוס העסקאות</button>
                     <button class="btn-sm btn-ghost" id="cancelResetAccountBtn">ביטול</button>
                 </div>
             </div>
@@ -754,7 +754,7 @@
                     <p class="group-row-label">מחיקת חשבון</p>
                     <p class="group-row-hint">מחיקה לצמיתות של החשבון וכל הנתונים שלו</p>
                 </div>
-                <button class="btn-sm btn-ghost btn-danger-ghost" id="toggleDeleteAccountBtn">מחק חשבון</button>
+                <button class="btn-sm btn-ghost btn-danger-ghost" id="toggleDeleteAccountBtn">מחיקת החשבון</button>
             </div>
 
             <div class="password-form" id="deleteAccountForm">
@@ -769,7 +769,7 @@
                 </div>
                 <p class="form-error" id="deleteAccountError" role="alert"></p>
                 <div class="edit-actions">
-                    <button class="btn-sm btn-danger" id="confirmDeleteAccountBtn">מחק לצמיתות</button>
+                    <button class="btn-sm btn-danger" id="confirmDeleteAccountBtn">מחיקה לצמיתות</button>
                     <button class="btn-sm btn-ghost" id="cancelDeleteAccountBtn">ביטול</button>
                 </div>
             </div>
@@ -781,7 +781,7 @@
        ‎<img src="...">‎ ולנתק את המשתמש בלי ידיעתו. SameSite=Lax
        מתיר בדיוק את הצורה הזאת של ניווט GET. #}
     <form method="POST" action="{{ url_for('logout') }}" class="logout-form settings-logout">
-        <button type="submit" class="logout-btn">התנתק</button>
+        <button type="submit" class="logout-btn">התנתקות</button>
     </form>
 
     {# תמיכה. הייתה קבורה בתוך "אבטחה וחשבון", מעל שינוי סיסמה ומחיקת

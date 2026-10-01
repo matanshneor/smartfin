@@ -102,7 +102,7 @@
 </div>
 {% endif %}
 <div style="display:flex; justify-content:flex-end; margin-bottom:2px;">
-    <a href="{{ url_for('project_edit', project_id=project.id) }}" class="btn-sm btn-ghost">ערוך הגדרות פרויקט</a>
+    <a href="{{ url_for('project_edit', project_id=project.id) }}" class="btn-sm btn-ghost">עריכת פרויקט</a>
 </div>
 
 
@@ -159,7 +159,7 @@
                         {% if tx.has_receipt %}
                         <a class="receipt-badge" href="{{ url_for('view_receipt', tx_id=tx.id) }}"
                        target="_blank" rel="noopener"
-                       title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</a>
+                       title="צפייה בקבלה" aria-label="צפייה בקבלה המצורפת">📎</a>
                         {% endif %}
                         <span class="cat-tx-amount {{ tx.type }}">₪{{ tx.amount | money }}</span>
                     </li>
@@ -196,7 +196,7 @@
             {% if tx.has_receipt %}
             <a class="receipt-badge" href="{{ url_for('view_receipt', tx_id=tx.id) }}"
                        target="_blank" rel="noopener"
-                       title="צפה בקבלה" aria-label="צפה בקבלה מצורפת">📎</a>
+                       title="צפייה בקבלה" aria-label="צפייה בקבלה המצורפת">📎</a>
             {% endif %}
             {# סימן ולא רק צבע: ברשימה הזאת הכנסות והוצאות מעורבבות, ולמי שלא
                מבחין בין ירוק לאדום (~8% מהגברים) הצבע לבדו לא אומר כלום.
@@ -208,7 +208,7 @@
     {% if project.transactions | length > first_shown %}
     <button type="button" class="btn-sm btn-ghost show-all-tx" id="showAllProjectTx"
             aria-expanded="false" aria-controls="projectTxList"
-            data-more="הצג את כל העסקאות ({{ project.transactions | length }})" data-less="הצג פחות">הצג את כל העסקאות ({{ project.transactions | length }})</button>
+            data-more="הצגת כל העסקאות ({{ project.transactions | length }})" data-less="הצגה מקוצרת">הצגת כל העסקאות ({{ project.transactions | length }})</button>
     {% endif %}
     {% else %}
     <div class="empty-state">

@@ -294,7 +294,7 @@ def test_turning_it_on_reveals_an_amount_box_and_a_save_button():
     fields = block[block.index('class="cat-budget-fields"'):]
 
     assert 'class="form-input budget-amount"' in fields
-    assert "budget-save" in fields and ">שמור<" in fields
+    assert "budget-save" in fields and ">שמירה<" in fields
     # מוסתר עד שמדליקים
     assert "{% if not limit %}hidden{% endif %}" in block
 

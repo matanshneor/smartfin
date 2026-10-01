@@ -148,7 +148,7 @@
                 <div class="settings-card invite-code-card">
                     <p class="invite-code-label">קוד ההזמנה שלכם</p>
                     <p class="invite-code-value" id="onboardingInviteCode">{{ family.get('invite_code', '') }}</p>
-                    <button type="button" class="btn-sm btn-ghost" id="copyInviteBtn">העתק הזמנה</button>
+                    <button type="button" class="btn-sm btn-ghost" id="copyInviteBtn">העתקת ההזמנה</button>
                 </div>
 
                 <div class="onboarding-actions">
@@ -228,7 +228,7 @@
                     <div class="onboarding-add-row">
                         <input class="form-input emoji-input onboarding-new-icon" type="text" maxlength="2" placeholder="🏷" value="🏷" aria-label="אייקון">
                         <input class="form-input onboarding-new-name" type="text" placeholder="קטגוריה חדשה" aria-label="שם קטגוריה חדשה">
-                        <button type="button" class="btn-sm btn-primary onboarding-add-btn" data-add-type="{{ type_key }}">הוסף</button>
+                        <button type="button" class="btn-sm btn-primary onboarding-add-btn" data-add-type="{{ type_key }}">הוספה</button>
                     </div>
                 </div>
                 {% endfor %}

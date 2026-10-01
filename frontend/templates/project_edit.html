@@ -85,7 +85,7 @@
         </div>
         <p class="form-error" id="editProjectError" role="alert"></p>
         <div class="edit-actions">
-            <button type="submit" class="btn-sm btn-primary">שמור שינויים</button>
+            <button type="submit" class="btn-sm btn-primary">שמירת השינויים</button>
             <a href="{{ url_for('project_detail', project_id=project.id) }}" class="btn-sm btn-ghost">ביטול</a>
         </div>
     </form>
@@ -110,10 +110,10 @@
             </p>
         </div>
         {% if project.is_personal %}
-        <button type="button" class="btn-sm btn-ghost" id="shareProjectBtn">הפוך למשותף</button>
+        <button type="button" class="btn-sm btn-ghost" id="shareProjectBtn">הפיכה למשותף</button>
         {% elif project.created_by == user.id %}
         <button type="button" class="btn-sm btn-ghost" id="unshareProjectBtn"
-                data-others-note="{{ others_note }}">החזר להיות אישי</button>
+                data-others-note="{{ others_note }}">החזרה לפרויקט אישי</button>
         {% endif %}
     </div>
 </div>
@@ -144,7 +144,7 @@
             <div class="add-cat-row">
                 <input class="form-input emoji-input" type="text" id="newProjectCatIcon" placeholder="🏷" maxlength="2" value="🏷" aria-label="אייקון">
                 <input class="form-input" type="text" id="newProjectCatName" placeholder="שם קטגוריה חדשה" maxlength="30" required aria-label="שם קטגוריה חדשה">
-                <button type="submit" class="btn-sm btn-primary">הוסף</button>
+                <button type="submit" class="btn-sm btn-primary">הוספה</button>
             </div>
             <p class="form-error" id="addProjectCatError" role="alert"></p>
         </form>
@@ -194,7 +194,7 @@
             </p>
         </div>
         <button type="button" class="btn-sm btn-ghost btn-danger-ghost"
-                id="toggleDeleteProjectBtn">מחק פרויקט</button>
+                id="toggleDeleteProjectBtn">מחיקת הפרויקט</button>
     </div>
 
     <div class="password-form" id="deleteProjectForm">
@@ -217,7 +217,7 @@
         <p class="form-error" id="deleteProjectError" role="alert"></p>
         <div class="edit-actions">
             <button class="btn-sm btn-danger" id="confirmDeleteProjectBtn"
-                    data-id="{{ project.id }}" data-name="{{ project.name }}">מחק פרויקט</button>
+                    data-id="{{ project.id }}" data-name="{{ project.name }}">מחיקת הפרויקט</button>
             <button class="btn-sm btn-ghost" id="cancelDeleteProjectBtn">ביטול</button>
         </div>
     </div>

@@ -116,7 +116,7 @@ if (copyBtn && inviteCode) {
             .then(function (copied) {
                 if (!copied) return;      // הודעה כבר הוצגה, והקוד מסומן
                 copyBtn.textContent = '✓ הועתקה הזמנה';
-                setTimeout(function () { copyBtn.textContent = 'העתק'; }, 2000);
+                setTimeout(function () { copyBtn.textContent = 'העתקה'; }, 2000);
             });
     });
 }
@@ -146,7 +146,7 @@ if (joinBtn && joinInput) {
         }
 
         joinBtn.disabled = true;
-        joinBtn.textContent = 'מצטרף…';
+        joinBtn.textContent = 'מצטרפים…';
 
         send(false)
             .then(function (res) {
@@ -171,7 +171,7 @@ if (joinBtn && joinInput) {
                         message: `למשפחה הנוכחית שלכם ${howMany}. מעבר למשפחה אחרת ` +
                                  'מנתק אתכם מהן — הן יישארו במשפחה הישנה ולא תוכלו ' +
                                  'לראות אותן יותר.',
-                        confirmText: 'עבור למשפחה החדשה',
+                        confirmText: 'מעבר למשפחה החדשה',
                     }).then(function (ok) {
                         if (!ok) return null;
                         return send(true);
@@ -330,7 +330,7 @@ document.addEventListener('click', function (e) {
                 <input class="form-input cat-edit-name" type="text" maxlength="30">
             </div>
             <div class="edit-actions">
-                <button class="btn-sm btn-primary cat-edit-save" data-id="${escapeHtml(id)}">שמור</button>
+                <button class="btn-sm btn-primary cat-edit-save" data-id="${escapeHtml(id)}">שמירה</button>
                 <button class="btn-sm btn-ghost cat-edit-cancel">ביטול</button>
             </div>
         </div>
@@ -617,14 +617,14 @@ if (changePasswordBtn) {
         .then(r => r.json())
         .then(function (d) {
             changePasswordBtn.disabled = false;
-            changePasswordBtn.textContent = 'עדכן סיסמה';
+            changePasswordBtn.textContent = 'עדכון הסיסמה';
             if (d.error) { pwError.textContent = d.error; return; }
             resetPasswordForm();
             pwSuccess.textContent = 'הסיסמה עודכנה בהצלחה';
         })
         .catch(function () {
             changePasswordBtn.disabled = false;
-            changePasswordBtn.textContent = 'עדכן סיסמה';
+            changePasswordBtn.textContent = 'עדכון הסיסמה';
             pwError.textContent = window.sfNetError();
         });
     });
@@ -771,7 +771,7 @@ if (toggleResetBtn) {
                 ? 'לאפס את כל עסקאות המשפחה?'
                 : 'למחוק את כל העסקאות שלך?',
             message: count + ' פעולה זו סופית ולא ניתנת לביטול.',
-            confirmText: 'אפס עסקאות',
+            confirmText: 'איפוס העסקאות',
         }).then(function (ok) {
             if (!ok) return;
             confirmResetBtn.disabled = true;
@@ -785,7 +785,7 @@ if (toggleResetBtn) {
             .then(function (d) {
                 if (d.error) {
                     confirmResetBtn.disabled = false;
-                    confirmResetBtn.textContent = 'אפס עסקאות';
+                    confirmResetBtn.textContent = 'איפוס העסקאות';
                     resetError.textContent = d.error;
                     return;
                 }
@@ -794,7 +794,7 @@ if (toggleResetBtn) {
             })
             .catch(function () {
                 confirmResetBtn.disabled = false;
-                confirmResetBtn.textContent = 'אפס עסקאות';
+                confirmResetBtn.textContent = 'איפוס העסקאות';
                 resetError.textContent = window.sfNetError();
             });
         });
@@ -828,7 +828,7 @@ if (toggleDeleteBtn) {
         window.appConfirm({
             title: 'למחוק את החשבון לצמיתות?',
             message: 'פעולה זו סופית ולא ניתנת לביטול — כל הנתונים שלך יימחקו.',
-            confirmText: 'מחק לצמיתות',
+            confirmText: 'מחיקה לצמיתות',
         }).then(function (ok) {
             if (!ok) return;
             confirmDeleteBtn.disabled = true;
@@ -842,7 +842,7 @@ if (toggleDeleteBtn) {
             .then(function (d) {
                 if (d.error) {
                     confirmDeleteBtn.disabled = false;
-                    confirmDeleteBtn.textContent = 'מחק לצמיתות';
+                    confirmDeleteBtn.textContent = 'מחיקה לצמיתות';
                     deleteError.textContent = d.error;
                     return;
                 }
@@ -850,7 +850,7 @@ if (toggleDeleteBtn) {
             })
             .catch(function () {
                 confirmDeleteBtn.disabled = false;
-                confirmDeleteBtn.textContent = 'מחק לצמיתות';
+                confirmDeleteBtn.textContent = 'מחיקה לצמיתות';
                 deleteError.textContent = window.sfNetError();
             });
         });
@@ -1091,7 +1091,7 @@ updateWorkplaceState();
                     message: 'להסיר את ' + name + ' עכשיו? '
                            + (choice === WIPE ? 'העסקאות שלו יימחקו. ' : '')
                            + 'את זה אי אפשר לבטל.',
-                    confirmText: 'הסר',
+                    confirmText: 'הסרה',
                 });
             }).then(function (ok) {
                 if (!ok) return;
@@ -1158,7 +1158,7 @@ updateWorkplaceState();
             window.appConfirm({
                 title: 'ליצור קוד הזמנה חדש?',
                 message: 'הקוד הנוכחי יפסיק לעבוד מיד. מי שכבר הצטרף נשאר במשפחה.',
-                confirmText: 'צור קוד חדש',
+                confirmText: 'יצירת קוד חדש',
             }).then(function (ok) {
                 if (!ok) return;
                 rotateBtn.disabled = true;

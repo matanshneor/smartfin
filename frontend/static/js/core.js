@@ -226,7 +226,7 @@ window.escapeHtml = function (s) {
         });
         titleEl.textContent  = opts.title || 'לאשר את הפעולה?';
         msgEl.textContent    = opts.message || '';
-        yesBtn.textContent   = opts.confirmText || 'מחק';
+        yesBtn.textContent   = opts.confirmText || 'מחיקה';
         noBtn.textContent    = opts.cancelText || 'ביטול';
         // ברירת מחדל: פעולה הרסנית (אדום) — מתאים ל-99% מהשימושים הקיימים
         // (מחיקה). opts.danger === false מציג כפתור ניטרלי לפעולות רגילות.
@@ -264,14 +264,14 @@ window.escapeHtml = function (s) {
             }
             usage = res.d;
             const count = usage.count || 0;
-            const opts = { title: 'למחוק את "' + name + '"?', confirmText: 'מחק קטגוריה' };
+            const opts = { title: 'למחוק את "' + name + '"?', confirmText: 'מחיקת הקטגוריה' };
             if (count) {
                 opts.message = (count === 1 ? 'יש בקטגוריה הזו עסקה אחת' : 'יש בקטגוריה הזו ' + count + ' עסקאות')
                     + '. לאיזו קטגוריה להעביר ' + (count === 1 ? 'אותה' : 'אותן') + '?';
                 opts.choices = usage.alternatives.map(function (c) {
                     return { value: c.id, label: c.icon + ' ' + c.name };
                 });
-                opts.confirmText = 'העבר ומחק';
+                opts.confirmText = 'העברה ומחיקה';
             } else {
                 opts.message = 'אין בה עסקאות.';
             }
