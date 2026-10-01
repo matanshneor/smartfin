@@ -396,23 +396,6 @@
         </button>
 
         <div class="settings-group-body">
-            {# צליל ורטט. דלת המילוט (‎sf_feedback_off‎) הייתה בקוד מאז
-               ההתחלה ושום דבר בכל הריפו לא כתב אליה — כלומר כל שמירה
-               השמיעה צליל ורטטה, בלי שום דרך לכבות. באפליקציה שמשתמשים
-               בה בקופה בסופר זה דבר שמוביל להסרה ולא לדיווח.
-
-               מקומית ולא בהגדרות המשפחה בכוונה: זו העדפה של המכשיר.
-               אבא רוצה צליל בטלפון שלו ואמא לא רוצה בשלה. #}
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">צליל ורטט בשמירה</p>
-                    <p class="group-row-hint">משוב קצר כשעסקה נכנסת. ההגדרה נשמרת במכשיר הזה בלבד</p>
-                </div>
-                <label class="pref-switch">
-                    <input type="checkbox" aria-label="צליל ורטט בשמירה" id="feedbackToggle">
-                    <span class="pref-slider"></span>
-                </label>
-            </div>
             <div class="group-row">
                 <div class="group-row-info">
                     <p class="group-row-label">שיוך הוצאות</p>
@@ -571,7 +554,7 @@
             </span>
             <span class="group-text">
                 <span class="group-title">תצוגה</span>
-                <span class="group-sub">מצב כהה וגודל טקסט</span>
+                <span class="group-sub">מצב כהה, גודל טקסט וצליל</span>
             </span>
             <span class="group-chevron">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -594,6 +577,24 @@
                     <button type="button" class="toggle-btn text-size-choice" data-size="large" aria-pressed="false">גדול</button>
                     <button type="button" class="toggle-btn text-size-choice" data-size="xlarge" aria-pressed="false">גדול מאוד</button>
                 </div>
+            </div>
+            {# צליל ורטט. דלת המילוט (‎sf_feedback_off‎) הייתה בקוד מאז
+               ההתחלה ושום דבר בכל הריפו לא כתב אליה — כלומר כל שמירה
+               השמיעה צליל ורטטה, בלי שום דרך לכבות. באפליקציה שמשתמשים
+               בה בקופה בסופר זה דבר שמוביל להסרה ולא לדיווח.
+
+               מקומית ולא בהגדרות המשפחה בכוונה: זו העדפה של המכשיר.
+               אבא רוצה צליל בטלפון שלו ואמא לא רוצה בשלה. לכן ב"תצוגה",
+               עם שאר מה שנשמר לכל טלפון — ולא ב"העדפות משפחה" (מתן, 1.10). #}
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">צליל ורטט בשמירה</p>
+                    <p class="group-row-hint">משוב קצר כשעסקה נכנסת. ההגדרה נשמרת במכשיר הזה בלבד</p>
+                </div>
+                <label class="pref-switch">
+                    <input type="checkbox" aria-label="צליל ורטט בשמירה" id="feedbackToggle">
+                    <span class="pref-slider"></span>
+                </label>
             </div>
         </div>
     </section>
