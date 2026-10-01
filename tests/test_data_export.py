@@ -142,12 +142,13 @@ def test_the_reader_itself_raises_instead_of_returning_an_empty_dict():
 
 # ─── ושהמסך מציע אותו ────────────────────────────────────────────────────────
 
-def test_settings_offers_the_export_next_to_account_deletion():
-    """זכות שקיימת רק כ-URL שאף אחד לא יודע עליו אינה זכות."""
+def test_settings_no_longer_offers_the_export():
+    """מתן (1.10): בלי "ייצוא הנתונים שלי" בהגדרות. המסלול עצמו נשאר — בקשות
+    עיון בנתונים מגיעות במייל (מדיניות הפרטיות) ונענות ממנו."""
     html = (_ROOT / "frontend/templates/settings.html").read_text(encoding="utf-8")
 
-    assert "export_account" in html
-    assert "ייצוא הנתונים שלי" in html
+    assert "url_for('export_account')" not in html
+    assert "ייצוא הנתונים שלי</p>" not in html
 
 
 def test_the_export_is_rate_limited():
