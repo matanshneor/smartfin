@@ -171,7 +171,7 @@ def test_marking_an_instance_as_recurring_is_refused(client, monkeypatch):
     res = _edit(client, True)
 
     assert res.status_code == 422
-    assert "כבר חלק מסדרה קבועה" in res.get_json()["error"]
+    assert "זו עסקה קבועה" in res.get_json()["error"]
 
 
 def test_an_instance_can_still_be_edited_normally(client, monkeypatch):
@@ -223,7 +223,7 @@ def test_the_dialog_asks_the_calendar_question():
 
     assert "רק את זו" in block
     assert "את זו וכל הבאות" in block
-    assert "העסקה הזאת חוזרת" in block
+    assert "'זו עסקה קבועה'" in block
 
 
 def test_the_safe_option_is_the_confirm_button():
@@ -252,7 +252,7 @@ def test_no_undo_is_offered_for_either():
     block = block[:block.index("function deleteWithUndo(")]
 
     assert "label: 'בטל'" not in block
-    assert "שאר הסדרה נשארה" in block
+    assert "שאר החודשים של העסקה הקבועה נשארו" in block
 
 
 # ─── שתי שאלות במקום אחת ────────────────────────────────────────────────────

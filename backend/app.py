@@ -2400,7 +2400,7 @@ def _validated_frequency(body):
         return None, None
     freq = body.get("recurring_frequency")
     if freq not in _FREQUENCIES:
-        return None, "יש לבחור כל כמה זמן העסקה חוזרת"
+        return None, "יש לבחור כל כמה זמן העסקה הקבועה נרשמת"
     return freq, None
 
 
@@ -2439,7 +2439,7 @@ def add_transaction():
         if end_err:
             return jsonify({"error": f"תאריך הסיום: {end_err}"}), 422
         if recurring_end < tx_date:
-            return jsonify({"error": "תאריך סיום הסדרה מוקדם מתאריך ההתחלה"}), 422
+            return jsonify({"error": "תאריך הסיום של העסקה הקבועה מוקדם מתאריך ההתחלה"}), 422
 
 
     recurring_frequency, freq_err = _validated_frequency(body)
@@ -2453,7 +2453,7 @@ def add_transaction():
         return jsonify({
             "needs_confirm": True,
             "will_create": retro,
-            "error": f"הסדרה הזאת תיצור {retro} עסקאות אחורה, מ-{tx_date}. "
+            "error": f"העסקה הקבועה הזאת תיצור {retro} עסקאות אחורה, מ-{tx_date}. "
                      f"אם זה מה שרצית — אשרו.",
         }), 409
     project_id, project_category_id, category_id, owner_user_id, proj_err = \
@@ -2551,7 +2551,7 @@ def update_transaction(tx_id):
         if end_err:
             return jsonify({"error": f"תאריך הסיום: {end_err}"}), 422
         if recurring_end < tx_date:
-            return jsonify({"error": "תאריך סיום הסדרה מוקדם מתאריך ההתחלה"}), 422
+            return jsonify({"error": "תאריך הסיום של העסקה הקבועה מוקדם מתאריך ההתחלה"}), 422
 
     current = db.transaction_links(tx_id, user["family_id"])
     if current is None:
@@ -2580,13 +2580,13 @@ def update_transaction(tx_id):
             already = db.existing_occurrence_dates(tx_id, user["family_id"])
         except db.DataUnavailable:
             # לא ידוע כמה ייווצרו. לשמור בלי לשאול זה בדיוק מה שהשאלה מונעת.
-            return jsonify({"error": "לא הצלחנו לבדוק את הסדרה הקבועה — נסו שוב"}), 503
+            return jsonify({"error": "לא הצלחנו לבדוק את העסקה הקבועה — נסו שוב"}), 503
     retro = _retro_occurrences(body, tx_date, already)
     if retro > _RETRO_WITHOUT_CONFIRM and not request.args.get("confirm"):
         return jsonify({
             "needs_confirm": True,
             "will_create": retro,
-            "error": f"הסדרה הזאת תיצור {retro} עסקאות אחורה, מ-{tx_date}. "
+            "error": f"העסקה הקבועה הזאת תיצור {retro} עסקאות אחורה, מ-{tx_date}. "
                      f"אם זה מה שרצית — אשרו.",
         }), 409
 
@@ -2597,12 +2597,12 @@ def update_transaction(tx_id):
         try:
             if db.is_recurring_instance(tx_id, user["family_id"]):
                 return jsonify({
-                    "error": "העסקה הזאת כבר חלק מסדרה קבועה. כדי לשנות את "
-                             "הסדרה, ערכו אותה דרך ההגדרות ← עסקאות קבועות.",
+                    "error": "זו עסקה קבועה. כדי לשנות אותה בכל החודשים, "
+                             "ערכו אותה דרך ההגדרות ← עסקאות קבועות.",
                 }), 422
         except db.DataUnavailable:
             # לא ידוע. סדרה כפולה היא נזק שאי אפשר לבטל; ניסיון חוזר לא.
-            return jsonify({"error": "לא הצלחנו לבדוק את הסדרה הקבועה — נסו שוב"}), 503
+            return jsonify({"error": "לא הצלחנו לבדוק את העסקה הקבועה — נסו שוב"}), 503
 
     payload = {
         "amount":      amount,

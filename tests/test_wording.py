@@ -146,3 +146,11 @@ def test_the_app_says_monthly_balance_and_never_checking_account():
         html = re.sub(r"\{#.*?#\}", "", (_ROOT / "frontend/templates" / page).read_text(encoding="utf-8"), flags=re.S)
         # "מאזן החודש" (מתן, 1.10), ולא עוד "מאזן חודשי"
         assert "מאזן החודש" in html and "מאזן חודשי" not in html, page
+
+
+def test_recurring_transactions_have_one_name():
+    """מתן (1.10): "עסקאות קבועות" בכל האפליקציה — לא "עסקה חוזרת" ולא
+    "סדרה". בכל טקסט שמשתמש רואה."""
+    forms = re.compile(r"עסקה חוזרת|עסקאות חוזרות|העסקה הזאת חוזרת|העסקה חוזרת|סדרה|הסדרה|סדרות")
+    hits = [(name, line) for name, line in _visible_strings() if forms.search(line)]
+    assert not hits, hits

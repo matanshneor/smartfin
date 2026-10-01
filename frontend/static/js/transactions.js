@@ -413,8 +413,8 @@
             note = document.createElement('p');
             note.id = 'recurringLockNote';
             note.className = 'field-hint';
-            note.textContent = 'העסקה הזאת כבר חלק מסדרה קבועה. '
-                             + 'לשינוי הסדרה — הגדרות ← עסקאות קבועות.';
+            note.textContent = 'זו עסקה קבועה. '
+                             + 'לשינוי שלה בכל החודשים — הגדרות ← עסקאות קבועות.';
             group.appendChild(note);
         } else if (!locked && note) {
             note.remove();
@@ -1254,7 +1254,7 @@
 
     function askAboutSeries(txData, row, later, onFail) {
         return window.appConfirm({
-            title:       'העסקה הזאת חוזרת',
+            title:       'זו עסקה קבועה',
             message:     'אפשר למחוק רק את המופע הזה, או אותו וכל הבאים '
                          + 'אחריו (' + later + ' בסך הכול).',
             confirmText: 'רק את זו',
@@ -1266,7 +1266,7 @@
 
             return window.appConfirm({
                 title:       'למחוק את זו וכל הבאות?',
-                message:     window.sfCount(later, 'עסקה אחת תימחק', 'עסקאות יימחקו') + ', והסדרה תיעצר כאן. '
+                message:     window.sfCount(later, 'עסקה אחת תימחק', 'עסקאות יימחקו') + ', והעסקה הקבועה תיעצר כאן. '
                              + 'מה שנרשם בחודשים קודמים יישאר.',
                 confirmText: 'מחק ' + later,
             }).then(function (sure) {
@@ -1297,8 +1297,8 @@
                 // הדילוג שנרשם עליו, ושל סדרה שלמה — עשרות שורות.
                 const n = d.deleted || total;
                 window.showToast(mode === 'one'
-                    ? 'העסקה נמחקה. שאר הסדרה נשארה'
-                    : window.sfCount(n, 'עסקה אחת נמחקה', 'עסקאות נמחקו') + ', והסדרה נעצרה');
+                    ? 'העסקה נמחקה. שאר החודשים של העסקה הקבועה נשארו'
+                    : window.sfCount(n, 'עסקה אחת נמחקה', 'עסקאות נמחקו') + ', והעסקה הקבועה נעצרה');
                 clearTimeout(pendingDeleteReload);
                 pendingDeleteReload = setTimeout(refreshAfterDelete, 2500);
             })
