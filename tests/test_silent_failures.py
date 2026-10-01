@@ -104,7 +104,7 @@ def test_the_confirmation_does_not_invent_a_number(monkeypatch):
           / "frontend/static/js/settings.js").read_text(encoding="utf-8")
 
     assert "typeof n === 'number'" in js
-    assert "יש תנועות קיימות" in js
+    assert "יש עסקאות קיימות" in js
 
 
 def test_the_error_page_itself_survives_a_dead_database(broken):

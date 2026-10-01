@@ -412,7 +412,7 @@ def update_profile(user_id: str, name: str, phone: str = None, workplace: str = 
     except Exception as e:
         logger.exception("update_profile")
         if "duplicate" in str(e).lower() and "phone" in str(e).lower():
-            return False, "מספר הטלפון כבר רשום למשתמש אחר"
+            return False, "מספר הטלפון כבר רשום בחשבון אחר"
         return False, None
 
 
@@ -427,7 +427,7 @@ def update_phone(user_id: str, phone: str):
     except Exception as e:
         logger.exception("update_phone")
         if "duplicate" in str(e).lower() and "phone" in str(e).lower():
-            return False, "מספר הטלפון כבר רשום למשתמש אחר"
+            return False, "מספר הטלפון כבר רשום בחשבון אחר"
         return False, None
 
 
@@ -1108,14 +1108,14 @@ def scan_receipt(image_bytes: bytes, content_type: str, category_names: list):
             except (TypeError, ValueError):
                 amount = 0
             if amount <= 0:
-                return None, "לא הצלחתי לקרוא את הקבלה — נסו שוב או הזינו ידנית"
+                return None, "לא הצלחנו לקרוא את הקבלה — נסו שוב או הזינו ידנית"
             return {
                 "amount":         amount,
                 "merchant":       (data.get("merchant") or "").strip(),
                 "date":           (data.get("date") or "").strip() or None,
                 "category_name":  (data.get("category_name") or "").strip() or None,
             }, None
-        return None, "לא הצלחתי לקרוא את הקבלה — נסו שוב או הזינו ידנית"
+        return None, "לא הצלחנו לקרוא את הקבלה — נסו שוב או הזינו ידנית"
     except Exception:
         logger.exception("scan_receipt")
         return None, "שגיאה בסריקת הקבלה — נסו שוב"
@@ -3251,7 +3251,7 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
     elif summary.get("income", 0) > 0 and round(summary.get("remaining", 0)) < 0:
         alerts.append({
             "severity": "danger",
-            "text": "המאזן החודשי שלילי — ההוצאות והחיסכון עברו את ההכנסות",
+            "text": "מאזן החודש שלילי — ההוצאות והחיסכון עברו את ההכנסות",
         })
 
     try:

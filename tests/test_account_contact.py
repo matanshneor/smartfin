@@ -159,7 +159,7 @@ def test_supabase_answers_become_hebrew(monkeypatch, status, body, expected):
 
 def test_the_account_box_has_email_and_phone_and_the_family_box_has_no_phone():
     html = (_ROOT / "frontend/templates/settings.html").read_text(encoding="utf-8")
-    account = html[html.index('<p class="group-row-label">אימייל</p>'):html.index('<p class="group-row-label">סיסמה</p>')]
+    account = html[html.index('<p class="group-row-label">מייל</p>'):html.index('<p class="group-row-label">סיסמה</p>')]
     assert 'id="toggleEmailBtn"' in account and 'id="emailCurrentPassword"' in account
     assert 'id="togglePhoneBtn"' in account and 'id="newPhone"' in account
     profile_edit = html[html.index('id="profileEdit"'):html.index('id="saveProfileBtn"')]

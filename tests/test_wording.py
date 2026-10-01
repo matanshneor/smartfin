@@ -202,3 +202,16 @@ def test_messages_about_a_member_have_no_gender(gendered):
     להיות אור. "מנהל המשפחה" נשאר (אפשרות א)."""
     hits = [(name, line.strip()) for name, line in _visible_strings() if gendered in line]
     assert not hits, hits
+
+
+@pytest.mark.parametrize("other_name", [
+    "אימייל", "מיקום עבודה", "תנועות", "דשבורד", "לדף הבית", "לדף הראשי", "כפרטי", "התרעה",
+    "למשתמש אחר", "המשתמש אינו", "המאזן החודשי", "במאזן החודשי", "הוצאות קבועות</h3>",
+    "לא הצלחתי", 'סה"כ', "הכול", "שישה תווים",
+])
+def test_one_name_for_each_thing(other_name):
+    """מתן (1.10): שם אחד לכל דבר — מייל, מקום עבודה, עסקאות, בית, אישי, התראה,
+    בן משפחה/חשבון, מאזן החודש, עסקאות קבועות, "לא הצלחנו", סה״כ, הכל, 6 תווים."""
+    word = re.compile(r"(?<![\u0590-\u05FF])" + re.escape(other_name) + r"(?![\u0590-\u05FF])")
+    hits = [(name, line.strip()) for name, line in _visible_strings() if word.search(line)]
+    assert not hits, hits

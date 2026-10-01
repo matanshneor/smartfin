@@ -52,7 +52,7 @@ if (window.location.hash.includes('type=recovery')) {
         forgotSuccess.textContent = '';
 
         if (!email) {
-            forgotError.textContent = 'נא להזין אימייל';
+            forgotError.textContent = 'נא להזין מייל';
             return;
         }
 
@@ -82,7 +82,7 @@ if (window.location.hash.includes('type=recovery')) {
                 forgotError.textContent = res.data.error || 'השליחה נכשלה — נסו שוב בעוד רגע';
                 return;
             }
-            forgotSuccess.textContent = 'אם האימייל רשום במערכת — קישור איפוס נשלח אליו עכשיו. כדאי לבדוק גם בספאם.';
+            forgotSuccess.textContent = 'אם המייל רשום במערכת — קישור איפוס נשלח אליו עכשיו. כדאי לבדוק גם בספאם.';
         })
         .catch(function () {
             forgotError.textContent = window.sfNetError();

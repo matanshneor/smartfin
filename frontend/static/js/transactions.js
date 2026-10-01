@@ -665,7 +665,7 @@
             const previous = txReceiptPath.value;
             resetScanUI();
             if (!result.ok || result.data.error) {
-                formError.textContent = (result.data && result.data.error) || 'לא הצלחתי לקרוא את הקבלה — נסו שוב או הזינו ידנית';
+                formError.textContent = (result.data && result.data.error) || 'לא הצלחנו לקרוא את הקבלה — נסו שוב או הזינו ידנית';
                 return;
             }
             const data = result.data;
@@ -1256,7 +1256,7 @@
         return window.appConfirm({
             title:       'זו עסקה קבועה',
             message:     'אפשר למחוק רק את המופע הזה, או אותו וכל הבאים '
-                         + 'אחריו (' + later + ' בסך הכול).',
+                         + 'אחריו (' + later + ' בסך הכל).',
             confirmText: 'רק את זו',
             cancelText:  'את זו וכל הבאות',
             danger:      false,

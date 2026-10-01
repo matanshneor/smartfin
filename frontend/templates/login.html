@@ -92,7 +92,7 @@
             <form class="auth-form auth-panel" id="loginPanel" method="POST" action="{{ url_for('login') }}" novalidate
                   {% if active_tab == 'signup' %}style="display:none;"{% endif %}>
                 <div class="form-group">
-                    <label class="form-label" for="identifier">אימייל או טלפון</label>
+                    <label class="form-label" for="identifier">מייל או טלפון</label>
                     <input class="form-input" type="text" id="identifier" name="identifier"
                            value="{{ remembered_identifier or '' }}"
                            placeholder="your@email.com / 050-1234567" required autocomplete="username"
@@ -116,10 +116,10 @@
             <!-- Forgot password -->
             <div class="auth-panel" id="forgotPanel" style="display:none;">
                 <p class="onboarding-sub" style="margin-top:0;">
-                    הזינו את האימייל שאיתו נרשמתם — נשלח אליו קישור לקביעת סיסמה חדשה.
+                    הזינו את המייל שאיתו נרשמתם — נשלח אליו קישור לקביעת סיסמה חדשה.
                 </p>
                 <div class="form-group">
-                    <label class="form-label" for="forgotEmail">אימייל</label>
+                    <label class="form-label" for="forgotEmail">מייל</label>
                     <input class="form-input" type="email" id="forgotEmail"
                            placeholder="your@email.com" autocomplete="email" inputmode="email">
                 </div>
@@ -150,7 +150,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="signup_email">אימייל</label>
+                    <label class="form-label" for="signup_email">מייל</label>
                     <input class="form-input" type="email" id="signup_email" name="email"
                            value="{{ signup.email if signup else '' }}"
                            placeholder="your@email.com" required autocomplete="email" inputmode="email"

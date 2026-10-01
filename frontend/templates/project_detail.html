@@ -39,19 +39,19 @@
 <div class="hero-totals" style="grid-template-columns: repeat({{ [columns, 1] | max }}, minmax(0, 1fr));">
     {% if project.track_expense %}
     <div class="kpi-chip">
-        <p class="kpi-label">סה"כ הוצאות</p>
+        <p class="kpi-label">סה״כ הוצאות</p>
         <p class="kpi-value expense" data-countup="{{ (project.spent) | round(2) }}">₪{{ project.spent | money }}</p>
     </div>
     {% endif %}
     {% if project.track_income %}
     <div class="kpi-chip">
-        <p class="kpi-label">סה"כ הכנסות</p>
+        <p class="kpi-label">סה״כ הכנסות</p>
         <p class="kpi-value income" data-countup="{{ (project.income) | round(2) }}">₪{{ project.income | money }}</p>
     </div>
     {% endif %}
     {% if project.track_savings %}
     <div class="kpi-chip">
-        <p class="kpi-label">סה"כ חיסכון</p>
+        <p class="kpi-label">סה״כ חיסכון</p>
         <p class="kpi-value savings" data-countup="{{ (project.savings) | round(2) }}">₪{{ project.savings | money }}</p>
     </div>
     {% endif %}

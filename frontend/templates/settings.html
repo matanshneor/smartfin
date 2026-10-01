@@ -216,7 +216,7 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="editWorkplace">מיקום עבודה</label>
+                    <label class="form-label" for="editWorkplace">מקום עבודה</label>
                     <input class="form-input" type="text" id="editWorkplace" value="{{ account.workplace }}"
                            placeholder="לדוגמה: אינטל, עצמאי…" maxlength="60" autocomplete="organization">
                 </div>
@@ -438,7 +438,7 @@
             <div class="group-row">
                 <div class="group-row-info">
                     <p class="group-row-label">התראות על חריגות</p>
-                    <p class="group-row-hint">התרעה כשקטגוריית הוצאה גבוהה בהרבה מהרגיל שלה בשלושת החודשים האחרונים</p>
+                    <p class="group-row-hint">התראה כשקטגוריית הוצאה גבוהה בהרבה מהרגיל שלה בשלושת החודשים האחרונים</p>
                 </div>
                 <label class="pref-switch">
                     <input type="checkbox" aria-label="התראות על חריגות" id="anomalyEnabled"
@@ -626,7 +626,7 @@
                לכאן מעריכת הפרטים ב"המשפחה שלי". #}
             <div class="group-row">
                 <div class="group-row-info">
-                    <p class="group-row-label">אימייל</p>
+                    <p class="group-row-label">מייל</p>
                     <p class="group-row-value" dir="ltr" style="text-align:right;" id="accountEmailValue">{{ account.email }}</p>
                     <p class="group-row-hint" id="emailPendingNote" {% if not account.pending_email %}hidden{% endif %}>ממתין לאישור: <span dir="ltr" id="emailPendingValue">{{ account.pending_email or '' }}</span> — המייל יתחלף אחרי הלחיצה על הקישור שנשלח אליו. אם הגיע מייל אישור גם לכתובת הנוכחית, צריך ללחוץ גם עליו.</p>
                 </div>

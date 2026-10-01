@@ -151,7 +151,7 @@ def test_a_genuinely_wrong_password_still_says_so():
     """בקרת-נגד, והחשובה כאן: זה הרוב המוחלט של המקרים, ואסור להפוך
     אותו למעורפל."""
     for err in ("Invalid login credentials", "not found", ""):
-        assert _login_error(err) == "אימייל/טלפון או סיסמה שגויים", err
+        assert _login_error(err) == "מייל/טלפון או סיסמה שגויים", err
 
 
 def test_the_wrong_password_message_does_not_hint_which_field_was_wrong():

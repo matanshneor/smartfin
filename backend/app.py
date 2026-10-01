@@ -631,7 +631,7 @@ def _looks_like_email(value: str) -> bool:
 def _login_error(err: str) -> str:
     """ממפה כשל התחברות להודעה שאומרת מה קרה.
 
-    כל כשל הוצג כ"אימייל/טלפון או סיסמה שגויים" — גם כשהסיסמה נכונה
+    כל כשל הוצג כ"מייל/טלפון או סיסמה שגויים" — גם כשהסיסמה נכונה
     לגמרי. ‎db.sign_in‎ תופסת כל חריגה ומחזירה את הטקסט שלה, אז הגבלת
     קצב של Supabase, מייל שלא אומת ותקלת חיבור כולם נראו זהים.
 
@@ -649,7 +649,7 @@ def _login_error(err: str) -> str:
         return "יותר מדי ניסיונות בזמן קצר — נסו שוב בעוד כמה דקות"
     if "not configured" in text or "connection" in text or "timeout" in text:
         return "השירות אינו זמין כרגע — נסו שוב בעוד רגע"
-    return "אימייל/טלפון או סיסמה שגויים"
+    return "מייל/טלפון או סיסמה שגויים"
 
 
 def _signup_form():
@@ -890,7 +890,7 @@ def forgot_password():
     body  = request.get_json(silent=True) or {}
     email = _text(body.get("email"))
     if not email:
-        return jsonify({"error": "נא להזין אימייל"}), 422
+        return jsonify({"error": "נא להזין מייל"}), 422
     # פורמט פסול הוא לא מידע על מי רשום, ולכן מותר לומר אותו בקול —
     # בניגוד לתשובה שלמטה, שתמיד "נשלח" כדי לא לחשוף אילו כתובות קיימות.
     # בלי זה מי שהקליד כתובת שבורה קיבל "נשלח קישור" וחיכה לו לשווא.
@@ -3210,7 +3210,7 @@ def _family_rpc_message(err: str) -> str:
     if "manager cannot be removed" in text:
         return "אי אפשר להסיר את מנהל המשפחה"
     if "not a member of your family" in text:
-        return "המשתמש אינו חבר במשפחה שלך"
+        return "זה לא בן משפחה שלכם"
     if "leave_family to remove yourself" in text:
         return "כדי לצאת מהמשפחה השתמשו ב\"עזיבת המשפחה\""
     return "הפעולה נכשלה — נסו שוב"

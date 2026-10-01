@@ -500,7 +500,7 @@
     <ul class="legend-list">
         <li class="legend-item-wrap">
             <div class="legend-item clickable all-tx-header" role="button" tabindex="0" aria-expanded="false">
-                <span class="legend-name all-tx-title">הצגת הכול</span>
+                <span class="legend-name all-tx-title">הצגת הכל</span>
                 <span class="all-tx-count" data-total="{{ month_transactions | length }}">{{ month_transactions | length }}</span>
                 <span class="expand-chevron" aria-hidden="true">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -578,7 +578,7 @@
 {% if project_month.projects %}
 <section class="chart-card">
     <h2 class="chart-title">פרויקטים החודש</h2>
-    <p class="wealth-bucket-hint" style="margin:2px 0 12px;">עסקאות אלה משויכות לפרויקטים ואינן נכללות במאזן החודשי</p>
+    <p class="wealth-bucket-hint" style="margin:2px 0 12px;">עסקאות אלה משויכות לפרויקטים ואינן נכללות במאזן החודש</p>
 
     <ul class="legend-list">
         {% for proj in project_month.projects %}
