@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 
 {% block title %}SmartFin – הגדרות{% endblock %}
+{# בלי + בהגדרות (מתן, 1.10): אין כאן עסקאות, והכפתור רק מסתיר שורות #}
+{% block body_class %}no-fab{% endblock %}
 
 {% block hero %}
 {# שם המשפחה בצד שמאל, באותה שורה עם "הגדרות" (מתן, 1.10 — אפשרות ה) #}

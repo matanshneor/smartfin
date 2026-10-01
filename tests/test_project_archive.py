@@ -114,6 +114,33 @@ def test_no_active_projects_says_only_that(client, fake):
     assert '<p class="projects-none-active">אין כרגע פרויקטים פעילים</p>' in html
 
 
+def test_one_active_project_is_the_default_for_plus(client):
+    """מתן (1.10): בעמוד הפרויקטים, עם פרויקט פעיל אחד, + פותח טופס שהוא בחור בו."""
+    html = client.get("/projects").get_data(as_text=True)
+    assert f'<span id="sfPageProject" data-project-id="{_P_ACTIVE}" hidden></span>' in html
+
+
+def test_several_active_projects_have_no_default(client, fake):
+    client.put(f"/api/projects/{_P_DONE}/archive", json={"archived": False})
+    html = client.get("/projects").get_data(as_text=True)
+    assert 'id="sfPageProject"' not in html
+
+
+def test_no_active_project_no_default(client):
+    client.put(f"/api/projects/{_P_ACTIVE}/archive", json={"archived": True})
+    html = client.get("/projects").get_data(as_text=True)
+    assert 'id="sfPageProject"' not in html
+
+
+def test_settings_has_no_plus():
+    """מתן (1.10): בהגדרות אין + להוספת עסקה."""
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    tpl = (root / "frontend/templates/settings.html").read_text(encoding="utf-8")
+    assert "{% block body_class %}no-fab{% endblock %}" in tpl
+    assert "body.no-fab .fab { display: none; }" in (root / "frontend/static/css/style.css").read_text(encoding="utf-8")
+
+
 def test_finished_projects_have_no_arrow_but_still_open(client):
     """מתן (30.9): בלי החץ הקטן, אבל עדיין קישור לעמוד הפרויקט."""
     html = client.get("/projects").get_data(as_text=True)

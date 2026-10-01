@@ -96,6 +96,9 @@
     </form>
 
     {% if projects %}
+    {# פרויקט פעיל אחד: + פותח טופס שהוא כבר בחור בו, כמו בעמוד הפרויקט
+       (מתן, 1.10). כמה פעילים — אין דרך לדעת לאיזה, הטופס נפתח רגיל. #}
+    {% if projects | length == 1 %}<span id="sfPageProject" data-project-id="{{ projects[0].id }}" hidden></span>{% endif %}
     <ul class="breakdown-bars" id="projectsList" style="margin-top:14px;">
         {% for p in projects %}{{ project_row(p) }}{% endfor %}
     </ul>
