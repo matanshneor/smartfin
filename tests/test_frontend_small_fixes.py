@@ -830,3 +830,16 @@ def test_the_skeleton_rechecks_before_it_shows():
     js = _strip_comments(_read("frontend/static/js/skeleton.js"))
     part = js[js.index("timer = setTimeout(function () {"):]
     assert part.index("if (e.defaultPrevented) return;") < part.index("overlay = build(shape);")
+
+
+def test_jumping_to_a_department_clears_the_sticky_bar():
+    """מתן (2.10): מכרטיס בבית אל המחלקה בעמוד החודש — ראש הכרטיס נחתך מתחת
+    לכותרת הדביקה (44px). המרווח מפנה לה מקום. בדפדפן: tests/browser/home_card_jump.py."""
+    css = _read("frontend/static/css/style.css")
+    rule = css[css.index("#income-breakdown,\n#expense-breakdown,\n#savings-breakdown {"):]
+    rule = rule[:rule.index("}")]
+    assert "scroll-margin-top: calc(58px + env(safe-area-inset-top, 0px));" in rule
+    sticky = css[css.index(".month-sticky {"):]
+    sticky = sticky[:sticky.index("}")]
+    assert "padding: calc(env(safe-area-inset-top, 0px) + 10px) 18px 10px;" in sticky, \
+        "גובה הכותרת הדביקה השתנה — לעדכן את 58px"

@@ -701,8 +701,10 @@ a.kpi-chip:active { transform: scale(0.97); }
 #expense-breakdown,
 #savings-breakdown {
     /* באפליקציה המותקנת באייפון הדף מצויר גם מתחת לשעון ולאי הדינמי,
-       אז 14px מראש המסך הם בתוך הפס — מתן: "האי ממש דורך על זה" */
-    scroll-margin-top: calc(14px + env(safe-area-inset-top, 0px));
+       אז 14px מראש המסך הם בתוך הפס — מתן: "האי ממש דורך על זה".
+       ומעל הכרטיס מופיעה גם הכותרת הדביקה (‎.month-sticky‎, 44px מתחת
+       לפס) — בלעדיה ראש הכרטיס נחתך (מתן, 2.10). 44 + 14 = 58. */
+    scroll-margin-top: calc(58px + env(safe-area-inset-top, 0px));
 }
 
 .chart-card.flash {
