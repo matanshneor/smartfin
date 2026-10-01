@@ -22,3 +22,28 @@ def test_the_family_name_sits_on_the_left_of_the_title():
 def test_renaming_updates_the_name_at_the_top():
     js = (_ROOT / "frontend/static/js/settings.js").read_text(encoding="utf-8")
     assert "document.querySelectorAll('.settings-family-name').forEach(el => { el.textContent = newName; });" in js
+
+
+def test_the_family_box_title_is_just_the_title():
+    """מתן (1.10): בכותרת התיבה רק "המשפחה שלי" — בלי שם המשפחה (כבר
+    בראש העמוד) ובלי מספר החברים."""
+    html = (_ROOT / "frontend/templates/settings.html").read_text(encoding="utf-8")
+    header = html[html.index('<span class="group-title">המשפחה שלי</span>'):]
+    header = header[:header.index("</button>")]
+    assert "group-sub" not in header
+
+
+def test_the_top_shows_my_email_not_the_member_count():
+    html = (_ROOT / "frontend/templates/settings.html").read_text(encoding="utf-8")
+    start = html.index('<div class="hero-profile">')
+    import re
+    hero = re.sub(r"\{#.*?#\}", "", html[start:html.index("{% endblock %}", start)], flags=re.S)
+    assert "{{ account.email }}" in hero
+    assert "חשבון משפחתי" not in hero and "count_of" not in hero
+
+
+def test_renaming_myself_updates_the_top():
+    js = (_ROOT / "frontend/static/js/settings.js").read_text(encoding="utf-8")
+    part = js[js.index("function submitProfile"):js.index("if (saveProfileBtn)")]
+    assert "document.getElementById('heroProfileName')" in part
+    assert "heroName.textContent = d.full_name;" in part

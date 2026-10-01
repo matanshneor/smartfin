@@ -14,8 +14,10 @@
 <div class="hero-profile">
     <div class="member-avatar-lg">{{ user.avatar_initial }}</div>
     <div>
-        <p class="hero-profile-name">{{ account.full_name }}</p>
-        <p class="hero-profile-sub">חשבון משפחתי · {{ members | length | count_of('חבר אחד', 'חברים') }}</p>
+        <p class="hero-profile-name" id="heroProfileName">{{ account.full_name }}</p>
+        {# המייל ולא "חשבון משפחתי · N חברים" (מתן, 1.10) — מספר החברים
+           כבר בתיבת המשפחה, והמייל אומר עם איזה חשבון מחוברים #}
+        <p class="hero-profile-sub" dir="ltr" style="text-align:right;">{{ account.email }}</p>
     </div>
 </div>
 {% endblock %}
@@ -99,8 +101,9 @@
                 </svg>
             </span>
             <span class="group-text">
+                {# רק הכותרת (מתן, 1.10): שם המשפחה כבר בראש העמוד, וחברי
+                   המשפחה רשומים בתוך התיבה #}
                 <span class="group-title">המשפחה שלי</span>
-                <span class="group-sub">{{ family.get('name', 'המשפחה שלי') }} · {{ members | length | count_of('חבר אחד', 'חברים') }}</span>
             </span>
             <span class="group-chevron">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
