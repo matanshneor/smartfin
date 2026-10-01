@@ -66,6 +66,19 @@
     </div>
     {% endif %}
 </div>
+{# התקדמות מול היעד — בחלק העליון, מתחת לריבועים, ולא בכרטיס נפרד שחזר
+   על אותם מספרים (מתן, 1.10 — אפשרות ב). רק כשיש תקציב יעד. #}
+{% if project.budget_target %}
+{% set used_pct = ((project.spent / project.budget_target) * 100) | round | int %}
+<div class="hero-bar">
+    <div class="balance-bar-track" role="progressbar" aria-valuenow="{{ used_pct }}"
+         aria-valuemin="0" aria-valuemax="100" aria-label="{{ used_pct }}% מהיעד נוצל">
+        <div class="balance-bar-fill {% if project.spent > project.budget_target %}danger{% endif %}"
+             style="width: {{ [used_pct, 100] | min }}%;"></div>
+    </div>
+    <div class="balance-bar-legend"><span>{{ used_pct }}% מהיעד נוצל</span></div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -92,18 +105,6 @@
     <a href="{{ url_for('project_edit', project_id=project.id) }}" class="btn-sm btn-ghost">ערוך הגדרות פרויקט</a>
 </div>
 
-{% if project.budget_target %}
-<section class="chart-card">
-    <h2 class="chart-title">התקדמות מול היעד</h2>
-    <div class="balance-bar-track">
-        <div class="balance-bar-fill {% if project.spent > project.budget_target %}danger{% endif %}"
-             style="width: {{ [((project.spent / project.budget_target) * 100) | round | int, 100] | min }}%;"></div>
-    </div>
-    <p class="wealth-bucket-hint" style="margin-top:8px;">
-        {{ ((project.spent / project.budget_target) * 100) | round | int }}% מהיעד נוצל
-    </p>
-</section>
-{% endif %}
 
 <!-- גרף עוגה: חלוקה לפי קטגוריה, לכל סוג נעקב שיש בו עסקאות -->
 {% set type_labels = {'expense': 'הוצאות', 'income': 'הכנסות', 'savings': 'חיסכון'} %}

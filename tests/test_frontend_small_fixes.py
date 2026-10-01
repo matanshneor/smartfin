@@ -469,6 +469,30 @@ def test_the_project_value_sits_above_the_squares_with_its_short_name():
     assert html.index('class="project-net') < html.index('<div class="hero-totals"')
 
 
+@pytest.mark.parametrize("target,spent,pct,danger", [
+    (5000, 3100, 62, False),
+    (1000, 1500, 150, True),
+    (None, 3100, None, False),
+], ids=["under", "over", "no-target"])
+def test_the_target_bar_sits_under_the_squares(target, spent, pct, danger):
+    """מתן (1.10, אפשרות ב): הפס של תקציב היעד בחלק העליון, מתחת לריבועים —
+    ולא כרטיס נפרד "התקדמות מול היעד" שחזר על אותם מספרים. בלי יעד — אין פס."""
+    from backend.app import app
+    html = _read("frontend/templates/project_detail.html")
+    assert "התקדמות מול היעד</h2>" not in html
+    start = html.index("{% if project.budget_target %}\n{% set used_pct")
+    end = html.index("{% endif %}", html.index('class="balance-bar-legend"', start)) + len("{% endif %}")
+    assert html.index('<div class="hero-totals"') < start < html.index("{% endblock %}", start)
+    out = app.jinja_env.from_string(html[start:end]).render(
+        project={"budget_target": target, "spent": spent})
+    if pct is None:
+        assert "hero-bar" not in out
+        return
+    assert f"{pct}% מהיעד נוצל</span>" in out
+    assert f"width: {min(pct, 100)}%;" in out
+    assert ("danger" in out) == danger
+
+
 @pytest.mark.parametrize("chips,columns", [(2, 2), (3, 3), (4, 2), (5, 3), (1, 1)])
 def test_the_squares_share_the_row_evenly(chips, columns):
     from backend.app import app
