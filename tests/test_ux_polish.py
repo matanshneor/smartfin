@@ -93,34 +93,12 @@ def test_the_window_only_sends_what_changed():
     assert "limits[inp.dataset.cat] = null" in part          # ריק = הסרה
 
 
-def test_settings_lands_on_the_right_category():
-    """קישור שנוחת בראש עמוד ההגדרות הוא קישור שלא עוזר."""
-    js = _strip_comments(_read("frontend/static/js/settings.js"))
-    block = js[js.index("#budget-"):]
-
-    assert ".category-row[data-id=" in block, "לא מאתר את הקטגוריה"
-    assert "scrollIntoView" in block, "לא גולל אליה"
-    assert "settings-group-header" in block, "לא פותח את הקבוצה הסגורה"
-    assert "data-cat-tab" in block, "לא עובר ללשונית של הסוג הנכון"
-
-
-def test_landing_there_turns_the_budget_on():
-    """מי שלחץ "קביעת תקציב" התכוון לקבוע תקציב — לא לנחות על שורה
-    שנראית בדיוק כמו קודם ולחפש מה לעשות."""
-    js = _strip_comments(_read("frontend/static/js/settings.js"))
-    block = js[js.index("#budget-"):]
-
-    assert ".budget-enabled" in block
-    assert "toggle.checked = true" in block
-
-
-def test_the_selectors_it_uses_exist_in_the_template():
-    """הקישור שובר בשקט אם שם מחלקה ישתנה בצד השני."""
-    html = _read("frontend/templates/settings.html")
-
-    for needed in ("category-row", "budget-enabled", "budget-amount",
-                   "cat-tab-panel", "settings-group-header"):
-        assert needed in html, f"{needed} לא קיים בתבנית"
+def test_the_old_per_category_link_left_nothing_behind():
+    """מתן (1.10): הקישור "קביעת תקציב" ליד כל קטגוריה הוחלף בחלון (30.9),
+    אבל הקוד שחיכה לו בהגדרות (‎#budget-<id>‎) והעיצוב שלו נשארו."""
+    assert "#budget-" not in _read("frontend/static/js/settings.js")
+    css = _read("frontend/static/css/style.css")
+    assert ".cat-budget-cta" not in css and "just-landed" not in css
 
 
 # ─── 3. לשון אחת ─────────────────────────────────────────────────────────────
