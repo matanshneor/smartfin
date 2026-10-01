@@ -51,7 +51,7 @@
     let editId        = null;   // null = adding a new transaction, otherwise editing this id
     let editingRecurringParentId = null; // אם עורכים מופע שנוצר מתבנית קבועה — מזהה התבנית
     let editingOriginal = null;          // העסקה כמו שהייתה לפני העריכה — ל"בטל" (סבב 6, פריט 10)
-    let originalAmount = null;  // הסכום שנטען לעריכה, להשוואה לזיהוי "שינית את הסכום"
+    let originalAmount = null;  // הסכום שנטען לעריכה, להשוואה לזיהוי "שיניתם את הסכום"
     let categoriesCache = null;
 
     /* סריקת קבלה לוקחת כמה שניות, ובזמן הזה אפשר לסגור את הטופס ולפתוח עסקה
@@ -1137,7 +1137,7 @@
                 sideEffects.push(function () {
                     return window.appConfirm({
                         title: 'לעדכן גם את החודשים הבאים?',
-                        message: 'שינית את הסכום. להמשיך איתו גם בחודשים הבאים? החודשים שכבר עברו יישארו כמו שהם.',
+                        message: 'שיניתם את הסכום. להמשיך איתו גם בחודשים הבאים? החודשים שכבר עברו יישארו כמו שהם.',
                         confirmText: 'עדכן להבא',
                         danger: false,
                     }).then(function (ok) {
@@ -1415,7 +1415,7 @@
         setType(currentType);
         updateSubmitLabel();
         txAmount.focus();
-        window.showToast('שכפול — עדכן ושמור');
+        window.showToast('שכפול — עדכנו ושמרו');
     });
 
     // Delete (edit mode only)

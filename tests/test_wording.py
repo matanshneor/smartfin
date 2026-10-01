@@ -162,3 +162,14 @@ def test_the_project_edit_page_says_what_it_edits():
     html = (_ROOT / "frontend/templates/project_edit.html").read_text(encoding="utf-8")
     assert '<h1 class="hero-title">עריכת פרויקט</h1>' in html
     assert "עריכת הגדרות" not in html
+
+
+@pytest.mark.parametrize("singular", [
+    "הדבק קוד", "אם קיבלת ", "צור פרויקט כדי", "עדכן ושמור", "שינית את", "תאבד גישה",
+    "שרשמת ", "שרצית ", "נרשמת בהצלחה", "שחיפשת ", "מעבירים אותך",
+])
+def test_verbs_address_the_family_in_plural(singular):
+    """מתן (1.10): פעלים שפונים למשתמש — תמיד ברבים ("שיניתם", "נסו"). "שלך"
+    ו"לך" על דברים אישיים נשארים (אפשרות ב)."""
+    hits = [(name, line.strip()) for name, line in _visible_strings() if singular in line]
+    assert not hits, hits

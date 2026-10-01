@@ -827,7 +827,7 @@ def signup():
                 # ההרשמה — המשתמש כבר נוצר ב-Auth ואסור להשאיר אותו בלי דרך
                 # להיכנס — אבל הוא כן חייב להיאמר בקול. בעבר הערך המוחזר נזרק,
                 # וכל מצטרף קיבל "נרשמת בהצלחה" ואז משפחה חדשה משלו בשקט.
-                success = "נרשמת בהצלחה! כעת ניתן להתחבר."
+                success = "נרשמתם בהצלחה! כעת ניתן להתחבר."
                 if invite_code and response and response.user:
                     # ה-RPC מזהה את המצטרף דרך auth.uid(), ולכן ה-client חייב
                     # לשאת את הטוקן של המשתמש החדש. לא מסתמכים על כך שה-SDK
@@ -839,7 +839,7 @@ def signup():
                     _, join_err = db.join_family_by_code(invite_code)
                     if join_err:
                         logger.warning("signup join failed for %s: %s", email, join_err)
-                        success = (f"נרשמת בהצלחה! אבל {join_err}. "
+                        success = (f"נרשמתם בהצלחה! אבל {join_err}. "
                                    "אפשר להתחבר ולהצטרף למשפחה דרך ההגדרות.")
                 # ההרשמה לא מחברת אוטומטית, אבל היא כן הופכת את המכשיר
                 # למוכר — מי שהרגע פתח חשבון בוודאי לא צריך לראות שוב את
@@ -2454,7 +2454,7 @@ def add_transaction():
             "needs_confirm": True,
             "will_create": retro,
             "error": f"העסקה הקבועה הזאת תיצור {retro} עסקאות אחורה, מ-{tx_date}. "
-                     f"אם זה מה שרצית — אשרו.",
+                     f"אם זה מה שרציתם — אשרו.",
         }), 409
     project_id, project_category_id, category_id, owner_user_id, proj_err = \
         _apply_project_assignment(body, user, tx_type)
@@ -2587,7 +2587,7 @@ def update_transaction(tx_id):
             "needs_confirm": True,
             "will_create": retro,
             "error": f"העסקה הקבועה הזאת תיצור {retro} עסקאות אחורה, מ-{tx_date}. "
-                     f"אם זה מה שרצית — אשרו.",
+                     f"אם זה מה שרציתם — אשרו.",
         }), 409
 
     # מופע של סדרה לא יכול להפוך לתבנית בפני עצמה. אין אילוץ במסד שמונע
@@ -3500,7 +3500,7 @@ def add_security_headers(response):
 
 @app.errorhandler(404)
 def not_found(e):
-    msg = "הדף שחיפשת לא נמצא"
+    msg = "הדף שחיפשתם לא נמצא"
     if _is_api_request():
         return jsonify({"error": msg}), 404
     return render_template("error.html", code=404, message=msg), 404

@@ -536,7 +536,7 @@ if (saveProfileBtn) {
         if (workplaceChanged) {
             window.appConfirm({
                 title: 'לעדכן גם עסקאות משכורת קודמות?',
-                message: 'שינית את מקום העבודה. אפשר לעדכן אותו על כל היסטוריית המשכורות, או רק מהחודש הנוכחי ואילך (עסקאות ישנות יותר ישמרו את מקום העבודה הקודם).',
+                message: 'שיניתם את מקום העבודה. אפשר לעדכן אותו על כל היסטוריית המשכורות, או רק מהחודש הנוכחי ואילך (עסקאות ישנות יותר ישמרו את מקום העבודה הקודם).',
                 confirmText: 'כל ההיסטוריה',
                 cancelText: 'רק מהחודש הזה',
                 danger: false,
@@ -1121,13 +1121,13 @@ updateWorkplaceState();
         leaveBtn.addEventListener('click', function () {
             window.appConfirm({
                 title: 'לעזוב את המשפחה?',
-                message: 'תאבד גישה לתקציב המשפחתי. תיפתח לך משפחה חדשה וריקה, '
+                message: 'תאבדו גישה לתקציב המשפחתי. תיפתח לך משפחה חדשה וריקה, '
                        + 'והחשבון שלך נשאר. אפשר לחזור בקוד הזמנה.',
                 confirmText: 'המשך',
             }).then(function (ok) {
                 if (!ok) return null;
                 return askAboutTransactions('העסקאות שלך',
-                    'העסקאות שרשמת נרשמו מהתקציב המשותף ויישארו אצל המשפחה.');
+                    'העסקאות שרשמתם נרשמו מהתקציב המשותף ויישארו אצל המשפחה.');
             }).then(function (choice) {
                 if (!choice) return;
                 leaveBtn.disabled = true;

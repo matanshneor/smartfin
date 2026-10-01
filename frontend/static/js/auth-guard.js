@@ -27,7 +27,7 @@
             if (response.status === 401 && isOurs(input) && !handling) {
                 handling = true;
                 if (window.showToast) {
-                    window.showToast('ההתחברות הסתיימה — מעבירים אותך להתחברות', 'error');
+                    window.showToast('ההתחברות הסתיימה — מעבירים להתחברות', 'error');
                 }
                 // שהות קצרה כדי שההודעה תיקרא; בלעדיה המסך פשוט מתחלף
                 setTimeout(function () { window.location.href = '/login'; }, 1400);
