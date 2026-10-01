@@ -154,3 +154,49 @@ if ('serviceWorker' in navigator) {
         });
     });
 })();
+
+
+// ── התפריט התחתון נשאר למטה — רק באפליקציה המותקנת באייפון (מתן, 1.10) ──
+//
+// באג ידוע של iOS באפליקציה ממסך הבית: אלמנטים ‎position: fixed‎ "נסחפים"
+// בגלילה ונתקעים באמצע המסך עד מעבר עמוד (מתן: "סתם בגלילה", "נשאר תקוע").
+// מעבר עמוד מתקן — כי הוא מחשב אותם מחדש. אז כשהגלילה נעצרת מחשבים אותם
+// מחדש בעצמנו, ואם המסך הנראה והמסך שהדפדפן מחשב לא נגמרים באותו מקום —
+// מזיזים אותם לתחתית האמיתית. בזמן הקלדה לא נוגעים: המקלדת מקצרת את המסך
+// הנראה בכוונה, והתפריט לא אמור לטפס מעליה.
+(function () {
+    if (window.navigator.standalone !== true) return;
+    const vv = window.visualViewport;
+
+    window.sfDockOffset = function (innerHeight, vvHeight, vvOffsetTop) {
+        const gap = Math.round(innerHeight - (vvHeight + vvOffsetTop));
+        return Math.abs(gap) > 2 ? -gap : 0;
+    };
+
+    function typing() {
+        const a = document.activeElement;
+        return a && a.matches && a.matches('input, textarea, select, [contenteditable="true"]');
+    }
+
+    function settle() {
+        const shift = (vv && !typing())
+            ? window.sfDockOffset(window.innerHeight, vv.height, vv.offsetTop) : 0;
+        document.querySelectorAll('.bottom-nav, .fab').forEach(function (el) {
+            // חישוב מחדש: יציאה רגעית מ-fixed וחזרה, בלי ציור באמצע
+            el.style.position = 'absolute';
+            void el.offsetHeight;
+            el.style.position = '';
+            // ‎translate‎ ולא ‎transform‎ — לא דורס את הלחיצה (‎scale‎) של כפתור ה-+
+            el.style.translate = shift ? '0 ' + shift + 'px' : '';
+        });
+    }
+
+    let timer = null;
+    function soon() { clearTimeout(timer); timer = setTimeout(settle, 120); }
+    window.addEventListener('scroll', soon, { passive: true });
+    if (vv) { vv.addEventListener('resize', soon); vv.addEventListener('scroll', soon); }
+    window.addEventListener('pageshow', soon);
+    window.addEventListener('sf:refreshed', soon);
+    document.addEventListener('focusout', soon);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) soon(); });
+})();
