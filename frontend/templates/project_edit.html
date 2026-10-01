@@ -66,7 +66,7 @@
             </p>
         </div>
         <div class="form-group">
-            <label class="form-label">אילו סוגי עסקאות לעקוב?</label>
+            <label class="form-label">אילו מחלקות לעקוב?</label>
             <label class="checkbox-label">
                 <input type="checkbox" id="editProjectTrackExpense" class="checkbox-input" {% if project.track_expense %}checked{% endif %}>
                 <span class="checkbox-custom"></span>
@@ -129,7 +129,7 @@
     {% if project.track_expense %}{% set _ = tracked_types.append('expense') %}{% endif %}
     {% if project.track_income %}{% set _ = tracked_types.append('income') %}{% endif %}
     {% if project.track_savings %}{% set _ = tracked_types.append('savings') %}{% endif %}
-    <div class="type-toggle project-cat-tabs" id="projectCatTabs" role="tablist" aria-label="סוג קטגוריה"
+    <div class="type-toggle project-cat-tabs" id="projectCatTabs" role="tablist" aria-label="מחלקה"
          style="margin-top:14px; grid-template-columns: repeat({{ tracked_types | length }}, 1fr);">
         {% for t in tracked_types %}
         <button type="button" class="toggle-btn {% if loop.first %}active{% endif %}" data-cat-tab="{{ t }}"

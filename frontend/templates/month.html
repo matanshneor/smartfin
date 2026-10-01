@@ -512,7 +512,7 @@
                 {% set tx_types = [('expense', 'הוצאות'), ('income', 'הכנסות'), ('savings', 'חיסכון')]
                                   | selectattr(0, 'in', present) | list %}
                 {% if tx_types | length > 1 %}
-                <div class="tx-type-chips" role="group" aria-label="סינון לפי סוג">
+                <div class="tx-type-chips" role="group" aria-label="סינון לפי מחלקה">
                     <button type="button" class="date-chip tx-type-chip active" data-type="" aria-pressed="true">הכל</button>
                     {% for key, label in tx_types %}
                     <button type="button" class="date-chip tx-type-chip" data-type="{{ key }}" aria-pressed="false">{{ label }}</button>

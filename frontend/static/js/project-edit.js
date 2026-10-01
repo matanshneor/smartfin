@@ -20,7 +20,7 @@ editForm.addEventListener('submit', function (e) {
     const trackSavings = document.getElementById('editProjectTrackSavings').checked;
     if (!name) { editError.textContent = 'נא להזין שם לפרויקט'; return; }
     if (!trackExpense && !trackIncome && !trackSavings) {
-        editError.textContent = 'יש לבחור לפחות סוג עסקה אחד למעקב';
+        editError.textContent = 'יש לבחור לפחות מחלקה אחת למעקב';
         return;
     }
 

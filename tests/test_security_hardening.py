@@ -88,7 +88,7 @@ def test_a_category_of_the_wrong_type_is_refused(monkeypatch):
 
     _, err = app_module._validated_category("cat-1", _user(), "expense")
 
-    assert "אינה מתאימה" in err
+    assert "אינה שייכת למחלקה" in err
 
 
 def test_every_project_route_goes_through_the_access_gate():

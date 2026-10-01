@@ -1433,7 +1433,7 @@ def month_csv():
 
     buffer = io.StringIO()
     writer = csv.writer(buffer, lineterminator="\r\n")
-    writer.writerow(["תאריך", "סוג", "סכום", "קטגוריה", "תיאור",
+    writer.writerow(["תאריך", "מחלקה", "סכום", "קטגוריה", "תיאור",
                      "בן משפחה", "פרויקט", "עסקה קבועה"])
     for tx in rows:
         writer.writerow([
@@ -1581,7 +1581,7 @@ def _parse_project_body(body: dict):
     track_income  = bool(body.get("track_income", False))
     track_savings = bool(body.get("track_savings", False))
     if not (track_expense or track_income or track_savings):
-        return None, "יש לבחור לפחות סוג עסקה אחד למעקב"
+        return None, "יש לבחור לפחות מחלקה אחת למעקב"
 
     return {
         "name": name, "budget_target": budget_target, "description": description,
@@ -1829,7 +1829,7 @@ def add_project_category_route(project_id):
         return jsonify({"error": "נא להזין שם קטגוריה"}), 422
     type_ = body.get("type")
     if type_ not in ("expense", "income", "savings"):
-        return jsonify({"error": "סוג קטגוריה לא תקין"}), 422
+        return jsonify({"error": "מחלקת הקטגוריה לא תקינה"}), 422
     cat, err = db.add_project_category(project_id, user["family_id"], name,
                                        icon, type_)
     if err:
@@ -2307,7 +2307,7 @@ def _apply_project_assignment(body: dict, user: dict, tx_type: str, current=None
     # "עוקב אחרי סוג" קובע מה אפשר **להוסיף** לפרויקט. עסקה שכבר בו נשארת —
     # אחרת עריכת הסכום שלה הוציאה אותה בשקט מהפרויקט אל הוצאות הבית.
     if not project.get(track_key) and project_id != current.get("project_id"):
-        return None, None, None, None, "הפרויקט הזה לא עוקב אחרי סוג העסקה הזה"
+        return None, None, None, None, "הפרויקט הזה לא עוקב אחרי המחלקה הזאת"
 
     owner_id = project.get("owner_id")
     if owner_id:
@@ -2336,7 +2336,7 @@ def _validated_category(category_id, user: dict, tx_type: str):
     for cat in db.get_categories(user["family_id"]):
         if cat["id"] == category_id:
             if cat.get("type") != tx_type:
-                return None, "הקטגוריה אינה מתאימה לסוג העסקה"
+                return None, "הקטגוריה אינה שייכת למחלקה של העסקה"
             return category_id, None
     return None, "הקטגוריה לא נמצאה"
 
@@ -2421,11 +2421,11 @@ def add_transaction():
 
     required = ("amount", "type", "date")
     if not all(body.get(k) for k in required):
-        return jsonify({"error": "חסרים פרטים: סכום, סוג ותאריך הם שדות חובה"}), 422
+        return jsonify({"error": "חסרים פרטים: סכום, מחלקה ותאריך הם שדות חובה"}), 422
 
     tx_type = body["type"]
     if tx_type not in ("expense", "income", "savings"):
-        return jsonify({"error": "סוג העסקה חייב להיות הוצאה, הכנסה או חיסכון"}), 422
+        return jsonify({"error": "המחלקה חייבת להיות הוצאה, הכנסה או חיסכון"}), 422
 
     amount, amount_err = _parse_amount(body["amount"])
     if amount_err:
@@ -2533,11 +2533,11 @@ def update_transaction(tx_id):
 
     required = ("amount", "type", "date")
     if not all(body.get(k) for k in required):
-        return jsonify({"error": "חסרים פרטים: סכום, סוג ותאריך הם שדות חובה"}), 422
+        return jsonify({"error": "חסרים פרטים: סכום, מחלקה ותאריך הם שדות חובה"}), 422
 
     tx_type = body["type"]
     if tx_type not in ("expense", "income", "savings"):
-        return jsonify({"error": "סוג העסקה חייב להיות הוצאה, הכנסה או חיסכון"}), 422
+        return jsonify({"error": "המחלקה חייבת להיות הוצאה, הכנסה או חיסכון"}), 422
 
     amount, amount_err = _parse_amount(body["amount"])
     if amount_err:
@@ -2930,7 +2930,7 @@ def add_category():
 
     type_ = body.get("type", "expense")
     if type_ not in ("expense", "income", "savings"):
-        return jsonify({"error": "סוג הקטגוריה חייב להיות הוצאה, הכנסה או חיסכון"}), 422
+        return jsonify({"error": "מחלקת הקטגוריה חייבת להיות הוצאה, הכנסה או חיסכון"}), 422
 
     cat, err = db.add_custom_category(
         family_id=user["family_id"],
@@ -3002,7 +3002,7 @@ def _deletion_plan(kind, cat_id, user, project=None):
     plan["blocked"] = None
     if not plan["alternatives"] and needed:
         plan["blocked"] = (f"זו קטגוריית ה{_TYPE_NOUN.get(type_, '')} האחרונה — "
-                           "בלעדיה אי אפשר לרשום עסקאות מהסוג הזה. "
+                           "בלעדיה אי אפשר לרשום עסקאות במחלקה הזאת. "
                            "אפשר לשנות לה את השם במקום למחוק.")
     return plan
 

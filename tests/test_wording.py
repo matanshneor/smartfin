@@ -215,3 +215,13 @@ def test_one_name_for_each_thing(other_name):
     word = re.compile(r"(?<![\u0590-\u05FF])" + re.escape(other_name) + r"(?![\u0590-\u05FF])")
     hits = [(name, line.strip()) for name, line in _visible_strings() if word.search(line)]
     assert not hits, hits
+
+
+def test_income_expense_savings_are_called_departments():
+    """מתן (1.10): הכנסות / הוצאות / חיסכון הן "מחלקות", לא "סוגים". מה שנשאר
+    עם "סוג" מדבר על משהו אחר (סוג קובץ, "מכל סוג")."""
+    word = re.compile(r"(?<![֐-׿])(ה|ל|מ|ב|ש|ו)?(סוג|סוגי|סוגים|הסוג)(?![֐-׿])")
+    allowed = ("סוג הקובץ", "מכל סוג")
+    hits = [(name, line.strip()) for name, line in _visible_strings()
+            if word.search(line) and not any(a in line for a in allowed)]
+    assert not hits, hits
