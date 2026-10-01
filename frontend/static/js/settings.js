@@ -482,7 +482,6 @@ if (cancelProfileBtn) {
 function submitProfile(workplaceScope) {
     const firstName = document.getElementById('editFirstName').value.trim();
     const lastName  = document.getElementById('editLastName').value.trim();
-    const phone     = document.getElementById('editPhone').value.trim();
     const workplace = document.getElementById('editWorkplace').value.trim();
 
     saveProfileBtn.disabled = true;
@@ -490,7 +489,7 @@ function submitProfile(workplaceScope) {
         method:  'PUT',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-            first_name: firstName, last_name: lastName, phone: phone, workplace: workplace,
+            first_name: firstName, last_name: lastName, workplace: workplace,
             workplace_scope: workplaceScope || undefined,
         }),
     })
@@ -499,13 +498,6 @@ function submitProfile(workplaceScope) {
         saveProfileBtn.disabled = false;
         if (d.error) { profileError.textContent = d.error; return; }
         accountNameDisplay.textContent = d.full_name;
-
-        const phoneDisplay = document.getElementById('accountPhoneDisplay');
-        // בלי אימוג'י: השרת מרנדר ‎{{ m.phone }}‎ נקי, אז השורה קיבלה
-        // "📞 050-…" בשמירה וחזרה ל-"050-…" ברענון — נראה כמו באג תצוגה
-        // דווקא במסך שכל תפקידו להיראות אמין.
-        phoneDisplay.textContent = d.phone || '';
-        phoneDisplay.style.display = d.phone ? '' : 'none';
 
         const workplaceDisplay = document.getElementById('accountWorkplaceDisplay');
         workplaceDisplay.textContent = d.workplace || '';
@@ -631,6 +623,99 @@ if (changePasswordBtn) {
             changePasswordBtn.disabled = false;
             changePasswordBtn.textContent = 'עדכן סיסמה';
             pwError.textContent = window.sfNetError();
+        });
+    });
+}
+
+// ── מייל וטלפון בתיבת "חשבון" (מתן, 1.10) ──
+function toggleForm(btnId, formId, onClose) {
+    const btn = document.getElementById(btnId);
+    const form = document.getElementById(formId);
+    if (!btn || !form) return;
+    btn.addEventListener('click', function () {
+        if (!form.classList.toggle('visible')) onClose();
+    });
+}
+
+function resetEmailForm() {
+    document.getElementById('newEmail').value = '';
+    document.getElementById('emailCurrentPassword').value = '';
+    document.getElementById('emailError').textContent = '';
+}
+function closeEmailForm() { document.getElementById('emailForm').classList.remove('visible'); resetEmailForm(); }
+toggleForm('toggleEmailBtn', 'emailForm', resetEmailForm);
+const cancelEmailBtn = document.getElementById('cancelEmailBtn');
+if (cancelEmailBtn) cancelEmailBtn.addEventListener('click', closeEmailForm);
+
+const saveEmailBtn = document.getElementById('saveEmailBtn');
+if (saveEmailBtn) {
+    saveEmailBtn.addEventListener('click', function () {
+        const email = document.getElementById('newEmail').value.trim();
+        const currentPassword = document.getElementById('emailCurrentPassword').value;
+        const err = document.getElementById('emailError');
+        err.textContent = '';
+        if (!email) { err.textContent = 'נא להזין מייל חדש'; return; }
+        if (!currentPassword) { err.textContent = 'נא להזין את הסיסמה הנוכחית'; return; }
+
+        saveEmailBtn.disabled = true;
+        fetch('/api/profile/email', {
+            method:  'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ email: email, current_password: currentPassword }),
+        })
+        .then(r => r.json())
+        .then(function (d) {
+            saveEmailBtn.disabled = false;
+            if (d.error) { err.textContent = d.error; return; }
+            document.getElementById('emailPendingValue').textContent = d.pending_email;
+            document.getElementById('emailPendingNote').hidden = false;
+            closeEmailForm();
+            window.showToast('נשלח קישור אישור למייל החדש');
+        })
+        .catch(function () {
+            saveEmailBtn.disabled = false;
+            err.textContent = window.sfNetError();
+        });
+    });
+}
+
+const phoneInput = document.getElementById('newPhone');
+function resetPhoneForm() {
+    if (phoneInput) phoneInput.value = phoneInput.defaultValue;
+    const err = document.getElementById('phoneError');
+    if (err) err.textContent = '';
+}
+function closePhoneForm() { document.getElementById('phoneForm').classList.remove('visible'); resetPhoneForm(); }
+toggleForm('togglePhoneBtn', 'phoneForm', resetPhoneForm);
+const cancelPhoneBtn = document.getElementById('cancelPhoneBtn');
+if (cancelPhoneBtn) cancelPhoneBtn.addEventListener('click', closePhoneForm);
+
+const savePhoneBtn = document.getElementById('savePhoneBtn');
+if (savePhoneBtn) {
+    savePhoneBtn.addEventListener('click', function () {
+        const err = document.getElementById('phoneError');
+        err.textContent = '';
+        savePhoneBtn.disabled = true;
+        fetch('/api/profile/phone', {
+            method:  'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ phone: phoneInput.value.trim() }),
+        })
+        .then(r => r.json())
+        .then(function (d) {
+            savePhoneBtn.disabled = false;
+            if (d.error) { err.textContent = d.error; return; }
+            document.getElementById('accountPhoneValue').textContent = d.phone;
+            phoneInput.defaultValue = d.phone;
+            // גם השורה שלי ב"המשפחה שלי"
+            const row = document.getElementById('accountPhoneDisplay');
+            if (row) { row.textContent = d.phone; row.style.display = ''; }
+            closePhoneForm();
+            window.showToast('הטלפון עודכן');
+        })
+        .catch(function () {
+            savePhoneBtn.disabled = false;
+            err.textContent = window.sfNetError();
         });
     });
 }

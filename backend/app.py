@@ -1941,11 +1941,13 @@ def settings():
 
     full_name = profile.get("full_name") or profile.get("name") or user["name"]
     name_parts = full_name.split(" ", 1)
+    email, pending_email = _current_email()
     account = {
         "full_name":  full_name,
         "first_name": name_parts[0] if name_parts else "",
         "last_name":  name_parts[1] if len(name_parts) > 1 else "",
-        "email":      session.get("user_email", ""),
+        "email":      email,
+        "pending_email": pending_email,
         "phone":      profile.get("phone") or "",
         "workplace":  profile.get("workplace") or "",
     }
@@ -1990,6 +1992,10 @@ def update_profile():
 
     old_profile = db.get_profile(user["id"]) or {}
     old_workplace = old_profile.get("workplace") or ""
+    # הטלפון עבר ל"חשבון" (מתן, 1.10) ולא נשלח מכאן יותר. בלי זה כל שמירה
+    # של שם או מקום עבודה הייתה מוחקת אותו — ואיתו את ההתחברות בטלפון.
+    if "phone" not in body:
+        phone = old_profile.get("phone") or ""
 
     full_name = f"{first_name} {last_name}"
     ok, err = db.update_profile(user["id"], full_name, phone or None, workplace or None)
@@ -2028,7 +2034,7 @@ def update_password():
         return jsonify({"error": "הסיסמאות החדשות אינן תואמות"}), 422
 
     # מוודאים שהסיסמה הנוכחית נכונה לפני שמאפשרים להחליף אותה
-    _, err = db.sign_in(session.get("user_email", ""), current_password)
+    _, err = db.sign_in(_current_email()[0], current_password)
     if err:
         return jsonify({"error": "הסיסמה הנוכחית שגויה"}), 403
 
@@ -2036,6 +2042,62 @@ def update_password():
     if not ok:
         return jsonify({"error": _user_message(err, "עדכון הסיסמה נכשל")}), 500
     return jsonify({"status": "ok"})
+
+
+def _current_email():
+    """‎(email, pending_email)‎ מ-Supabase, ומעדכן את הסשן. בלי חיבור — המייל
+    שבסשן, ובלי "ממתין". ראו ‎db.get_auth_email‎."""
+    email, pending = db.get_auth_email(session.get("access_token"))
+    if email:
+        session["user_email"] = email
+    return email or session.get("user_email", ""), pending
+
+
+@app.route("/api/profile/phone", methods=["PUT"])
+@login_required
+@limiter.limit("20 per minute")
+def update_phone():
+    """שינוי טלפון מתיבת "חשבון" (מתן, 1.10). הטלפון משמש גם להתחברות,
+    אז ריק אינו מותר — כמו בהרשמה."""
+    user  = get_current_user()
+    body  = request.get_json(silent=True) or {}
+    phone = _normalize_phone(_text(body.get("phone")))
+    if not phone or not _looks_like_phone(phone):
+        return jsonify({"error": "מספר הטלפון אינו תקין — למשל 050-1234567"}), 422
+    ok, err = db.update_phone(user["id"], phone)
+    if not ok:
+        return jsonify({"error": _user_message(err, "עדכון הטלפון נכשל")}), 500
+    return jsonify({"status": "ok", "phone": phone})
+
+
+@app.route("/api/profile/email", methods=["PUT"])
+@login_required
+# בודק סיסמה — אותו אורקל כמו שינוי סיסמה, ואותה הגבלה. וכל בקשה שולחת מייל.
+@limiter.limit("5 per minute")
+def update_email():
+    """שינוי מייל (מתן, 1.10): מייל חדש + הסיסמה הנוכחית, ואז קישור אישור.
+    בלי הסיסמה, מי שתופס טלפון פתוח מעביר את החשבון למייל שלו ומאפס סיסמה."""
+    body             = request.get_json(silent=True) or {}
+    new_email        = _text(body.get("email")).lower()
+    current_password = body.get("current_password", "")
+
+    if not _looks_like_email(new_email):
+        return jsonify({"error": "כתובת המייל אינה תקינה"}), 422
+    if not current_password:
+        return jsonify({"error": "נא להזין את הסיסמה הנוכחית"}), 422
+    current_email, _ = _current_email()
+    if new_email == (current_email or "").lower():
+        return jsonify({"error": "זה כבר המייל של החשבון"}), 422
+
+    _, err = db.sign_in(current_email, current_password)
+    if err:
+        return jsonify({"error": "הסיסמה הנוכחית שגויה"}), 403
+
+    ok, err = db.request_email_change(session.get("access_token"), new_email,
+                                      url_for("settings", _external=True))
+    if not ok:
+        return jsonify({"error": _user_message(err, "שליחת מייל האישור נכשלה")}), 500
+    return jsonify({"status": "ok", "pending_email": new_email})
 
 
 @app.route("/api/account/reset", methods=["POST"])
@@ -2057,7 +2119,7 @@ def reset_account_route():
     if scope not in ("family", "mine"):
         return jsonify({"error": "קלט לא תקין"}), 422
 
-    response, err = db.sign_in(session.get("user_email", ""), password)
+    response, err = db.sign_in(_current_email()[0], password)
     if err:
         return jsonify({"error": "הסיסמה שגויה"}), 403
 
@@ -2099,7 +2161,7 @@ def delete_account_route():
         return jsonify({"error": "נא להזין את הסיסמה הנוכחית"}), 422
 
     # אימות סיסמה — גם מגן ממחיקה בטעות וגם מרענן את הטוקן שאיתו נמחק
-    response, err = db.sign_in(session.get("user_email", ""), password)
+    response, err = db.sign_in(_current_email()[0], password)
     if err:
         return jsonify({"error": "הסיסמה שגויה"}), 403
 

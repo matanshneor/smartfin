@@ -416,6 +416,81 @@ def update_profile(user_id: str, name: str, phone: str = None, workplace: str = 
         return False, None
 
 
+def update_phone(user_id: str, phone: str):
+    """מחליף רק את הטלפון (מתן, 1.10 — "חשבון" בהגדרות). מחזיר (ok, error)."""
+    client = get_client()
+    if not client:
+        return False, "Database not configured"
+    try:
+        client.table("profiles").update({"phone": phone}).eq("id", user_id).execute()
+        return True, None
+    except Exception as e:
+        logger.exception("update_phone")
+        if "duplicate" in str(e).lower() and "phone" in str(e).lower():
+            return False, "מספר הטלפון כבר רשום למשתמש אחר"
+        return False, None
+
+
+def _auth_user_request(method: str, access_token: str, **kwargs):
+    """פנייה ל-‎/auth/v1/user‎ עם הטוקן של המשתמש עצמו — כמו ‎update_password‎,
+    ולא דרך הלקוח המשותף, שה"סשן הנוכחי" שלו אינו בטוח בין משתמשים."""
+    import httpx
+
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    if not url or not key or not access_token:
+        return None
+    return getattr(httpx, method)(
+        f"{url}/auth/v1/user",
+        headers={"apikey": key, "Authorization": f"Bearer {access_token}",
+                 "Content-Type": "application/json"},
+        timeout=10, **kwargs)
+
+
+def get_auth_email(access_token: str):
+    """המייל הנוכחי, ומייל שממתין לאישור אם יש: ‎(email, new_email)‎.
+
+    המייל בסשן נשמר בהתחברות ולא מתעדכן לבד — אחרי שאישרו מייל חדש הוא
+    נשאר הישן, והגדרות הציגו אותו ו"סיסמה נוכחית" נבדקה מולו ונכשלה.
+    ‎(None, None)‎ כשאי אפשר לדעת; הקורא נופל למייל שבסשן."""
+    import httpx
+    try:
+        r = _auth_user_request("get", access_token)
+        if r is None or r.status_code >= 400:
+            return None, None
+        data = r.json()
+        return data.get("email"), data.get("new_email")
+    except (httpx.HTTPError, ValueError):
+        logger.exception("get_auth_email")
+        return None, None
+
+
+def request_email_change(access_token: str, new_email: str, redirect_to: str):
+    """מבקש להחליף את המייל. Supabase שולח קישור אישור לכתובת החדשה (ואם
+    "שינוי מייל מאובטח" פעיל — גם לנוכחית), והמייל מתחלף רק אחרי האישור.
+    עד אז ההתחברות ממשיכה עם הישן. מחזיר (ok, error)."""
+    import httpx
+    try:
+        r = _auth_user_request("put", access_token, params={"redirect_to": redirect_to},
+                               json={"email": new_email})
+        if r is None:
+            return False, "Database not configured"
+        if r.status_code >= 400:
+            body = r.json() if r.content else {}
+            code = (body.get("error_code") or body.get("code") or "")
+            text = (body.get("msg") or body.get("message") or "").lower()
+            if code == "email_exists" or "already been registered" in text:
+                return False, "המייל הזה כבר רשום בחשבון אחר"
+            if "rate" in str(code) or "rate limit" in text:
+                return False, "נשלחו יותר מדי מיילים — נסו שוב בעוד כמה דקות"
+            logger.warning("request_email_change: %s %s", r.status_code, body)
+            return False, None
+        return True, None
+    except (httpx.HTTPError, ValueError):
+        logger.exception("request_email_change")
+        return False, None
+
+
 def update_workplace_history(user_id: str, family_id: str, new_workplace: str,
                              old_workplace: str, apply_to_all: bool):
     """מיישם שינוי מקום עבודה על עסקאות משכורת (הכנסה) קיימות של המשתמש —

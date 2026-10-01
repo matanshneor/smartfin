@@ -99,6 +99,10 @@ def _unit_tests_cannot_reach_supabase(request, monkeypatch):
         )
 
     monkeypatch.setattr(db, "get_client", _refuse)
+    # המייל העדכני מ-Supabase (‎_current_email‎ ב-app). ברירת מחדל בבדיקות:
+    # "אי אפשר לדעת" — והאפליקציה נופלת למייל שבסשן, כמו לפני 1.10.
+    # בדיקה שצריכה מייל אחר מחליפה את זה בעצמה.
+    monkeypatch.setattr(db, "get_auth_email", lambda token: (None, None))
     # וגם רשת ישירה. ‎send_reset_email‎, ‎upload_receipt‎ ו-‎delete_receipts‎
     # פונים ל-Supabase ב-httpx ולא דרך ‎get_client‎ — ובדיקת ביקורת על "שכחתי
     # סיסמה" שלחה ככה בקשת איפוס אמיתית (30.9.2026, לכתובת שלא רשומה, אז
