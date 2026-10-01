@@ -1,19 +1,25 @@
 const SF_VIEW = window.sfData('sf-view-data');
 
 
-// מרכוז החודש הנוכחי ברצועה בטעינה. ה"מגנט" עצמו כולו CSS — כאן רק
-// ממקמים את נקודת ההתחלה.
+// מרכוז החודש הנוכחי ברצועה. ה"מגנט" עצמו כולו CSS — כאן רק ממקמים את
+// נקודת ההתחלה. גם אחרי רענון רך (חזרה לאפליקציה, הוספת עסקה): הוא מחליף
+// את ה-hero ברצועה חדשה שעומדת בהתחלה — מתן (1.10) ראה יולי-אוגוסט
+// כשהחודש הנוכחי היה אוקטובר.
 (function () {
-const strip = document.getElementById('monthStrip');
-if (!strip) return;
-const active = strip.querySelector('.month-chip.is-current');
-if (!active) return;
-// ללא אנימציה — קפיצה לגלילה חלקה בטעינת עמוד נראית כמו תקלה
-const prev = strip.style.scrollBehavior;
-strip.style.scrollBehavior = 'auto';
-strip.scrollLeft += active.getBoundingClientRect().left + active.offsetWidth / 2
-                  - (strip.getBoundingClientRect().left + strip.offsetWidth / 2);
-strip.style.scrollBehavior = prev;
+function centerStrip() {
+    const strip = document.getElementById('monthStrip');
+    if (!strip) return;
+    const active = strip.querySelector('.month-chip.is-current');
+    if (!active) return;
+    // ללא אנימציה — קפיצה לגלילה חלקה בטעינת עמוד נראית כמו תקלה
+    const prev = strip.style.scrollBehavior;
+    strip.style.scrollBehavior = 'auto';
+    strip.scrollLeft += active.getBoundingClientRect().left + active.offsetWidth / 2
+                      - (strip.getBoundingClientRect().left + strip.offsetWidth / 2);
+    strip.style.scrollBehavior = prev;
+}
+centerStrip();
+window.addEventListener('sf:refreshed', centerStrip);
 })();
 
 

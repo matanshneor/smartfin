@@ -772,6 +772,16 @@ def test_the_category_chart_title_label_and_month_link():
     assert "cell('החודש הכי יקר' + (c.max_label ? ' <span class=\"nowrap\">- ' + c.max_label + '</span>' : '')," in js
 
 
+def test_the_month_strip_recenters_after_a_soft_reload():
+    """מתן (1.10): הרענון הרך מחליף את ה-hero ברצועה שעומדת בהתחלה — יולי
+    ואוגוסט על המסך כשהחודש הוא אוקטובר. בדפדפן: tests/browser/month_strip_center.py."""
+    js = _strip_comments(_read("frontend/static/js/month.js"))
+    assert "centerStrip();" in js
+    assert "window.addEventListener('sf:refreshed', centerStrip);" in js
+    body = js[js.index("function centerStrip()"):js.index("centerStrip();")]
+    assert "document.getElementById('monthStrip')" in body, "הרצועה נשלפת מחדש בכל קריאה, לא נשמרת מהטעינה"
+
+
 # ─── סקירה של 1.10 ───────────────────────────────────────────────────────────
 
 def test_closing_the_form_during_the_check_cancels_the_save():
