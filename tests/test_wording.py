@@ -190,3 +190,15 @@ def test_buttons_name_the_action(imperative):
     בציווי זכר. ובטעינה: "מתחברים…", לא "מתחבר…"."""
     hits = [(name, line.strip()) for name, line in _visible_strings() if imperative in line]
     assert not hits, hits
+
+
+
+@pytest.mark.parametrize("gendered", [
+    "יאבד גישה", "ותיפתח לו", "לצרף אותו", "אם יש לו", "העסקאות שלו", "הוסר מהמשפחה",
+    "רשם כאן", "נרשם ע״י",
+])
+def test_messages_about_a_member_have_no_gender(gendered):
+    """מתן (1.10): הודעות על בן משפחה מסוים — בלי זכר ונקבה, כי זו יכולה
+    להיות אור. "מנהל המשפחה" נשאר (אפשרות א)."""
+    hits = [(name, line.strip()) for name, line in _visible_strings() if gendered in line]
+    assert not hits, hits

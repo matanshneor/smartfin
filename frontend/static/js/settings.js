@@ -1075,21 +1075,22 @@ updateWorkplaceState();
 
             window.appConfirm({
                 title: 'להסיר את ' + name + ' מהמשפחה?',
-                message: name + ' יאבד גישה לתקציב המשפחתי מיד, ותיפתח לו משפחה '
-                       + 'חדשה וריקה. אפשר לצרף אותו שוב בקוד הזמנה.\n\n'
-                       + 'אם יש לו פרויקטים אישיים, הם יימחקו יחד עם העסקאות שבהם.',
+                // בלי זכר ונקבה (מתן, 1.10) — זו יכולה להיות אור
+                message: 'הגישה של ' + name + ' לתקציב המשפחתי תיפסק מיד, ותיפתח משפחה '
+                       + 'חדשה וריקה. אפשר לצרף שוב בקוד הזמנה.\n\n'
+                       + 'פרויקטים אישיים של ' + name + ', אם יש, יימחקו יחד עם העסקאות שבהם.',
                 confirmText: 'המשך',
             }).then(function (ok) {
                 if (!ok) return null;
                 return askAboutTransactions('העסקאות של ' + name,
-                    'העסקאות שלו נרשמו מהתקציב המשותף.');
+                    'העסקאות של ' + name + ' נרשמו מהתקציב המשותף.');
             }).then(function (c) {
                 if (!c) return null;
                 choice = c;
                 return window.appConfirm({
                     title: 'אישור אחרון',
                     message: 'להסיר את ' + name + ' עכשיו? '
-                           + (choice === WIPE ? 'העסקאות שלו יימחקו. ' : '')
+                           + (choice === WIPE ? 'העסקאות של ' + name + ' יימחקו. ' : '')
                            + 'את זה אי אפשר לבטל.',
                     confirmText: 'הסרה',
                 });
@@ -1100,7 +1101,7 @@ updateWorkplaceState();
                             { keep_transactions: choice === KEEP })
                     .then(function (res) {
                         if (res.ok) {
-                            window.showToast(name + ' הוסר מהמשפחה');
+                            window.showToast(name + ' כבר לא במשפחה');
                             setTimeout(function () { window.location.reload(); }, 700);
                         } else {
                             removeBtn.disabled = false;

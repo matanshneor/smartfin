@@ -37,7 +37,7 @@ def test_the_warning_names_who_entered_what():
 
     note = app_module._others_contributions(project, _ME, _NAMES)
 
-    assert note == "אור רשם כאן 2 עסקאות · בן משפחה לשעבר רשם כאן עסקה אחת"
+    assert note == "2 עסקאות נרשמו כאן על ידי אור · עסקה אחת נרשמה כאן על ידי בן משפחה לשעבר"
 
 
 def test_no_warning_when_nobody_else_entered_anything():
@@ -94,9 +94,9 @@ def _row(html, description):
 def test_a_personal_project_marks_what_someone_else_entered(page):
     html = page(owner_id=_ME)
 
-    assert "נרשם ע״י אור" in _row(html, "קבלן")
-    assert "נרשם ע״י" not in _row(html, "צבע"), "מה שרשמתי בעצמי לא צריך סימן"
-    assert "נרשם ע״י" not in _row(html, "ישנה"), "לא ידוע אינו מישהו אחר"
+    assert "נרשמה ע״י אור" in _row(html, "קבלן")
+    assert "נרשמה ע״י" not in _row(html, "צבע"), "מה שרשמתי בעצמי לא צריך סימן"
+    assert "נרשמה ע״י" not in _row(html, "ישנה"), "לא ידוע אינו מישהו אחר"
 
 
 def test_a_shared_project_has_no_marks(page):

@@ -1495,12 +1495,12 @@ def projects():
 
 
 def _member_names(family_id) -> dict:
-    """מזהה ← שם פרטי, לסימן "נרשם ע״י". מי שכבר לא במשפחה לא ברשימה."""
+    """מזהה ← שם פרטי, לסימן "נרשמה ע״י". מי שכבר לא במשפחה לא ברשימה."""
     return {m["id"]: m["name"] for m in db.get_family_members(family_id)} if family_id else {}
 
 
 def _others_contributions(project: dict, viewer_id: str, names: dict) -> str:
-    """"אור רשם כאן 10 עסקאות" — לאישור של "החזר להיות אישי".
+    """"10 עסקאות נרשמו כאן על ידי אור" — לאישור של "החזר להיות אישי".
 
     החזרה לאישי מסתירה את הפרויקט מכל השאר, כולל את מה שהם עצמם רשמו בו
     (החלטת מתן, 28.9.2026). אז זה נאמר מראש, בשמות ובמספרים. עסקאות שלא
@@ -1509,7 +1509,9 @@ def _others_contributions(project: dict, viewer_id: str, names: dict) -> str:
     counts = Counter(names.get(t["created_by"], "בן משפחה לשעבר")
                      for t in project.get("transactions") or []
                      if t.get("created_by") and t["created_by"] != viewer_id)
-    parts = [f"{name} רשם כאן {'עסקה אחת' if n == 1 else f'{n} עסקאות'}"
+    # בלי זכר ונקבה (מתן, 1.10)
+    parts = [(f"עסקה אחת נרשמה כאן על ידי {name}" if n == 1
+              else f"{n} עסקאות נרשמו כאן על ידי {name}")
              for name, n in counts.most_common()]
     return " · ".join(parts)
 
