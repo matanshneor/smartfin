@@ -154,3 +154,11 @@ def test_recurring_transactions_have_one_name():
     forms = re.compile(r"עסקה חוזרת|עסקאות חוזרות|העסקה הזאת חוזרת|העסקה חוזרת|סדרה|הסדרה|סדרות")
     hits = [(name, line) for name, line in _visible_strings() if forms.search(line)]
     assert not hits, hits
+
+
+def test_the_project_edit_page_says_what_it_edits():
+    """מתן (1.10): "עריכת פרויקט" ולא "עריכת הגדרות" — שלא אומר של מה,
+    ומתבלבל עם עמוד ההגדרות של האפליקציה."""
+    html = (_ROOT / "frontend/templates/project_edit.html").read_text(encoding="utf-8")
+    assert '<h1 class="hero-title">עריכת פרויקט</h1>' in html
+    assert "עריכת הגדרות" not in html
