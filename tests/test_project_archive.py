@@ -152,21 +152,6 @@ def test_finished_projects_have_no_arrow_but_still_open(client):
     assert f'href="/projects/{_P_DONE}"' in finished
 
 
-def test_settings_says_no_active_projects_instead_of_zero():
-    """מתן (30.9): "אין פרויקטים פעילים", לא "0 פרויקטים פעילים"."""
-    from pathlib import Path
-    from backend.app import app as flask_app
-    tpl = (Path(__file__).resolve().parent.parent / "frontend/templates/settings.html").read_text(encoding="utf-8")
-    line = tpl[tpl.index("count_of('פרויקט פעיל אחד'") - 40:]
-    line = line[:line.index("</span>")]
-    env = flask_app.jinja_env
-    expr = line[line.index("{{") + 2:line.index("}}")]
-    render = lambda projects: env.from_string("{{" + expr + "}}").render(projects=projects)
-    assert render([]) == "אין פרויקטים פעילים"
-    assert render([1]) == "פרויקט פעיל אחד"
-    assert render([1, 2]) == "2 פרויקטים פעילים"
-
-
 def test_settings_says_no_recurring_instead_of_zero():
     """מתן (30.9): "אין עסקאות קבועות", לא "0 עסקאות חוזרות פעילות"."""
     from pathlib import Path

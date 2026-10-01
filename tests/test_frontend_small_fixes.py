@@ -603,18 +603,19 @@ def test_tapping_a_month_in_the_compare_chart_opens_it():
 
 
 def test_there_is_one_form_for_a_new_project():
-    """מתן (30.9, רעיון 13): ההגדרות מובילות לטופס המלא בעמוד הפרויקטים,
-    ולא מחזיקות עותק מקוצר בלי אייקון ובלי תיאור."""
-    settings = _read("frontend/templates/settings.html")
-    assert "newProjectSettingsForm" not in settings
-    assert "href=\"{{ url_for('projects') }}#new\"" in settings
+    """מתן (30.9, רעיון 13): טופס יצירה אחד, בעמוד הפרויקטים."""
     js = _strip_comments(_read("frontend/static/js/projects.js"))
     assert "window.location.hash === '#new'" in js
-    # עריכת פרויקט בהגדרות ממשיכה לעבוד — הקוד שלה ישב אחרי יציאה מוקדמת
-    # שתלויה בכפתור היצירה שהוסר
-    sjs = _strip_comments(_read("frontend/static/js/settings.js"))
-    assert "newProjectSettingsBtn" not in sjs
-    assert "closest('.edit-project-settings-btn')" in sjs
+
+
+def test_settings_has_no_projects_box():
+    """מתן (1.10): התיבה "פרויקטים" בהגדרות הייתה כפילות של עמוד הפרויקטים —
+    רשימה, קישור ליצירה, עריכה מקוצרת ו"ניהול מלא". הוסרה, עם הקוד שלה."""
+    settings = _read("frontend/templates/settings.html")
+    assert '<span class="group-title">פרויקטים</span>' not in settings
+    assert "edit-project-settings-btn" not in settings
+    sjs = _read("frontend/static/js/settings.js")
+    assert "edit-project-settings-btn" not in sjs and "proj-edit-save" not in sjs
 
 
 def test_pull_to_refresh_only_in_the_installed_app_and_only_from_the_top():

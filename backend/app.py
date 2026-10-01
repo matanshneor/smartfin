@@ -1924,7 +1924,6 @@ def settings():
     recurring  = [r for r in db.get_recurring_transactions(family_id, user["id"],
                                                           settings=family_settings())
                   if db.is_active_template(r)] if family_id else []
-    projects   = db.get_projects(family_id, user["id"])  if family_id else []
     # הפרופיל שלי כבר נמצא ברשימת החברים שנשלפה למעלה — היא מחזירה שם
     # מלא, אימייל, טלפון ומקום עבודה לכל חבר. שליפה נוספת כאן הייתה
     # פנייה שלמה למסד בשביל נתון שכבר ביד.
@@ -1964,7 +1963,6 @@ def settings():
         members=members,
         family=family,
         recurring=recurring,
-        projects=projects,
         account=account,
         # בחירת צבע לבן משפחה (סבב 6, פריט 13)
         member_colors=_member_colors(family_id),

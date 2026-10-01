@@ -41,15 +41,8 @@ try:
                                headers={"Content-Type": "application/json"})
         print("seed project:", r.status)
 
-        page.goto(BASE + "/settings"); page.wait_for_timeout(1000)
-        link = page.locator("a", has_text="יצירת פרויקט חדש")
-        link.evaluate("el => el.closest('.settings-group').querySelector('button').click()")
-        page.wait_for_timeout(400)
-        print("old settings form gone:", page.locator("#newProjectSettingsForm").count() == 0)
-        # עריכה במקום עדיין עובדת
-        page.locator(".edit-project-settings-btn").first.click(); page.wait_for_timeout(300)
-        print("edit in settings still opens:", page.locator(".project-settings-row.editing").count())
-        link.click(); page.wait_for_timeout(1500)
+        # התיבה "פרויקטים" בהגדרות הוסרה (מתן, 1.10) — נכנסים ישר ל-‎#new‎
+        page.goto(BASE + "/projects#new"); page.wait_for_timeout(1500)
         print("landed:", page.url.replace(BASE, ""))
         print("form open:", page.locator("#newProjectForm").is_visible(),
               "| focused:", page.evaluate("document.activeElement.id"),

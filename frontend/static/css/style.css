@@ -2963,21 +2963,6 @@ li.zero-cat-row { display: none; }
 
 .edit-cat-btn svg { width: 14px; height: 14px; }
 
-.edit-project-settings-btn {
-    position: relative;
-    width: 30px;
-    height: 30px;
-    border-radius: 10px;
-    background: var(--color-input);
-    color: var(--color-gold-text);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.edit-project-settings-btn svg { width: 14px; height: 14px; }
-
 .category-row.editing {
     gap: 8px;
 }
@@ -4063,7 +4048,6 @@ li.transaction-item.swipe-ready > .swipe-content {
 .modal-close::before,
 .icon-btn::before,
 .edit-cat-btn::before,
-.edit-project-settings-btn::before,
 .delete-cat-btn::before,
 .delete-recurring-btn::before,
 .delete-project-btn::before,
