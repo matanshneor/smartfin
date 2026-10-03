@@ -1941,6 +1941,8 @@ def settings():
     recurring  = [r for r in db.get_recurring_transactions(family_id, user["id"],
                                                           settings=family_settings())
                   if db.is_active_template(r)] if family_id else []
+    # "₪5,000 ← ₪5,500 מאוקטובר" (רעיון 40)
+    price_changes = db.recurring_price_changes(family_id, recurring) if recurring else {}
     # הפרופיל שלי כבר נמצא ברשימת החברים שנשלפה למעלה — היא מחזירה שם
     # מלא, אימייל, טלפון ומקום עבודה לכל חבר. שליפה נוספת כאן הייתה
     # פנייה שלמה למסד בשביל נתון שכבר ביד.
@@ -1981,6 +1983,8 @@ def settings():
         members=members,
         family=family,
         recurring=recurring,
+        price_changes=price_changes,
+        hebrew_months=_HEBREW_MONTHS,
         account=account,
         # בחירת צבע לבן משפחה (סבב 6, פריט 13)
         member_colors=_member_colors(family_id),

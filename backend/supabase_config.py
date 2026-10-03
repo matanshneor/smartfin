@@ -1818,6 +1818,54 @@ def split_recurring_series(template_id: str, instance_id: str, family_id: str):
         return None, str(e)
 
 
+def recurring_price_changes(family_id: str, templates: list) -> dict:
+    """"₪5,000 ← ₪5,500 מאוקטובר" ליד עסקה קבועה בהגדרות (מתן, 3.10 — רעיון 40).
+
+    שינוי סכום "מהחודש הנוכחי" מפצל את הסדרה (‎split_recurring_series‎): הישנה
+    נגמרת יום לפני שהחדשה מתחילה. אין ביניהן קישור במסד, אז מזהים אותה לפי
+    זה: אותה מחלקה, נגמרה בדיוק יום לפני תחילת החדשה, ואותה קטגוריה או אותו
+    תיאור (בעריכה אפשר לשנות אחד מהם). הסכום הישן — של המופע האחרון שלה,
+    כי חודש בודד יכול היה להיערך. רק כשהסכום באמת שונה.
+
+    מחזירה ‎{template_id: {"old": סכום, "since": "YYYY-MM-DD"}}‎. קישוט: תקלה
+    מחזירה מילון ריק."""
+    from datetime import date, timedelta
+    client = get_client()
+    if not client or not templates:
+        return {}
+    try:
+        ended = client.table("transactions") \
+            .select("id, amount, type, category_id, description, recurring_end_date") \
+            .eq("family_id", family_id).eq("is_recurring", True) \
+            .not_.is_("recurring_end_date", "null").execute().data or []
+        if not ended:
+            return {}
+        last = client.table("transactions").select("recurring_parent_id, amount, date") \
+            .eq("family_id", family_id).in_("recurring_parent_id", [e["id"] for e in ended]) \
+            .order("date", desc=True).execute().data or []
+    except Exception:
+        logger.exception("recurring_price_changes")
+        return {}
+    last_amount = {}
+    for r in last:                                   # מהחדש לישן — הראשון לכל תבנית הוא המופע האחרון שלה
+        last_amount.setdefault(r["recurring_parent_id"], float(r["amount"]))
+    out = {}
+    for t in templates:
+        start = date.fromisoformat(str(t["date"])[:10])
+        day_before = (start - timedelta(days=1)).isoformat()
+        for e in ended:
+            if e["type"] != t.get("type") or str(e["recurring_end_date"])[:10] != day_before:
+                continue
+            if e.get("category_id") != t.get("category_id") and \
+                    (e.get("description") or "") != (t.get("description") or ""):
+                continue
+            old = last_amount.get(e["id"], float(e["amount"]))
+            if round(old, 2) != round(float(t["amount"]), 2):
+                out[t["id"]] = {"old": old, "since": start.isoformat()}
+            break
+    return out
+
+
 def series_pivot(template_id: str, family_id: str, today=None):
     """עריכת עסקה קבועה מ"עסקאות קבועות" בהגדרות חלה מהחודש הנוכחי (מתן, 2.10).
     מחזירה מאיפה השינוי מתחיל:

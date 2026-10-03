@@ -107,6 +107,8 @@ def _unit_tests_cannot_reach_supabase(request, monkeypatch):
     _real_averages = db.category_monthly_averages
     monkeypatch.setattr(db, "category_monthly_averages", lambda *a, **k: {})
     monkeypatch.setattr(db, "_real_category_monthly_averages", _real_averages, raising=False)
+    # "₪5,000 ← ₪5,500 מאוקטובר" בהגדרות (רעיון 40) — ברירת מחדל: אין שינויים
+    monkeypatch.setattr(db, "recurring_price_changes", lambda *a, **k: {})
     # וגם רשת ישירה. ‎send_reset_email‎, ‎upload_receipt‎ ו-‎delete_receipts‎
     # פונים ל-Supabase ב-httpx ולא דרך ‎get_client‎ — ובדיקת ביקורת על "שכחתי
     # סיסמה" שלחה ככה בקשת איפוס אמיתית (30.9.2026, לכתובת שלא רשומה, אז

@@ -892,3 +892,21 @@ def test_the_chosen_category_in_the_compare_chart_stands_out():
     rule = rule[:rule.index("}")]
     assert "background: var(--gradient-gold);" in rule and "color: #FFFFFF;" in rule
     assert "font-weight: 700;" in rule
+
+
+def test_the_price_change_line_in_settings():
+    """מתן (3.10, רעיון 40): "₪5,000 ← ₪5,500 מאוקטובר"."""
+    from backend.app import app
+    html = _read("frontend/templates/settings.html")
+    start = html.index("{% set change = (price_changes or {}).get(tx.id) %}")
+    snippet = html[start:html.index("{% endif %}", start) + len("{% endif %}")]
+    months = ["", "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט",
+              "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"]
+    with app.test_request_context():
+        out = app.jinja_env.from_string(snippet).render(
+            tx={"id": "t", "amount": 5500}, hebrew_months=months,
+            price_changes={"t": {"old": 5000.0, "since": "2026-10-01"}})
+        none = app.jinja_env.from_string(snippet).render(
+            tx={"id": "x", "amount": 5500}, hebrew_months=months, price_changes={})
+    assert "₪5,000 ← ₪5,500 מאוקטובר" in out
+    assert "recurring-price-change" not in none

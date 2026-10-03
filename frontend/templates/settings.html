@@ -534,6 +534,11 @@
                             {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}
                             {% if tx.workplace %} · {{ tx.workplace }}{% elif tx.user_name %} · {{ tx.user_name }}{% endif %}
                         </p>
+                        {# "₪5,000 ← ₪5,500 מאוקטובר" — השינוי האחרון בסכום (מתן, 3.10 — רעיון 40) #}
+                        {% set change = (price_changes or {}).get(tx.id) %}
+                        {% if change %}
+                        <p class="recurring-price-change">₪{{ change.old | money }} ← ₪{{ tx.amount | money }} מ{{ hebrew_months[change.since[5:7] | int] }}</p>
+                        {% endif %}
                     </div>
                     <p class="recurring-amount {{ tx.type }}">
                         {% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ tx.amount | money }}

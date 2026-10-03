@@ -149,3 +149,37 @@ def test_an_end_date_before_this_month_is_refused(make_series, monkeypatch):
 
     assert "תאריך הסיום" in out["error"]
     assert float(_rows(s)["2026-09-01"]["amount"]) == 5000, "נכתב למרות הסירוב"
+
+
+# ─── "₪5,000 ← ₪5,500 מאוקטובר" בהגדרות (מתן, 3.10 — רעיון 40) ──────────────
+
+def _active(s):
+    return [r for r in _rows(s).values() if r["is_recurring"] and not r["recurring_end_date"]]
+
+
+def test_after_a_change_the_settings_line_knows_the_old_amount(make_series, monkeypatch):
+    _freeze(monkeypatch, datetime.date(2026, 9, 20))
+    s = make_series
+    tpl = s["build"]("2026-07-01", "monthly_1", ["2026-08-01", "2026-09-01"])
+    _edit(tpl, s, _payload(tpl))                              # 5,000 → 5,500 מספטמבר
+
+    active = _active(s)
+    assert len(active) == 1
+    changes = db.recurring_price_changes(s["fid"], active)
+    assert changes == {active[0]["id"]: {"old": 5000.0, "since": "2026-09-01"}}
+
+
+def test_a_series_that_never_changed_has_no_line(make_series, monkeypatch):
+    _freeze(monkeypatch, datetime.date(2026, 9, 20))
+    s = make_series
+    s["build"]("2026-07-01", "monthly_1", ["2026-08-01", "2026-09-01"])
+    assert db.recurring_price_changes(s["fid"], _active(s)) == {}
+
+
+def test_a_change_without_a_new_amount_has_no_line(make_series, monkeypatch):
+    """שינוי תיאור בלבד מפצל גם הוא — אבל אין "← ₪" להראות."""
+    _freeze(monkeypatch, datetime.date(2026, 9, 20))
+    s = make_series
+    tpl = s["build"]("2026-07-01", "monthly_1", ["2026-08-01", "2026-09-01"])
+    _edit(tpl, s, _payload(tpl, amount=5000.0, description=s["marker"] + "-חדש"))
+    assert db.recurring_price_changes(s["fid"], _active(s)) == {}
