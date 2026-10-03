@@ -174,3 +174,17 @@ def test_the_week_route_returns_the_card_and_refuses_nonsense(monkeypatch):
     assert seen == [1]
     for bad in ("-1", "abc", "5000"):
         assert c.get(f"/api/week?offset={bad}").status_code == 422, bad
+
+
+def test_a_sideways_swipe_locks_the_page_and_a_scroll_does_not():
+    """מתן (2.10): "שאם אני גולל שם, זה לא יגלול לי את המסך למעלה ולמטה".
+    הכיוון נקבע פעם אחת אחרי 8px; הצידה — ‎preventDefault‎ (לכן ‎passive: false‎).
+    בדפדפן: נבדק עם תנועה אלכסונית, אנכית וקצרה."""
+    from pathlib import Path
+    js = (Path(__file__).resolve().parent.parent / "frontend/static/js/core.js").read_text(encoding="utf-8")
+    part = js[js.index("let sx = null, sy = 0, axis = null, drag = null;"):]
+    move = part[part.index("document.addEventListener('touchmove'"):]
+    move = move[:move.index("}, { passive: false });")]
+    assert "axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';" in move
+    assert "if (axis !== 'x') return;" in move and "e.preventDefault();" in move
+    assert move.index("if (axis !== 'x') return;") < move.index("e.preventDefault();"), "גלילה רגילה נחסמת"

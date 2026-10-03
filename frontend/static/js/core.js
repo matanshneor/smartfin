@@ -481,10 +481,16 @@ document.addEventListener('click', function (e) {
 (function () {
     let loading = false;
 
-    function goToWeek(card, offset, focusSel) {
+    // ‎dir‎: מאיזה צד הכרטיס יוצא בהחלקה (‎-1‎ שמאלה, ‎1‎ ימינה); בחצים — בלי
+    function goToWeek(card, offset, focusSel, dir) {
         if (loading || offset < 0) return;
         loading = true;
         card.classList.add('is-loading');
+        if (dir && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) dir = 0;
+        if (dir) {
+            card.style.transition = 'transform 0.18s ease-in';
+            card.style.transform = 'translateX(' + (dir * 40) + 'px)';
+        }
         fetch('/api/week?offset=' + offset, { credentials: 'same-origin' })
             .then(function (r) {
                 if (!r.ok) throw new Error('week ' + r.status);
@@ -496,12 +502,24 @@ document.addEventListener('click', function (e) {
                 const fresh = tpl.content.querySelector('.week-card');
                 if (!fresh) throw new Error('no card');
                 card.replaceWith(fresh);
+                if (dir) {
+                    // הכרטיס החדש נכנס מהצד השני
+                    fresh.style.transform = 'translateX(' + (-dir * 40) + 'px)';
+                    fresh.style.opacity = '0.6';
+                    requestAnimationFrame(function () {
+                        fresh.style.transition = 'transform 0.2s ease-out, opacity 0.2s';
+                        fresh.style.transform = '';
+                        fresh.style.opacity = '';
+                        setTimeout(function () { fresh.style.transition = ''; }, 220);
+                    });
+                }
                 // המיקוד נשאר על החץ שנלחץ — מקלדת וקורא מסך לא "נופלים" לראש העמוד
                 const again = focusSel && fresh.querySelector(focusSel);
                 if (again && !again.disabled) again.focus({ preventScroll: true });
             })
             .catch(function () {
                 card.classList.remove('is-loading');
+                settle(card);
                 window.showToast(window.sfNetError(), 'error');
             })
             .then(function () { loading = false; });
@@ -518,21 +536,59 @@ document.addEventListener('click', function (e) {
 
     // החלקה: בעברית הזמן זורם מימין לשמאל (ראשון בימין), אז השבוע הקודם
     // "נמצא" מימין — גרירה שמאלה מביאה אותו, וגרירה ימינה חוזרת קדימה.
-    let sx = null, sy = 0;
+    //
+    // נעילת כיוון (מתן, 2.10: "שאם אני גולל שם, זה לא יגלול לי את המסך"):
+    // אחרי 8px מחליטים פעם אחת אם זו תנועה הצידה או גלילה. הצידה — המסך
+    // ננעל עד שהאצבע עוזבת, והכרטיס זז איתה. גלילה — לא נוגעים בכלום.
+    let sx = null, sy = 0, axis = null, drag = null;
+
+    function canGo(card, older) {
+        const b = card.querySelector('.week-nav-btn[aria-label="' + (older ? 'שבוע קודם' : 'שבוע הבא') + '"]');
+        return !!(b && !b.disabled);
+    }
+    function settle(card) {
+        card.style.transition = 'transform 0.2s ease-out';
+        card.style.transform = '';
+        setTimeout(function () { card.style.transition = ''; }, 220);
+    }
+
     document.addEventListener('touchstart', function (e) {
         const card = e.target.closest && e.target.closest('.week-card');
-        if (!card || e.touches.length !== 1) { sx = null; return; }
+        if (!card || loading || e.touches.length !== 1) { sx = null; return; }
         sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+        axis = null; drag = card;
     }, { passive: true });
+
+    document.addEventListener('touchmove', function (e) {
+        if (sx === null || !drag) return;
+        const dx = e.touches[0].clientX - sx, dy = e.touches[0].clientY - sy;
+        if (!axis) {
+            if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+            axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+        }
+        if (axis !== 'x') return;
+        e.preventDefault();                       // המסך לא זז כל עוד מחליקים הצידה
+        // מעבר שאי אפשר לעשות (אין שבוע הבא / אין ישן יותר) — התנגדות חזקה
+        const allowed = canGo(drag, dx < 0);
+        drag.style.transition = '';
+        drag.style.transform = 'translateX(' + Math.round(dx * (allowed ? 0.45 : 0.12)) + 'px)';
+    }, { passive: false });
+
     document.addEventListener('touchend', function (e) {
-        if (sx === null) return;
-        const card = e.target.closest && e.target.closest('.week-card');
-        const t = e.changedTouches[0];
-        const dx = t.clientX - sx, dy = t.clientY - sy;
-        sx = null;
-        if (!card || Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+        if (sx === null || !drag) return;
+        const card = drag;
+        const dx = e.changedTouches[0].clientX - sx;
+        const wasX = axis === 'x';
+        sx = null; drag = null; axis = null;
+        if (!wasX) return;
+        const older = dx < 0;
+        if (Math.abs(dx) < 50 || !canGo(card, older)) { settle(card); return; }
         const offset = Number(card.dataset.offset);
-        const target = card.querySelector('.week-nav-btn[aria-label="' + (dx < 0 ? 'שבוע קודם' : 'שבוע הבא') + '"]');
-        if (target && !target.disabled) goToWeek(card, dx < 0 ? offset + 1 : offset - 1);
+        goToWeek(card, older ? offset + 1 : offset - 1, null, older ? -1 : 1);
+    }, { passive: true });
+
+    document.addEventListener('touchcancel', function () {
+        if (drag) settle(drag);
+        sx = null; drag = null; axis = null;
     }, { passive: true });
 })();
