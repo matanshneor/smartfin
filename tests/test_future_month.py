@@ -108,7 +108,8 @@ def test_projected_rows_cannot_be_opened_for_editing(future_page):
     """אין מאחוריהן עסקה במסד — לחיצה הייתה מחזירה "העסקה כבר נמחקה"."""
     html = future_page([], [_template("rent", 5500, "2026-01-01")])
 
-    rows = [r for r in html.split('<li class="cat-tx-row')[1:]]
+    # שורת "השוואה לחודשים קודמים" (‎cat-tx-more‎) היא קישור ולא עסקה
+    rows = [r for r in html.split('<li class="cat-tx-row')[1:] if not r.startswith(" cat-tx-more")]
     assert rows, "אין שורות"
     for r in rows:
         head = r[:r.index(">")]
