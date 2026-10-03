@@ -1947,11 +1947,7 @@ a.submit-btn {
 }
 
 /* צירוף קבלה להוצאה קיימת (מתן, 3.10 — רעיון 34) */
-.receipt-attach-btn {
-    width: 100%; margin-top: 10px; padding: 12px; border-radius: var(--radius-sm);
-    background: var(--color-gold-dim); border: 1px solid var(--color-gold-border);
-    color: var(--color-gold-text); font-weight: 600; font-size: 0.92rem; text-align: center;
-}
+/* העיצוב — של ‎.scan-btn‎ (אותו מקום בראש החלון) */
 .receipt-attach-btn:disabled { opacity: 0.6; }
 .receipt-attach-btn[hidden] { display: none; }
 

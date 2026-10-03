@@ -124,6 +124,15 @@
             </button>
             <input type="file" id="receiptInput" accept="image/*" capture="environment" hidden>
 
+            {# צירוף קבלה להוצאה קיימת (מתן, 3.10 — רעיון 34): במקום של "סריקת קבלה",
+               שמוסתר בעריכה, ובאותו עיצוב (מתן: "קטן מדי", "יותר למעלה"). רק התמונה,
+               בלי קריאה אוטומטית. בלי ‎capture‎ — אפשר לצלם או לבחור תמונה קיימת #}
+            <button type="button" class="scan-btn receipt-attach-btn" id="receiptAttachBtn" hidden>
+                <span class="scan-btn-icon">📷</span>
+                <span class="scan-btn-text receipt-attach-label">צירוף קבלה</span>
+            </button>
+            <input type="file" id="receiptAttachInput" accept="image/*" hidden>
+
             <!-- Scanner Animation -->
             <div class="scanner-wrapper" id="scannerWrapper" aria-hidden="true">
                 <div class="scanner-frame">
@@ -242,11 +251,6 @@
                 <input type="checkbox" switch id="hapticSubmit" class="haptic-switch"
                        tabindex="-1" aria-hidden="true">
 
-                {# צירוף קבלה להוצאה קיימת (מתן, 3.10 — רעיון 34): רק התמונה, בלי קריאה
-                   אוטומטית. בלי ‎capture‎ — אפשר לצלם או לבחור תמונה קיימת. מתחת
-                   לשמירה ומעל שכפול/מחיקה, בגודל שלהם (מתן: "קטן מדי", "טיפה יותר למעלה") #}
-                <button type="button" class="receipt-attach-btn" id="receiptAttachBtn" hidden>📷 <span class="receipt-attach-label">צירוף קבלה</span></button>
-                <input type="file" id="receiptAttachInput" accept="image/*" hidden>
                 <div class="edit-mode-actions" id="editModeActions" style="display:none;">
                     <button type="button" class="btn-ghost duplicate-tx-btn" id="duplicateTxBtn">שכפול העסקה</button>
                     <button type="button" class="delete-tx-btn" id="deleteTxBtn">מחיקת העסקה</button>
