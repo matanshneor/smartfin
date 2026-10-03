@@ -3300,6 +3300,47 @@ def category_trend(family_id: str, months: list, categories: list, today=None) -
             "categories": out}
 
 
+def member_trend(family_id: str, months: list) -> list:
+    """"הוצאות לפי בן משפחה" לאורך החודשים — עמוד ההשוואה (מתן, 3.10 — רעיון 15).
+
+    הוצאות הבית בלבד (בלי פרויקטים), כמו הגרף בעמוד החודש
+    (‎member_breakdown_from_rows‎): לפי ‎user_id‎, ובלי בעלים — "משותפת".
+    מחזירה ‎[{"user_id", "name", "values": [...]}]‎, ערך לכל חודש ב-‎months‎,
+    מהגדול לקטן. זורקת DataUnavailable."""
+    if not months:
+        return []
+    client = get_client()
+    if not client:
+        raise DataUnavailable("member_trend: no client")
+    (y0, m0), (y1, m1) = months[0], months[-1]
+    try:
+        rows = _fetch_all(lambda: client.table("transactions")
+                          .select("id, amount, date, user_id, profiles(name)")
+                          .eq("family_id", family_id).eq("type", "expense").is_("project_id", "null")
+                          .gte("date", f"{y0}-{m0:02d}-01").lt("date", _next_month(y1, m1))
+                          .order("id"))
+    except Exception as e:
+        raise DataUnavailable("member_trend") from e
+    index = {(y, m): i for i, (y, m) in enumerate(months)}
+    out: dict = {}
+    for r in rows:
+        d = str(r["date"])
+        i = index.get((int(d[:4]), int(d[5:7])))
+        if i is None:
+            continue
+        uid = r.get("user_id")
+        profile = r.get("profiles")
+        key = uid or "__shared__"
+        if key not in out:
+            out[key] = {"user_id": uid,
+                        "name": first_name(profile["name"]) if uid and profile and profile.get("name") else "משותפת",
+                        "values": [0.0] * len(months)}
+        out[key]["values"][i] += float(r["amount"])
+    for m in out.values():
+        m["values"] = [round(v, 2) for v in m["values"]]
+    return sorted(out.values(), key=lambda m: -sum(m["values"]))
+
+
 def category_monthly_averages(family_id: str, today=None) -> dict:
     """ממוצע חודשי לכל קטגוריה, לכל המחלקות — לשורה "בממוצע ₪1,850 בחודש"
     בהגדרות (מתן, 3.10 — רעיון 38). שלושת החודשים **השלמים** האחרונים, מחולק

@@ -323,6 +323,70 @@ if (catTrend && catTrend.categories.length && catCanvas) {
 }
 
 
+
+// ── הוצאות לפי בן משפחה לאורך החודשים (מתן, 3.10 — רעיון 15) ──
+// עמודה לכל בן משפחה בכל חודש, בצבע הקבוע שלו; אותו טווח כמו שאר הגרפים.
+// מתחת — ממוצע חודשי לכל אחד, מהחודשים שנגמרו (כמו בגרף הקטגוריה).
+const memberSeries = SF_VIEW.members;
+const memberCanvas = document.getElementById('memberTrendChart');
+if (memberSeries && memberSeries.length > 1 && memberCanvas && SF_VIEW.cat_trend) {
+    const allM = SF_VIEW.cat_trend.months;            // אותם 12 חודשים שנשלחו
+    const avgsEl = document.getElementById('memberTrendAvgs');
+    const shownMonths = () => allM.slice(-RANGE);
+    const off = () => allM.length - shownMonths().length;
+    function datasets() {
+        // בסדר הפוך: בכל חודש Chart.js מסדר משמאל לימין, וכך הראשון ברשימה יוצא מימין
+        return memberSeries.slice().reverse().map(m => ({
+            label: m.name, data: m.values.slice(off()), backgroundColor: m.color,
+            borderRadius: 4, categoryPercentage: 0.86, barPercentage: 0.9,
+        }));
+    }
+    function averages() {
+        const now = new Date(), ty = now.getFullYear(), tm = now.getMonth() + 1;
+        const ms = shownMonths();
+        const done = ms.map((m, i) => (m.year < ty || (m.year === ty && m.month < tm)) ? i : -1).filter(i => i >= 0);
+        if (!done.length) { avgsEl.textContent = ''; return; }
+        avgsEl.textContent = 'ממוצע לחודש: ' + memberSeries.map(function (m) {
+            const vals = m.values.slice(off());
+            const avg = done.reduce((a, i) => a + vals[i], 0) / done.length;
+            return m.name + ' ₪' + window.sfMoney(Math.round(avg));
+        }).join(' · ');
+    }
+    const memberChart = new Chart(memberCanvas, {
+        type: 'bar',
+        data: { labels: shownMonths().map(m => m.label), datasets: datasets() },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            onClick: function (evt, _els, chart) {
+                const hit = chart.getElementsAtEventForMode(evt, 'index', { intersect: false }, true);
+                if (!hit.length) return;
+                const m = shownMonths()[hit[0].index];
+                window.location.href = '/month?year=' + m.year + '&month=' + m.month;
+            },
+            onHover: function (evt, els) { evt.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
+            plugins: {
+                legend: { display: true, position: 'bottom',
+                          labels: { boxWidth: 14, padding: 18, font: { size: 14 }, color: TEXT_MUTED } },
+                tooltip: { callbacks: {
+                    title: items => shownMonths()[items[0].dataIndex].name,
+                    label: c => ' ' + c.dataset.label + ': ₪' + window.sfMoney(c.parsed.y) } },
+            },
+            scales: {
+                x: { reverse: true, grid: { display: false },
+                     ticks: { font: { size: 13 }, maxRotation: 0, autoSkip: false } },
+                y: { position: 'right', grid: { color: GRID_LINE },
+                     ticks: { font: { size: 13 }, callback: v => '₪' + v.toLocaleString('en-US') } },
+            },
+        },
+    });
+    averages();
+    rangeListeners.push(function () {
+        memberChart.data.labels = shownMonths().map(m => m.label);
+        memberChart.data.datasets = datasets();
+        memberChart.update();
+        averages();
+    });
+}
 // ── כפתורי הטווח ──
 document.addEventListener('click', function (e) {
     const btn = e.target.closest && e.target.closest('.range-chip');

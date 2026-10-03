@@ -1475,8 +1475,23 @@ def months():
     # מציג 3 / 6 / 12 לפי הטווח שבוחרים (רעיון 24)
     cat_trend = db.category_trend(family_id, [(t["year"], t["month"]) for t in trend[-12:]],
                                   db.get_categories(family_id)) if family_id else None
+    # "הוצאות לפי בן משפחה" לאורך החודשים (רעיון 15) — רק כששיוך ההוצאות פעיל
+    # ויש יותר מבן משפחה אחד. קישוט: תקלה לא מפילה את העמוד
+    member_series = None
+    if family_id and family_settings()["owner_attribution"].get("expense") \
+            and len(db.get_family_members(family_id)) > 1:
+        try:
+            series = db.member_trend(family_id, [(t["year"], t["month"]) for t in trend[-12:]])
+        except db.DataUnavailable:
+            series = []
+        mcolors = _member_colors(family_id)
+        for m in series:
+            idx = mcolors.get(m["user_id"]) if m["user_id"] else None
+            m["color"] = _OWNER_HEX.get(idx, _SHARED_HEX) if idx is not None else _SHARED_HEX
+        member_series = series if len(series) > 1 else None
     return render_template("months.html", active_page="months", user=user,
                            archive=archive, trend_data=trend, cat_trend=cat_trend,
+                           member_series=member_series,
                            today_year=now.year, today_month=now.month,
                            _HEBREW_MONTHS=_HEBREW_MONTHS)
 

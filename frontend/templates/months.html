@@ -50,6 +50,18 @@
 </section>
 {% endif %}
 
+{# הוצאות לפי בן משפחה לאורך החודשים (מתן, 3.10 — רעיון 15). אותו טווח כמו
+   הגרפים שמעל. רק כששיוך ההוצאות פעיל ויש יותר מבן משפחה אחד. #}
+{% if member_series %}
+<section class="chart-card member-trend-card">
+    <h2 class="chart-title">הוצאות לפי בן משפחה</h2>
+    <div class="line-chart-wrap member-trend-wrap">
+        <canvas id="memberTrendChart" role="img" aria-label="הוצאות של כל בן משפחה בכל חודש"></canvas>
+    </div>
+    <p class="member-trend-avgs" id="memberTrendAvgs" aria-live="polite"></p>
+</section>
+{% endif %}
+
 <!-- Month list — מציג 6 חודשים אחרונים; השאר מאחורי "הצג עוד" -->
 {# טבלה לכל שנה, והשנה מעליה (מתן, 30.9 — הצעה ג): שורה לחודש, עמודה לסוג.
    השנה הנוכחית (ומה שאחריה) פתוחה במלואה; שנים קודמות הן כותרת בלבד,
@@ -121,7 +133,7 @@
 <script src="{{ url_for('static', filename='js/chart-setup.js') }}"></script>
 
 <script type="application/json" id="sf-view-data">
-    {{ {'trend': trend_data, 'cat_trend': cat_trend} | tojson }}
+    {{ {'trend': trend_data, 'cat_trend': cat_trend, 'members': member_series} | tojson }}
 </script>
 <script src="{{ url_for('static', filename='js/months.js') }}"></script>
 {% endif %}
