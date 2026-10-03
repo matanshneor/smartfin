@@ -1930,6 +1930,11 @@ def settings():
     user       = get_current_user()
     family_id  = user["family_id"]
     categories = db.get_categories(family_id)
+    # "בממוצע ₪1,850 בחודש" ליד כל קטגוריה (רעיון 38) — קישוט: תקלה לא מפילה
+    try:
+        cat_averages = db.category_monthly_averages(family_id) if family_id else {}
+    except db.DataUnavailable:
+        cat_averages = {}
     members    = db.get_family_members(family_id)       if family_id else []
     family     = _fresh_invite(db.get_family(family_id), user) if family_id else {}
     # רק סדרות פעילות — ראו ‎db.is_active_template‎
@@ -1972,6 +1977,7 @@ def settings():
         active_page="settings",
         user=user,
         categories=categories,
+        cat_averages=cat_averages,
         members=members,
         family=family,
         recurring=recurring,

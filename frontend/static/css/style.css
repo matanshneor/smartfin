@@ -2944,6 +2944,11 @@ li.zero-cat-row { display: none; }
     font-size: 0.9rem;
 }
 
+/* "בממוצע ₪1,850 בחודש" מתחת לשם (מתן, 3.10 — רעיון 38) */
+.cat-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.cat-row-text .cat-row-name { flex: none; }
+.cat-row-avg { font-size: 0.74rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+
 .cat-system-badge {
     font-size: 0.68rem;
     font-weight: 600;

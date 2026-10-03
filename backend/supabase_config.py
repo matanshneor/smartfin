@@ -3221,6 +3221,33 @@ def category_trend(family_id: str, months: list, categories: list, today=None) -
             "categories": out}
 
 
+def category_monthly_averages(family_id: str, today=None) -> dict:
+    """ממוצע חודשי לכל קטגוריה, לכל המחלקות — לשורה "בממוצע ₪1,850 בחודש"
+    בהגדרות (מתן, 3.10 — רעיון 38). שלושת החודשים **השלמים** האחרונים, מחולק
+    ב-3 (כמו ההתראות — ראו ‎get_anomalies‎), בלי פרויקטים. קטגוריה בלי שום
+    הוצאה בחלון — לא במילון. זורקת DataUnavailable."""
+    today = today or clock.today()
+    end = f"{today.year:04d}-{today.month:02d}-01"           # לא כולל החודש הנוכחי
+    sm, sy = today.month - _HISTORY_MONTHS, today.year
+    while sm <= 0:
+        sm += 12
+        sy -= 1
+    client = get_client()
+    if not client:
+        raise DataUnavailable("category_monthly_averages: no client")
+    try:
+        rows = _fetch_all(lambda: client.table("transactions").select("amount, category_id")
+                          .eq("family_id", family_id).is_("project_id", "null")
+                          .gte("date", f"{sy:04d}-{sm:02d}-01").lt("date", end).order("id"))
+    except Exception as e:
+        raise DataUnavailable("category_monthly_averages") from e
+    totals: dict = {}
+    for r in rows:
+        if r.get("category_id"):
+            totals[str(r["category_id"])] = totals.get(str(r["category_id"]), 0.0) + float(r["amount"])
+    return {cid: round(t / _HISTORY_MONTHS) for cid, t in totals.items() if t > 0}
+
+
 def _category_history_averages(family_id: str, year: int, month: int):
     """השאילתה של get_anomalies: מחזירה
     (current, history, labels) — סכום החודש הנוכחי לכל קטגוריית הוצאה,

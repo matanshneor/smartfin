@@ -34,7 +34,12 @@
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>
                         </span>
                         <span class="cat-row-icon">{{ cat.icon }}</span>
-                        <span class="cat-row-name">{{ cat.name }}</span>
+                        {# הממוצע מחוץ ל-‎.cat-row-name‎: שינוי שם מחליף את הטקסט שלו #}
+                        <span class="cat-row-text">
+                            <span class="cat-row-name">{{ cat.name }}</span>
+                            {% set avg = (cat_averages or {}).get(cat.id|string) %}
+                            {% if avg %}<span class="cat-row-avg">בממוצע ₪{{ avg | money }} בחודש</span>{% endif %}
+                        </span>
                         {% if cat.is_custom %}
                         <button class="edit-cat-btn" data-id="{{ cat.id }}" aria-label="עריכת הקטגוריה">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

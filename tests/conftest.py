@@ -103,6 +103,10 @@ def _unit_tests_cannot_reach_supabase(request, monkeypatch):
     # "אי אפשר לדעת" — והאפליקציה נופלת למייל שבסשן, כמו לפני 1.10.
     # בדיקה שצריכה מייל אחר מחליפה את זה בעצמה.
     monkeypatch.setattr(db, "get_auth_email", lambda token: (None, None))
+    # הממוצע החודשי לכל קטגוריה בהגדרות (רעיון 38) — ברירת מחדל: אין
+    _real_averages = db.category_monthly_averages
+    monkeypatch.setattr(db, "category_monthly_averages", lambda *a, **k: {})
+    monkeypatch.setattr(db, "_real_category_monthly_averages", _real_averages, raising=False)
     # וגם רשת ישירה. ‎send_reset_email‎, ‎upload_receipt‎ ו-‎delete_receipts‎
     # פונים ל-Supabase ב-httpx ולא דרך ‎get_client‎ — ובדיקת ביקורת על "שכחתי
     # סיסמה" שלחה ככה בקשת איפוס אמיתית (30.9.2026, לכתובת שלא רשומה, אז
