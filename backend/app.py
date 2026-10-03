@@ -2709,6 +2709,53 @@ def _edit_series_from_now(template_id, family_id, payload):
     return jsonify({"status": "ok", "transaction": result, "series_from": pivot_date})
 
 
+def _entered_text(meta: dict, viewer_id: str, names: dict, now=None) -> str:
+    """"הוזנה ע״י אור · אתמול 18:32" — ראו ‎/api/transactions/<id>/meta‎.
+    עסקה בלשון נקבה ("הוזנה"), כמו "נרשמה ע״י" וחלון הכפילות."""
+    from datetime import datetime, timedelta
+    if meta.get("recurring_parent_id"):
+        return "נוצרה אוטומטית מעסקה קבועה"
+    now = now or clock.now()
+    when = ""
+    raw = meta.get("created_at")
+    if raw:
+        at = datetime.fromisoformat(str(raw).replace("Z", "+00:00")).astimezone(clock.ISRAEL)
+        day = at.date()
+        today = now.date()
+        clock_time = at.strftime("%H:%M")
+        if day == today:
+            when = f"היום {clock_time}"
+        elif day == today - timedelta(days=1):
+            when = f"אתמול {clock_time}"
+        else:
+            when = f"{day.day}.{day.month}.{day.year} {clock_time}"
+    by = meta.get("created_by")
+    if not by:
+        return f"הוזנה ב-{when}" if when else ""
+    who = "על ידך" if by == viewer_id else "ע״י " + names.get(by, "בן משפחה לשעבר")
+    return f"הוזנה {who}" + (f" · {when}" if when else "")
+
+
+@app.route("/api/transactions/<tx_id>/meta")
+@limiter.limit("120 per minute")
+@login_required
+@tx_visible_required("tx_id")
+def transaction_meta(tx_id):
+    """מי הזין ומתי — השורה בתחתית חלון העריכה (מתן, 3.10 — רעיון 22). לא
+    נכנסת לכל שורה בכל רשימה: נשלפת כשהחלון נפתח."""
+    user = get_current_user()
+    if not user["family_id"]:
+        return jsonify({"error": "לא מצאנו את המשפחה שלכם — רעננו את הדף"}), 400
+    try:
+        meta = db.transaction_meta(tx_id, user["family_id"])
+    except db.DataUnavailable:
+        return jsonify({"error": "לא הצלחנו לטעון — נסו שוב"}), 503
+    if meta is None:
+        return jsonify({"error": "העסקה לא נמצאה"}), 404
+    text = _entered_text(meta, user["id"], _member_names(user["family_id"]))
+    return jsonify({"text": text})
+
+
 @app.route("/api/transactions/<tx_id>", methods=["DELETE"])
 @limiter.limit("60 per minute")
 @login_required

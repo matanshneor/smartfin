@@ -433,6 +433,7 @@
         originalAmount = null;
         modalTitle.textContent = 'הוספת עסקה';
         editModeActions.style.display = 'none';
+        if (enteredMeta) enteredMeta.hidden = true;
         setRecurringLock(false);
         resetForm();
         const mySeq = formSeq;
@@ -454,6 +455,24 @@
             });
     }
 
+    // ── "הוזנה ע״י אור · אתמול 18:32" בתחתית חלון העריכה (מתן, 3.10) ──
+    const enteredMeta = document.getElementById('txEnteredMeta');
+    function loadEnteredMeta(id) {
+        if (!enteredMeta) return;
+        enteredMeta.hidden = true;
+        enteredMeta.textContent = '';
+        const mySeq = formSeq;
+        fetch('/api/transactions/' + encodeURIComponent(id) + '/meta', { credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (d) {
+                // בינתיים נפתח טופס אחר — השורה לא שלו
+                if (mySeq !== formSeq || !d || !d.text) return;
+                enteredMeta.textContent = d.text;
+                enteredMeta.hidden = false;
+            })
+            .catch(function () { /* שורת מידע — בלעדיה החלון עובד כרגיל */ });
+    }
+
     function openEditModal(tx, triggerEl) {
         scanSeq++;
         formSeq++;
@@ -466,6 +485,7 @@
         originalAmount = parseFloat(tx.amount);
         modalTitle.textContent = 'עריכת עסקה';
         editModeActions.style.display = 'flex';
+        loadEnteredMeta(tx.id);
         formError.textContent = '';
 
         /* הלחיצה האחרונה קובעת. הטופס מתמלא רק כשהרשימות מגיעות, ו-‎editId‎
@@ -1417,6 +1437,7 @@
         originalAmount = null;
         modalTitle.textContent = 'הוספת עסקה';
         editModeActions.style.display = 'none';
+        if (enteredMeta) enteredMeta.hidden = true;
         // שכפול הוא עסקה חד-פעמית — לא ממשיכים את מצב ה"קבועה"
         recurringCb.checked = false;
         recurFields.classList.remove('visible');

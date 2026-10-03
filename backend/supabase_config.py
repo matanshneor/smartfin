@@ -1017,6 +1017,20 @@ def transaction_links(tx_id: str, family_id: str):
     return rows[0] if rows else None
 
 
+def transaction_meta(tx_id: str, family_id: str):
+    """מי הזין ומתי — לשורה בתחתית חלון העריכה (מתן, 3.10 — רעיון 22).
+    ‎None‎ אם העסקה לא נמצאה. זורקת DataUnavailable."""
+    client = get_client()
+    if not client:
+        raise DataUnavailable("transaction_meta: no client")
+    try:
+        rows = client.table("transactions").select("created_by, created_at, recurring_parent_id") \
+            .eq("id", tx_id).eq("family_id", family_id).limit(1).execute().data or []
+    except Exception as e:
+        raise DataUnavailable("transaction_meta") from e
+    return rows[0] if rows else None
+
+
 def get_transaction_receipt_path(transaction_id: str, family_id: str):
     client = get_client()
     if not client:

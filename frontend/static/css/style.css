@@ -1934,6 +1934,10 @@ a.submit-btn {
 }
 
 /* שורת פעולות של מצב עריכה: "הוסף שוב" + "מחק" זה לצד זה */
+/* "הוזנה ע״י אור · אתמול 18:32" — מידע משני בתחתית חלון העריכה (מתן, 3.10) */
+.tx-entered-meta { margin: 12px 0 0; text-align: center; font-size: 0.78rem; color: var(--color-text-muted); }
+.tx-entered-meta[hidden] { display: none; }
+
 .edit-mode-actions {
     display: flex;
     gap: 8px;
