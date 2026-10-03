@@ -499,7 +499,7 @@
                 const selectedCategoryId = tx.projectId ? tx.projectCategoryId : tx.categoryId;
                 setType(tx.type, selectedCategoryId, tx.userId || 'shared', tx.projectId, true);
 
-                txAmount.value       = tx.amount;
+                txAmount.value       = plainAmount(tx.amount);
                 txDescription.value  = tx.description || '';
                 txDate.value         = tx.date;
                 syncDateChips();
@@ -1116,6 +1116,10 @@
             let followUp = null;
             // עסקה קבועה שנערכה מההגדרות: מאיזה תאריך השינוי חל. בלי "ביטול" —
             // הסדרה התפצלה, ואין עסקה אחת להחזיר
+            // הוצאה חדשה שחצתה את התקציב של הקטגוריה (מתן, 3.10 — רעיון 17)
+            if (isNew && data.budget_note) {
+                followUp = { text: 'העסקה נוספה. ' + data.budget_note };
+            }
             if (data.series_from) {
                 const d = data.series_from;
                 followUp = { text: 'העסקה הקבועה עודכנה — מ-' + d.slice(8, 10) + '.' + d.slice(5, 7)
@@ -1491,6 +1495,12 @@
 
     // בונה את אובייקט ה-tx למודאל העריכה מתוך ה-data attributes של השורה —
     // משמש גם בלחיצה רגילה וגם בפעולת עריכה מ-swipe
+    // "87.0" מהשרת מוצג "87"; "87.5" נשאר "87.5" (מתן, 3.10)
+    function plainAmount(v) {
+        const n = Number(v);
+        return isFinite(n) ? String(n) : v;
+    }
+
     function buildTxFromRow(row) {
         return {
             id:                  row.dataset.id,
@@ -1617,7 +1627,7 @@
         const descEl   = body.querySelector('.inline-desc');
         const dateEl   = body.querySelector('.inline-date');
         const errEl    = body.querySelector('.inline-error');
-        amountEl.value = tx.amount;
+        amountEl.value = plainAmount(tx.amount);
         descEl.value   = tx.description || '';
         dateEl.value   = tx.date;
 

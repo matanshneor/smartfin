@@ -139,7 +139,8 @@ window.escapeHtml = function (s) {
         toast.appendChild(span);
         toast.classList.toggle('error', type === 'error');
         clearTimeout(toastTimer);
-        let duration = 2600;
+        // הודעה ארוכה ("העסקה נוספה. עברתם את התקציב של…") צריכה זמן לקריאה
+        let duration = msg.length > 40 ? 4500 : 2600;
         if (action) {
             const btn = document.createElement('button');
             btn.type = 'button';

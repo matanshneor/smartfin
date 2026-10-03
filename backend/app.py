@@ -2513,7 +2513,37 @@ def add_transaction():
     if payload["is_recurring"]:
         db.materialize_recurring(user["family_id"])   # (created, ok) — כאן לא נדרש
 
-    return jsonify({"status": "ok", "transaction": result}), 201
+    reply = {"status": "ok", "transaction": result}
+    note = _budget_note(user["family_id"], payload)
+    if note:
+        reply["budget_note"] = note
+    return jsonify(reply), 201
+
+
+def _budget_note(family_id, payload):
+    """"עברתם את התקציב של סופר ומזון ב-₪120" — אחרי הוספת הוצאה שחוצה את
+    התקציב של הקטגוריה שלה בחודש שלה (מתן, 3.10 — רעיון 17). רק הוצאות בית:
+    כסף של פרויקט לא נספר בתקציבי הבית. מידע ולא חסימה — תקלה כאן לא
+    מכשילה את ההוספה, היא רק מוותרת על ההערה."""
+    if payload.get("type") != "expense" or payload.get("project_id") or not payload.get("category_id"):
+        return None
+    budget = db.category_budget(family_settings(), payload["category_id"])
+    if not budget:
+        return None
+    d = str(payload["date"])[:10]           # ‎_parse_date‎ מחזיר מחרוזת ISO
+    try:
+        spent = db.category_month_spent(family_id, payload["category_id"], int(d[:4]), int(d[5:7]))
+    except db.DataUnavailable:
+        return None
+    limit = budget["amount"]
+    if spent <= limit:
+        return None
+    name = next((c.get("name") for c in db.get_categories(family_id)
+                 if str(c.get("id")) == str(payload["category_id"])), None) or "הקטגוריה"
+    over = round(spent - limit)
+    if spent - float(payload["amount"]) <= limit:
+        return f"עברתם את התקציב של {name} ב-₪{format_money(over)}"
+    return f"התקציב של {name} כבר נגמר — ₪{format_money(over)} מעליו"
 
 
 def _still_matches(current: dict, expected: dict) -> bool:

@@ -678,6 +678,25 @@ def category_budget(settings: dict, category_id: str) -> dict:
     return {"amount": amount, "alert": bool(entry.get("alert", True))}
 
 
+def category_month_spent(family_id: str, category_id: str, year: int, month: int) -> float:
+    """כמה יצא החודש על קטגוריה — הוצאות הבית בלבד (בלי פרויקטים), כמו
+    הפס של התקציב בעמוד החודש. בשביל "עברתם את התקציב" בהוספה (רעיון 17).
+    זורקת DataUnavailable."""
+    import calendar
+    client = get_client()
+    if not client:
+        raise DataUnavailable("category_month_spent: no client")
+    first = f"{year:04d}-{month:02d}-01"
+    last = f"{year:04d}-{month:02d}-{calendar.monthrange(year, month)[1]:02d}"
+    try:
+        rows = client.table("transactions").select("amount") \
+            .eq("family_id", family_id).eq("type", "expense").eq("category_id", category_id) \
+            .is_("project_id", "null").gte("date", first).lte("date", last).execute().data or []
+    except Exception as e:
+        raise DataUnavailable("category_month_spent") from e
+    return round(sum(float(r["amount"]) for r in rows), 2)
+
+
 def apply_budgets(breakdown: list, settings: dict) -> list:
     """מוסיף לכל שורת פילוח את מצב התקציב שלה, אם יש.
 
