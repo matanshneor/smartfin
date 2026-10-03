@@ -1937,6 +1937,15 @@ a.submit-btn {
 }
 
 /* שורת פעולות של מצב עריכה: "הוסף שוב" + "מחק" זה לצד זה */
+/* הצעות מתיאורים קודמים מתחת לשדה התיאור (מתן, 3.10 — רעיון 41) */
+.desc-suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.desc-suggest[hidden] { display: none; }
+.desc-suggest-item {
+    border: 1px solid var(--color-gold-border); background: var(--color-gold-dim); color: var(--color-gold-text);
+    border-radius: 99px; padding: 6px 12px; font-size: 0.82rem; font-weight: 600; max-width: 100%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
 /* "הוזנה ע״י אור · אתמול 18:32" — מידע משני בתחתית חלון העריכה (מתן, 3.10) */
 .tx-entered-meta { margin: 12px 0 0; text-align: center; font-size: 0.78rem; color: var(--color-text-muted); }
 .tx-entered-meta[hidden] { display: none; }

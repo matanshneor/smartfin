@@ -292,6 +292,8 @@
     let modalLastFocused = null;
 
     function openModal() {
+        loadDescriptions();
+        hideSuggest();
         modalLastFocused = document.activeElement;
         overlay.classList.add('open');
         document.body.style.overflow = 'hidden';
@@ -1499,6 +1501,55 @@
     function plainAmount(v) {
         const n = Number(v);
         return isFinite(n) ? String(n) : v;
+    }
+
+    // ── השלמה מתיאורים קודמים (מתן, 3.10 — רעיון 41) ──
+    // נטען פעם אחת לכל טעינת עמוד; עד 3 הצעות מתחת לשדה, לפי תחילת מילה.
+    // לחיצה ממלאת רק את התיאור — הקטגוריה לא נוגעת (מתן ויתר על "זכירת קטגוריה").
+    const descSuggest = document.getElementById('descSuggest');
+    let pastDescriptions = null;
+    function loadDescriptions() {
+        if (pastDescriptions || !descSuggest) return;
+        pastDescriptions = [];
+        fetch('/api/descriptions', { credentials: 'same-origin' })
+            .then(r => r.ok ? r.json() : { descriptions: [] })
+            .then(d => { pastDescriptions = d.descriptions || []; })
+            .catch(() => { pastDescriptions = null; });   // ננסה שוב בפתיחה הבאה
+    }
+    function hideSuggest() { if (descSuggest) { descSuggest.hidden = true; descSuggest.innerHTML = ''; } }
+    function descMatches(q) {
+        const needle = q.trim().toLowerCase();
+        if (needle.length < 2 || !pastDescriptions) return [];
+        return pastDescriptions.filter(function (d) {
+            const low = d.toLowerCase();
+            if (low === needle) return false;                     // כבר כתוב במלואו
+            return low.split(/\s+/).some(w => w.startsWith(needle)) || low.startsWith(needle);
+        }).slice(0, 3);
+    }
+    if (descSuggest) {
+        txDescription.addEventListener('input', function () {
+            const found = descMatches(txDescription.value);
+            descSuggest.innerHTML = '';
+            found.forEach(function (text) {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'desc-suggest-item';
+                b.setAttribute('role', 'option');
+                b.textContent = text;
+                descSuggest.appendChild(b);
+            });
+            descSuggest.hidden = !found.length;
+        });
+        // ‎mousedown‎ ולא ‎click‎: אחרת ה-blur של השדה מסתיר את ההצעות לפני הלחיצה
+        descSuggest.addEventListener('mousedown', function (e) { e.preventDefault(); });
+        descSuggest.addEventListener('click', function (e) {
+            const b = e.target.closest('.desc-suggest-item');
+            if (!b) return;
+            txDescription.value = b.textContent;
+            hideSuggest();
+            txDescription.focus();
+        });
+        txDescription.addEventListener('blur', function () { setTimeout(hideSuggest, 150); });
     }
 
     function buildTxFromRow(row) {

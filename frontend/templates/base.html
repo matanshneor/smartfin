@@ -176,7 +176,10 @@
                 <div class="form-group">
                     <label class="form-label" for="txDescription">תיאור קצר</label>
                     <input class="form-input" type="text" id="txDescription"
-                           placeholder="למשל: שופרסל, משכורת…" maxlength="80" enterkeyhint="done">
+                           placeholder="למשל: שופרסל, משכורת…" maxlength="80" enterkeyhint="done"
+                           autocomplete="off" aria-autocomplete="list" aria-controls="descSuggest">
+                    {# השלמה מתיאורים קודמים (מתן, 3.10 — רעיון 41): רק התיאור, לא הקטגוריה #}
+                    <div class="desc-suggest" id="descSuggest" role="listbox" aria-label="תיאורים קודמים" hidden></div>
                 </div>
 
                 <div class="form-group">

@@ -1623,6 +1623,21 @@ def search_route():
                                           settings=family_settings()))
 
 
+@app.route("/api/descriptions")
+@limiter.limit("60 per minute")
+@login_required
+def descriptions():
+    """התיאורים שכבר נכתבו, להשלמה בטופס (מתן, 3.10 — רעיון 41). נטען פעם אחת
+    כשהטופס נפתח; הסינון לפי מה שמקלידים — בדפדפן."""
+    user = get_current_user()
+    if not user["family_id"]:
+        return jsonify({"descriptions": []})
+    try:
+        return jsonify({"descriptions": db.recent_descriptions(user["family_id"], user["id"])})
+    except db.DataUnavailable:
+        return jsonify({"descriptions": []})
+
+
 @app.route("/api/week")
 @limiter.limit("60 per minute")
 @login_required

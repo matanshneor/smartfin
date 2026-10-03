@@ -1263,6 +1263,37 @@ def _filter_hidden_personal_projects(rows: list, viewer_user_id: str) -> list:
     ]
 
 
+def recent_descriptions(family_id: str, viewer_user_id: str, today=None, limit: int = 300) -> list:
+    """התיאורים שכבר נכתבו — להשלמה בשדה "תיאור קצר" (מתן, 3.10 — רעיון 41).
+    של כל המשפחה, מ-6 החודשים האחרונים, מהשכיח לנדיר. בלי פרויקט אישי של
+    בן משפחה אחר — אותו כלל כמו בכל רשימה (‎_filter_hidden_personal_projects‎).
+    זורקת DataUnavailable."""
+    from datetime import timedelta
+    from collections import Counter
+    today = today or clock.today()
+    client = get_client()
+    if not client:
+        raise DataUnavailable("recent_descriptions: no client")
+    try:
+        rows = _fetch_all(lambda: client.table("transactions")
+                          .select("id, description, projects(owner_id)")
+                          .eq("family_id", family_id)
+                          .gte("date", (today - timedelta(days=183)).isoformat())
+                          .order("id"))
+    except Exception as e:
+        raise DataUnavailable("recent_descriptions") from e
+    rows = _filter_hidden_personal_projects(rows, viewer_user_id)
+    counts, spelled = Counter(), {}
+    for r in rows:
+        text = " ".join((r.get("description") or "").split())
+        if len(text) < 2:
+            continue
+        key = text.lower()
+        counts[key] += 1
+        spelled.setdefault(key, text)
+    return [spelled[k] for k, _ in counts.most_common(limit)]
+
+
 def search_transactions(family_id: str, viewer_user_id: str, q: str,
                         settings: dict = None, limit: int = 100) -> dict:
     """חיפוש בכל החודשים (מתן, 30.9 — סבב 6, פריט 2).
