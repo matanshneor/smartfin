@@ -843,3 +843,16 @@ def test_jumping_to_a_department_clears_the_sticky_bar():
     sticky = sticky[:sticky.index("}")]
     assert "padding: calc(env(safe-area-inset-top, 0px) + 10px) 18px 10px;" in sticky, \
         "גובה הכותרת הדביקה השתנה — לעדכן את 58px"
+
+
+def test_only_the_settings_list_edits_a_series_from_now():
+    """מתן (2.10): עריכה מ"עסקאות קבועות" בהגדרות — מהחודש הנוכחי. לחיצה על
+    העסקה של ינואר ברשימת ינואר היא עריכה של ינואר, כמו קודם."""
+    js = _strip_comments(_read("frontend/static/js/transactions.js"))
+    assert "editingSeries = !!(triggerEl && triggerEl.closest && triggerEl.closest('#recurringList'));" in js
+    assert "[mySeries ? 'from_now=1' : '', confirmed ? 'confirm=1' : '']" in js
+    assert js.count("editingSeries = false;") == 3, "הצהרה, הוספה ושכפול מאפסים"
+    app_src = _read("backend/app.py")
+    gate = app_src[app_src.index('if (request.args.get("from_now")'):][:200]
+    assert 'payload["is_recurring"]' in gate
+    assert 'str(tx_date) == str(current.get("date"))[:10]' in gate, "שינוי תאריך התחלה — עריכה רגילה"

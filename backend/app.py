@@ -2599,7 +2599,7 @@ def update_transaction(tx_id):
         try:
             if db.is_recurring_instance(tx_id, user["family_id"]):
                 return jsonify({
-                    "error": "זו עסקה קבועה. כדי לשנות אותה בכל החודשים, "
+                    "error": "זו עסקה קבועה. כדי לשנות אותה מהחודש הנוכחי והלאה, "
                              "ערכו אותה דרך ההגדרות ← עסקאות קבועות.",
                 }), 422
         except db.DataUnavailable:
@@ -2625,6 +2625,14 @@ def update_transaction(tx_id):
             return jsonify({"error": "הקבלה המצורפת אינה תקינה — נסו לצלם שוב"}), 422
         payload["receipt_path"] = body["receipt_path"]
 
+    # עריכה מ"עסקאות קבועות" בהגדרות: מהחודש הנוכחי והלאה (מתן, 2.10).
+    # שינוי תאריך ההתחלה הוא תיקון של הסדרה עצמה — הוא נשאר עריכה רגילה.
+    if (request.args.get("from_now") and payload["is_recurring"]
+            and str(tx_date) == str(current.get("date"))[:10]):
+        series_reply = _edit_series_from_now(tx_id, user["family_id"], payload)
+        if series_reply is not None:
+            return series_reply
+
     result, err = db.update_transaction(tx_id, user["family_id"], payload)
     if err:
         logger.error("update_transaction route: %s", err)
@@ -2639,6 +2647,56 @@ def update_transaction(tx_id):
         db.materialize_recurring(user["family_id"])   # (created, ok) — כאן לא נדרש
 
     return jsonify({"status": "ok", "transaction": result})
+
+
+def _edit_series_from_now(template_id, family_id, payload):
+    """עריכת עסקה קבועה "מעכשיו": השינוי נכתב על המופע של החודש הנוכחי,
+    והסדרה מתפצלת בו — אותו מנגנון כמו "עדכון להבא" (‎split_recurring_series‎).
+    ינואר עד החודש הקודם נשארים כמו שהם.
+
+    ‎None‎ = אין עבר להגן עליו (הסדרה התחילה החודש, או נגמרה) — עורכים את
+    התבנית כרגיל. אחרת — התשובה למסלול."""
+    try:
+        kind, ref = db.series_pivot(template_id, family_id)
+    except db.DataUnavailable:
+        return jsonify({"error": "לא הצלחנו לבדוק את העסקה הקבועה — נסו שוב"}), 503
+    if kind in ("template", "none"):
+        return None
+    if kind == "future":
+        pivot_date = ref
+        if payload["recurring_end_date"] and str(payload["recurring_end_date"]) < pivot_date:
+            return jsonify({"error": "תאריך הסיום מוקדם מהמופע הבא של העסקה הקבועה"}), 422
+        pivot_id, err = db.create_occurrence(template_id, family_id, pivot_date)
+        if err or not pivot_id:
+            logger.error("edit series from now: create_occurrence: %s", err)
+            return jsonify({"error": "עדכון העסקה הקבועה נכשל — נסו שוב"}), 500
+    else:
+        pivot_id, pivot_date = ref
+        if payload["recurring_end_date"] and str(payload["recurring_end_date"]) < pivot_date:
+            return jsonify({"error": "תאריך הסיום מוקדם מהחודש הנוכחי"}), 422
+
+    # 1. המופע מקבל את הערכים החדשים — בלי התאריך שלו ובלי קבלה של התבנית
+    occurrence = {k: v for k, v in payload.items()
+                  if k not in ("date", "is_recurring", "recurring_frequency",
+                               "recurring_end_date", "receipt_path")}
+    result, err = db.update_transaction(pivot_id, family_id, occurrence)
+    if err or not result:
+        logger.error("edit series from now: update occurrence: %s", err)
+        return jsonify({"error": "עדכון העסקה הקבועה נכשל — נסו שוב"}), 500
+    # 2. הסדרה מתפצלת בו: הישנה נגמרת יום לפני, והוא התבנית של החדשה
+    new_id, err = db.split_recurring_series(template_id, pivot_id, family_id)
+    if err or not new_id:
+        logger.error("edit series from now: split: %s", err)
+        return jsonify({"error": "עדכון העסקה הקבועה נכשל — נסו שוב"}), 500
+    # 3. ותדירות / תאריך סיום, אם שונו (הפיצול העתיק את של הישנה)
+    _, err = db.update_transaction(new_id, family_id, {
+        "recurring_frequency": payload["recurring_frequency"],
+        "recurring_end_date":  payload["recurring_end_date"],
+    })
+    if err:
+        logger.error("edit series from now: frequency: %s", err)
+    db.materialize_recurring(family_id)
+    return jsonify({"status": "ok", "transaction": result, "series_from": pivot_date})
 
 
 @app.route("/api/transactions/<tx_id>", methods=["DELETE"])

@@ -50,6 +50,8 @@
     let currentType   = 'expense';
     let editId        = null;   // null = adding a new transaction, otherwise editing this id
     let editingRecurringParentId = null; // אם עורכים מופע שנוצר מתבנית קבועה — מזהה התבנית
+    // נפתח מ"עסקאות קבועות" בהגדרות: השינוי חל מהחודש הנוכחי (מתן, 2.10)
+    let editingSeries = false;
     let editingOriginal = null;          // העסקה כמו שהייתה לפני העריכה — ל"בטל" (סבב 6, פריט 10)
     let originalAmount = null;  // הסכום שנטען לעריכה, להשוואה לזיהוי "שיניתם את הסכום"
     let categoriesCache = null;
@@ -414,7 +416,7 @@
             note.id = 'recurringLockNote';
             note.className = 'field-hint';
             note.textContent = 'זו עסקה קבועה. '
-                             + 'לשינוי שלה בכל החודשים — הגדרות ← עסקאות קבועות.';
+                             + 'לשינוי שלה מהחודש הנוכחי והלאה — הגדרות ← עסקאות קבועות.';
             group.appendChild(note);
         } else if (!locked && note) {
             note.remove();
@@ -427,6 +429,7 @@
         setSubmitBusy(false);                   // טופס חדש לא "באמצע שמירה" — ראו ‎finish‎
         editId = null;
         editingRecurringParentId = null;
+        editingSeries = false;
         originalAmount = null;
         modalTitle.textContent = 'הוספת עסקה';
         editModeActions.style.display = 'none';
@@ -458,6 +461,7 @@
         txReceiptPath.value = '';               // לא יורשים קבלה מטופס קודם
         editId = tx.id;
         editingRecurringParentId = tx.recurringParentId || null;
+        editingSeries = !!(triggerEl && triggerEl.closest && triggerEl.closest('#recurringList'));
         editingOriginal = tx;
         originalAmount = parseFloat(tx.amount);
         modalTitle.textContent = 'עריכת עסקה';
@@ -959,6 +963,7 @@
         const myForm   = formSeq;
         const myEditId = editId;
         const myOriginal = editId ? editingOriginal : null;
+        const mySeries = !!(editId && editingSeries);
         const myLabel  = '₪' + amount + (payload.description ? ' (' + payload.description + ')' : '');
         // האם הטופס של השמירה הזאת כבר לא על המסך — כי נפתח טופס אחר מאז
         function formWasReplaced() { return formSeq !== myForm; }
@@ -1007,7 +1012,8 @@
         const method = editId ? 'PUT' : 'POST';
 
         function send(confirmed) {
-            return fetch(url + (confirmed ? '?confirm=1' : ''), {
+            const query = [mySeries ? 'from_now=1' : '', confirmed ? 'confirm=1' : ''].filter(Boolean).join('&');
+            return fetch(url + (query ? '?' + query : ''), {
                 method:  method,
                 headers: { 'Content-Type': 'application/json' },
                 body:    JSON.stringify(payload),
@@ -1088,6 +1094,13 @@
 
             // מה שפעולת-המשך (למטה) רוצה שהמשתמש יידע, במקום ההודעה הרגילה
             let followUp = null;
+            // עסקה קבועה שנערכה מההגדרות: מאיזה תאריך השינוי חל. בלי "ביטול" —
+            // הסדרה התפצלה, ואין עסקה אחת להחזיר
+            if (data.series_from) {
+                const d = data.series_from;
+                followUp = { text: 'העסקה הקבועה עודכנה — מ-' + d.slice(8, 10) + '.' + d.slice(5, 7)
+                                   + ' והלאה. החודשים הקודמים לא השתנו', series: true };
+            }
 
             function finish() {
                 // אם בינתיים נפתח טופס חדש — הוא של המשתמש, לא שלנו
@@ -1400,6 +1413,7 @@
     duplicateBtn.addEventListener('click', function () {
         editId = null;
         editingRecurringParentId = null;
+        editingSeries = false;
         originalAmount = null;
         modalTitle.textContent = 'הוספת עסקה';
         editModeActions.style.display = 'none';

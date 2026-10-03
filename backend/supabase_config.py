@@ -1841,6 +1841,82 @@ def split_recurring_series(template_id: str, instance_id: str, family_id: str):
         return None, str(e)
 
 
+def series_pivot(template_id: str, family_id: str, today=None):
+    """עריכת עסקה קבועה מ"עסקאות קבועות" בהגדרות חלה מהחודש הנוכחי (מתן, 2.10).
+    מחזירה מאיפה השינוי מתחיל:
+
+    ‎("template", None)‎ — הסדרה התחילה בחודש הנוכחי או אחריו: אין עבר
+        להגן עליו, עורכים את התבנית כרגיל.
+    ‎("instance", (id, date))‎ — המופע האחרון שכבר נוצר בחודש הנוכחי.
+    ‎("future", date)‎ — המופע של החודש עוד לא נוצר (משכורת ב-10, היום ה-2):
+        התאריך הבא שלו.
+    ‎("none", None)‎ — אין יותר מופעים (הסדרה נגמרה, או שהתבנית לא נמצאה).
+
+    התבנית היא גם העסקה של החודש הראשון, ולכן עריכה שלה כתבה מחדש את
+    ינואר. זה אותו באג ש"עדכון להבא" תיקן (‎split_recurring_series‎), רק
+    מהדלת השנייה. זורקת DataUnavailable."""
+    from datetime import date, timedelta
+    client = get_client()
+    if not client:
+        raise DataUnavailable("series_pivot: no client")
+    today = today or clock.today()
+    month_start = today.replace(day=1)
+    try:
+        tpl = _maybe_one(client.table("transactions").select("*")
+                         .eq("id", template_id).eq("family_id", family_id).eq("is_recurring", True))
+        if not tpl:
+            return "none", None
+        if date.fromisoformat(str(tpl["date"])[:10]) >= month_start:
+            return "template", None
+        rows = client.table("transactions").select("id, date") \
+            .eq("family_id", family_id).eq("recurring_parent_id", template_id) \
+            .gte("date", month_start.isoformat()).order("date", desc=True).limit(1).execute().data or []
+    except Exception as e:
+        raise DataUnavailable("series_pivot") from e
+    if rows:
+        return "instance", (rows[0]["id"], str(rows[0]["date"])[:10])
+    skips = {str(d)[:10] for d in (tpl.get("recurring_skips") or [])}
+    for d in _recurring_occurrences(tpl, today + timedelta(days=400)):
+        if d > today and d.isoformat() not in skips:
+            return "future", d.isoformat()
+    return "none", None
+
+
+def create_occurrence(template_id: str, family_id: str, on_date: str):
+    """יוצרת מופע של תבנית בתאריך נתון — כמו שהמנוע היה יוצר אותו (אותם
+    שדות כמו ב-‎materialize_recurring‎). בשביל עריכה "מעכשיו" כשהמופע של
+    החודש עוד לא נוצר: הוא נוצר עכשיו, ואז הסדרה מתפצלת בו. כשיגיע התאריך
+    המנוע יראה שהתקופה תפוסה ולא יכפיל. מחזירה (id, error)."""
+    client = get_client()
+    if not client:
+        return None, "Database not configured"
+    try:
+        t = _maybe_one(client.table("transactions").select("*")
+                       .eq("id", template_id).eq("family_id", family_id).eq("is_recurring", True))
+        if not t:
+            return None, None
+        row = client.table("transactions").insert({
+            "amount":              t["amount"],
+            "type":                t["type"],
+            "date":                on_date,
+            "description":         t.get("description") or "",
+            "category_id":         t.get("category_id"),
+            "project_id":          t.get("project_id"),
+            "project_category_id": t.get("project_category_id"),
+            "created_by":          t.get("created_by"),
+            "user_id":             t.get("user_id"),
+            "family_id":           family_id,
+            "is_recurring":        False,
+            "recurring_parent_id": t["id"],
+            "recurring_frequency": t.get("recurring_frequency"),
+            "workplace":           t.get("workplace"),
+        }).execute().data
+        return (row[0]["id"] if row else None), None
+    except Exception as e:
+        logger.exception("create_occurrence")
+        return None, str(e)
+
+
 def project_choice_needed(err) -> int:
     """כמה פרויקטים אישיים מחכים להחלטה, לפי השגיאה של הסרה/עזיבה; 0 אם
     זו שגיאה אחרת. המסד הוא היחיד שיכול לספור אותם — הם אישיים, ולכן
