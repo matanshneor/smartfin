@@ -108,7 +108,8 @@ def test_the_invite_carries_a_link_not_just_six_characters():
     msg = _messages()["named"]
 
     assert "K4F2QX" in msg
-    assert "https://smartfin.up.railway.app/signup" in msg
+    # מאז 3.10 (רעיון 43) — קישור שמצרף בלחיצה, עם הקוד בתוכו
+    assert "https://smartfin.up.railway.app/join/K4F2QX" in msg
 
 
 def test_the_invite_says_who_is_inviting():
@@ -132,4 +133,4 @@ def test_the_code_sits_on_its_own_line():
     """כדי שאפשר יהיה לסמן אותו בלחיצה ארוכה בלי לגרור נקודה."""
     msg = _messages()["named"]
 
-    assert "\nK4F2QX\n" in msg
+    assert "K4F2QX" in msg.split("\n"), "הקוד בשורה משלו"

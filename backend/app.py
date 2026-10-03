@@ -660,8 +660,15 @@ def _signup_form():
         "last_name":   request.form.get("last_name", "").strip(),
         "email":       request.form.get("email", "").strip(),
         "phone":       request.form.get("phone", "").strip(),
-        "invite_code": request.form.get("invite_code", "").strip(),
+        # או מקישור ההזמנה (‎/join/<code>‎ ← ‎/signup?invite=…‎, רעיון 43)
+        "invite_code": request.form.get("invite_code", "").strip() or _clean_invite(request.args.get("invite")),
     }
+
+
+def _clean_invite(raw) -> str:
+    """קוד הזמנה מכתובת: אותיות וספרות בלבד, עד 12, באותיות גדולות. הוא נכנס
+    ל-HTML (‎value=‎) ולכתובות — שום דבר אחר לא עובר."""
+    return re.sub(r"[^A-Za-z0-9]", "", raw or "")[:12].upper()
 
 
 def _normalize_phone(raw: str) -> str:
@@ -763,6 +770,17 @@ def login():
     response.headers["Cache-Control"] = "no-store"
     response.headers["Vary"] = "Cookie"
     return response
+
+
+@app.route("/join/<code>")
+def join_link(code):
+    """קישור ההזמנה מוואטסאפ (מתן, 3.10 — רעיון 43). בלי חשבון — טופס ההרשמה
+    עם הקוד מלא. עם חשבון — ההגדרות, בשורה "הצטרפות למשפחה אחרת" עם הקוד
+    מלא; ההצטרפות עצמה בלחיצה שלו, לא מעצמה."""
+    code = _clean_invite(code)
+    if "user_id" in session:
+        return redirect(url_for("settings", join=code) + "#join-family")
+    return redirect(url_for("signup", invite=code))
 
 
 @app.route("/signup", methods=["GET", "POST"])

@@ -1392,3 +1392,26 @@ updateWorkplaceState();
             .catch(function () { btn.disabled = false; window.showToast(window.sfNetError(), 'error'); });
     });
 })();
+
+
+
+// ── הגעה מקישור הזמנה (‎/join/<code>‎ ← ‎/settings?join=…‎, רעיון 43) ──
+// פותחים את "המשפחה שלי" וממלאים את הקוד. לא מצטרפים מעצמנו: מעבר
+// משפחה הוא החלטה, והכפתור "הצטרפות" שואל לפני שהוא מנתק מהמשפחה הנוכחית.
+(function () {
+    let code = null;
+    try { code = new URLSearchParams(location.search).get('join'); } catch (err) { return; }
+    const input = document.getElementById('joinCodeInput');
+    if (!code || !input) return;
+    input.value = code.replace(/[^A-Za-z0-9]/g, '').slice(0, 12).toUpperCase();
+    const group = input.closest('.settings-group');
+    if (group && !group.classList.contains('open')) {
+        const header = group.querySelector('.settings-group-header');
+        if (header) header.click();
+    }
+    requestAnimationFrame(function () {
+        const row = document.getElementById('join-family');
+        if (row) row.scrollIntoView({ block: 'center' });
+        input.focus({ preventScroll: true });
+    });
+})();

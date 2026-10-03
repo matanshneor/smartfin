@@ -9,8 +9,8 @@
 window.sfInviteMessage = function (code, familyName) {
     const who = familyName ? ('\u200f"' + familyName + '"') : '\u200fהמשפחה שלנו';
     return 'הצטרפו אליי ל-SmartFin — התקציב המשותף של ' + who + '.\n\n'
-         + 'קוד ההזמנה:\n' + code + '\n\n'
-         + window.location.origin + '/signup';
+         + 'להצטרפות בלחיצה:\n' + window.location.origin + '/join/' + encodeURIComponent(code) + '\n\n'
+         + 'או קוד ההזמנה:\n' + code;
 };
 
 /* העתקה ללוח, עם נפילה חזרה.
