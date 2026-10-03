@@ -9,14 +9,18 @@ const TEXT_MUTED = window.sfCharts.muted;
 const GRID_LINE  = window.sfCharts.grid;
 
 const trendData = SF_VIEW.trend;
+// הטווח של שני הגרפים — 3 / 6 / 12 חודשים (רעיון 24). כל גרף רושם כאן איך
+// הוא מתעדכן, והכפתורים קוראים לכולם.
+let RANGE = 6;
+const rangeListeners = [];
 const SHORT_MONTHS = ['', 'ינו׳', 'פבר׳', 'מרץ', 'אפר׳', 'מאי', 'יוני', 'יולי', 'אוג׳', 'ספט׳', 'אוק׳', 'נוב׳', 'דצמ׳'];
 
 // ── השוואת חודשים ──
 if (trendData.length > 0) {
-    const last6 = trendData.slice(-6);
+    let last6 = trendData.slice(-RANGE);      // השם נשאר מימי "6 חודשים"; זה הטווח שנבחר
     const ctx = document.getElementById('compareChart');
     if (ctx) {
-        new Chart(ctx, {
+        const compareChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 // שמות מקוצרים מתחת לעמודות: בגופן 13 המלאים נדבקו זה לזה
@@ -93,6 +97,14 @@ if (trendData.length > 0) {
                 }
             }
         });
+        rangeListeners.push(function () {
+            last6 = trendData.slice(-RANGE);
+            compareChart.data.labels = last6.map(d => SHORT_MONTHS[d.month] || d.month_name);
+            compareChart.data.datasets[0].data = last6.map(d => d.savings);
+            compareChart.data.datasets[1].data = last6.map(d => d.expense);
+            compareChart.data.datasets[2].data = last6.map(d => d.income);
+            compareChart.update();
+        });
     }
 }
 
@@ -102,13 +114,37 @@ if (trendData.length > 0) {
 const catTrend = SF_VIEW.cat_trend;
 const catCanvas = document.getElementById('categoryChart');
 if (catTrend && catTrend.categories.length && catCanvas) {
-    const months = catTrend.months;
+    const allMonths = catTrend.months;              // 12; מוצגים האחרונים לפי הטווח
+    let months = allMonths.slice(-RANGE);
     const money = v => '₪' + window.sfMoney(Math.round(v));
     const isNow = months.length && (function () {
-        const d = new Date(), last = months[months.length - 1];
+        const d = new Date(), last = allMonths[allMonths.length - 1];
         return last.year === d.getFullYear() && last.month === d.getMonth() + 1;
     })();
     const BAR = 'rgba(160,69,69,0.9)', BAR_NOW = 'rgba(160,69,69,0.35)';
+    function barColors() {
+        return months.map((m, i) => (isNow && i === months.length - 1) ? BAR_NOW : BAR);
+    }
+
+    /* הקטגוריה בטווח שנבחר: הערכים והעסקאות של החודשים המוצגים, והממוצע
+     * והחודש הכי יקר מחושבים מחדש — מהחודשים שנגמרו, כמו ב-‎category_trend‎
+     * בשרת (החודש הנוכחי עוד לא נגמר והיה מוריד את הממוצע). */
+    function inRange(c) {
+        const n = months.length, off = allMonths.length - n;
+        const values = c.values.slice(off), items = (c.items || []).slice(off);
+        const now = new Date(), ty = now.getFullYear(), tm = now.getMonth() + 1;
+        const finished = months.map((m, i) => (m.year < ty || (m.year === ty && m.month < tm)) ? i : -1)
+                               .filter(i => i >= 0);
+        const done = finished.map(i => values[i]);
+        const top = finished.length ? finished.reduce((a, b) => values[b] > values[a] ? b : a) : null;
+        return {
+            key: c.key, name: c.name, icon: c.icon, values: values, items: items,
+            avg: done.length ? done.reduce((a, b) => a + b, 0) / done.length : null,
+            max: top !== null ? values[top] : null,
+            max_label: top !== null ? months[top].name : null,
+            current: isNow ? values[n - 1] : null,
+        };
+    }
 
     // הסכום מעל כל עמודה — בלי תוסף: שורה אחת שמציירת אחרי העמודות
     const valuesOnTop = {
@@ -133,7 +169,7 @@ if (catTrend && catTrend.categories.length && catCanvas) {
             labels: months.map(m => m.label),
             datasets: [
                 { label: 'הוצאה', data: [], borderRadius: 5,
-                  backgroundColor: months.map((m, i) => (isNow && i === months.length - 1) ? BAR_NOW : BAR),
+                  backgroundColor: barColors(),
                   categoryPercentage: 0.86, barPercentage: 0.8, order: 2 },
                 { type: 'line', label: 'ממוצע', data: [], borderColor: TEXT_MUTED, borderWidth: 1.2,
                   borderDash: [4, 4], pointRadius: 0, pointHitRadius: 0, fill: false, order: 1 },
@@ -239,7 +275,7 @@ if (catTrend && catTrend.categories.length && catCanvas) {
     const stats = document.getElementById('catTrendStats');
     let current = null;
     function show(key) {
-        const c = catTrend.categories.find(x => x.key === key) || catTrend.categories[0];
+        const c = inRange(catTrend.categories.find(x => x.key === key) || catTrend.categories[0]);
         current = c;
         chart.data.datasets[0].data = c.values;
         // קו הממוצע לכל רוחב הגרף; בלי חודש שנגמר — אין ממוצע
@@ -260,6 +296,12 @@ if (catTrend && catTrend.categories.length && catCanvas) {
     try { wanted = new URLSearchParams(location.search).get('cat'); } catch (err) { /* דפדפן ישן */ }
     const fromMonth = wanted && catTrend.categories.some(x => x.key === wanted) ? wanted : null;
     show(fromMonth || catTrend.categories[0].key);
+    rangeListeners.push(function () {
+        months = allMonths.slice(-RANGE);
+        chart.data.labels = months.map(m => m.label);
+        chart.data.datasets[0].backgroundColor = barColors();
+        show(current ? current.key : catTrend.categories[0].key);
+    });
     if (fromMonth) {
         document.querySelectorAll('.cat-trend-chips .tx-cat-chip').forEach(function (b) {
             const on = b.dataset.key === fromMonth;
@@ -280,6 +322,21 @@ if (catTrend && catTrend.categories.length && catCanvas) {
     });
 }
 
+
+// ── כפתורי הטווח ──
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest && e.target.closest('.range-chip');
+    if (!btn) return;
+    const n = Number(btn.dataset.range);
+    if (!n || n === RANGE) return;
+    RANGE = n;
+    document.querySelectorAll('.range-chip').forEach(function (b) {
+        const on = b === btn;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    rangeListeners.forEach(function (fn) { fn(); });
+});
 })();
 
 

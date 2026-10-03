@@ -1471,8 +1471,9 @@ def months():
     archive   = db.get_months_archive(family_id)              if family_id else []
     trend     = db.monthly_trend(archive, 12)
     now       = clock.now()
-    # "לפי קטגוריה" (מתן, 30.9): אותם 6 חודשים כמו הגרף שמעליו
-    cat_trend = db.category_trend(family_id, [(t["year"], t["month"]) for t in trend[-6:]],
+    # "לפי קטגוריה" (מתן, 30.9): אותם חודשים כמו הגרף שמעליו. נשלחים 12, והדפדפן
+    # מציג 3 / 6 / 12 לפי הטווח שבוחרים (רעיון 24)
+    cat_trend = db.category_trend(family_id, [(t["year"], t["month"]) for t in trend[-12:]],
                                   db.get_categories(family_id)) if family_id else None
     return render_template("months.html", active_page="months", user=user,
                            archive=archive, trend_data=trend, cat_trend=cat_trend,

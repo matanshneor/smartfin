@@ -918,3 +918,18 @@ def test_the_projects_page_says_projects_are_outside_the_month_balance():
     html = _read("frontend/templates/projects.html")
     hero = html[html.index("{% block hero %}"):html.index("{% endblock %}", html.index("{% block hero %}"))]
     assert '<p class="hero-note">העסקאות של הפרויקטים לא נכללות במאזן החודש' in hero
+
+
+def test_the_compare_page_has_a_range_for_both_charts():
+    """מתן (3.10, רעיון 24): 3 חודשים / חצי שנה (ברירת מחדל, כמו קודם) / שנה —
+    לשני הגרפים יחד, והממוצע והחודש הכי יקר מחושבים מחדש. בדפדפן: נבדק עם 8
+    חודשים — ממוצע מהחודשים שנגמרו בלבד, בכל טווח."""
+    html = _read("frontend/templates/months.html")
+    assert 'data-range="3"' in html and 'data-range="12"' in html
+    assert 'class="date-chip range-chip active" data-range="6"' in html, "ברירת המחדל — חצי שנה"
+    js = _strip_comments(_read("frontend/static/js/months.js"))
+    assert "let RANGE = 6;" in js
+    assert "last6 = trendData.slice(-RANGE);" in js and "months = allMonths.slice(-RANGE);" in js
+    assert "const c = inRange(" in js, "הסטטיסטיקה לפי הטווח, לא לפי 12 החודשים"
+    assert "(m.year < ty || (m.year === ty && m.month < tm))" in js, "ממוצע — רק מחודשים שנגמרו"
+    assert "trend[-12:]" in _read("backend/app.py")
