@@ -267,6 +267,9 @@ ul { list-style: none; }
     margin-top: 2px;
 }
 
+/* שורת הסבר משנית בראש עמוד — למשל "לא נכללות במאזן החודש" בפרויקטים (מתן, 3.10) */
+.hero-note { color: var(--hero-text-muted); font-size: 0.76rem; margin-top: 6px; line-height: 1.45; opacity: 0.85; }
+
 /* הגדרות: שם המשפחה בצד שמאל, באותה שורה עם הכותרת (מתן, 1.10).
    שם ארוך נשבר לשתי שורות בצד שלו ולא דוחף את "הגדרות". */
 .settings-hero-top { align-items: center; gap: 16px; }

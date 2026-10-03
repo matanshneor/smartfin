@@ -910,3 +910,11 @@ def test_the_price_change_line_in_settings():
             tx={"id": "x", "amount": 5500}, hebrew_months=months, price_changes={})
     assert "₪5,000 ← ₪5,500 מאוקטובר" in out
     assert "recurring-price-change" not in none
+
+
+def test_the_projects_page_says_projects_are_outside_the_month_balance():
+    """מתן (3.10): "שורת הסבר שהעסקאות של הפרויקט לא משפיעות על המאזן החודשי".
+    בראש העמוד — גלויה גם כשאין פרויקטים. במונח של האפליקציה: "מאזן החודש"."""
+    html = _read("frontend/templates/projects.html")
+    hero = html[html.index("{% block hero %}"):html.index("{% endblock %}", html.index("{% block hero %}"))]
+    assert '<p class="hero-note">העסקאות של הפרויקטים לא נכללות במאזן החודש' in hero
