@@ -29,7 +29,7 @@
 {# לפי קטגוריה (מתן, 30.9 — אפשרות א): בוחרים קטגוריה ורואים כמה יצא עליה
    בכל חודש. אותם חודשים כמו הגרף שמעל. הנתונים ב-‎sf-view-data‎. #}
 {% if cat_trend and cat_trend.categories %}
-<section class="chart-card cat-trend-card">
+<section class="chart-card cat-trend-card" id="cat-trend">
     <h2 class="chart-title">הוצאות לפי קטגוריה</h2>
     <div class="tx-cat-chips cat-trend-chips" role="group" aria-label="בחירת קטגוריה">
         {% for c in cat_trend.categories %}

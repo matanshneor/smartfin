@@ -866,3 +866,19 @@ def test_the_home_page_has_no_budgets_card():
     assert "home-budgets" not in html and "תקציבים החודש" not in html
     assert "get_home_budgets" not in _read("backend/app.py")
     assert 'id="budgetsOpen"' in _read("frontend/templates/month.html"), "קביעת התקציבים בעמוד החודש נשארת"
+
+
+def test_a_month_category_links_to_its_history():
+    """מתן (3.10, רעיון 23): מקטגוריה בעמוד החודש — לגרף שלה בעמוד ההשוואה,
+    כשהיא כבר בחורה. רק בהוצאות: הגרף שם הוא של הוצאות. בדפדפן: נבדק."""
+    html = _read("frontend/templates/month.html")
+    exp = html[html.index('id="expense-breakdown"'):]
+    exp = exp[:exp.index("</section>")]
+    assert "url_for('months', cat=item.category_id) }}#cat-trend" in exp
+    assert "{% if item.category_id and not item.is_project %}" in exp
+    rest = html.replace(exp, "")
+    assert "#cat-trend" not in rest, "בהכנסות ובחיסכון אין גרף כזה"
+    assert 'id="cat-trend"' in _read("frontend/templates/months.html")
+    js = _strip_comments(_read("frontend/static/js/months.js"))
+    assert "new URLSearchParams(location.search).get('cat')" in js
+    assert "catTrend.categories.some(x => x.key === wanted) ? wanted : null" in js, "קטגוריה בלי היסטוריה — הראשונה"

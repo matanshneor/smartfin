@@ -254,7 +254,20 @@ if (catTrend && catTrend.categories.length && catCanvas) {
                  c.max_label ? '<span class="num">' + money(c.max) + '</span>' : '—') +
             (c.current == null ? '' : cell('החודש', '<span class="num">' + money(c.current) + '</span>'));
     }
-    show(catTrend.categories[0].key);
+    // הגעה מקטגוריה בעמוד החודש (‎?cat=<id>‎, רעיון 23): היא הבחורה. קטגוריה
+    // שאין לה היסטוריה כאן — נשארים על הראשונה.
+    let wanted = null;
+    try { wanted = new URLSearchParams(location.search).get('cat'); } catch (err) { /* דפדפן ישן */ }
+    const fromMonth = wanted && catTrend.categories.some(x => x.key === wanted) ? wanted : null;
+    show(fromMonth || catTrend.categories[0].key);
+    if (fromMonth) {
+        document.querySelectorAll('.cat-trend-chips .tx-cat-chip').forEach(function (b) {
+            const on = b.dataset.key === fromMonth;
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+            if (on && b.scrollIntoView) b.scrollIntoView({ block: 'nearest', inline: 'center' });
+        });
+    }
 
     document.addEventListener('click', function (e) {
         const chip = e.target.closest && e.target.closest('.cat-trend-chips .tx-cat-chip');

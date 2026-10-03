@@ -311,6 +311,12 @@
                     <span class="cat-tx-amount expense">₪{{ tx.amount | money }}</span>
                 </li>
                 {% endfor %}
+                {# מהקטגוריה להיסטוריה שלה בעמוד ההשוואה (מתן, 3.10 — רעיון 23) #}
+                {% if item.category_id and not item.is_project %}
+                <li class="cat-tx-row cat-tx-more">
+                    <a href="{{ url_for('months', cat=item.category_id) }}#cat-trend">השוואה לחודשים קודמים ←</a>
+                </li>
+                {% endif %}
             </ul>
             {% endif %}
         </li>
