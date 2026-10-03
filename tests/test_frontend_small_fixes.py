@@ -856,3 +856,13 @@ def test_only_the_settings_list_edits_a_series_from_now():
     gate = app_src[app_src.index('if (request.args.get("from_now")'):][:200]
     assert 'payload["is_recurring"]' in gate
     assert 'str(tx_date) == str(current.get("date"))[:10]' in gate, "שינוי תאריך התחלה — עריכה רגילה"
+
+
+def test_the_home_page_has_no_budgets_card():
+    """מתן (3.10): "אני לא רוצה בכלל שיהיה תקציבים החודש — זה מיותר בדף הבית".
+    התקציבים עצמם נשארו בעמוד החודש."""
+    import re
+    html = re.sub(r"\{#.*?#\}", "", _read("frontend/templates/index.html"), flags=re.S)
+    assert "home-budgets" not in html and "תקציבים החודש" not in html
+    assert "get_home_budgets" not in _read("backend/app.py")
+    assert 'id="budgetsOpen"' in _read("frontend/templates/month.html"), "קביעת התקציבים בעמוד החודש נשארת"

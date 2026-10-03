@@ -1141,8 +1141,6 @@ def dashboard():
     # חוזרות על עצמן.
     transactions = db.get_recent_transactions(family_id, limit=10, settings=batch["settings"],
                                                viewer_user_id=user["id"])
-    home_budgets = db.get_home_budgets(family_id, now.year, now.month,
-                                       batch["settings"], batch["categories"])
     # "השבוע" (מתן, 30.9) — קישוט: תקלה בו לא מפילה את דף הבית
     try:
         week = db.week_spending(family_id)
@@ -1158,7 +1156,6 @@ def dashboard():
         user=user,
         summary=batch["summary"],
         transactions=transactions,
-        home_budgets=home_budgets,
         week=week,
         categories=batch["categories"],
         member_colors=_member_colors(family_id),
