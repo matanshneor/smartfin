@@ -1480,14 +1480,6 @@ def get_recurring_transactions(family_id: str, viewer_user_id: str, settings: di
         raise DataUnavailable("get_recurring_transactions") from e
 
 
-# כמה פעמים בחודש מתרחשת כל תדירות. שבועי הוא 52/12 ולא 4, ודו-שבועי
-# 26/12 ולא 2 — ההפרש הוא כמעט חודש שלם בשנה, ועל שכירות זה סכום אמיתי.
-_PER_MONTH = {
-    "monthly_same": 1.0, "monthly_1": 1.0, "monthly_15": 1.0,
-    "weekly": 52 / 12, "biweekly": 26 / 12,
-}
-
-
 def is_active_template(row: dict, today=None) -> bool:
     """תבנית שתאריך הסיום שלה עבר כבר לא קבועה.
 
@@ -1497,40 +1489,6 @@ def is_active_template(row: dict, today=None) -> bool:
     end = row.get("recurring_end_date")
     return not (end and str(end) < (today or clock.today()).isoformat())
 
-
-def summarise_recurring(rows: list, today=None) -> dict:
-    """מסכם את העסקאות הקבועות לתמונה חודשית.
-
-    מחזיר ‎{"expense": …, "income": …, "savings": …, "rows": [...]}‎ —
-    (‎rows‎ ולא ‎items‎: ב-Jinja ‎fixed.items‎ מחזיר את מתודת המילון.)
-    הסכומים מנורמלים לחודש, והפריטים ממוינים מהגדול לקטן.
-
-    זה המספר שמשפחה הכי צריכה ולא יכלה לקבל: ההוצאות הקבועות קיימות
-    באפליקציה אבל קבורות באקורדיון סגור בהגדרות, ואין מסך שעונה על
-    "כמה יוצא לנו כל חודש בלי קשר למה שנעשה". זה מה שלא משתנה, ולכן
-    זה מה שאפשר לתכנן סביבו.
-
-    תבנית שתאריך הסיום שלה עבר לא נספרת — היא כבר לא קבועה."""
-    today = today or clock.today()
-    totals = {"expense": 0.0, "income": 0.0, "savings": 0.0}
-    items = []
-
-    for row in rows:
-        if not is_active_template(row, today):
-            continue
-        # כסף של פרויקט לא נכנס ל"יוצא כל חודש" — בדיוק כמו ששאר עמוד
-        # החודש מחריג אותו (‎_household_rows‎). הוא נספר עד היום, גם בפרויקט
-        # משותף, ו"ההוצאות הקבועות שלנו" כללו את התשלום לקבלן.
-        if row.get("project_id"):
-            continue
-        per_month = _PER_MONTH.get(row.get("recurring_frequency") or "monthly_1", 1.0)
-        monthly = float(row["amount"]) * per_month
-        if row["type"] in totals:
-            totals[row["type"]] += monthly
-        items.append({**row, "monthly_amount": monthly, "per_month": per_month})
-
-    items.sort(key=lambda r: r["monthly_amount"], reverse=True)
-    return {**totals, "rows": items}
 
 
 _MAX_RECURRING_TEMPLATES = 200

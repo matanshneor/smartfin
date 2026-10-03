@@ -1261,7 +1261,7 @@
     function removeTransactionRows(id, row) {
         if (row) row.remove();
         if (!id) return;
-        document.querySelectorAll('.transaction-item, .cat-tx-row, .recurring-row, .fixed-row')
+        document.querySelectorAll('.transaction-item, .cat-tx-row, .recurring-row')
             .forEach(function (el) { if (el.dataset.id === id) el.remove(); });
     }
 
@@ -1797,7 +1797,7 @@
 
         // שורת עסקה קבועה ברשימה של ההגדרות — שם "הסרה" עוצרת את הסדרה
         function isSettingsSeriesRow(row) {
-            return row.classList.contains('recurring-row') && !row.closest('#fixedList');
+            return row.classList.contains('recurring-row');
         }
 
         function ensureSwipeStructure(row) {
@@ -1953,34 +1953,17 @@
         });
     })();
 
-    /* ── ה-✕ על עסקה קבועה ──────────────────────────────────────────────
+    /* ── ה-✕ על עסקה קבועה — רק בהגדרות ← עסקאות קבועות ─────────────────
      *
-     * שני מקומות, שתי משמעויות, ובכוונה:
-     *
-     * **בעמוד החודש** ✕ נראה כמו מחיקה, ולכן הוא מוחק — ושואל את אותה
-     * שאלה שנשאלת בכל מקום אחר באפליקציה: "רק את זו" או "את זו וכל
-     * הבאות". קודם הוא קרא ל-‎/api/recurring‎, שעוצר את הסדרה ומשאיר את
-     * ההיסטוריה: פעולה סבירה לגמרי, אבל לא זו שהכפתור מבטיח.
-     *
-     * **בהגדרות** הוא נשאר "הסרה" — עצירת הסדרה בלי למחוק שום כסף.
-     * זו פעולה אמיתית שצריך שתהיה איפשהו, ו"עסקאות קבועות" בהגדרות הוא
-     * המקום שבו מנהלים את הסדרה עצמה ולא חודש מסוים.
+     * "הסרה": עצירת העסקה הקבועה בלי למחוק שום כסף שכבר נרשם. בעמוד החודש
+     * היה ✕ נוסף שמחק עסקאות — ומכיוון שהשורה שם הייתה העסקה של החודש
+     * הראשון, "רק את זו" מחקה את ינואר. החלק הוסר משם (מתן, 2.10).
      */
     document.addEventListener('click', function (e) {
         const btn = e.target.closest('.delete-recurring-btn');
         if (!btn) return;
-        const row = btn.closest('.recurring-row, .fixed-row');
+        const row = btn.closest('.recurring-row');
         if (!row || !row.dataset.id) return;
-
-        // בעמוד החודש: מחיקה אמיתית, עם השאלה על הסדרה.
-        if (row.closest('#fixedList')) {
-            deleteWithUndo(buildTxFromRow(row), row, function (msg) {
-                window.showToast(msg || 'המחיקה נכשלה', 'error');
-            });
-            return;
-        }
-
-        // בהגדרות: עצירת הסדרה.
         stopSeriesFromSettings(row);
     });
 

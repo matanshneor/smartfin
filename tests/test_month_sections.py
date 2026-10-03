@@ -118,29 +118,15 @@ def test_nothing_in_means_nothing_out():
 
 # ═══ מה התבנית מציגה ═════════════════════════════════════════════════════════
 
-def test_the_recurring_section_is_named_for_what_it_holds():
-    """"קבוע כל חודש" תיאר תדירות אחת מתוך חמש."""
-    assert "עסקאות קבועות" in _HTML
-    assert "קבוע כל חודש" not in _HTML
-
-
-def test_managing_recurring_no_longer_sends_you_to_settings():
-    """הלב של הבקשה: הכפתור פותח עריכה כאן, לא עמוד אחר."""
-    block = _HTML[_HTML.index("עסקאות קבועות"):][:700]
-
-    assert 'id="fixedManageBtn"' in block
-    assert "settings" not in block, "הכפתור עדיין מפנה להגדרות"
-
-
-def test_the_recurring_rows_carry_what_the_editor_needs():
-    """המודאל הגלובלי בונה את העסקה מה-‎data-*‎. חסר אחד — והעריכה
-    נפתחת על ערכים שגויים, שנשמרים."""
-    block = _HTML[_HTML.index('class="fixed-list"'):][:2500]
-
-    for field in ("data-id", "data-amount", "data-type", "data-category-id",
-                  "data-date", "data-is-recurring", "data-recurring-frequency",
-                  "data-recurring-end-date", "data-recurring-parent-id"):
-        assert field in block, f"{field} חסר בשורת העסקה הקבועה"
+def test_the_month_page_has_no_recurring_section():
+    """מתן (2.10): "עסקאות קבועות" הוסר מעמוד החודש — העסקאות האלה כבר בשאר
+    העסקאות של החודש, והניהול שלהן בהגדרות. וה-✕ שהיה שם מחק את החודש
+    הראשון של הסדרה."""
+    html = re.sub(r"\{#.*?#\}", "", _HTML, flags=re.S)
+    assert "עסקאות קבועות</h2>" not in html
+    assert "fixedList" not in html and "fixedManageBtn" not in html
+    assert "fixedList" not in (_JS / "transactions.js").read_text(encoding="utf-8")
+    assert "fixedManageBtn" not in (_JS / "month.js").read_text(encoding="utf-8")
 
 
 def test_there_is_no_expenses_versus_savings_chart():
@@ -187,23 +173,13 @@ def test_the_delete_handler_lives_in_exactly_one_file():
     assert owners == ["transactions.js"], f"המטפל נמצא ב: {owners}"
 
 
-def test_the_x_on_the_month_page_asks_about_the_series():
-    """בקשה של מתן, וגם תיקון: ✕ נראה כמו מחיקה ועשה משהו אחר — עצר את
-    הסדרה והשאיר את ההיסטוריה. עכשיו הוא מוחק, ושואל את אותה שאלה
-    שנשאלת בכל מקום אחר: "רק את זו" או "את זו וכל הבאות"."""
-    js = (_JS / "transactions.js").read_text(encoding="utf-8")
-    block = js[js.index("const btn = e.target.closest('.delete-recurring-btn');"):]
-    month = block[block.index("#fixedList"):block.index("בהגדרות: עצירת הסדרה")]
-
-    assert "deleteWithUndo" in month, "✕ בעמוד החודש לא עובר במסלול המחיקה"
-    assert "/api/recurring/" not in month, "✕ בעמוד החודש עדיין עוצר במקום למחוק"
-
-
 def test_the_x_in_settings_still_stops_the_series_without_deleting():
     """בקרת-נגד. "עצירה בלי למחוק" היא פעולה אמיתית שצריך שתהיה איפשהו,
     וההגדרות הן המקום שבו מנהלים את הסדרה ולא חודש מסוים."""
     js = (_JS / "transactions.js").read_text(encoding="utf-8")
-    block = js[js.index("בהגדרות: עצירת הסדרה"):]
+    block = js[js.index("const btn = e.target.closest('.delete-recurring-btn');"):]
+    block = block[:block.index("function stopSeriesFromSettings")] + \
+        js[js.index("function stopSeriesFromSettings"):][:2000]
 
     assert "/api/recurring/" in block
     assert "deleteWithUndo" not in block
@@ -221,9 +197,9 @@ def test_removing_a_row_on_the_month_page_refreshes_the_totals():
 
 def test_the_sections_come_in_matans_order():
     """מתן (30.9): מאזן חודשי במלבן רחב, שלושה מלבנים שווים, ואז הכנסות, הוצאות,
-    חיסכון, עסקאות קבועות, לפי בן משפחה, כל העסקאות, פרויקטים החודש."""
+    חיסכון, לפי בן משפחה, כל העסקאות, פרויקטים החודש. (עסקאות קבועות הוסר, 2.10.)"""
     order = ['id="income-breakdown"', 'id="expense-breakdown"', 'id="savings-breakdown"',
-             '<h2 class="chart-title">עסקאות קבועות</h2>', "{{ mb.label }} לפי בן משפחה",
+             "{{ mb.label }} לפי בן משפחה",
              '<h2 class="chart-title">כל העסקאות</h2>', '<h2 class="chart-title">פרויקטים החודש</h2>']
     where = [_HTML.index(m) for m in order]
     assert where == sorted(where), [m for _, m in sorted(zip(where, order))]

@@ -145,14 +145,3 @@ def test_the_recurring_list_hides_someone_elses_personal_project(monkeypatch):
     ids = {r["id"] for r in db.get_recurring_transactions(_FAM, _ME)}
 
     assert ids == {"mine", "shared", "household"}
-
-
-def test_project_money_is_not_part_of_our_fixed_costs():
-    """"יוצא כל חודש" הוא כסף של הבית — כמו שאר עמוד החודש."""
-    fixed = db.summarise_recurring([
-        _template("household", None, project_id=None),
-        _template("shared", None),
-    ])
-
-    assert [r["id"] for r in fixed["rows"]] == ["household"]
-    assert fixed["expense"] == 100.0

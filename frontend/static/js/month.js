@@ -320,46 +320,6 @@ window.addEventListener('sf:refreshed', paint);
 
 })();
 
-/* ─── ניהול העסקאות הקבועות, במקום ─────────────────────────────────────────
- *
- * הכפתור הזה היה קישור להגדרות. מי שעמד כאן וראה ששכר הדירה שגוי נשלח
- * לעמוד אחר, לגלול, ולמצוא שם את אותה שורה בדיוק — במקום לגעת בזו שמולו.
- *
- * העריכה עצמה אינה נכתבת כאן: הוספת ‎recurring-row‎ לשורה מספיקה כדי
- * שהמודאל הגלובלי ב-transactions.js יטפל בה, בדיוק כמו בהגדרות. השורות
- * לא נושאות את הסיווג כברירת מחדל כי מחוץ למצב ניהול הרשימה היא תצוגה:
- * לחיצה מקרית על "קבוע כל חודש" לא אמורה לפתוח עורך.
- */
-(function () {
-    // האצלה מ-document ולא האזנה ישירה: רענון רך מחליף את ‎main‎, ועם
-    // האזנה ישירה הכפתור שרד על המסך ומת בלחיצה.
-    function setManaging(list, btn, on) {
-        list.classList.toggle('managing', on);
-        btn.setAttribute('aria-expanded', String(on));
-        btn.textContent = on ? 'סיום' : 'ניהול';
-        list.querySelectorAll('.fixed-row').forEach(function (row) {
-            row.classList.toggle('recurring-row', on);
-            // מחוץ למצב ניהול השורה אינה יעד מקלדת ואינה מוכרזת ככפתור
-            if (on) {
-                row.setAttribute('role', 'button');
-                row.setAttribute('tabindex', '0');
-            } else {
-                row.removeAttribute('role');
-                row.removeAttribute('tabindex');
-            }
-            const x = row.querySelector('.delete-recurring-btn');
-            if (x) x.tabIndex = on ? 0 : -1;
-        });
-    }
-
-    document.addEventListener('click', function (e) {
-        const btn = e.target.closest && e.target.closest('#fixedManageBtn');
-        if (!btn) return;
-        const list = document.getElementById('fixedList');
-        if (!list) return;
-        setManaging(list, btn, !list.classList.contains('managing'));
-    });
-})();
 
 
 /* ═══ כותרת שנשארת למעלה בגלילה (מתן, 30.9 — סבב 6, פריט 12) ═══

@@ -411,68 +411,8 @@
     </ul>
 </section>
 
-<!-- ההוצאות הקבועות: מה שלא משתנה, ולכן מה שאפשר לתכנן סביבו -->
-{% if fixed and fixed.rows %}
-<section class="chart-card">
-    <div class="chart-title-row">
-        <h2 class="chart-title">עסקאות קבועות</h2>
-        {# "ניהול" פתח את ההגדרות. מי שעמד כאן וראה שכר דירה שגוי נשלח
-           לעמוד אחר, לגלול ולמצוא את אותה שורה שוב — במקום לגעת בזו
-           שמולו. עכשיו הוא פותח עריכה ומחיקה במקום. #}
-        <button type="button" class="btn-sm btn-ghost" id="fixedManageBtn"
-                aria-expanded="false" aria-controls="fixedList">ניהול</button>
-    </div>
-
-    <div class="fixed-summary">
-        {% if fixed.expense %}
-        <div class="fixed-figure">
-            <span class="fixed-label">הוצאות</span>
-            <span class="fixed-amount expense">₪{{ fixed.expense | money }}</span>
-        </div>
-        {% endif %}
-        {% if fixed.income %}
-        <div class="fixed-figure">
-            <span class="fixed-label">הכנסות</span>
-            <span class="fixed-amount income">₪{{ fixed.income | money }}</span>
-        </div>
-        {% endif %}
-        {% if fixed.savings %}
-        <div class="fixed-figure">
-            <span class="fixed-label">חיסכון</span>
-            <span class="fixed-amount savings">₪{{ fixed.savings | money }}</span>
-        </div>
-        {% endif %}
-    </div>
-
-    <ul class="fixed-list" id="fixedList">
-        {% for item in fixed.rows %}
-        {# אותן ‎data-*‎ כמו ב-settings.html: המודאל הגלובלי ב-transactions.js
-           בונה מהן את העסקה לעריכה, ואין כאן עותק שני של הלוגיקה. #}
-        <li class="fixed-row" data-id="{{ item.id }}" data-amount="{{ item.amount }}"
-            data-type="{{ item.type }}" data-category-id="{{ item.category_id or '' }}"
-            data-project-category-id="{{ item.project_category_id or '' }}"
-            data-description="{{ item.description }}" data-date="{{ item.date }}"
-            data-user-id="{{ item.user_id or '' }}"
-            data-is-recurring="{{ item.is_recurring | lower }}"
-            data-recurring-frequency="{{ item.recurring_frequency or '' }}"
-            data-recurring-end-date="{{ item.recurring_end_date or '' }}"
-            data-recurring-parent-id="{{ item.recurring_parent_id or '' }}"
-            data-project-id="{{ item.project_id or '' }}">
-            <span class="fixed-row-icon">{{ item.category_icon or '🔁' }}</span>
-            <span class="fixed-row-name">{{ item.description or item.category_name }}</span>
-            {# תדירות שאינה חודשית: מראים גם את הסכום המקורי, אחרת מספר
-               מנורמל כמו "₪1,300" על הוצאה של ₪300 בשבוע נראה כמו טעות #}
-            {% if item.per_month != 1.0 %}
-            <span class="fixed-row-freq">₪{{ item.amount | money }} {{ freq_labels.get(item.recurring_frequency, '') }}</span>
-            {% endif %}
-            <span class="fixed-row-amount {{ item.type }}">₪{{ item.monthly_amount | money }}</span>
-            <button class="delete-recurring-btn" data-id="{{ item.id }}"
-                    tabindex="-1" aria-label="הסרת {{ item.description or item.category_name }}">✕</button>
-        </li>
-        {% endfor %}
-    </ul>
-</section>
-{% endif %}
+{# "עסקאות קבועות" הוסר מעמוד החודש (מתן, 2.10): העסקאות האלה כבר מופיעות
+   בשאר העסקאות של החודש, והניהול שלהן בהגדרות ← עסקאות קבועות. #}
 
 <!-- Chart 5: חלוקה בין בני המשפחה — גרף לכל סוג עסקה שהמשפחה משייכת -->
 {% for mb in member_breakdowns %}

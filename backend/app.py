@@ -1259,17 +1259,9 @@ def month_view():
                                 skip_categories=[r["category_id"] for r in expense_breakdown
                                                  if r.get("budget")]),
     }
-    if is_current:
-        # רק לחודש הנוכחי: "ההוצאות הקבועות שלנו" הוא מספר של עכשיו,
-        # ולחודש שעבר הוא היה משהו אחר שאין לנו דרך לשחזר
-        p2_tasks["recurring"] = partial(db.get_recurring_transactions, family_id, user["id"],
-                                        settings=settings_)
     p2 = _run_queries(p2_tasks)
 
     anomalies = db.budget_alerts(expense_breakdown) + list(p2["anomalies"])
-    fixed = None
-    if is_current:
-        fixed = db.summarise_recurring(p2["recurring"])
     month_transactions = db.month_transactions_from_rows(rows, settings_, user["id"])
     # שורת הקטגוריות מתחת ל"הוצאות" וכו׳ ב"כל העסקאות" (מתן, 30.9)
     tx_cat_chips = db.category_filter_chips(month_transactions)
@@ -1337,7 +1329,6 @@ def month_view():
         month_transactions=month_transactions,
         tx_cat_chips=tx_cat_chips,
         project_month=project_month,
-        fixed=fixed,
         member_colors=_member_colors(family_id),
         month_label=_month_label(year, month),
         year=year,

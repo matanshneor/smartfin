@@ -115,13 +115,6 @@ def test_the_route_knows_a_future_month():
     assert src.count("is_future=is_future") == 2
 
 
-def test_fixed_costs_use_the_same_words_as_the_rest_of_the_app():
-    """מתן (30.9): בעסקאות הקבועות "הוצאות/חיסכון" ולא "יוצא/מופרש"."""
-    html = (_ROOT / "frontend/templates/month.html").read_text(encoding="utf-8")
-    labels = re.findall(r'class="fixed-label">([^<]+)<', html)
-    assert labels == ["הוצאות", "הכנסות", "חיסכון"], labels
-
-
 @pytest.mark.parametrize("totals,expected", [
     ({"קרן": 5000, "גמל": 3000}, {"קרן": 63, "גמל": 37}),          # 62.5 + 37.5 — לא 63 + 38
     ({"א": 1, "ב": 1, "ג": 1}, {"א": 34, "ב": 33, "ג": 33}),
