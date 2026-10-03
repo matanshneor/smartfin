@@ -4785,8 +4785,20 @@ body > .color-sheet { z-index: 180; }
 .budget-sheet-actions { margin-top: 4px; }
 
 /* "השבוע" בדף הבית (מתן, 30.9) */
-.week-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.week-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .week-head .chart-title { margin: 0; }
+/* דפדוף לשבועות קודמים (מתן, 2.10) */
+.week-title-wrap { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.week-nav { display: flex; gap: 6px; flex-shrink: 0; }
+.week-nav-btn {
+    position: relative; width: 30px; height: 30px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--color-input); color: var(--color-gold-text); border: 0;
+}
+.week-nav-btn svg { width: 15px; height: 15px; }
+.week-nav-btn:disabled { opacity: 0.35; }
+.week-nav-btn::before { content: ''; position: absolute; inset: -7px; }   /* אזור לחיצה 44px */
+.week-card.is-loading { opacity: 0.55; transition: opacity 0.15s; }
 .week-range { font-size: 0.75rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 .week-total { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 10px; margin: 6px 0 4px; }
 .week-sum { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }

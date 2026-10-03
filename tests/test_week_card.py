@@ -79,7 +79,7 @@ def test_the_card_is_placed_under_the_three_cards_and_days_can_be_tapped():
     from pathlib import Path
     root = Path(__file__).resolve().parent.parent
     tpl = (root / "frontend/templates/index.html").read_text(encoding="utf-8")
-    assert tpl.index('class="summary-cards"') < tpl.index('class="chart-card week-card"') < tpl.index("<h2>עסקאות אחרונות</h2>")
+    assert tpl.index('class="summary-cards"') < tpl.index('{% include "_week_card.html" %}') < tpl.index("<h2>עסקאות אחרונות</h2>")
     js = (root / "frontend/static/js/core.js").read_text(encoding="utf-8")
     assert "d.hidden = d.dataset.day !== btn.dataset.day;" in js
 
@@ -88,12 +88,89 @@ def test_an_empty_day_says_so_in_matans_words():
     """יום עבר בלי עסקאות: "ביום זה"; היום עצמו: "היום" (מתן, 1.10)."""
     from pathlib import Path
     import jinja2
-    tpl = (Path(__file__).resolve().parent.parent / "frontend/templates/index.html").read_text(encoding="utf-8")
+    tpl = (Path(__file__).resolve().parent.parent / "frontend/templates/_week_card.html").read_text(encoding="utf-8")
     start = tpl.index("{% for d in week.days if not d.future %}")
     snippet = tpl[start:tpl.index("{% endfor %}", tpl.index('class="week-empty"')) + len("{% endfor %}")]
     env = jinja2.Environment()
     env.filters["money"] = lambda v: v
     day = {"label": "ה׳", "day": 1, "month": 10, "total": 0, "transactions": [], "future": False}
-    html = env.from_string(snippet).render(week={"days": [dict(day, today=False), dict(day, today=True)]})
+    html = env.from_string(snippet).render(week={"days": [dict(day, today=False, selected=False),
+                                                          dict(day, today=True, selected=True)]})
     assert html.count('<p class="week-empty">לא בוצעו עסקאות ביום זה</p>') == 1
     assert html.count('<p class="week-empty">לא בוצעו עסקאות היום</p>') == 1
+
+
+
+# ─── דפדוף לשבועות קודמים (מתן, 2.10) ─────────────────────────────────────
+
+def _past(rows, monkeypatch, offset):
+    monkeypatch.setattr(db, "get_client", lambda: FakeSupabase(transactions=rows))
+    return db.week_spending(_FAM, today=_WED, offset=offset)
+
+
+def test_last_week_is_shown_whole_and_compared_with_the_week_before(monkeypatch):
+    # השבוע: 4.10–10.10. שבוע שעבר: 27.9–3.10. לפניו: 20.9–26.9
+    w = _past([_tx(100, "2026-10-03"), _tx(40, "2026-09-28"), _tx(60, "2026-09-22")], monkeypatch, 1)
+    assert [d["date"] for d in w["days"]] == ["2026-09-27", "2026-09-28", "2026-09-29", "2026-09-30",
+                                              "2026-10-01", "2026-10-02", "2026-10-03"]
+    assert not any(d["future"] or d["today"] for d in w["days"]), "שבוע שעבר שלם"
+    assert w["total"] == 140 and w["last_week"] == 60 and w["diff"] == 80
+    assert w["offset"] == 1
+
+
+def test_a_past_week_opens_on_its_last_day_with_spending(monkeypatch):
+    w = _past([_tx(40, "2026-09-28"), _tx(30, "2026-09-30")], monkeypatch, 1)
+    assert [d["selected"] for d in w["days"]].index(True) == 3        # רביעי 30.9
+    empty = _past([], monkeypatch, 1)
+    assert [d["selected"] for d in empty["days"]].index(True) == 6    # בלי הוצאות — שבת
+
+
+def test_this_week_opens_on_today(monkeypatch):
+    w = _week([_tx(40, "2026-10-04")], monkeypatch)
+    assert [d["selected"] for d in w["days"]].index(True) == 3
+
+
+def test_older_is_offered_only_when_there_is_something_older(monkeypatch):
+    assert _past([_tx(40, "2026-09-28")], monkeypatch, 0)["has_older"] is True
+    assert _past([_tx(40, "2026-09-28")], monkeypatch, 1)["has_older"] is False
+    # עסקה קבועה ופרויקט לא נספרים — כמו בכרטיס עצמו
+    rows = [_tx(5000, "2026-09-01", recurring=True), _tx(90, "2026-09-02", project="p1")]
+    assert _past(rows, monkeypatch, 0)["has_older"] is False
+
+
+def test_the_card_title_and_arrows_follow_the_offset():
+    from pathlib import Path
+    from backend.app import app
+    tpl = (Path(__file__).resolve().parent.parent / "frontend/templates/_week_card.html").read_text(encoding="utf-8")
+    day = {"label": "א׳", "day": 1, "month": 10, "total": 0, "transactions": [], "future": False,
+           "today": False, "selected": False}
+    def render(offset, has_older):
+        with app.test_request_context():
+            return app.jinja_env.from_string(tpl).render(week={
+                "days": [dict(day)] * 7, "total": 0, "diff": None, "max": 0,
+                "offset": offset, "has_older": has_older})
+    now, last, old = render(0, True), render(1, True), render(3, False)
+    assert ">השבוע</h2>" in now and ">שבוע שעבר</h2>" in last and ">לפני 3 שבועות</h2>" in old
+    assert 'data-week-go="-1" aria-label="שבוע הבא"\n                    disabled' in now, "אין שבוע הבא אחרי השבוע"
+    assert 'data-week-go="4" aria-label="שבוע קודם"\n                    disabled' in old, "אין ישן יותר"
+
+
+def test_the_week_route_returns_the_card_and_refuses_nonsense(monkeypatch):
+    from backend import app as app_module
+    from backend.app import app, limiter
+    limiter.reset()
+    app.config["TESTING"] = True
+    seen = []
+    real = db.week_spending
+    monkeypatch.setattr(db, "get_client", lambda: FakeSupabase(transactions=[_tx(40, "2026-09-28")]))
+    monkeypatch.setattr(app_module.db, "week_spending",
+                        lambda fid, offset=0: seen.append(offset) or real(fid, today=_WED, offset=offset))
+    c = app.test_client()
+    with c.session_transaction() as sess:
+        sess["user_id"] = "22222222-2222-2222-2222-222222222222"
+        sess["family_id"] = _FAM
+    res = c.get("/api/week?offset=1")
+    assert res.status_code == 200 and ">שבוע שעבר</h2>" in res.get_data(as_text=True)
+    assert seen == [1]
+    for bad in ("-1", "abc", "5000"):
+        assert c.get(f"/api/week?offset={bad}").status_code == 422, bad

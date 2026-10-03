@@ -473,3 +473,66 @@ document.addEventListener('click', function (e) {
         d.hidden = d.dataset.day !== btn.dataset.day;
     });
 });
+
+
+// ── "השבוע": דפדוף לשבועות קודמים — חצים והחלקה (מתן, 2.10) ──
+// השרת מחזיר את הכרטיס כולו מאותה תבנית שדף הבית מרנדר; מחליפים אותו במקום.
+// בהאצלה — רענון רך מחזיר את הכרטיס לשבוע הנוכחי, וזה בסדר.
+(function () {
+    let loading = false;
+
+    function goToWeek(card, offset, focusSel) {
+        if (loading || offset < 0) return;
+        loading = true;
+        card.classList.add('is-loading');
+        fetch('/api/week?offset=' + offset, { credentials: 'same-origin' })
+            .then(function (r) {
+                if (!r.ok) throw new Error('week ' + r.status);
+                return r.text();
+            })
+            .then(function (html) {
+                const tpl = document.createElement('template');
+                tpl.innerHTML = html.trim();
+                const fresh = tpl.content.querySelector('.week-card');
+                if (!fresh) throw new Error('no card');
+                card.replaceWith(fresh);
+                // המיקוד נשאר על החץ שנלחץ — מקלדת וקורא מסך לא "נופלים" לראש העמוד
+                const again = focusSel && fresh.querySelector(focusSel);
+                if (again && !again.disabled) again.focus({ preventScroll: true });
+            })
+            .catch(function () {
+                card.classList.remove('is-loading');
+                window.showToast(window.sfNetError(), 'error');
+            })
+            .then(function () { loading = false; });
+    }
+
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest && e.target.closest('.week-nav-btn');
+        if (!btn || btn.disabled) return;
+        const card = btn.closest('.week-card');
+        const older = Number(btn.dataset.weekGo) > Number(card.dataset.offset);
+        goToWeek(card, Number(btn.dataset.weekGo),
+                 older ? '.week-nav-btn[aria-label="שבוע קודם"]' : '.week-nav-btn[aria-label="שבוע הבא"]');
+    });
+
+    // החלקה: בעברית הזמן זורם מימין לשמאל (ראשון בימין), אז השבוע הקודם
+    // "נמצא" מימין — גרירה שמאלה מביאה אותו, וגרירה ימינה חוזרת קדימה.
+    let sx = null, sy = 0;
+    document.addEventListener('touchstart', function (e) {
+        const card = e.target.closest && e.target.closest('.week-card');
+        if (!card || e.touches.length !== 1) { sx = null; return; }
+        sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+    }, { passive: true });
+    document.addEventListener('touchend', function (e) {
+        if (sx === null) return;
+        const card = e.target.closest && e.target.closest('.week-card');
+        const t = e.changedTouches[0];
+        const dx = t.clientX - sx, dy = t.clientY - sy;
+        sx = null;
+        if (!card || Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+        const offset = Number(card.dataset.offset);
+        const target = card.querySelector('.week-nav-btn[aria-label="' + (dx < 0 ? 'שבוע קודם' : 'שבוע הבא') + '"]');
+        if (target && !target.disabled) goToWeek(card, dx < 0 ? offset + 1 : offset - 1);
+    }, { passive: true });
+})();

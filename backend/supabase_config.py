@@ -1150,7 +1150,7 @@ def get_monthly_summary(family_id: str, year: int, month: int) -> dict:
 _WEEK_LABELS = ("א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳")
 
 
-def week_spending(family_id: str, today=None) -> dict:
+def week_spending(family_id: str, today=None, offset: int = 0) -> dict:
     """כרטיס "השבוע" בדף הבית (מתן, 30.9): הוצאות מראשון עד שבת, יום-יום.
 
     הוצאות הבית בלבד — בלי פרויקטים, ובלי עסקאות קבועות (תבנית או מופע):
@@ -1159,10 +1159,13 @@ def week_spending(family_id: str, today=None) -> dict:
     בשבוע), כדי שיום רביעי לא יושווה לשבוע שלם; ‎None‎ כשאין אז נתונים."""
     from datetime import timedelta
     today = today or clock.today()
-    start = today - timedelta(days=(today.weekday() + 1) % 7)     # ראשון
+    # ‎offset‎ — כמה שבועות אחורה (מתן, 2.10: דפדוף לשבועות קודמים). שבוע
+    # שעבר מוצג שלם, ומושווה לשבוע השלם שלפניו.
+    start = today - timedelta(days=(today.weekday() + 1) % 7) - timedelta(days=7 * offset)
     prev_start = start - timedelta(days=7)
-    prev_end = today - timedelta(days=7)
-    empty = {"days": [], "total": 0.0, "last_week": None, "diff": None}
+    prev_end = (today - timedelta(days=7)) if offset == 0 else (start - timedelta(days=1))
+    empty = {"days": [], "total": 0.0, "last_week": None, "diff": None,
+             "offset": offset, "has_older": False}
     client = get_client()
     if not client:
         return empty
@@ -1194,9 +1197,24 @@ def week_spending(family_id: str, today=None) -> dict:
     total = round(sum(d["total"] for d in days if not d["future"]), 2)
     prev = [r for r in rows if prev_start.isoformat() <= str(r["date"])[:10] <= prev_end.isoformat()]
     last = round(sum(float(r["amount"]) for r in prev), 2) if prev else None
+    # היום שהפירוט שלו פתוח: היום עצמו בשבוע הנוכחי; בשבוע שעבר — היום האחרון
+    # שהיו בו הוצאות (ואם לא היו — שבת)
+    shown = [i for i, d in enumerate(days) if d["today"]] or \
+            [i for i, d in enumerate(days) if d["total"]][-1:] or [6]
+    for i, d in enumerate(days):
+        d["selected"] = i == shown[0]
+    # האם יש לאן לדפדף אחורה: הוצאה שוטפת כלשהי לפני תחילת השבוע הזה
+    try:
+        older = client.table("transactions").select("date") \
+            .eq("family_id", family_id).eq("type", "expense").is_("project_id", "null") \
+            .eq("is_recurring", False).is_("recurring_parent_id", "null") \
+            .lt("date", start.isoformat()).order("date", desc=True).limit(1).execute().data or []
+    except Exception as e:
+        raise DataUnavailable("week_spending: older") from e
     return {"days": days, "total": total, "last_week": last,
             "diff": round(total - last, 2) if last is not None else None,
-            "max": max([d["total"] for d in days] + [0])}
+            "max": max([d["total"] for d in days] + [0]),
+            "offset": offset, "has_older": bool(older)}
 
 
 def get_home_budgets(family_id: str, year: int, month: int,

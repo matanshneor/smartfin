@@ -1607,6 +1607,28 @@ def search_route():
                                           settings=family_settings()))
 
 
+@app.route("/api/week")
+@limiter.limit("60 per minute")
+@login_required
+def week_card():
+    """כרטיס "השבוע" לשבוע קודם — הדפדוף בדף הבית (מתן, 2.10). מחזיר את
+    הכרטיס כ-HTML מאותה תבנית שדף הבית מרנדר, כדי שלא יהיו שתי גרסאות."""
+    user = get_current_user()
+    if not user["family_id"]:
+        return jsonify({"error": "לא מצאנו את המשפחה שלכם — רעננו את הדף"}), 400
+    try:
+        offset = int(request.args.get("offset", "0"))
+    except ValueError:
+        return jsonify({"error": "ערך לא תקין"}), 422
+    if not 0 <= offset <= 1040:          # עד 20 שנה אחורה
+        return jsonify({"error": "ערך לא תקין"}), 422
+    try:
+        week = db.week_spending(user["family_id"], offset=offset)
+    except db.DataUnavailable:
+        return jsonify({"error": "לא הצלחנו לטעון את השבוע — נסו שוב"}), 503
+    return render_template("_week_card.html", week=week)
+
+
 @app.route("/api/projects", methods=["POST"])
 @limiter.limit("30 per minute")
 @login_required

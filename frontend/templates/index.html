@@ -139,48 +139,8 @@
 {# השבוע (מתן, 30.9): הוצאות שוטפות מראשון עד שבת — בלי עסקאות קבועות ובלי
    פרויקטים. נגיעה ביום מציגה את העסקאות שלו. מופיע כשיש השבוע או בשבוע
    שעבר משהו להראות. #}
-{% if week and (week.total or week.last_week) %}
-<section class="chart-card week-card" aria-labelledby="weekTitle">
-    <div class="week-head">
-        <h2 class="chart-title" id="weekTitle">השבוע</h2>
-        <span class="week-range">{{ week.days[0].day }}.{{ week.days[0].month }} – {{ week.days[-1].day }}.{{ week.days[-1].month }}</span>
-    </div>
-    <div class="week-total">
-        <span class="week-sum">₪{{ week.total | round | int | money }}</span>
-        {% if week.diff is not none and (week.diff | round | int) != 0 %}
-        <span class="week-cmp {{ 'down' if week.diff < 0 else 'up' }}">₪{{ (week.diff | abs) | round | int | money }} {{ 'פחות' if week.diff < 0 else 'יותר' }} משבוע שעבר</span>
-        {% elif week.diff is not none %}
-        <span class="week-cmp same">כמו שבוע שעבר</span>
-        {% endif %}
-    </div>
-    <div class="week-bars" role="group" aria-label="הוצאות לפי יום">
-        {% for d in week.days %}
-        {% set h = 10 if d.future else ([6, ((d.total / week.max * 84) | round | int) if week.max else 6] | max) %}
-        <button type="button" class="week-day{% if d.today %} today is-selected{% endif %}{% if d.future %} future{% endif %}{% if not d.future and not d.total %} zero{% endif %}"
-                data-day="{{ loop.index0 }}" {% if d.future %}disabled{% endif %}
-                aria-pressed="{{ 'true' if d.today else 'false' }}"
-                aria-label="יום {{ d.label }} {{ d.day }}.{{ d.month }}{% if d.future %} — עוד לא הגיע{% else %}: ₪{{ d.total | round | int | money }}{% endif %}">
-            <span class="week-amt">{% if not d.future and d.total %}{{ d.total | round | int | money }}{% endif %}</span>
-            <span class="week-bar" style="height: {{ h }}px;"></span>
-            <span class="week-lbl">{{ d.label }}</span>
-        </button>
-        {% endfor %}
-    </div>
-    {% for d in week.days if not d.future %}
-    <div class="week-detail" data-day="{{ loop.index0 }}" {% if not d.today %}hidden{% endif %}>
-        <p class="week-detail-head"><span>{{ 'היום' if d.today else 'יום ' ~ d.label }} · {{ d.day }}.{{ d.month }}</span><span>₪{{ d.total | money }}</span></p>
-        {% if d.transactions %}
-        <ul class="week-detail-list">
-            {% for t in d.transactions %}
-            <li><span>{{ t.icon }} {{ t.description or t.name }}</span><span class="week-detail-amount">-₪{{ t.amount | money }}</span></li>
-            {% endfor %}
-        </ul>
-        {% else %}
-        <p class="week-empty">לא בוצעו עסקאות {{ 'היום' if d.today else 'ביום זה' }}</p>
-        {% endif %}
-    </div>
-    {% endfor %}
-</section>
+{% if week and (week.total or week.last_week or week.has_older) %}
+{% include "_week_card.html" %}
 {% endif %}
 
 {# תקציבים החודש (מתן, 30.9 — אפשרות א): עד 3 קטגוריות, הקרובה לגבול קודם.
