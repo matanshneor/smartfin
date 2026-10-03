@@ -2322,6 +2322,12 @@ a.submit-btn {
 .tx-cat-chips[hidden] { display: none; }
 .tx-cat-chips::-webkit-scrollbar { display: none; }
 .tx-cat-chip { flex: none; white-space: nowrap; min-height: 34px; padding: 6px 12px; font-size: 0.8rem; }
+/* הקטגוריה שמוצגת בגרף "הוצאות לפי קטגוריה" בעמוד ההשוואה — בולטת, כדי
+   שיהיה ברור איזו מהן על המסך (מתן, 3.10) */
+.cat-trend-chips .tx-cat-chip.active {
+    background: var(--gradient-gold); color: #FFFFFF; border-color: transparent;
+    font-weight: 700; box-shadow: 0 2px 8px rgba(166, 124, 0, 0.28);
+}
 .tx-cat-chip-amount {
     margin-inline-start: 5px; font-weight: 500; color: var(--color-text-muted);
     font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate;

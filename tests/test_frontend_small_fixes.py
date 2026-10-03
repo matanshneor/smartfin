@@ -882,3 +882,13 @@ def test_a_month_category_links_to_its_history():
     js = _strip_comments(_read("frontend/static/js/months.js"))
     assert "new URLSearchParams(location.search).get('cat')" in js
     assert "catTrend.categories.some(x => x.key === wanted) ? wanted : null" in js, "קטגוריה בלי היסטוריה — הראשונה"
+
+
+def test_the_chosen_category_in_the_compare_chart_stands_out():
+    """מתן (3.10): "שהקטגוריה שאני בוחר תהיה קצת יותר מודגשת". רק בגרף הזה —
+    שאר הכפתורים באפליקציה נשארים כמו שהם."""
+    css = _read("frontend/static/css/style.css")
+    rule = css[css.index(".cat-trend-chips .tx-cat-chip.active {"):]
+    rule = rule[:rule.index("}")]
+    assert "background: var(--gradient-gold);" in rule and "color: #FFFFFF;" in rule
+    assert "font-weight: 700;" in rule
