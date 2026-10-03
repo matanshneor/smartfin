@@ -436,6 +436,7 @@
         modalTitle.textContent = 'הוספת עסקה';
         editModeActions.style.display = 'none';
         if (enteredMeta) enteredMeta.hidden = true;
+        setupAttach(null);
         setRecurringLock(false);
         resetForm();
         const mySeq = formSeq;
@@ -455,6 +456,52 @@
             .catch(function () {
                 if (mySeq === formSeq) window.showToast(window.sfNetError(), 'error');
             });
+    }
+
+    // ── צירוף קבלה להוצאה קיימת (מתן, 3.10 — רעיון 34) ──
+    const attachBtn = document.getElementById('receiptAttachBtn');
+    const attachInput = document.getElementById('receiptAttachInput');
+    let attachFor = null;                // העסקה שהכפתור שייך אליה כרגע
+    function setupAttach(tx, hasReceipt) {
+        if (!attachBtn) return;
+        attachFor = tx && tx.type === 'expense' ? tx.id : null;
+        attachBtn.hidden = !attachFor;
+        attachBtn.disabled = false;
+        attachBtn.textContent = hasReceipt ? 'החלפת קבלה' : 'צירוף קבלה';
+    }
+    if (attachBtn && attachInput) {
+        attachBtn.addEventListener('click', function () { if (attachFor) attachInput.click(); });
+        attachInput.addEventListener('change', function () {
+            const file = attachInput.files && attachInput.files[0];
+            const id = attachFor;
+            attachInput.value = '';
+            if (!file || !id) return;
+            const fd = new FormData();
+            fd.append('image', file);
+            const label = attachBtn.textContent;
+            attachBtn.disabled = true;
+            attachBtn.textContent = 'מעלה…';
+            fetch('/api/transactions/' + encodeURIComponent(id) + '/receipt', {
+                method: 'POST', body: fd, credentials: 'same-origin',
+            })
+                .then(r => r.json().then(d => ({ ok: r.ok, d: d })))
+                .then(function (res) {
+                    attachBtn.disabled = false;
+                    if (!res.ok) { attachBtn.textContent = label; window.showToast(res.d.error || 'צירוף הקבלה נכשל', 'error'); return; }
+                    attachBtn.textContent = 'החלפת קבלה';
+                    const msg = res.d.replaced ? 'הקבלה הוחלפה' : 'הקבלה צורפה';
+                    // ה-📎 מופיע בשורה — רענון רך בעמוד שתומך בו, אחרת הודעה בלבד
+                    // (‎softReload‎ מציג את ההודעה רק אחרי טעינה מלאה — ברענון רך מציגים כאן)
+                    if (document.querySelector('main[data-soft-reload]') && window.softReload) {
+                        window.softReload(null, msg).then(function (how) { if (how !== 'reloaded') window.showToast(msg); });
+                    } else window.showToast(msg);
+                })
+                .catch(function () {
+                    attachBtn.disabled = false;
+                    attachBtn.textContent = label;
+                    window.showToast(window.sfNetError(), 'error');
+                });
+        });
     }
 
     // ── "הוזנה ע״י אור · אתמול 18:32" בתחתית חלון העריכה (מתן, 3.10) ──
@@ -488,6 +535,7 @@
         modalTitle.textContent = 'עריכת עסקה';
         editModeActions.style.display = 'flex';
         loadEnteredMeta(tx.id);
+        setupAttach(tx, !!(triggerEl && triggerEl.querySelector && triggerEl.querySelector('.receipt-badge')));
         formError.textContent = '';
 
         /* הלחיצה האחרונה קובעת. הטופס מתמלא רק כשהרשימות מגיעות, ו-‎editId‎
@@ -1444,6 +1492,7 @@
         modalTitle.textContent = 'הוספת עסקה';
         editModeActions.style.display = 'none';
         if (enteredMeta) enteredMeta.hidden = true;
+        setupAttach(null);
         // שכפול הוא עסקה חד-פעמית — לא ממשיכים את מצב ה"קבועה"
         recurringCb.checked = false;
         recurFields.classList.remove('visible');
