@@ -91,7 +91,11 @@ def test_the_installed_app_gets_our_offline_page_not_the_browsers():
     assert manifest["start_url"].split("?")[0] == "/"
     assert "/" not in _cacheable()
     # ‎/‎ נופל למסלול ה-fetch-with-fallback ולא ל-return מוקדם
-    assert "e.respondWith(fetch(e.request).catch(() => offlinePage()));" in _SW
+    # (מאז 3.10 — קודם תשובה שנטענה בנגיעה, אם יש; אחרת רשת; ובלי רשת — המסך שלנו)
+    block = _SW[_SW.index("if (!CACHEABLE_PAGES.includes(url.pathname)) {"):]
+    block = block[:block.index("return;")]
+    assert ".then(res => res || fetch(e.request))" in block
+    assert ".catch(() => offlinePage())" in block
 
 
 def test_old_caches_are_purged_when_the_version_changes():

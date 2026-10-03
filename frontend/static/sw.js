@@ -52,6 +52,50 @@ function offlinePage() {
     );
 }
 
+/* ── טעינה מוקדמת בנגיעה (מתן, 3.10 — רעיון 29) ──
+ *
+ * הדפדפן מבקש עמוד רק כשהאצבע עוזבת את המסך. כשהיא **נוגעת** בקישור,
+ * העמוד שולח לכאן הודעה, ואנחנו מתחילים להביא אותו כבר אז. אם תוך כמה
+ * שניות מגיע ניווט לאותה כתובת — הוא מקבל את התשובה הזאת במקום בקשה חדשה.
+ *
+ * בזיכרון בלבד, לכמה שניות, ותשובה אחת לניווט אחד: זה לא מטמון. מה שכתוב
+ * למטה ("אף עמוד מאחורי ההתחברות לא מוגש מהמטמון") נשאר נכון — מה שמוגש
+ * כאן הוא תשובה שנולדה רגע לפני שלחצו, לא עמוד מלפני ימים. */
+const PREFETCH_TTL = 5000;
+const prefetched = new Map();     // כתובת → { at, response: Promise<Response|null> }
+
+self.addEventListener('message', function (e) {
+    const data = e.data || {};
+    if (data.type !== 'prefetch' || typeof data.url !== 'string') return;
+    let url;
+    try { url = new URL(data.url, self.location.origin); } catch (err) { return; }
+    if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
+    const key = url.pathname + url.search;
+    const now = Date.now();
+    for (const [k, v] of prefetched) if (now - v.at > PREFETCH_TTL) prefetched.delete(k);
+    if (prefetched.has(key)) return;
+    prefetched.set(key, {
+        at: now,
+        // רק תשובה תקינה של HTML, ובלי הפניה: Safari מסרב להגיש תשובה
+        // שהופנתה (למשל להתחברות, כשהסשן פג) לניווט. אז הניווט ילך לרשת.
+        response: fetch(url.href, { credentials: 'same-origin' })
+            .then(res => (res.ok && !res.redirected &&
+                          (res.headers.get('Content-Type') || '').includes('text/html')) ? res : null)
+            .catch(() => null),
+    });
+});
+
+function takePrefetched(request) {
+    if (request.mode !== 'navigate') return null;
+    const url = new URL(request.url);
+    const key = url.pathname + url.search;
+    const hit = prefetched.get(key);
+    if (!hit) return null;
+    prefetched.delete(key);                       // תשובה אחת לניווט אחד
+    if (Date.now() - hit.at > PREFETCH_TTL) return null;
+    return hit.response;
+}
+
 self.addEventListener('fetch', function (e) {
     // Only intercept same-origin GET requests
     if (e.request.method !== 'GET') return;
@@ -111,7 +155,12 @@ self.addEventListener('fetch', function (e) {
     const CACHEABLE_PAGES = ['/privacy', '/terms'];
 
     if (!CACHEABLE_PAGES.includes(url.pathname)) {
-        e.respondWith(fetch(e.request).catch(() => offlinePage()));
+        const early = takePrefetched(e.request);
+        e.respondWith(
+            (early || Promise.resolve(null))
+                .then(res => res || fetch(e.request))
+                .catch(() => offlinePage())
+        );
         return;
     }
 

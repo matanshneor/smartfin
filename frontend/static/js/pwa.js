@@ -200,3 +200,24 @@ if ('serviceWorker' in navigator) {
     document.addEventListener('focusout', soon);
     document.addEventListener('visibilitychange', function () { if (!document.hidden) soon(); });
 })();
+
+
+
+// ── טעינה מוקדמת בנגיעה בקישור (מתן, 3.10 — רעיון 29) ──
+// ‎pointerdown‎ — נגיעה בטלפון, לחיצה בעכבר. ראו ‎sw.js‎: העמוד מתחיל להיטען
+// כבר עכשיו, והניווט שמגיע כשהאצבע עוזבת מקבל אותו.
+(function () {
+    if (!('serviceWorker' in navigator)) return;
+    document.addEventListener('pointerdown', function (e) {
+        const sw = navigator.serviceWorker.controller;
+        if (!sw) return;
+        const a = e.target.closest && e.target.closest('a[href]');
+        if (!a || a.target || a.hasAttribute('download')) return;
+        let url;
+        try { url = new URL(a.href, location.href); } catch (err) { return; }
+        if (url.origin !== location.origin || url.pathname.startsWith('/api/')) return;
+        // אותו עמוד (או רק עוגן בתוכו) — אין מה לטעון
+        if (url.pathname === location.pathname && url.search === location.search) return;
+        sw.postMessage({ type: 'prefetch', url: url.pathname + url.search });
+    }, { passive: true, capture: true });
+})();
