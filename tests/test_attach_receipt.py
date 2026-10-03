@@ -85,5 +85,5 @@ def test_the_edit_window_offers_it_for_expenses_only():
     from pathlib import Path
     js = (Path(__file__).resolve().parent.parent / "frontend/static/js/transactions.js").read_text(encoding="utf-8")
     assert "attachFor = tx && tx.type === 'expense' ? tx.id : null;" in js
-    assert "attachBtn.textContent = hasReceipt ? 'החלפת קבלה' : 'צירוף קבלה';" in js
+    assert "attachLabel.textContent = hasReceipt ? 'החלפת קבלה' : 'צירוף קבלה';" in js
     assert js.count("setupAttach(null);") == 2, "הוספה ושכפול מסתירים את הכפתור"

@@ -461,13 +461,14 @@
     // ── צירוף קבלה להוצאה קיימת (מתן, 3.10 — רעיון 34) ──
     const attachBtn = document.getElementById('receiptAttachBtn');
     const attachInput = document.getElementById('receiptAttachInput');
+    const attachLabel = attachBtn && attachBtn.querySelector('.receipt-attach-label');
     let attachFor = null;                // העסקה שהכפתור שייך אליה כרגע
     function setupAttach(tx, hasReceipt) {
         if (!attachBtn) return;
         attachFor = tx && tx.type === 'expense' ? tx.id : null;
         attachBtn.hidden = !attachFor;
         attachBtn.disabled = false;
-        attachBtn.textContent = hasReceipt ? 'החלפת קבלה' : 'צירוף קבלה';
+        attachLabel.textContent = hasReceipt ? 'החלפת קבלה' : 'צירוף קבלה';
     }
     if (attachBtn && attachInput) {
         attachBtn.addEventListener('click', function () { if (attachFor) attachInput.click(); });
@@ -478,17 +479,17 @@
             if (!file || !id) return;
             const fd = new FormData();
             fd.append('image', file);
-            const label = attachBtn.textContent;
+            const label = attachLabel.textContent;
             attachBtn.disabled = true;
-            attachBtn.textContent = 'מעלה…';
+            attachLabel.textContent = 'מעלה…';
             fetch('/api/transactions/' + encodeURIComponent(id) + '/receipt', {
                 method: 'POST', body: fd, credentials: 'same-origin',
             })
                 .then(r => r.json().then(d => ({ ok: r.ok, d: d })))
                 .then(function (res) {
                     attachBtn.disabled = false;
-                    if (!res.ok) { attachBtn.textContent = label; window.showToast(res.d.error || 'צירוף הקבלה נכשל', 'error'); return; }
-                    attachBtn.textContent = 'החלפת קבלה';
+                    if (!res.ok) { attachLabel.textContent = label; window.showToast(res.d.error || 'צירוף הקבלה נכשל', 'error'); return; }
+                    attachLabel.textContent = 'החלפת קבלה';
                     const msg = res.d.replaced ? 'הקבלה הוחלפה' : 'הקבלה צורפה';
                     // ה-📎 מופיע בשורה — רענון רך בעמוד שתומך בו, אחרת הודעה בלבד
                     // (‎softReload‎ מציג את ההודעה רק אחרי טעינה מלאה — ברענון רך מציגים כאן)
@@ -498,7 +499,7 @@
                 })
                 .catch(function () {
                     attachBtn.disabled = false;
-                    attachBtn.textContent = label;
+                    attachLabel.textContent = label;
                     window.showToast(window.sfNetError(), 'error');
                 });
         });
