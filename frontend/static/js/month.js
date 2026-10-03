@@ -505,3 +505,73 @@ window.addEventListener('sf:refreshed', paint);
         if (e.key === 'Escape' && sheet) closeBudgets();
     });
 })();
+
+
+/* ═══ החלקה בין חודשים (מתן, 3.10 — רעיון 35) ═══
+ *
+ * על המאזן והריבועים בלבד — לא על רצועת החודשים (יש לה גלילה משלה) ולא על
+ * שאר העמוד (שורות עסקה מחליקים לעריכה ומחיקה, וגרפים). כמו בכרטיס "השבוע":
+ * הזמן זורם מימין לשמאל, אז גרירה שמאלה = החודש הקודם, ימינה = הבא.
+ * נעילת כיוון אחרי 8px: הצידה — המסך לא זז והאזור זז עם האצבע; גלילה — כרגיל.
+ * בהגדרת הכיוון מתחילה כבר טעינת החודש (ראו ‎sw.js‎, רעיון 29). */
+(function () {
+    const ZONE = '.month-net, .kpi-chips';
+    let sx = null, sy = 0, axis = null, target = null;
+
+    function parts() { return document.querySelectorAll(ZONE); }
+    function link(older) {
+        return document.querySelector('.stats-nav-btn[aria-label="' + (older ? 'חודש קודם' : 'חודש הבא') + '"]');
+    }
+    function move(px, animate) {
+        parts().forEach(function (el) {
+            el.style.transition = animate ? 'transform 0.2s ease-out' : '';
+            el.style.transform = px ? 'translateX(' + px + 'px)' : '';
+        });
+    }
+
+    document.addEventListener('touchstart', function (e) {
+        const zone = e.target.closest && e.target.closest(ZONE);
+        if (!zone || e.touches.length !== 1) { sx = null; return; }
+        sx = e.touches[0].clientX; sy = e.touches[0].clientY; axis = null; target = null;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', function (e) {
+        if (sx === null) return;
+        const dx = e.touches[0].clientX - sx, dy = e.touches[0].clientY - sy;
+        if (!axis) {
+            if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+            axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+            if (axis === 'x') {
+                target = link(dx < 0);
+                const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
+                if (target && sw) {
+                    const u = new URL(target.href, location.href);
+                    sw.postMessage({ type: 'prefetch', url: u.pathname + u.search });
+                }
+            }
+        }
+        if (axis !== 'x') return;
+        e.preventDefault();
+        move(Math.round(dx * 0.45));
+    }, { passive: false });
+
+    document.addEventListener('touchend', function (e) {
+        if (sx === null) return;
+        const dx = e.changedTouches[0].clientX - sx;
+        const wasX = axis === 'x';
+        sx = null; axis = null;
+        if (!wasX) return;
+        const go = Math.abs(dx) >= 50 && link(dx < 0);
+        if (!go) { move(0, true); return; }
+        move(dx < 0 ? -60 : 60, true);
+        window.location.href = go.href;
+    }, { passive: true });
+
+    document.addEventListener('touchcancel', function () {
+        if (sx !== null) move(0, true);
+        sx = null; axis = null;
+    }, { passive: true });
+
+    // חזרה עם "אחורה" — הדפדפן משחזר את העמוד כמו שהיה, כולל ההזזה
+    window.addEventListener('pageshow', function () { move(0); });
+})();

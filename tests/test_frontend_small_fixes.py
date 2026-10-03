@@ -933,3 +933,17 @@ def test_the_compare_page_has_a_range_for_both_charts():
     assert "const c = inRange(" in js, "הסטטיסטיקה לפי הטווח, לא לפי 12 החודשים"
     assert "(m.year < ty || (m.year === ty && m.month < tm))" in js, "ממוצע — רק מחודשים שנגמרו"
     assert "trend[-12:]" in _read("backend/app.py")
+
+
+def test_swiping_the_balance_changes_month():
+    """מתן (3.10, רעיון 35): החלקה על המאזן והריבועים מחליפה חודש — לא על רצועת
+    החודשים ולא על שאר העמוד. נעילת כיוון כמו בכרטיס "השבוע". בדפדפן: נבדק."""
+    js = _strip_comments(_read("frontend/static/js/month.js"))
+    part = js[js.index("const ZONE = '.month-net, .kpi-chips';"):]
+    assert "monthStrip" not in part.split("})();")[0], "הרצועה לא באזור ההחלקה"
+    assert "axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';" in part
+    move = part[part.index("document.addEventListener('touchmove'"):]
+    move = move[:move.index("}, { passive: false });")]
+    assert move.index("if (axis !== 'x') return;") < move.index("e.preventDefault();")
+    assert "window.location.href = go.href;" in part
+    assert "aria-label=\"' + (older ? 'חודש קודם' : 'חודש הבא') + '\"" in part
