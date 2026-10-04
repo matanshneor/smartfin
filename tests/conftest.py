@@ -7,52 +7,38 @@ from dotenv import load_dotenv
 load_dotenv()
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.dirname(__file__))
 
 from backend import supabase_config as db
 
-# הסיסמאות מגיעות מהסביבה ולא מהקוד. הריפו ציבורי, וסיסמה שכתובה בו היא
-# סיסמה עובדת לחשבון אמיתי במסד האמיתי — כל מי שקורא את הקוד יכול להתחבר
-# איתה לאפליקציה. הערכים יושבים ב-.env המקומי, שאינו במעקב גיט.
-TEST_ACCOUNTS = {
-    "a": {"email": os.environ.get("RLS_TEST_EMAIL_A", "rls-test-family-a@smartfin.test"),
-          "password": os.environ.get("RLS_TEST_PASSWORD_A")},
-    "b": {"email": os.environ.get("RLS_TEST_EMAIL_B", "rls-test-family-b@smartfin.test"),
-          "password": os.environ.get("RLS_TEST_PASSWORD_B")},
-}
-
-
-def _login(key):
-    account = TEST_ACCOUNTS[key]
-    if not account["password"]:
-        pytest.skip(
-            f"חסרה RLS_TEST_PASSWORD_{key.upper()} בסביבה. הבדיקות מול המסד "
-            f"האמיתי דורשות את סיסמאות חשבונות הבדיקה; הן לא בקוד בכוונה "
-            f"(ראו tests/setup_rls_test_users.py)."
-        )
-    response, err = db.sign_in(account["email"], account["password"])
-    if err:
-        pytest.exit(
-            f"בדיקות ה-RLS דורשות משתמשי בדיקה קבועים שכבר קיימים בפרויקט "
-            f"Supabase. הרץ פעם אחת: python3 tests/setup_rls_test_users.py "
-            f"(שגיאת התחברות ל-{account['email']}: {err})"
-        )
-    db.set_auth_token(response.session.access_token)
-    profile = db.get_profile(response.user.id)
-    return {
-        "user_id": response.user.id,
-        "family_id": profile["family_id"],
-        "token": response.session.access_token,
-    }
+import _test_accounts
 
 
 @pytest.fixture(scope="session")
-def family_a():
-    return _login("a")
+def _test_pair():
+    """שני חשבונות בדיקה זמניים לכל הריצה — נוצרים בפעם הראשונה שבדיקה
+    צריכה אותם, ונמחקים בסוף עם כל מה שהשאירו (ראו ‎tests/_test_accounts.py‎).
+    עד 4.10 אלה היו שני משתמשים קבועים במסד הייצור."""
+    if not os.environ.get("SUPABASE_URL"):
+        pytest.skip("אין SUPABASE_URL — הבדיקות מול המסד האמיתי רצות רק מקומית")
+    pair = _test_accounts.create_pair("pytest")
+    yield pair
+    _test_accounts.purge([a["user_id"] for a in pair.values()])
+
+
+def _signed_in(account):
+    db.set_auth_token(account["token"])
+    return {k: account[k] for k in ("user_id", "family_id", "token")}
 
 
 @pytest.fixture(scope="session")
-def family_b():
-    return _login("b")
+def family_a(_test_pair):
+    return _signed_in(_test_pair["a"])
+
+
+@pytest.fixture(scope="session")
+def family_b(_test_pair):
+    return _signed_in(_test_pair["b"])
 
 
 def category_of(family_id: str, type_: str = "expense") -> str:

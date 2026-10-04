@@ -10,6 +10,7 @@ test_family_join) ומחזירה אותו בסוף. בקשת ההסרה עצמה
 """
 import os, json, time, subprocess, signal
 from playwright.sync_api import sync_playwright
+import _accounts  # noqa: F401 — חשבונות בדיקה זמניים, נמחקים בסוף הריצה
 
 ROOT = os.getcwd()
 def _dotenv(path):

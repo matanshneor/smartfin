@@ -178,9 +178,12 @@ way it once did over the transaction routes.
 
 The 41 integration tests have no `unit` marker and are excluded from CI on purpose:
 running them needs production keys, and they would also write to the real
-database. They use two fixed test accounts — see `tests/setup_rls_test_users.py`,
-a one-time script that creates them, with passwords read from the environment and
-never from the repo. Caution: more than 10 logins per minute from one IP get a 429.
+database. Each run creates two throwaway accounts (each with its own family) and
+deletes them at the end together with everything they left behind, archive rows
+included — see `tests/_test_accounts.py`. Nothing test-made stays in the database;
+an interrupted run is swept up by the next one. Creating them needs the linked
+Supabase CLI (`supabase link`). Caution: more than 10 logins per minute from one
+IP get a 429.
 
 ## Database
 

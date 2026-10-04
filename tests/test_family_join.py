@@ -8,19 +8,16 @@
 שקטה נוספת.
 
 רצות מול הפרויקט האמיתי (כמו test_rls_isolation) עם שני חשבונות הבדיקה
-הקבועים. כל בדיקה שמזיזה משתמש בין משפחות מחזירה אותו למקומו ב-finally,
-גם אם היא נכשלת.
+הזמניים של הריצה (‎tests/_test_accounts.py‎). כל בדיקה שמזיזה משתמש בין
+משפחות מחזירה אותו למקומו ב-finally, גם אם היא נכשלת.
 """
-import subprocess
 import uuid
-from pathlib import Path
 
 import pytest
 
 from backend import supabase_config as db
+import _test_accounts                     # conftest מוסיף את tests ל-sys.path
 from tests.conftest import category_of
-
-_BACKEND = Path(__file__).resolve().parent.parent / "backend"
 
 
 def _privileged(sql: str):
@@ -33,13 +30,7 @@ def _privileged(sql: str):
     מחוץ למודל ההרשאות של האפליקציה במקום להחליש אותו.
 
     מה שנבדק — join_family_by_code — רץ כרגיל דרך הלקוח המאומת."""
-    out = subprocess.run(
-        ["supabase", "db", "query", sql, "--linked"],
-        cwd=_BACKEND, capture_output=True, text=True, timeout=60,
-    )
-    if out.returncode != 0:
-        raise RuntimeError(f"הקמת מצב נכשלה: {out.stderr[:300]}")
-    return out.stdout
+    return _test_accounts.privileged_sql(sql)
 
 
 def _profile_family(user_id):
@@ -179,6 +170,10 @@ def test_join_moves_the_user_and_deletes_the_family_left_behind(family_a, family
             _dispose_temp_family(client, family_a["user_id"], temp_id, family_a_code)
         _privileged(f"update public.profiles set family_id='{original}' "
                     f"where id='{family_a['user_id']}';")
+        # והמשפחה הזמנית עצמה, אם שרדה, יחד עם הארכיון של העסקה שבה. בלי
+        # זה כל ריצה השאירה במסד הייצור משפחה ריקה ושורת ארכיון "join test"
+        # — עד 4.10 הצטברו 8 משפחות ו-252 שורות כאלה.
+        _test_accounts.purge([], extra_family_ids=[temp_id])
 
 
 def test_join_keeps_a_family_that_still_holds_transactions(family_a, family_a_code):
@@ -215,3 +210,7 @@ def test_join_keeps_a_family_that_still_holds_transactions(family_a, family_a_co
         _dispose_temp_family(client, family_a["user_id"], temp_id, family_a_code)
         _privileged(f"update public.profiles set family_id='{original}' "
                     f"where id='{family_a['user_id']}';")
+        # והמשפחה הזמנית עצמה, אם שרדה, יחד עם הארכיון של העסקה שבה. בלי
+        # זה כל ריצה השאירה במסד הייצור משפחה ריקה ושורת ארכיון "join test"
+        # — עד 4.10 הצטברו 8 משפחות ו-252 שורות כאלה.
+        _test_accounts.purge([], extra_family_ids=[temp_id])
