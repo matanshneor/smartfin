@@ -241,7 +241,6 @@ def _asset_version(filename: str) -> str:
 # סכום כסף בתבניות: ‎{{ x | money }}‎ — אגורות רק כשיש (ראו backend/money.py)
 app.jinja_env.filters["money"] = format_money
 app.jinja_env.filters["count_of"] = count_of
-app.jinja_env.filters["share_map"] = share_map
 # "היום" / "אתמול" / "ראשון, 27.9" — מול היום של השעון המוזרק (בדיקות)
 app.jinja_env.filters["day_label"] = lambda d: day_label(d, clock.today())
 
@@ -1132,9 +1131,9 @@ def dashboard():
     if not family_id:
         return render_template(
             "index.html", active_page="dashboard", user=user,
-            summary=db._empty_summary(), transactions=[], categories=db.get_categories(None),
+            summary=db._empty_summary(), transactions=[],
             member_colors={}, month_label=_month_label(now.year, now.month),
-            year=now.year, month=now.month, is_new_family=True,
+            month=now.month, is_new_family=True,
         )
 
     # עלול לכתוב שורות, אז לפני מקבץ השליפות
@@ -1175,10 +1174,8 @@ def dashboard():
         summary=batch["summary"],
         transactions=transactions,
         week=week,
-        categories=batch["categories"],
         member_colors=_member_colors(family_id),
         month_label=_month_label(now.year, now.month),
-        year=now.year,
         month=now.month,
         is_new_family=batch["is_new"],
     )
@@ -1573,7 +1570,6 @@ def project_edit(project_id):
         return _project_gone()
     return render_template("project_edit.html", active_page="projects", user=user,
                            project=project,
-                           member_colors=_member_colors(family_id),
                            others_note=_others_contributions(project, user["id"],
                                                              _member_names(family_id)))
 
@@ -2801,7 +2797,6 @@ def _edit_series_from_now(template_id, family_id, payload):
 def _entered_text(meta: dict, viewer_id: str, names: dict, now=None) -> str:
     """"הוזנה ע״י אור · אתמול 18:32" — ראו ‎/api/transactions/<id>/meta‎.
     עסקה בלשון נקבה ("הוזנה"), כמו "נרשמה ע״י" וחלון הכפילות."""
-    from datetime import datetime, timedelta
     if meta.get("recurring_parent_id"):
         return "נוצרה אוטומטית מעסקה קבועה"
     now = now or clock.now()
@@ -3152,17 +3147,6 @@ def get_categories():
     user = get_current_user()
     cats = db.get_categories(user["family_id"])
     return jsonify(cats)
-
-
-def _parse_initial_balance(body: dict):
-    """יתרה התחלתית רלוונטית רק לקטגוריות חיסכון. ריק/חסר = None (ללא יתרה)."""
-    raw = body.get("initial_balance")
-    if raw in (None, ""):
-        return None, None
-    try:
-        return float(raw), None
-    except (TypeError, ValueError):
-        return None, "יתרה התחלתית חייבת להיות מספר"
 
 
 @app.route("/api/categories", methods=["POST"])
