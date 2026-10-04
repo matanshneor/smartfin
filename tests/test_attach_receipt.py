@@ -20,7 +20,6 @@ def env(monkeypatch):
           "upload_ok": True, "update_ok": True}
     db = app_module.db
     monkeypatch.setattr(db, "personal_project_owner", lambda *a: None, raising=False)
-    monkeypatch.setattr(app_module, "personal_project_owner", lambda *a: None, raising=False)
     monkeypatch.setattr(db, "transaction_type", lambda tx, fid: st["type"])
     monkeypatch.setattr(db, "get_transaction_receipt_path", lambda tx, fid: st["old"])
     monkeypatch.setattr(db, "upload_receipt", lambda tok, fid, b, ct: st["uploaded"].append(ct) or

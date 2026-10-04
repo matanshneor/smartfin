@@ -14,13 +14,12 @@
 - סשן של עשר שנים ששינוי סיסמה לא ניתק.
 - והלקוח הוא סינגלטון ברמת התהליך שלא אופס בין בקשות.
 """
-import re
 from pathlib import Path
 
 import pytest
 
 from backend import app as app_module
-from backend.app import app, limiter
+from backend.app import app
 
 pytestmark = pytest.mark.unit
 

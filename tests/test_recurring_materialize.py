@@ -13,7 +13,6 @@
 
 הכלל שנבדק: מופע אחד לכל תבנית לכל תקופה — חודש קלנדרי בתדירות חודשית.
 """
-from datetime import date
 
 import pytest
 

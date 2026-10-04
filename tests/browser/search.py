@@ -3,7 +3,7 @@
 הרצה (Playwright מותקן בפייתון של המערכת, לא ב-.venv):
     /Library/Frameworks/Python.framework/Versions/3.14/bin/python3 tests/browser/search.py
 """
-import os, json, time, datetime, subprocess, signal, sys
+import os, json, time, datetime, subprocess, signal
 from playwright.sync_api import sync_playwright
 
 ROOT = os.getcwd()

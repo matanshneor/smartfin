@@ -109,7 +109,7 @@ def test_a_failed_count_refuses_rather_than_guessing(client, monkeypatch):
 def test_the_ceiling_can_be_raised_without_a_deploy(monkeypatch):
     """מספר שמצריך פריסה כדי לשנות אותו הוא מספר שיישאר שגוי בדיוק
     כשצריך לשנות אותו."""
-    import importlib, os
+    import importlib
     monkeypatch.setenv("RECEIPT_GLOBAL_MONTHLY_LIMIT", "12345")
     db = importlib.reload(app_module.db)
     try:

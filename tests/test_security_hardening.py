@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 from backend import app as app_module
-from backend.app import app, _parse_amount, limiter
+from backend.app import _parse_amount
 
 pytestmark = pytest.mark.unit
 

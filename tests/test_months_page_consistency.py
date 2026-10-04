@@ -10,12 +10,10 @@
 כ-₪31,400 בגרף וכ-₪9,400 בטבלה, במרחק שני סנטימטרים, בלי שום הסבר —
 זה נראה פשוט כמו אפליקציה שמחשבת לא נכון.
 """
-import inspect
 import re
 
 import pytest
 
-from backend import supabase_config as db
 
 pytestmark = pytest.mark.unit
 

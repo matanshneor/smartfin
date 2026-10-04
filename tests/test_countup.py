@@ -10,7 +10,6 @@
 לא עדכון.
 """
 import json
-import re
 import shutil
 import os
 import subprocess

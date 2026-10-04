@@ -14,7 +14,6 @@
    שהופך בדיקת בידוד לאפשרית בלי מסד.
 3. ‎insert‎ מחזיר את השורה כפי שנשמרה, כולל מה שהמסלול חישב.
 """
-import itertools
 import uuid
 
 
@@ -206,7 +205,6 @@ class FakeSupabase:
         self.reads = []
         self.rpcs = []
         self.rpc_results = {}
-        self._ids = itertools.count(1)
 
     def table(self, name):
         return _Query(self, name)

@@ -11,8 +11,6 @@
 הקבועים. כל בדיקה שמזיזה משתמש בין משפחות מחזירה אותו למקומו ב-finally,
 גם אם היא נכשלת.
 """
-import json
-import re
 import subprocess
 import uuid
 from pathlib import Path

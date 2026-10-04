@@ -16,7 +16,6 @@
 """
 import pytest
 
-from backend import app as app_module
 from backend import supabase_config as db
 from backend.app import app, limiter
 from tests._fake_db import FakeSupabase

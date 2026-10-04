@@ -44,7 +44,6 @@ def test_the_route(monkeypatch):
     monkeypatch.setattr(app_module.db, "transaction_meta",
                         lambda tx, fid: _meta("2026-10-03T06:15:00+00:00") if tx == "t1" else None)
     monkeypatch.setattr(app_module, "_member_names", lambda fid: _NAMES)
-    monkeypatch.setattr(app_module, "personal_project_owner", lambda *a: None, raising=False)
     monkeypatch.setattr(app_module.db, "personal_project_owner", lambda *a: None, raising=False)
     monkeypatch.setattr(app_module.clock, "now", lambda: _NOW)
     c = app.test_client()
