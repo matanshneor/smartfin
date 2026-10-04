@@ -33,22 +33,20 @@ window.addEventListener('sf:refreshed', centerStrip);
 
 // ── הרחבת קטגוריה: הצגת כל העסקאות שלה בחודש ──
 function toggleExpand(trigger) {
-    const wrap = trigger.classList.contains('breakdown-main')
-        ? trigger.closest('.breakdown-bar-row')
-        : trigger.closest('.legend-item-wrap');
+    const wrap = trigger.closest('.legend-item-wrap');
     if (!wrap) return;
     const isOpen = wrap.classList.toggle('open');
     trigger.setAttribute('aria-expanded', isOpen);
 }
 
 document.addEventListener('click', function (e) {
-    const trigger = e.target.closest('.legend-item.clickable, .breakdown-main.clickable');
+    const trigger = e.target.closest('.legend-item.clickable');
     if (trigger) toggleExpand(trigger);
 });
 
 document.addEventListener('keydown', function (e) {
     if (e.key !== 'Enter' && e.key !== ' ') return;
-    const trigger = e.target.closest('.legend-item.clickable, .breakdown-main.clickable');
+    const trigger = e.target.closest('.legend-item.clickable');
     if (trigger) { e.preventDefault(); toggleExpand(trigger); }
     // ‎.zero-toggle‎ מסומן ‎role="button" tabindex="0"‎, אבל טופל ב-‎click‎
     // בלבד — ואלמנט שאינו ‎<button>‎ לא מייצר click מ-Enter. שלוש תחנות

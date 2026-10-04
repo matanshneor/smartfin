@@ -76,7 +76,7 @@
     // 3. פסי התקדמות נמתחים מ-0 לרוחב הסופי
     function runBars() {
         if (reduceMotion) return;
-        document.querySelectorAll('.balance-bar-fill, .breakdown-fill')
+        document.querySelectorAll('.balance-bar-fill')
             .forEach(function (bar) {
                 const finalWidth = bar.style.width;
                 if (!finalWidth) return;

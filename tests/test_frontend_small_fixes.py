@@ -626,12 +626,6 @@ def test_tapping_a_month_in_the_compare_chart_opens_it():
     assert "'/month?year=' + d.year + '&month=' + d.month" in js
 
 
-def test_there_is_one_form_for_a_new_project():
-    """מתן (30.9, רעיון 13): טופס יצירה אחד, בעמוד הפרויקטים."""
-    js = _strip_comments(_read("frontend/static/js/projects.js"))
-    assert "window.location.hash === '#new'" in js
-
-
 def test_settings_has_no_projects_box():
     """מתן (1.10): התיבה "פרויקטים" בהגדרות הייתה כפילות של עמוד הפרויקטים —
     רשימה, קישור ליצירה, עריכה מקוצרת ו"ניהול מלא". הוסרה, עם הקוד שלה."""

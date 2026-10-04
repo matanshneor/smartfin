@@ -46,7 +46,6 @@
     /* Semantic */
     --color-income:        #15803D;
     --color-expense:       #B91C1C;
-    --color-warn:          #B45309;   /* תקציב שעבר 80% */
     /* משמש רק לסכומי חיסכון, שהם טקסט — ולכן אותו ערך כמו
        --color-gold-text ולא כמו זהב המותג. */
     --color-savings:       #846300;
@@ -54,7 +53,6 @@
     --color-expense-light: #F87171;
     --color-savings-light: #E8C96A;
     --gradient-danger:     linear-gradient(135deg, #DC2626, #B91C1C);
-    --color-primary:       #A67C00;
 
     /* דיו לקווים ולרקעים עדינים (‎rgba(var(--ink-rgb), 0.07)‎) — מתהפך במצב כהה */
     --ink-rgb:             28, 25, 23;
@@ -111,7 +109,6 @@
 
     --color-income:        #4ADE80;
     --color-expense:       #F87171;
-    --color-warn:          #F2A94B;
     --color-savings:       #E8C96A;
 
     --ink-rgb:             255, 244, 214;
@@ -459,14 +456,6 @@ ul { list-style: none; }
     font-size: 0.68rem;
     color: var(--hero-text-muted);
     margin-top: 1px;
-}
-
-.month-chip-badge {
-    display: block;
-    font-size: 0.6rem;
-    font-weight: 600;
-    color: var(--color-gold-bright);
-    margin-top: 2px;
 }
 
 .kpi-chips {
@@ -2195,15 +2184,6 @@ a.submit-btn {
     color: var(--color-text-muted);
 }
 
-/* תווית מסבירה במרכז הדונאט (בלי מספר) — רק כדי שלא ייראה ריק */
-.doughnut-caption {
-    font-size: 0.88rem;
-    font-weight: 600;
-    text-align: center;
-    white-space: nowrap;
-    color: var(--color-text-soft);
-}
-
 /* כשספריית הגרפים לא נטענה: הקנבס מוחלף בהודעה, והמספר שהיה מרחף
    במרכז הדונאט חוזר לזרימה הרגילה — אחרת הוא נופל על הטקסט. */
 .chart-unavailable {
@@ -2273,8 +2253,7 @@ a.submit-btn {
 
 .legend-item-wrap .legend-item { border-bottom: none; }
 
-.legend-item.clickable,
-.breakdown-main.clickable {
+.legend-item.clickable {
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 }
@@ -2289,8 +2268,7 @@ a.submit-btn {
 
 .expand-chevron svg { width: 14px; height: 14px; }
 
-.legend-item-wrap.open .expand-chevron,
-.breakdown-bar-row.open .expand-chevron {
+.legend-item-wrap.open .expand-chevron {
     transform: rotate(180deg);
 }
 
@@ -2320,8 +2298,7 @@ a.submit-btn {
     margin: 0;
 }
 
-.legend-item-wrap.open .cat-tx-list,
-.breakdown-bar-row.open .cat-tx-list {
+.legend-item-wrap.open .cat-tx-list {
     display: block;
 }
 
@@ -2441,10 +2418,8 @@ a.submit-btn {
 li.zero-cat-row { display: none; }
 
 .legend-list.show-zeros li.zero-cat-row { display: block; }
-.breakdown-bars.show-zeros li.zero-cat-row { display: flex; }
 
-.zero-cat-row .legend-item,
-.zero-cat-row .breakdown-main { opacity: 0.6; }
+.zero-cat-row .legend-item { opacity: 0.6; }
 
 .legend-dot-zero { background: rgba(var(--ink-rgb), 0.18); }
 
@@ -2470,19 +2445,6 @@ li.zero-cat-row { display: none; }
     gap: 14px;
 }
 
-.breakdown-bar-row {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-}
-
-.breakdown-main {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-}
-
 .breakdown-icon {
     width: 38px;
     height: 38px;
@@ -2494,46 +2456,6 @@ li.zero-cat-row { display: none; }
     font-size: 1.1rem;
     flex-shrink: 0;
 }
-
-.breakdown-info { flex: 1; min-width: 0; }
-
-.breakdown-name-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-}
-
-.breakdown-name {
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-.breakdown-amount {
-    font-weight: 700;
-    font-size: 0.88rem;
-    font-variant-numeric: tabular-nums;
-    direction: ltr;
-}
-
-.breakdown-amount.income  { color: var(--color-income); }
-.breakdown-amount.savings { color: var(--color-savings); }
-
-.breakdown-track {
-    height: 6px;
-    border-radius: 99px;
-    background: rgba(var(--ink-rgb), 0.07);
-    overflow: hidden;
-}
-
-.breakdown-fill {
-    height: 100%;
-    border-radius: 99px;
-    transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.breakdown-fill.income  { background: linear-gradient(90deg, #22A055, #15803D); }
-.breakdown-fill.savings { background: var(--gradient-gold); }
 
 /* Chart wrapper (doughnut / bar / line canvases) */
 .line-chart-wrap {
@@ -2816,8 +2738,9 @@ li.zero-cat-row { display: none; }
 
 .member-settings-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 12px;
+    padding: 4px 0;
 }
 
 .member-avatar-sm {
@@ -2832,11 +2755,6 @@ li.zero-cat-row { display: none; }
     font-weight: 700;
     font-size: 0.85rem;
     flex-shrink: 0;
-}
-
-.member-settings-row {
-    align-items: flex-start;
-    padding: 4px 0;
 }
 
 .member-settings-info {
@@ -2882,15 +2800,6 @@ li.zero-cat-row { display: none; }
     padding: 1px 8px;
     margin-inline-start: 4px;
     vertical-align: middle;
-}
-
-/* כפתור אייקון להרסני — אדום רק בריחוף/מיקוד, כדי שרשימת החברים לא
-   תיראה כמו רשימת אזהרות. */
-.icon-btn-danger { color: var(--color-text-muted); }
-.icon-btn-danger:hover,
-.icon-btn-danger:focus-visible {
-    color: var(--color-expense);
-    background: var(--color-expense-dim, var(--color-input));
 }
 
 /* Recurring transactions */
@@ -3021,8 +2930,7 @@ li.zero-cat-row { display: none; }
 .category-row.editing .btn-sm { padding: 8px 12px; white-space: nowrap; }
 
 .delete-cat-btn,
-.delete-recurring-btn,
-.delete-project-btn {
+.delete-recurring-btn {
     position: relative;
     width: 30px;
     height: 30px;
@@ -3077,14 +2985,6 @@ li.project-row {
     text-overflow: ellipsis;
 }
 
-.project-amount {
-    font-weight: 700;
-    font-size: 0.95rem;
-    font-variant-numeric: tabular-nums;
-    direction: ltr;
-    flex-shrink: 0;
-}
-
 /* תג "שייך לפרויקט" על שורת עסקה ברשימות */
 .project-tag {
     display: inline-flex;
@@ -3104,17 +3004,6 @@ li.project-row {
 }
 
 /* קטע "פרויקטים החודש" — סכומים */
-.pm-figure {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid rgba(var(--ink-rgb), 0.06);
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-.pm-figure:last-of-type { border-bottom: none; }
-
 .pm-amount {
     font-variant-numeric: tabular-nums;
     direction: ltr;
@@ -4004,7 +3893,6 @@ li.transaction-item.swipe-ready > .swipe-content {
 .edit-cat-btn::before,
 .delete-cat-btn::before,
 .delete-recurring-btn::before,
-.delete-project-btn::before,
 .receipt-badge::before,
 .stats-nav-btn::before,
 .pref-switch::before {
