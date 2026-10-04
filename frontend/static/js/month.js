@@ -109,8 +109,7 @@ try {
 // מתאימה לשניהם. הסוג הפעיל נקרא מהכפתור עצמו ולא נשמר במשתנה — מאותה
 // סיבה: אחרי רענון רך הכפתורים חדשים, וחוזרים ל"הכל".
 function filterAllTx() {
-    const rows = document.querySelectorAll(
-        '.all-tx-header + .tx-search-wrap + .cat-tx-list .cat-tx-row');
+    const rows = document.querySelectorAll('#txScreen .tx-screen-list .cat-tx-row');
     const input = document.getElementById('txSearch');
     const emptyMsg = document.getElementById('txSearchEmpty');
     const count = document.querySelector('.all-tx-count');
@@ -124,7 +123,9 @@ function filterAllTx() {
     const q = input ? input.value.trim().toLowerCase() : '';
     let shown = 0, sum = 0;
     rows.forEach(function (row) {
-        const desc = (row.querySelector('.cat-tx-desc') || {}).textContent || '';
+        // גם שם הקטגוריה והפרויקט (מתן, 5.10): "סופר" מוצא את "רמי לוי"
+        const desc = ((row.querySelector('.cat-tx-desc') || {}).textContent || '')
+                   + ' ' + (row.dataset.search || '');
         const match = (!q || desc.toLowerCase().indexOf(q) !== -1)
                    && (!type || row.dataset.type === type)
                    && (!cats.size || cats.has(row.dataset.catKey));
@@ -132,11 +133,95 @@ function filterAllTx() {
         if (match) { shown++; sum += parseFloat(row.dataset.amount) || 0; }
     });
     const filtering = q || type || cats.size;
+    txState = { q: input ? input.value : '', type: type, cats: Array.from(cats) };
     if (emptyMsg) emptyMsg.style.display = (filtering && shown === 0) ? 'block' : 'none';
     // כשנבחרו קטגוריות — גם כמה יצא עליהן ("5 · ₪1,070")
     if (count) count.textContent = !filtering ? count.dataset.total
         : (cats.size ? shown + ' · ₪' + window.sfMoney(Math.round(sum)) : shown);
 }
+
+// ── המסך של כל העסקאות (מתן, 5.10) ──
+// בתצוגה המקדימה 5 האחרונות; הרשימה המלאה, עם החיפוש והסינון, במסך משלה.
+// ‎#all-tx‎ בכתובת: כפתור החזרה של הטלפון סוגר את המסך ולא יוצא מהחודש.
+// עריכה מתוך המסך מרעננת את ‎main‎ (רענון רך) — והמסך החדש מגיע סגור, עם
+// חיפוש ריק. אז הוא נפתח מחדש עם מה שהיה בו (‎txState‎).
+let txState = null;
+
+function txScreen() { return document.getElementById('txScreen'); }
+
+// המסך עובר אל ‎body‎ ברגע הפתיחה. בתוך הכרטיס ‎position: fixed‎ לא מכסה את
+// המסך — לכרטיסים יש אנימציית כניסה עם ‎transform‎, וזה הופך אותם לנקודת
+// הייחוס. המסך נכלא בתוך הכרטיס, והכותרת הדביקה של החודש ישבה מעליו.
+function openTxScreen(push) {
+    const screen = txScreen();
+    if (!screen) return;
+    if (screen.parentElement !== document.body) document.body.appendChild(screen);
+    screen.hidden = false;
+    document.body.classList.add('tx-screen-open');
+    if (push) {
+        try { history.pushState({ sfTxScreen: true }, '', '#all-tx'); } catch (e) { /* לא קריטי */ }
+    }
+}
+
+function hideTxScreen() {
+    const screen = txScreen();
+    if (screen) screen.hidden = true;
+    document.body.classList.remove('tx-screen-open');
+    txState = null;
+}
+
+function closeTxScreen() {
+    if (history.state && history.state.sfTxScreen) { history.back(); return; }   // popstate מסתיר
+    hideTxScreen();
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* לא קריטי */ }
+}
+
+function restoreTxState() {
+    if (!txState) return;
+    const input = document.getElementById('txSearch');
+    if (input) input.value = txState.q;
+    const typeChip = document.querySelector('.tx-type-chip[data-type="' + txState.type + '"]');
+    if (typeChip) {
+        document.querySelectorAll('.tx-type-chip').forEach(function (c) { pressChip(c, c === typeChip); });
+        document.querySelectorAll('.tx-cat-chips').forEach(function (rowEl) {
+            rowEl.hidden = rowEl.dataset.forType !== txState.type;
+        });
+    }
+    const group = document.querySelector('.tx-cat-chips:not([hidden])');
+    if (group && txState.cats.length) {
+        group.querySelectorAll('.tx-cat-chip').forEach(function (c) {
+            pressChip(c, c.dataset.cat ? txState.cats.indexOf(c.dataset.cat) !== -1 : false);
+        });
+    }
+    filterAllTx();
+}
+
+document.addEventListener('click', function (e) {
+    if (!e.target.closest) return;
+    if (e.target.closest('#txScreenOpen')) openTxScreen(true);
+    else if (e.target.closest('#txScreenClose')) closeTxScreen();
+});
+document.addEventListener('keydown', function (e) {
+    const screen = txScreen();
+    if (e.key === 'Escape' && !e.defaultPrevented && screen && !screen.hidden && !document.querySelector('.modal-overlay.open')) closeTxScreen();
+});
+window.addEventListener('popstate', function () {
+    if (location.hash === '#all-tx') openTxScreen(false); else hideTxScreen();
+});
+window.addEventListener('sf:refreshed', function () {
+    // הרענון הביא מסך חדש בתוך ‎main‎; העותק הישן שהועבר ל-‎body‎ מיותר
+    document.querySelectorAll('body > #txScreen').forEach(function (old) {
+        if (old !== document.querySelector('main #txScreen')) old.remove();
+    });
+    if (location.hash !== '#all-tx') return;
+    const keep = txState;
+    openTxScreen(false);
+    txState = keep;
+    restoreTxState();
+});
+try {
+    if (location.hash === '#all-tx') openTxScreen(false);
+} catch (err) { /* בלי פתיחה אוטומטית — לא בלי העמוד */ }
 
 function pressChip(chip, on) {
     chip.classList.toggle('active', on);

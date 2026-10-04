@@ -51,7 +51,7 @@ try:
 
         # 1. עמוד החודש — חלון עריכה
         page.goto(BASE + "/month"); page.wait_for_timeout(1200)
-        page.click(".all-tx-header"); page.wait_for_timeout(300)
+        page.click("#txScreenOpen"); page.wait_for_timeout(300)
         page.locator(f'.cat-tx-row[data-id="{tid}"]:visible').first.click(); page.wait_for_timeout(1200)
         page.fill("#txAmount", "320"); page.click("#submitBtn"); page.wait_for_timeout(2800)
         print("month — toast:", page.locator("#appToast .toast-msg").inner_text(), "|", page.locator("#appToast .toast-action").inner_text(), "| now:", amount_now())
@@ -71,7 +71,7 @@ try:
 
         # 3. מישהו שינה בינתיים — "בטל" לא דורס
         page.goto(BASE + "/month"); page.wait_for_timeout(1200)
-        page.click(".all-tx-header"); page.wait_for_timeout(300)
+        page.click("#txScreenOpen"); page.wait_for_timeout(300)
         page.locator(f'.cat-tx-row[data-id="{tid}"]:visible').first.click(); page.wait_for_timeout(1200)
         page.fill("#txAmount", "500"); page.click("#submitBtn"); page.wait_for_timeout(2800)
         api("PUT", f"/api/transactions/{tid}", {"amount": 555, "type": "expense", "category_id": cat,

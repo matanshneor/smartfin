@@ -57,7 +57,7 @@ try:
         page.goto(BASE + "/month")
         copies = lambda: page.evaluate("(id) => document.querySelectorAll('[data-id=\"' + id + '\"]').length", tid)
         before = copies()
-        page.click(".all-tx-header")
+        page.click("#txScreenOpen")
         page.locator(f'.cat-tx-row[data-id="{tid}"]').locator("visible=true").first.click()
         page.wait_for_selector("#modalOverlay.open")
         page.click("#deleteTxBtn")

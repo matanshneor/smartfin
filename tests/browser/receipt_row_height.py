@@ -71,13 +71,13 @@ try:
         for path in ("/", "/month"):
             page.goto(BASE + path); page.wait_for_timeout(900)
             if path == "/month":
-                page.locator(".all-tx-header").click(); page.wait_for_timeout(400)
+                page.locator("#txScreenOpen").click(); page.wait_for_timeout(400)
             print(path, "row without receipt:", page.evaluate(H, "RCPT-NO"), "| with receipt:", page.evaluate(H, "RCPT-YES"))
             if path == "/month":
                 for d in ("RCPT-NO", "RCPT-YES"):
                     print(" ", d, page.evaluate("""desc => { const r = [...document.querySelectorAll('.cat-tx-row')].find(x => x.textContent.includes(desc) && x.offsetParent);
                         return [...r.children].map(c => c.className + ':' + c.getBoundingClientRect().height.toFixed(1) + (getComputedStyle(c).whiteSpace === 'nowrap' ? '' : '(wraps)')); }""", d))
-        page.goto(BASE + "/month"); page.wait_for_timeout(900); page.locator(".all-tx-header").click(); page.wait_for_timeout(400)
+        page.goto(BASE + "/month"); page.wait_for_timeout(900); page.locator("#txScreenOpen").click(); page.wait_for_timeout(400)
         page.goto(BASE + "/"); page.wait_for_timeout(900); page.locator(".transaction-item", has_text="RCPT-YES").first.screenshot(path="/tmp/rcpt_row.png")
         b.close()
 finally:

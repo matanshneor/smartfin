@@ -2302,9 +2302,7 @@ a.submit-btn {
     display: block;
 }
 
-/* חיפוש עסקאות — מוצג רק כשרשימת "כל העסקאות" פתוחה */
-.tx-search-wrap { display: none; margin: 8px 0 4px; }
-.legend-item-wrap.open .tx-search-wrap { display: block; }
+.tx-search-wrap { margin: 4px 0 10px; }
 .tx-search-input { font-size: 1rem; padding: 9px 12px; }
 .tx-type-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
 .tx-type-chip { min-height: 36px; }
@@ -2424,11 +2422,6 @@ li.zero-cat-row { display: none; }
 .legend-dot-zero { background: rgba(var(--ink-rgb), 0.18); }
 
 /* כל העסקאות */
-.all-tx-title {
-    font-weight: 700;
-    font-size: 1.05rem;
-}
-
 .all-tx-count {
     font-size: 0.75rem;
     font-weight: 600;
@@ -4784,3 +4777,30 @@ body > .color-sheet { z-index: 180; }
     background: var(--color-card); border: var(--border-subtle); border-radius: 99px;
     box-shadow: var(--shadow-card); color: var(--color-text-soft); text-decoration: none; font-size: 0.85rem;
 }
+
+/* ─── כל העסקאות של החודש: מסך משלו (מתן, 5.10) ────────────────────────
+   כמו מסך החיפוש של דף הבית: מעל העמוד, ומתחת לחלון העריכה — כך שנגיעה
+   בעסקה פותחת עריכה מעליו. */
+.tx-preview { margin-top: 2px; }
+.tx-screen {
+    position: fixed; inset: 0; z-index: 95;
+    background: var(--color-bg);
+    display: flex; flex-direction: column;
+}
+.tx-screen[hidden] { display: none; }
+body.tx-screen-open { overflow: hidden; }
+.tx-screen-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 14px;
+    background: linear-gradient(170deg, var(--hero-bg), var(--hero-bg-2));
+    color: var(--hero-text);
+}
+.tx-screen-heading { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.tx-screen-title { margin: 0; font-size: 1.2rem; font-weight: 700; }
+.tx-screen-month { font-size: 0.8rem; color: var(--hero-text-muted); }
+.tx-screen-bar .all-tx-count { background: var(--hero-chip-bg); color: var(--hero-text); border: 1px solid var(--hero-chip-border); }
+.tx-screen-body {
+    flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 14px 16px calc(env(safe-area-inset-bottom, 0px) + 24px);
+}
+.cat-tx-list.tx-screen-list { background: var(--color-card); border: var(--border-subtle); border-radius: var(--radius); box-shadow: var(--shadow-card); padding: 4px 14px; }

@@ -69,7 +69,7 @@ try:
 
         def edit(selector, new_amount):
             page.goto(BASE + "/month")
-            for h in page.locator(".all-tx-header, .legend-item.clickable").all():
+            for h in page.locator("#txScreenOpen, .legend-item.clickable").all():
                 try: h.click(timeout=1000)
                 except Exception: pass
             page.locator(selector).locator("visible=true").first.click()

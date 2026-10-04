@@ -74,9 +74,9 @@ try:
 
         shot("home", "/")
         shot("month", "/month")
-        page.click(".all-tx-header"); page.wait_for_timeout(300)
+        page.click("#txScreenOpen"); page.wait_for_timeout(300)
         page.locator(".tx-type-chip", has_text="הוצאות").click(); page.wait_for_timeout(300)
-        page.locator(".all-tx-header").scroll_into_view_if_needed()
+        page.locator("#txScreenOpen").scroll_into_view_if_needed()
         shot("month_filter", full=False)
         shot("months", "/months")
         shot("projects", "/projects")
@@ -95,7 +95,7 @@ try:
         page.keyboard.press("Escape")
         # מחיקה — לראות את חלון האישור
         page.goto(BASE + "/month"); page.wait_for_timeout(1200)
-        page.click(".all-tx-header"); page.wait_for_timeout(300)
+        page.click("#txScreenOpen"); page.wait_for_timeout(300)
         print("done")
         b.close()
 finally:

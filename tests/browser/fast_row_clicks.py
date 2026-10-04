@@ -79,7 +79,7 @@ try:
         # ── 1. עסקה א', ומיד עסקה ב' — והתשובות של א' מגיעות אחרונות
         page.route("**/api/categories", hold)
         page.goto(BASE + "/month")
-        page.click(".all-tx-header")      # "כל העסקאות" — הרשימה מקופלת
+        page.click("#txScreenOpen")      # "כל העסקאות" — הרשימה מקופלת
         row("ROW-A").click(); row("ROW-B").click()
         release_newest_first()
         f = form()
@@ -96,7 +96,7 @@ try:
 
         # ── 2. עסקה, ומיד + — והתשובות של העסקה מגיעות אחרונות
         page.goto(BASE + "/month")        # מטמון ריק מחדש
-        page.click(".all-tx-header")
+        page.click("#txScreenOpen")
         row("ROW-A").click(); page.click("#fabBtn")
         release_newest_first()
         f = form()

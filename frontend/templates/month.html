@@ -425,27 +425,64 @@
 {% endfor %}
 
 <!-- כל העסקאות של החודש -->
+{# האחרונות למעלה, והרשימה המלאה — עם החיפוש והסינון — במסך משלה
+   (מתן, 5.10). עד אז הכל היה שורת "הצגת הכל" אחת שנפתחה במקום. #}
+{# ‎freq_labels‎ מועבר במפורש: ‎set‎ שבתוך הבלוק לא נראה מתוך מאקרו #}
+{% macro tx_row(tx, freq_labels) %}
+    <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+        data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
+        data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
+        data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
+        data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
+        data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}"
+        data-cat-key="{{ tx.get('cat_key', '') }}"
+        data-search="{{ tx.category_name or '' }} {{ tx.project_name or '' }}">
+        <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
+        <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.is_recurring or tx.recurring_parent_id %} · 🔁 {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
+        {% if tx.project_id %}<span class="project-tag">{{ tx.project_icon or '🎯' }} {{ tx.project_name or 'פרויקט' }}</span>{% endif %}
+        {% if family_settings.owner_attribution[tx.type] %}
+        {% set color = member_colors.get(tx.user_id) %}
+        <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
+        {% endif %}
+        {% if tx.has_receipt %}
+        <a class="receipt-badge" href="{{ url_for('view_receipt', tx_id=tx.id) }}"
+           target="_blank" rel="noopener"
+           title="צפייה בקבלה" aria-label="צפייה בקבלה המצורפת">📎</a>
+        {% endif %}
+        <span class="cat-tx-amount {{ tx.type }}">{% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ tx.amount | money }}</span>
+    </li>
+{% endmacro %}
+{% set tx_preview = 5 %}
 {% if month_transactions %}
-<section class="chart-card">
+<section class="chart-card" id="allTx">
     <div class="chart-title-row">
         <h2 class="chart-title">כל העסקאות</h2>
         {# קישור ולא fetch: הדפדפן מוריד את הקובץ בעצמו. ה-Service Worker
            לא מיירט אותו כי הוא לא ‎/static/‎ ולא ‎/api/‎. #}
-        {% if month_transactions %}
         <a class="btn-sm btn-ghost export-link"
            href="{{ url_for('month_csv', year=year, month=month) }}"
            download>ייצוא CSV</a>
-        {% endif %}
     </div>
-    <ul class="legend-list">
-        <li class="legend-item-wrap">
-            <div class="legend-item clickable all-tx-header" role="button" tabindex="0" aria-expanded="false">
-                <span class="legend-name all-tx-title">הצגת הכל</span>
-                <span class="all-tx-count" data-total="{{ month_transactions | length }}">{{ month_transactions | length }}</span>
-                <span class="expand-chevron" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                </span>
+    <ul class="cat-tx-list cat-tx-list-standalone tx-preview">
+        {% for tx in month_transactions[:tx_preview] %}{{ tx_row(tx, freq_labels) }}{% endfor %}
+    </ul>
+    {% if month_transactions | length > tx_preview %}
+    <button type="button" class="btn-sm btn-ghost show-all-tx" id="txScreenOpen" aria-haspopup="dialog">
+        לכל עסקאות החודש
+    </button>
+
+    <div class="tx-screen" id="txScreen" role="dialog" aria-modal="true" aria-labelledby="txScreenTitle" hidden>
+        <div class="tx-screen-bar">
+            <button type="button" class="stats-nav-btn tx-screen-back" id="txScreenClose" aria-label="חזרה לחודש">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <div class="tx-screen-heading">
+                <h2 class="tx-screen-title" id="txScreenTitle">כל העסקאות</h2>
+                <span class="tx-screen-month">{{ month_label }}</span>
             </div>
+            <span class="all-tx-count" data-total="{{ month_transactions | length }}">{{ month_transactions | length }}</span>
+        </div>
+        <div class="tx-screen-body">
             <div class="tx-search-wrap">
                 {# סינון לפי סוג (מתן, 30.9): רק הסוגים שיש החודש, ורק כשיש יותר מאחד #}
                 {% set present = month_transactions | map(attribute='type') | list %}
@@ -480,33 +517,12 @@
                        autocomplete="off" enterkeyhint="search">
                 <p class="tx-search-empty" id="txSearchEmpty" style="display:none;">לא נמצאו עסקאות תואמות</p>
             </div>
-            <ul class="cat-tx-list">
-                {% for tx in month_transactions %}
-                <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
-                    data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
-                    data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
-                    data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
-                    data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
-                    data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}"
-                    data-cat-key="{{ tx.get('cat_key', '') }}">
-                    <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
-                    <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.is_recurring or tx.recurring_parent_id %} · 🔁 {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
-                    {% if tx.project_id %}<span class="project-tag">{{ tx.project_icon or '🎯' }} {{ tx.project_name or 'פרויקט' }}</span>{% endif %}
-                    {% if family_settings.owner_attribution[tx.type] %}
-                    {% set color = member_colors.get(tx.user_id) %}
-                    <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
-                    {% endif %}
-                    {% if tx.has_receipt %}
-                    <a class="receipt-badge" href="{{ url_for('view_receipt', tx_id=tx.id) }}"
-                       target="_blank" rel="noopener"
-                       title="צפייה בקבלה" aria-label="צפייה בקבלה המצורפת">📎</a>
-                    {% endif %}
-                    <span class="cat-tx-amount {{ tx.type }}">{% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ tx.amount | money }}</span>
-                </li>
-                {% endfor %}
+            <ul class="cat-tx-list cat-tx-list-standalone tx-screen-list">
+                {% for tx in month_transactions %}{{ tx_row(tx, freq_labels) }}{% endfor %}
             </ul>
-        </li>
-    </ul>
+        </div>
+    </div>
+    {% endif %}
 </section>
 {% endif %}
 

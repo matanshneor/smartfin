@@ -58,8 +58,8 @@ try:
             api("POST", "/api/transactions", {"amount": amount, "type": kind, "category_id": cat,
                                               "date": today, "description": desc})
         page.goto(BASE + "/month"); page.wait_for_timeout(1500)
-        page.click(".all-tx-header"); page.wait_for_timeout(300)
-        sel = ".all-tx-header + .tx-search-wrap + .cat-tx-list .cat-tx-row:visible"
+        page.click("#txScreenOpen"); page.wait_for_timeout(300)
+        sel = "#txScreen .tx-screen-list .cat-tx-row:visible"
         visible = lambda: page.locator(sel).count()
         descs = lambda: sorted(t.split("TF-TEST ")[-1] for t in page.locator(sel + " .cat-tx-desc").all_inner_texts())
         count = lambda: page.locator(".all-tx-count").inner_text()
