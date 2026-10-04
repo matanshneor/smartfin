@@ -120,9 +120,7 @@ def test_the_service_worker_does_not_precache_unversioned_urls():
     """רשימה קבועה לא יכולה לדעת את החתימה. היא הייתה מורידה כתובות
     שאף עמוד לא מבקש — הורדה כפולה, ומטמון שלא נוגעים בו."""
     sw = (_ROOT / "frontend/static/sw.js").read_text(encoding="utf-8")
-    block = sw[sw.index("const PRECACHE"):sw.index("];", sw.index("const PRECACHE"))]
-
-    assert "/static/" not in block
+    assert "addAll" not in sw
 
 
 def test_the_service_worker_treats_versioned_assets_as_immutable():

@@ -53,12 +53,17 @@ def test_the_readme_counts_the_migrations_correctly():
 
 def test_the_readme_counts_the_tests_roughly_right():
     """כאן די בקירוב — הבדיקות גדלות כל הזמן, ומספר מדויק היה הופך את
-    הבדיקה הזאת למטלה. מה שנתפס הוא סדר גודל שהתיישן."""
-    collected = len(list((_ROOT / "tests").glob("test_*.py")))
+    הבדיקה הזאת למטלה. מה שנתפס הוא מספר שהתיישן.
+
+    הרצפה הקודמת (פי 5 ממספר הקבצים) הייתה רופפת מדי: ה-README אמר 976
+    כשהיו 1,765, והיא עברה. עכשיו: לפחות כמספר פונקציות הבדיקה עצמן —
+    ‎parametrize‎ רק מוסיף על זה, אז זה תמיד נכון כשהמספר עדכני."""
+    functions = sum(len(re.findall(r"^\s*def test_", f.read_text(encoding="utf-8"), re.M))
+                    for f in (_ROOT / "tests").glob("test_*.py"))
     claimed = _claimed(r"(\d+) tests: \d+ unit")
 
-    assert claimed >= collected * 5, (
-        f"ה-README אומר {claimed} בדיקות ב-{collected} קבצים — נראה מיושן."
+    assert claimed >= functions, (
+        f"ה-README אומר {claimed} בדיקות, ויש {functions} פונקציות בדיקה — מיושן."
     )
 
 

@@ -23,21 +23,28 @@ restrained charts and motion.
 ```
 SmartFin/
 ├── backend/
-│   ├── app.py                  # all 71 routes: pages, API, auth, hardening
+│   ├── app.py                  # all 70 routes: pages, API, auth, hardening
 │   ├── clock.py                # Asia/Jerusalem — every "today" in the app comes from here
+│   ├── money.py                # the one rule for showing an amount (agorot only when present)
+│   ├── wording.py              # Hebrew counts, percentages that sum to 100, day labels, month names
+│   ├── logs.py                 # logging setup
 │   ├── supabase_config.py      # data layer: queries, auth, analytics, recurring engine
 │   └── supabase/migrations/    # source of truth for the database schema (57 migrations)
 ├── frontend/
 │   ├── templates/              # base, index, month, months, settings, projects,
 │   │                           # project_detail, project_edit, login, onboarding,
-│   │                           # reset_password, landing, privacy, terms, error
+│   │                           # reset_password, landing, privacy, terms, error,
+│   │                           # and the partials _week_card, _notice
 │   └── static/
 │       ├── css/style.css       # the entire stylesheet
+│       ├── js/                 # one script per page/feature; vendor/ holds Chart.js
+│       ├── fonts/              # Rubik, self-hosted
 │       ├── sw.js, manifest.json, icons/
-├── tests/                      # 976 tests: 955 unit (no network) + 21 against the real DB
+├── tests/                      # 1764 tests: 1723 unit (no network) + 41 against the real DB
+│   └── browser/                # manual Playwright checks (screenshots, not run in CI)
 ├── docs/SPEC.md                # product specification
 ├── Procfile / runtime.txt      # Railway configuration (gunicorn, Python 3.11.9)
-└── requirements.txt / requirements-dev.txt
+└── requirements.txt / requirements-dev.txt / requirements.lock
 ```
 
 ## Features
@@ -98,7 +105,8 @@ SmartFin/
 
 - Invite code plus an onboarding flow for picking a new family's categories. Codes
   expire after 7 days — a valid one is full read and write over the family's whole
-  financial history — and the manager can mint a new one from settings
+  financial history — and the manager can mint a new one from settings. An expired
+  code is renewed automatically the next time a member opens settings
 - Sign in by email **or** phone · password reset · password change · profile editing
 - A family manager role. Destructive actions — deleting a category, rotating the
   invite code, wiping the family's transactions — are the manager's alone; budgets,
@@ -158,17 +166,17 @@ flask --app backend.app run --port 8080
 
 ```bash
 pip install -r requirements-dev.txt
-python3 -m pytest tests/ -m unit -q      # 955 tests, no network, ~7s
-python3 -m pytest tests/ -q              # + 21 against the real Supabase project
+python3 -m pytest tests/ -m unit -q      # 1723 tests, no network, ~15s
+python3 -m pytest tests/ -q              # + 41 against the real Supabase project
 ```
 
 CI runs the unit suite on every push, and Railway is configured to wait for it
 before building — so a red test stops the deploy rather than reporting on one
-that already shipped. Coverage is measured with a floor (currently ~57%); it is
+that already shipped. Coverage is measured with a floor (55%; measured coverage is ~57%); it is
 a floor, not a target, and exists so that coverage cannot disappear quietly the
 way it once did over the transaction routes.
 
-The 21 integration tests are marked `rls` and excluded from CI on purpose:
+The 41 integration tests have no `unit` marker and are excluded from CI on purpose:
 running them needs production keys, and they would also write to the real
 database. They use two fixed test accounts — see `tests/setup_rls_test_users.py`,
 a one-time script that creates them, with passwords read from the environment and

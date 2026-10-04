@@ -7,6 +7,7 @@ from postgrest.exceptions import APIError
 
 from . import clock
 from .money import format_money
+from .wording import HEBREW_MONTHS as _FULL_MONTHS
 from . import logs
 
 logger = logs.get("smartfin.db")
@@ -3230,8 +3231,6 @@ def monthly_trend(archive: list, num_months: int = 12, today=None) -> list:
 
 _SHORT_MONTHS = ["", "ינו׳", "פבר׳", "מרץ", "אפר׳", "מאי", "יוני",
                  "יולי", "אוג׳", "ספט׳", "אוק׳", "נוב׳", "דצמ׳"]
-_FULL_MONTHS = ["", "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני",
-                "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"]
 
 
 def category_trend(family_id: str, months: list, categories: list, today=None) -> dict:

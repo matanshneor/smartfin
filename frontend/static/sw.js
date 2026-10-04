@@ -8,12 +8,7 @@ const CACHE = 'smartfin-v23';
 //
 // וזה ממילא לא נחוץ יותר: כתובת חתומה מוגשת עם תוקף של שנה, אז הדפדפן
 // שומר אותה בעצמו כבר מהביקור הראשון. מה שמגיע לכאן נשמר בזמן אמת למטה.
-const PRECACHE = [];
-
-self.addEventListener('install', function (e) {
-    e.waitUntil(
-        caches.open(CACHE).then(cache => cache.addAll(PRECACHE))
-    );
+self.addEventListener('install', function () {
     self.skipWaiting();
 });
 

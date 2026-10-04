@@ -14,7 +14,7 @@ import re
 import time
 from . import supabase_config as db
 from .money import format_money
-from .wording import count_of, day_label, share_map
+from .wording import count_of, day_label, share_map, HEBREW_MONTHS as _HEBREW_MONTHS
 from . import clock
 from . import logs
 
@@ -124,16 +124,14 @@ if not _secret:
     raise RuntimeError("SECRET_KEY environment variable is required — refusing to start without it")
 app.secret_key = _secret
 
-# נשארים מחוברים עד יציאה יזומה. העוגייה מוגדרת לעשר שנים — בפועל "תמיד" —
-# ו-SESSION_REFRESH_EACH_REQUEST (ברירת המחדל של Flask, מפורש כאן) דוחף את
+# נשארים מחוברים עד יציאה יזומה. העוגייה חיה 90 יום, ו-
+# SESSION_REFRESH_EACH_REQUEST (ברירת המחדל של Flask, מפורש כאן) דוחף את
 # תאריך התפוגה קדימה בכל בקשה, כך שמשתמש פעיל לעולם לא מגיע אליו.
 # מה שמאפשר את זה בפועל הוא רענון ה-refresh token ב-inject_auth: טוקן הגישה
 # של Supabase חי כשעה, וההתחברות שורדת כי הוא מוחלף מעצמו.
-# 90 יום, וזה גם מה ש-README אמר כל הזמן בזמן שהקוד אמר עשר שנים.
 #
-# עם ‎SESSION_REFRESH_EACH_REQUEST‎ משתמש פעיל לעולם לא מגיע לתפוגה,
-# אז המספר הזה חל בפועל רק על סשן **נטוש** — מכשיר שנמכר, טלפון שאבד,
-# או דפדפן במחשב משותף. עשר שנים פירושן שאלה לא נסגרים לעולם.
+# המספר חל בפועל רק על סשן **נטוש** — מכשיר שנמכר, טלפון שאבד, או דפדפן
+# במחשב משותף. פעם זה היה עשר שנים, כלומר שאלה לא נסגרים לעולם.
 app.permanent_session_lifetime = timedelta(days=90)
 
 # הקשחת עוגיות: העוגייה נושאת את טוקני Supabase, אז Secure חובה בפרודקשן
@@ -381,7 +379,7 @@ def inject_auth():
 # איזה דף מוגש למי שלא מחובר, ומה מודפס בשדה טקסט. הסיסמה עדיין נדרשת.
 _DEVICE_COOKIE   = "sf_returning"
 _LAST_ID_COOKIE  = "sf_last_id"
-_DEVICE_COOKIE_MAX_AGE = 10 * 365 * 24 * 60 * 60   # עשר שנים, כמו ה-session
+_DEVICE_COOKIE_MAX_AGE = 10 * 365 * 24 * 60 * 60   # עשר שנים — רק "היה כאן פעם", לא התחברות
 
 
 def _remember_device(response, identifier: str = ""):
@@ -565,7 +563,7 @@ def _run_queries(tasks: dict) -> dict:
 
 
 def _prime_request_cache(family_id, settings=None, categories=None, members=None, family=None):
-    """מזריק ל-cache של הבקשה (flask.g) ערכים שכבר נשלפו במקביל, כדי
+    """מזריק ל-cache של הבקשה (flask.g) ערכים שכבר נשלפו במקבץ, כדי
     ש-context-processors ו-_member_colors ישתמשו בהם במקום לשלוף שוב באותה
     בקשה. המפתחות חייבים להיות זהים לאלה שב-_request_cache ב-supabase_config."""
     cache = getattr(g, "_sf_cache", None)
@@ -1139,7 +1137,7 @@ def dashboard():
     # עלול לכתוב שורות, אז לפני מקבץ השליפות
     _sync_recurring(family_id)
 
-    # שליפות בלתי-תלויות במקביל — מכווץ ~5 קריאות רצופות ל-Supabase לזמן של ~1
+    # מקבץ השליפות הבלתי-תלויות (רצות בזו אחר זו — ראו _run_queries)
     batch = _run_queries({
         "settings":   lambda: db.get_family_settings(family_id),
         "summary":    lambda: db.get_monthly_summary(family_id, now.year, now.month),
@@ -1263,7 +1261,7 @@ def month_view():
         strip_months.append({"year": year, "month": month})
         strip_months.sort(key=lambda m: (m["year"], m["month"]))
 
-    # שלב 2 — שליפות שתלויות בהעדפות/בסיכום, גם הן במקביל
+    # שלב 2 — שליפות שתלויות בהעדפות/בסיכום
     active_types = [t for t in ("expense", "income", "savings") if settings_["owner_attribution"].get(t)]
     p2_tasks = {
         # קטגוריה עם תקציב מדלגת על התראת הממוצע — יש לה התראה מדויקת יותר
@@ -1491,13 +1489,6 @@ def months():
                            member_series=member_series,
                            today_year=now.year, today_month=now.month,
                            _HEBREW_MONTHS=_HEBREW_MONTHS)
-
-
-@app.route("/stats")
-@login_required
-def stats():
-    """כתובת ישנה — מפנה לעמוד החודש."""
-    return redirect(url_for("month_view"))
 
 
 @app.route("/projects")
@@ -3833,11 +3824,6 @@ def server_error(e):
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
-
-_HEBREW_MONTHS = [
-    "", "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני",
-    "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"
-]
 
 def _month_label(year: int, month: int) -> str:
     """שם החודש בעברית. חודש מחוץ לטווח נחתך במקום להיכנס לאינדוקס —

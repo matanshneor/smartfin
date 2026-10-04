@@ -112,7 +112,7 @@ def test_old_caches_are_purged_when_the_version_changes():
 
 
 def test_nothing_is_precached_by_url_any_more():
-    """הרשימה רוקנה בכוונה, ולא מרשלנות.
+    """הרשימה הוסרה בכוונה, ולא מרשלנות.
 
     מאז שכתובות הנכסים נושאות חתימת תוכן (‎?v=…‎) שנקבעת בשרת, רשימה
     קבועה כאן לא יכולה לדעת אותה. היא הייתה מורידה כתובות בלי חתימה
@@ -120,8 +120,5 @@ def test_nothing_is_precached_by_url_any_more():
 
     וזה ממילא מיותר: כתובת חתומה מוגשת עם תוקף של שנה, אז הדפדפן שומר
     אותה בעצמו כבר מהביקור הראשון."""
-    block = _SW[_SW.index("const PRECACHE"):_SW.index("];", _SW.index("const PRECACHE"))]
-    precache = re.sub(r"^\s*//.*$", "", block, flags=re.M)
-
-    assert "/static/" not in precache
-    assert "chart.umd" not in precache
+    assert "addAll" not in _SW
+    assert "PRECACHE" not in _SW

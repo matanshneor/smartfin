@@ -129,7 +129,7 @@
 {% else %}
 
 {# סדר החלקים נקבע על ידי מתן (30.9) — ראו test_month_sections.test_the_sections_come_in_matans_order #}
-<!-- Chart 4: הכנסות — גרף עגול כמו ההוצאות (מתן, 30.9) -->
+<!-- הכנסות — גרף עגול כמו ההוצאות (מתן, 30.9) -->
 <section class="chart-card" id="income-breakdown">
     <h2 class="chart-title">הכנסות</h2>
     {# משכורת לכל אחד, בצבע של בן המשפחה, וכל השאר ביחד באפור (‎income_sources‎) #}
@@ -194,7 +194,7 @@
     </ul>
 </section>
 
-<!-- Chart 2: הוצאות לפי קטגוריה -->
+<!-- הוצאות לפי קטגוריה -->
 {% set expense_active = expense_breakdown | selectattr('total', 'gt', 0) | list %}
 {% set expense_zero   = expense_breakdown | rejectattr('total', 'gt', 0) | list %}
 <section class="chart-card" id="expense-breakdown">
@@ -345,7 +345,7 @@
     </ul>
 </section>
 
-<!-- Chart 3: חיסכון — סך הכול ופירוט, בלי גרף (מתן, 30.9) -->
+<!-- חיסכון — סך הכול ופירוט, בלי גרף (מתן, 30.9) -->
 <section class="chart-card" id="savings-breakdown">
     <h2 class="chart-title">חיסכון</h2>
     {# כמה הופרש, איזה חלק מההכנסות, ולכל יעד — איזה חלק מהחיסכון (‎savings_home‎,
@@ -420,7 +420,7 @@
 {# "עסקאות קבועות" הוסר מעמוד החודש (מתן, 2.10): העסקאות האלה כבר מופיעות
    בשאר העסקאות של החודש, והניהול שלהן בהגדרות ← עסקאות קבועות. #}
 
-<!-- Chart 5: חלוקה בין בני המשפחה — גרף לכל סוג עסקה שהמשפחה משייכת -->
+<!-- חלוקה בין בני המשפחה — גרף לכל סוג עסקה שהמשפחה משייכת -->
 {% for mb in member_breakdowns %}
 <section class="chart-card">
     <h2 class="chart-title">{{ mb.label }} לפי בן משפחה</h2>
