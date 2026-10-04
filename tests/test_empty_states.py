@@ -88,4 +88,6 @@ def test_every_page_that_can_be_empty_says_so():
     for page in ("index.html", "month.html", "months.html",
                  "projects.html", "project_detail.html", "settings.html"):
         html = (_TPL / page).read_text(encoding="utf-8")
-        assert "empty-state" in html, f"{page} ללא מצב ריק"
+        # בפרויקטים המצב הריק הוא הזמנה להתחיל, עם רעיונות (מתן, 5.10)
+        marker = "project-ideas-title" if page == "projects.html" else "empty-state"
+        assert marker in html, f"{page} ללא מצב ריק"

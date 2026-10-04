@@ -89,12 +89,12 @@ def test_the_form_list_route_includes_finished_ones_marked(client):
 
 
 def test_the_projects_page_has_two_sections():
-    """מתן (30.9): "פרויקטים פעילים" ו"פרויקטים שהסתיימו", כל אחד עם הרשימה
-    שלו — ולא חלק סגור בתחתית."""
+    """מתן (30.9): הפעילים, ומתחתיהם אלה שהסתיימו — כל חלק לעצמו, ולא
+    חלק סגור בתחתית. מאז 5.10 הפעילים הם מלבנים צבעוניים, והם החלק הראשי של העמוד."""
     from pathlib import Path
     tpl = (Path(__file__).resolve().parent.parent / "frontend/templates/projects.html").read_text(encoding="utf-8")
-    assert '<h2 class="chart-title" style="flex:1;">פרויקטים פעילים</h2>' in tpl
-    assert '<h2 class="chart-title">פרויקטים שהסתיימו</h2>' in tpl
+    assert 'aria-label="פרויקטים פעילים"' in tpl
+    assert '<h2 class="projects-section-title">הסתיימו</h2>' in tpl
     assert "<details" not in tpl
     assert tpl.index('id="activeProjects"') < tpl.index('id="finishedProjects"')
 
@@ -107,11 +107,15 @@ def test_the_page_renders_both_lists(client):
     assert "שיפוץ" in finished
 
 
-def test_no_active_projects_says_only_that(client, fake):
-    """מתן (1.10): "אין כרגע פרויקטים פעילים" — בלי ההסבר שאחריו."""
+def test_no_active_projects_invites_to_start_one(client, fake):
+    """בלי פרויקטים פעילים — לא "אין כלום", אלא הזמנה להתחיל עם רעיונות
+    (מתן, 5.10). כשיש כאלה שהסתיימו, המלבן אומר "פרויקט חדש" ולא "הראשון"."""
     client.put(f"/api/projects/{_P_ACTIVE}/archive", json={"archived": True})
     html = client.get("/projects").get_data(as_text=True)
-    assert '<p class="projects-none-active">אין כרגע פרויקטים פעילים</p>' in html
+    active = html[html.index('id="activeProjects"'):html.index('id="newProjectCard"')]
+    assert "רעיונות להתחלה" in active
+    assert active.count('class="project-tile project-idea') == 4
+    assert "פרויקט חדש" in active and "הפרויקט הראשון שלכם" not in active
 
 
 def test_one_active_project_is_the_default_for_plus(client):
@@ -141,14 +145,15 @@ def test_settings_has_no_plus():
     assert "body.no-fab .fab { display: none; }" in (root / "frontend/static/css/style.css").read_text(encoding="utf-8")
 
 
-def test_finished_projects_have_no_arrow_but_still_open(client):
-    """מתן (30.9): בלי החץ הקטן, אבל עדיין קישור לעמוד הפרויקט."""
+def test_finished_projects_are_small_but_still_open(client):
+    """מתן (30.9): אלה שהסתיימו קטנים יותר מהפעילים, אבל עדיין קישור לעמוד
+    הפרויקט. מאז 5.10: מלבנים לפעילים, תגיות לאלה שהסתיימו."""
     html = client.get("/projects").get_data(as_text=True)
     active = html[html.index('id="activeProjects"'):html.index('id="finishedProjects"')]
     finished = html[html.index('id="finishedProjects"'):]
     finished = finished[:finished.index("</section>")]
-    assert "project-chevron" in active
-    assert "project-chevron" not in finished
+    assert 'class="project-tile tint-' in active
+    assert "project-tile" not in finished and 'class="finished-chip"' in finished
     assert f'href="/projects/{_P_DONE}"' in finished
 
 

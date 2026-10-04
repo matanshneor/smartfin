@@ -32,11 +32,15 @@ _FAM, _ME = "f" * 8, "m" * 8
 # ─── הרשימה: שמות בלבד ───────────────────────────────────────────────────────
 
 def test_the_list_shows_no_amounts():
-    """סכום בלי הקשר הוא מספר שאי אפשר לעשות איתו כלום."""
-    rows = _LIST[_LIST.index('id="projectsList"'):]
-    rows = rows[:rows.index("</ul>")]
+    """סכום בלי הקשר הוא מספר שאי אפשר לעשות איתו כלום. וגם לא התקדמות:
+    סכומים וקצב — רק בתוך הפרויקט (מתן, 5.10)."""
+    tiles = _LIST[_LIST.index("{% macro tile(p, i) %}"):_LIST.index("{% endmacro %}", _LIST.index("{% macro tile(p, i) %}"))]
+    finished = _LIST[_LIST.index('id="finishedProjects"'):]
 
-    assert "project-amount" not in rows
+    for part in (tiles, finished):
+        assert "₪" not in part and "money" not in part
+        assert "spent" not in part and "budget" not in part and "amount" not in part
+    assert "hero-totals" not in _LIST and "הוצאתם" not in _LIST
 
 
 def test_the_list_has_no_delete_button():
@@ -52,17 +56,16 @@ def test_nothing_still_listens_for_that_button():
     assert owners == [], f"עדיין יש מאזין ב: {owners}"
 
 
-def test_the_row_still_says_it_can_be_opened():
-    """שורה בלי סכום היא שורה בלי משקל מימין — בלי סימן, היא נראית
-    כמו טקסט ולא כמו כניסה."""
-    assert "project-chevron" in _LIST
-    assert "project_detail" in _LIST
+def test_the_tile_opens_the_project():
+    """המלבן כולו הוא הקישור לפרויקט (מתן, 5.10)."""
+    tile = _LIST[_LIST.index("{% macro tile(p, i) %}"):]
+    assert tile.index('<a class="project-tile') < tile.index("project_detail")
 
 
 def test_the_name_and_description_survived():
     """בקרת-נגד: הורדנו סכום ומחיקה, לא את התוכן."""
-    assert "project-name" in _LIST
-    assert "p.description" in _LIST
+    tile = _LIST[_LIST.index("{% macro tile(p, i) %}"):_LIST.index("{% endmacro %}", _LIST.index("{% macro tile(p, i) %}"))]
+    assert "p.name" in tile and "p.description" in tile
 
 
 # ─── בתוך הפרויקט: הסכום והמחיקה ─────────────────────────────────────────────
@@ -369,3 +372,26 @@ def test_the_new_rule_actually_wins():
     assert winners, "אף כלל לא מחזיר ריפוד לשורה הראשונה"
     for sel in winners:
         assert "#" in sel, f"בורר בלי #id לא ינצח את האיפוס: {sel.strip()}"
+
+
+# ─── מלבנים בצבעים (מתן, 5.10) ────────────────────────────────────────────────
+
+def test_four_colours_always_in_the_same_order():
+    """כחול, אפרסק, ורוד, ירוק — ושוב (מתן, 5.10). לפי המקום ברשימה, כך
+    ששניים זהים אף פעם לא נוגעים זה בזה, גם בשתי עמודות."""
+    from backend.app import app
+    projects = [{"id": f"p{i}", "name": f"פרויקט {i}", "icon": "🎯", "description": None,
+                 "is_personal": False} for i in range(6)]
+    with app.test_request_context():
+        html = app.jinja_env.from_string(_LIST).blocks["content"]
+        html = "".join(html(app.jinja_env.from_string(_LIST).new_context(
+            {"projects": projects, "finished_projects": []})))
+    tints = [int(t) for t in re.findall(r'class="project-tile tint-(\d)"', html)]
+    assert tints == [0, 1, 2, 3, 0, 1]
+    css = (_ROOT / "frontend/static/css/style.css").read_text(encoding="utf-8")
+    assert "--tint-4" not in css, "רק ארבעה צבעים"
+
+
+def test_an_idea_opens_the_form_with_its_icon_and_name():
+    js = (_JS / "projects.js").read_text(encoding="utf-8")
+    assert "openForm(btn.dataset.icon, btn.dataset.name)" in js

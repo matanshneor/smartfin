@@ -2944,47 +2944,6 @@ li.zero-cat-row { display: none; }
     flex-shrink: 0;
 }
 
-li.project-row {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-}
-
-.project-main {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    text-decoration: none;
-    color: inherit;
-}
-
-.project-info {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.project-name {
-    font-weight: 600;
-    font-size: 0.95rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.project-sub {
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
 /* תג "שייך לפרויקט" על שורת עסקה ברשימות */
 .project-tag {
     display: inline-flex;
@@ -4362,19 +4321,6 @@ li.transaction-item.swipe-ready > .swipe-content {
 }
 .settings-contact-label { margin: 0; font-size: 0.8125rem; color: var(--color-text-muted); }
 
-/* ─── רשימת הפרויקטים: שמות בלבד ──────────────────────────────────
-   הסכום וה-✕ עברו לתוך הפרויקט. שורה בלי סכום היא שורה בלי משקל
-   חזותי מימין, אז החץ ממלא את התפקיד הזה ומסמן שאפשר להיכנס. */
-.project-chevron {
-    display: inline-flex;
-    align-items: center;
-    flex: 0 0 auto;
-    margin-inline-start: auto;
-    color: var(--color-text-muted);
-    opacity: 0.65;
-}
-.project-chevron svg { width: 18px; height: 18px; }
-
 /* ─── ניהול הפרויקט: תפריט אחד מתמשך ──────────────────────────────
    העמוד היה ארבעה ‎chart-card‎ נפרדים עם 16px ביניהם, והאחרון בסגנון
    אחר לגמרי — מסך אחד של הגדרות שנראה כמו ארבעה שהודבקו. מיכל אחד,
@@ -4558,7 +4504,6 @@ body.search-open { overflow: hidden; }
     color: var(--color-gold-text); font-weight: 600; font-size: 0.9rem;
     border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px;
 }
-.projects-none-active { margin: 14px 2px 2px; font-size: 0.85rem; color: var(--color-text-muted); line-height: 1.5; }
 
 /* גרירת קטגוריות לסידור (מתן, 30.9 — סבב 6, פריט 5). ‎touch-action: none‎
    על הידית בלבד: שם הגרירה מזיזה את השורה, ובכל מקום אחר — גוללת את העמוד */
@@ -4771,3 +4716,70 @@ body > .color-sheet { z-index: 180; }
 .welcome-steps li::marker { color: var(--color-gold-text); font-weight: 700; }
 .welcome-code { font-weight: 700; letter-spacing: 0.08em; color: var(--color-text); }
 .welcome-invite .submit-btn { margin-top: 4px; }
+
+/* ─── עמוד הפרויקטים (מתן, 5.10) ──────────────────────────────────────
+   מלבן לכל פרויקט, בשפה של שאר האפליקציה: כרטיס לבן עם אותו צל ואותו
+   רדיוס, ומעליו גוון רך — כמו התגים של בני המשפחה (צבע חזק על רקע חלש).
+   ארבעה גוונים, תמיד באותו סדר: כחול, אפרסק, ורוד, ירוק. לא חול: חול הוא
+   צבע הרקע, ומלבן בצבע הרקע נבלע בו. ולא צבעי בני המשפחה — שם צבע אומר
+   "של מי", וכאן הוא רק מבדיל. */
+:root {
+    --tint-0: rgba(46, 103, 168, 0.13);   /* כחול */
+    --tint-1: rgba(226, 110, 52, 0.13);   /* אפרסק */
+    --tint-2: rgba(200, 40, 70, 0.10);    /* ורוד */
+    --tint-3: rgba(21, 128, 61, 0.12);    /* ירוק */
+}
+:root[data-theme="dark"] {
+    --tint-0: rgba(96, 165, 250, 0.16);
+    --tint-1: rgba(251, 146, 90, 0.15);
+    --tint-2: rgba(248, 113, 133, 0.14);
+    --tint-3: rgba(74, 222, 128, 0.13);
+}
+.project-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.project-tile {
+    position: relative; display: flex; align-items: center; gap: 12px;
+    padding: 9px 14px; text-align: start;
+    background: var(--color-card); border: var(--border-subtle); border-radius: 16px;
+    box-shadow: var(--shadow-card); color: var(--color-text); text-decoration: none;
+    font: inherit; cursor: pointer; overflow: hidden;
+    transition: transform 0.15s ease;
+}
+.project-tile::before { content: ""; position: absolute; inset: 0; background: var(--tile-tint, transparent); pointer-events: none; }
+.project-tile > * { position: relative; }
+.project-tile:active { transform: scale(0.98); }
+.project-tile:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+.tint-0 { --tile-tint: var(--tint-0); } .tint-1 { --tile-tint: var(--tint-1); }
+.tint-2 { --tile-tint: var(--tint-2); } .tint-3 { --tile-tint: var(--tint-3); }
+.project-tile-icon {
+    width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px; font-size: 1.25rem; line-height: 1;
+    display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.72);
+}
+:root[data-theme="dark"] .project-tile-icon { background: rgba(255, 255, 255, 0.07); }
+.project-tile-body { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.project-tile-name { font-weight: 700; font-size: 1rem; line-height: 1.3; overflow-wrap: anywhere; }
+.project-tile-sub { margin-top: 2px; font-size: 0.78rem; color: var(--color-text-muted); line-height: 1.4; }
+.project-tile-tag { flex-shrink: 0; font-size: 0.7rem; color: var(--color-text-soft); background: rgba(var(--ink-rgb), 0.06); border-radius: 99px; padding: 1px 8px; }
+
+/* "פרויקט חדש": לבן עם מסגרת מקווקוות — רקע זהבהב התמזג עם רקע העמוד,
+   ובמצב הריק המלבן עולה על שולי הכותרת הכהה, אז הוא אטום */
+.project-tile-new { border: 1.5px dashed var(--color-gold-border); box-shadow: none; color: var(--color-gold-text); }
+.project-tile-new .project-tile-sub { color: var(--color-text-soft); }
+/* עיגול עם מסגרת ולא ריבוע זהוב מלא — זה כבר הכפתור הצף של הוספת עסקה,
+   ושני כפתורי + זהים זה לצד זה לא אומרים מה כל אחד עושה */
+.project-tile-plus {
+    width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--color-gold-border); background: var(--color-card);
+    color: var(--color-gold-text); font-size: 1.2rem; font-weight: 500;
+}
+.project-ideas-title { margin: 10px 2px 0; font-size: 0.82rem; font-weight: 600; color: var(--color-text-muted); }
+.project-idea .project-tile-sub { color: var(--color-gold-text); }
+
+.new-project-card { scroll-margin-top: 16px; }
+.projects-section-title { font-size: 0.85rem; font-weight: 600; color: var(--color-text-muted); margin: 6px 2px 10px; }
+.finished-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.finished-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;
+    background: var(--color-card); border: var(--border-subtle); border-radius: 99px;
+    box-shadow: var(--shadow-card); color: var(--color-text-soft); text-decoration: none; font-size: 0.85rem;
+}

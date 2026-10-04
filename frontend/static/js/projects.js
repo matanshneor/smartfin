@@ -15,12 +15,29 @@ let isPersonal = false;
     });
 });
 
+// הטופס בכרטיס משלו, מתחת לרשימה (מתן, 5.10). "פרויקט חדש" פותח
+// אותו וגולל אליו; רעיון ("✈️ טיול") פותח אותו עם האייקון והשם.
+const card = document.getElementById('newProjectCard');
+
+function openForm(icon, name) {
+    card.hidden = false;
+    if (icon) document.getElementById('projectIcon').value = icon;
+    if (name) document.getElementById('projectName').value = name;
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const field = document.getElementById('projectName');
+    field.focus({ preventScroll: true });
+    if (name) field.select();
+}
+
 newBtn.addEventListener('click', function () {
-    form.style.display = form.style.display === 'none' ? '' : 'none';
+    if (card.hidden) openForm(); else card.hidden = true;
+});
+document.querySelectorAll('.project-idea').forEach(function (btn) {
+    btn.addEventListener('click', function () { openForm(btn.dataset.icon, btn.dataset.name); });
 });
 
 cancelBtn.addEventListener('click', function () {
-    form.style.display = 'none';
+    card.hidden = true;
     form.reset();
     errorEl.textContent = '';
     isPersonal = false;
