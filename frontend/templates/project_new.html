@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}SmartFin – פרויקט חדש{% endblock %}
+
+{# מסך משלו (מתן, 5.10) — קודם הטופס נפתח בתוך רשימת הפרויקטים. כמו מסך
+   העריכה: בלי ה-+ הצף, שהוא "הוספת עסקה" ואין לו משמעות כאן. #}
+{% block body_class %}no-fab{% endblock %}
+
+{% block hero %}
+<div class="hero-top">
+    <div>
+        <a href="{{ url_for('projects') }}" class="stats-nav-btn" aria-label="חזרה לפרויקטים" style="margin-inline-end:10px;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        <h1 class="hero-title">פרויקט חדש</h1>
+        <p class="hero-subtitle">תקציב נפרד לדבר אחד גדול — טיול, שיפוץ, אירוע ועוד</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+{# אייקון שהגיע מרעיון ("✈️ טיול") מסומן כאוטומטי: שינוי השם ל"שיפוץ מטבח"
+   מחליף אותו בהצעה החדשה, כמו אייקון שהוצע לפי השם (‎icon-picker.js‎) #}
+<section class="chart-card">
+    <form class="add-cat-form" id="newProjectForm" novalidate>
+        <div class="form-group">
+            <label class="form-label" for="projectName">אייקון ושם</label>
+            <div class="add-cat-row">
+                <input class="form-input emoji-input" type="text" id="projectIcon" maxlength="4" placeholder="🎯" aria-label="אייקון הפרויקט" value="{{ icon }}"{% if icon %} data-auto-icon="1"{% endif %}>
+                <input class="form-input" type="text" id="projectName" placeholder="לדוגמה: טיול ליפן" maxlength="50" required value="{{ name }}" autofocus>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="projectDescription">תיאור (אופציונלי)</label>
+            <textarea class="form-input" id="projectDescription" maxlength="200" rows="2"
+                      placeholder="למשל: טיול משפחתי ליפן, קיץ 2026"></textarea>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="projectBudget">תקציב יעד (אופציונלי)</label>
+            <div class="amount-input-wrap">
+                <span class="amount-currency">₪</span>
+                <input class="form-input amount-input" type="number" inputmode="numeric" id="projectBudget" placeholder="0" min="0" step="1">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">בעלות</label>
+            <div class="type-toggle" style="grid-template-columns: 1fr 1fr;">
+                <button type="button" class="toggle-btn active" id="projectOwnerShared" data-personal="false">משותף — כל המשפחה</button>
+                <button type="button" class="toggle-btn" id="projectOwnerPersonal" data-personal="true">אישי — רק אני</button>
+            </div>
+            <p class="field-hint">פרויקט אישי חשוף רק לך — בלי תיוג "של מי", ובלי גישה לשאר בני המשפחה. תמיד אפשר להפוך אותו למשותף מאוחר יותר</p>
+        </div>
+        <div class="form-group">
+            <label class="form-label">אילו מחלקות לעקוב?</label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="projectTrackExpense" class="checkbox-input" checked>
+                <span class="checkbox-custom"></span>
+                <span class="checkbox-text">הוצאות</span>
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="projectTrackIncome" class="checkbox-input">
+                <span class="checkbox-custom"></span>
+                <span class="checkbox-text">הכנסות</span>
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="projectTrackSavings" class="checkbox-input">
+                <span class="checkbox-custom"></span>
+                <span class="checkbox-text">חיסכון</span>
+            </label>
+        </div>
+        <p class="form-error" id="newProjectError" role="alert"></p>
+        <div class="edit-actions">
+            <button type="submit" class="btn-sm btn-primary">יצירת הפרויקט</button>
+            <a class="btn-sm btn-ghost" id="cancelProjectBtn" href="{{ url_for('projects') }}">ביטול</a>
+        </div>
+    </form>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/projects.js') }}"></script>
+{% endblock %}

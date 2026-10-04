@@ -392,6 +392,51 @@ def test_four_colours_always_in_the_same_order():
     assert "--tint-4" not in css, "רק ארבעה צבעים"
 
 
-def test_an_idea_opens_the_form_with_its_icon_and_name():
+# ─── יצירת פרויקט במסך משלו (מתן, 5.10) ──────────────────────────────────────
+
+def test_new_project_and_ideas_lead_to_their_own_screen():
+    """לא טופס שנפתח בתוך הרשימה — מסך חדש."""
+    assert 'id="newProjectForm"' not in _LIST and "projects.js" not in _LIST
+    assert _LIST.count("url_for('project_new')") == 2
+    assert "url_for('project_new', icon=icon, name=name)" in _LIST
+
+
+@pytest.fixture
+def new_screen(monkeypatch):
+    limiter.reset()
+    app.config["TESTING"] = True
+    monkeypatch.setattr(db, "set_auth_token", lambda t: None)
+    monkeypatch.setattr(db, "get_client", lambda: FakeSupabase())
+    with app.test_client() as c:
+        with c.session_transaction() as sess:
+            sess["user_id"] = _ME
+            sess["family_id"] = _FAM
+        yield c
+
+
+def test_the_new_project_screen_has_the_form_and_a_way_back(new_screen):
+    html = new_screen.get("/projects/new").get_data(as_text=True)
+
+    assert 'id="newProjectForm"' in html and "js/projects.js" in html
+    assert '<h1 class="hero-title">פרויקט חדש</h1>' in html
+    assert 'href="/projects"' in html and 'aria-label="חזרה לפרויקטים"' in html
+    assert 'class="no-fab' in html or "no-fab" in html
+
+
+def test_an_idea_arrives_filled_in(new_screen):
+    html = new_screen.get("/projects/new?icon=✈️&name=טיול").get_data(as_text=True)
+
+    assert 'value="✈️" data-auto-icon="1"' in html
+    assert 'value="טיול"' in html
+
+
+def test_whatever_comes_in_the_address_is_text_and_short(new_screen):
+    html = new_screen.get('/projects/new?name="><script>x</script>' + "א" * 80).get_data(as_text=True)
+
+    assert "<script>x</script>" not in html
+    assert "א" * 51 not in html
+
+
+def test_after_creating_it_goes_into_the_new_project():
     js = (_JS / "projects.js").read_text(encoding="utf-8")
-    assert "openForm(btn.dataset.icon, btn.dataset.name)" in js
+    assert "window.location.href = data.id ? '/projects/' + encodeURIComponent(data.id) : '/projects';" in js

@@ -1,7 +1,7 @@
+/* מסך "פרויקט חדש" (‎/projects/new‎) — מסך משלו מאז 5.10, ולא טופס שנפתח
+ * בתוך רשימת הפרויקטים. אחרי היצירה — ישר לתוך הפרויקט החדש. */
 (function () {
-const newBtn    = document.getElementById('newProjectBtn');
 const form      = document.getElementById('newProjectForm');
-const cancelBtn = document.getElementById('cancelProjectBtn');
 const errorEl   = document.getElementById('newProjectError');
 const ownerSharedBtn   = document.getElementById('projectOwnerShared');
 const ownerPersonalBtn = document.getElementById('projectOwnerPersonal');
@@ -13,36 +13,6 @@ let isPersonal = false;
         ownerPersonalBtn.classList.toggle('active', btn === ownerPersonalBtn);
         isPersonal = btn.dataset.personal === 'true';
     });
-});
-
-// הטופס בכרטיס משלו, מתחת לרשימה (מתן, 5.10). "פרויקט חדש" פותח
-// אותו וגולל אליו; רעיון ("✈️ טיול") פותח אותו עם האייקון והשם.
-const card = document.getElementById('newProjectCard');
-
-function openForm(icon, name) {
-    card.hidden = false;
-    if (icon) document.getElementById('projectIcon').value = icon;
-    if (name) document.getElementById('projectName').value = name;
-    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    const field = document.getElementById('projectName');
-    field.focus({ preventScroll: true });
-    if (name) field.select();
-}
-
-newBtn.addEventListener('click', function () {
-    if (card.hidden) openForm(); else card.hidden = true;
-});
-document.querySelectorAll('.project-idea').forEach(function (btn) {
-    btn.addEventListener('click', function () { openForm(btn.dataset.icon, btn.dataset.name); });
-});
-
-cancelBtn.addEventListener('click', function () {
-    card.hidden = true;
-    form.reset();
-    errorEl.textContent = '';
-    isPersonal = false;
-    ownerSharedBtn.classList.add('active');
-    ownerPersonalBtn.classList.remove('active');
 });
 
 form.addEventListener('submit', function (e) {
@@ -80,7 +50,7 @@ form.addEventListener('submit', function (e) {
     .then(r => r.json())
     .then(function (data) {
         if (data.error) { submitBtn.disabled = false; errorEl.textContent = data.error; return; }
-        window.location.reload();
+        window.location.href = data.id ? '/projects/' + encodeURIComponent(data.id) : '/projects';
     })
     .catch(function () { submitBtn.disabled = false; errorEl.textContent = window.sfNetError(); });
 });

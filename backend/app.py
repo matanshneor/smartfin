@@ -1559,6 +1559,17 @@ def project_detail(project_id):
                            member_names=_member_names(family_id))
 
 
+@app.route("/projects/new")
+@login_required
+def project_new():
+    """יצירת פרויקט — מסך משלו, ולא טופס שנפתח בתוך הרשימה (מתן, 5.10).
+    ‎?icon=…&name=…‎ — מהרעיונות להתחלה ("✈️ טיול"), שממלאים את הטופס."""
+    user = get_current_user()
+    return render_template("project_new.html", active_page="projects", user=user,
+                           icon=_text(request.args.get("icon"))[:16],
+                           name=_text(request.args.get("name"))[:50])
+
+
 @app.route("/projects/<project_id>/edit")
 @login_required
 def project_edit(project_id):

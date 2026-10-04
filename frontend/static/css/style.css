@@ -2705,6 +2705,8 @@ li.zero-cat-row { display: none; }
     font-size: 0.85rem;
     font-weight: 600;
 }
+/* קישור שנראה ככפתור ("ביטול" במסך פרויקט חדש חוזר לרשימה) */
+a.btn-sm { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 
 .btn-primary {
     background: var(--gradient-gold);
@@ -4775,7 +4777,6 @@ body > .color-sheet { z-index: 180; }
 .project-ideas-title { margin: 10px 2px 0; font-size: 0.82rem; font-weight: 600; color: var(--color-text-muted); }
 .project-idea .project-tile-sub { color: var(--color-gold-text); }
 
-.new-project-card { scroll-margin-top: 16px; }
 .projects-section-title { font-size: 0.85rem; font-weight: 600; color: var(--color-text-muted); margin: 6px 2px 10px; }
 .finished-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .finished-chip {

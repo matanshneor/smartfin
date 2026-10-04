@@ -112,7 +112,8 @@ def test_no_active_projects_invites_to_start_one(client, fake):
     (מתן, 5.10). כשיש כאלה שהסתיימו, המלבן אומר "פרויקט חדש" ולא "הראשון"."""
     client.put(f"/api/projects/{_P_ACTIVE}/archive", json={"archived": True})
     html = client.get("/projects").get_data(as_text=True)
-    active = html[html.index('id="activeProjects"'):html.index('id="newProjectCard"')]
+    active = html[html.index('id="activeProjects"'):]
+    active = active[:active.index("</section>")]
     assert "רעיונות להתחלה" in active
     assert active.count('class="project-tile project-idea') == 4
     assert "פרויקט חדש" in active and "הפרויקט הראשון שלכם" not in active

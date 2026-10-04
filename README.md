@@ -23,7 +23,7 @@ restrained charts and motion.
 ```
 SmartFin/
 ├── backend/
-│   ├── app.py                  # all 70 routes: pages, API, auth, hardening
+│   ├── app.py                  # all 71 routes: pages, API, auth, hardening
 │   ├── clock.py                # Asia/Jerusalem — every "today" in the app comes from here
 │   ├── money.py                # the one rule for showing an amount (agorot only when present)
 │   ├── wording.py              # Hebrew counts, percentages that sum to 100, day labels, month names
