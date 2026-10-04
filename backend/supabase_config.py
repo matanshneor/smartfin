@@ -1190,14 +1190,17 @@ def week_spending(family_id: str, today=None, offset: int = 0) -> dict:
     הוצאות הבית בלבד — בלי פרויקטים, ובלי עסקאות קבועות (תבנית או מופע):
     שכר דירה של ₪5,500 ביום אחד היה מגמד את כל השאר, והשבוע אמור להראות
     את ההוצאות השוטפות. ‎last_week‎ — אותו טווח בשבוע שעבר (ראשון עד אותו יום
-    בשבוע), כדי שיום רביעי לא יושווה לשבוע שלם; ‎None‎ כשאין אז נתונים."""
-    from datetime import timedelta
+    בשבוע), כדי שיום רביעי לא יושווה לשבוע שלם; ‎None‎ כשאין אז נתונים.
+
+    עסקה שהוזנה מראש ליום שעוד לא הגיע מופיעה ביום שלה ונספרת בסך השבוע
+    (מתן, 4.10) — כמו שהיא נספרת בחודש שלה. הטווח שמושווה לשבוע שעבר
+    מתארך בהתאם, עד היום האחרון שנספר."""
+    from datetime import date, timedelta
     today = today or clock.today()
     # ‎offset‎ — כמה שבועות אחורה (מתן, 2.10: דפדוף לשבועות קודמים). שבוע
     # שעבר מוצג שלם, ומושווה לשבוע השלם שלפניו.
     start = today - timedelta(days=(today.weekday() + 1) % 7) - timedelta(days=7 * offset)
     prev_start = start - timedelta(days=7)
-    prev_end = (today - timedelta(days=7)) if offset == 0 else (start - timedelta(days=1))
     empty = {"days": [], "total": 0.0, "last_week": None, "diff": None,
              "offset": offset, "has_older": False}
     client = get_client()
@@ -1228,7 +1231,12 @@ def week_spending(family_id: str, today=None, offset: int = 0) -> dict:
                               "description": r.get("description") or "",
                               "amount": float(r["amount"])} for r in txs],
         })
-    total = round(sum(d["total"] for d in days if not d["future"]), 2)
+    total = round(sum(d["total"] for d in days), 2)
+    if offset == 0:
+        last_counted = max([today] + [date.fromisoformat(d["date"]) for d in days if d["total"]])
+        prev_end = last_counted - timedelta(days=7)
+    else:
+        prev_end = start - timedelta(days=1)
     prev = [r for r in rows if prev_start.isoformat() <= str(r["date"])[:10] <= prev_end.isoformat()]
     last = round(sum(float(r["amount"]) for r in prev), 2) if prev else None
     # היום שהפירוט שלו פתוח: היום עצמו בשבוע הנוכחי; בשבוע שעבר — היום האחרון
@@ -1764,60 +1772,6 @@ def _recurring_occurrences(template: dict, until) -> list:
         while d <= until and (not end or d <= end) and len(out) < 500:
             out.append(d)
             d += step
-    return out
-
-
-def projected_month_rows(family_id: str, year: int, month: int, today=None,
-                         existing=()) -> list:
-    """המופעים שהעסקאות הקבועות ייצרו בחודש שעוד לא הגיע (מתן, 30.9).
-
-    חודש עתידי מוצג כמו כל חודש, עם מה שידוע עד כה — ומה שידוע הוא גם
-    שכר הדירה של ה-1 בו. המופעים נוצרים כעסקאות אמיתיות רק כשהתאריך
-    מגיע (‎materialize_recurring‎), ולכן בחודשים שעברו אין מה להוסיף: שם
-    הם כבר קיימים, והוספה הייתה סופרת אותם פעמיים. בחודש הנוכחי — רק מה
-    שאחרי היום (מתן, 4.10: שכר הדירה של ה-15 לא הופיע ב-4 לחודש, אבל כן
-    הופיע כשנכנסו לחודש הבא).
-
-    ‎existing‎ — שורות החודש האמיתיות. מופע שהתקופה שלו כבר תפוסה בהן
-    (למשל משכורת שנוצרה ב-5 והתבנית עברה מאז ל-10) לא נוסף שוב, וגם לא
-    מופע שנמחק במכוון (‎recurring_skips‎) — בדיוק כמו במנוע עצמו.
-
-    כל שורה היא העתק של התבנית בתאריך המופע, באותה צורה בדיוק כמו שורות
-    החודש — כדי שכל הסיכומים והפילוחים יעברו עליה בלי מקרה מיוחד. היא
-    מסומנת ‎projected‎: אין מאחוריה עסקה במסד, אז אין מה לערוך או למחוק."""
-    import calendar
-    from datetime import date
-    today = today or clock.today()
-    if (year, month) < (today.year, today.month):
-        return []
-    client = get_client()
-    if not client:
-        return []
-    try:
-        templates = client.table("transactions") \
-            .select("*, categories(name, icon), project_categories(name, icon), "
-                    "profiles(name, workplace), projects(owner_id, name, icon)") \
-            .eq("family_id", family_id) \
-            .eq("is_recurring", True) \
-            .execute().data or []
-    except Exception as e:
-        raise DataUnavailable("projected_month_rows") from e
-
-    first = date(year, month, 1)
-    last = date(year, month, calendar.monthrange(year, month)[1])
-    out = []
-    for t in templates:
-        freq = t.get("recurring_frequency") or "monthly_1"
-        seen = {date.fromisoformat(str(r["date"])[:10]) for r in existing
-                if t["id"] in (r.get("id"), r.get("recurring_parent_id"))}
-        seen |= {date.fromisoformat(str(d)[:10]) for d in (t.get("recurring_skips") or [])}
-        for d in _recurring_occurrences(t, last):
-            if d < first or d <= today or _already_materialized(freq, d, seen):
-                continue
-            out.append({**t, "id": f"projected-{t['id']}-{d.isoformat()}",
-                        "date": d.isoformat(), "is_recurring": False,
-                        "recurring_parent_id": t["id"], "receipt_path": None,
-                        "projected": True})
     return out
 
 
@@ -3715,7 +3669,5 @@ def _format_transactions(rows: list, settings: dict = None) -> list:
             "project_name":         proj.get("name"),
             "project_icon":         proj.get("icon"),
             "has_receipt":          bool(row.get("receipt_path")),
-            # מופע צפוי בחודש עתידי (‎projected_month_rows‎) — אין עסקה במסד
-            "projected":            bool(row.get("projected")),
         })
     return out

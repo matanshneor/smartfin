@@ -89,8 +89,9 @@ def test_an_empty_day_says_so_in_matans_words():
     from pathlib import Path
     import jinja2
     tpl = (Path(__file__).resolve().parent.parent / "frontend/templates/_week_card.html").read_text(encoding="utf-8")
-    start = tpl.index("{% for d in week.days if not d.future %}")
-    snippet = tpl[start:tpl.index("{% endfor %}", tpl.index('class="week-empty"')) + len("{% endfor %}")]
+    start = tpl.index("{% for d in week.days %}{% if not (d.future and not d.total) %}")
+    end = "{% endif %}{% endfor %}"
+    snippet = tpl[start:tpl.index(end, tpl.index('class="week-empty"')) + len(end)]
     env = jinja2.Environment()
     env.filters["money"] = lambda v: v
     day = {"label": "ה׳", "day": 1, "month": 10, "total": 0, "transactions": [], "future": False}
@@ -99,6 +100,46 @@ def test_an_empty_day_says_so_in_matans_words():
     assert html.count('<p class="week-empty">לא בוצעו עסקאות ביום זה</p>') == 1
     assert html.count('<p class="week-empty">לא בוצעו עסקאות היום</p>') == 1
 
+
+
+# ─── עסקה שהוזנה מראש ליום שעוד לא הגיע (מתן, 4.10) ───────────────────────
+
+
+def test_a_transaction_entered_ahead_shows_on_its_day_and_counts(monkeypatch):
+    w = _week([_tx(100, "2026-10-05"), _tx(450, "2026-10-09", "חוג")], monkeypatch)
+    friday = w["days"][5]
+    assert friday["future"] and friday["total"] == 450
+    assert [(t["description"], t["amount"]) for t in friday["transactions"]] == [("חוג", 450)]
+    assert w["total"] == 550 and w["max"] == 450
+
+
+def test_the_comparison_stretches_to_the_last_day_counted(monkeypatch):
+    """הוזן מראש לשישי — אז משווים לראשון–שישי של שבוע שעבר, לא רק עד רביעי."""
+    w = _week([_tx(450, "2026-10-09"),
+               _tx(200, "2026-09-30"), _tx(300, "2026-10-02"),       # רביעי, שישי שעבר
+               _tx(999, "2026-10-03")], monkeypatch)                 # שבת שעברה — מחוץ
+    assert w["last_week"] == 500 and w["diff"] == -50
+
+
+def test_a_recurring_occurrence_ahead_still_stays_out(monkeypatch):
+    w = _week([_tx(120, "2026-10-09", "סלולר", parent="tpl-1")], monkeypatch)
+    assert w["total"] == 0 and w["days"][5]["total"] == 0
+
+
+def test_a_day_ahead_with_an_entry_opens_and_an_empty_one_stays_locked(monkeypatch):
+    from pathlib import Path
+    from backend.app import app
+    tpl = (Path(__file__).resolve().parent.parent / "frontend/templates/_week_card.html").read_text(encoding="utf-8")
+    w = _week([_tx(450, "2026-10-09", "חוג")], monkeypatch)       # חמישי ריק, שישי עם עסקה
+    with app.test_request_context():
+        html = app.jinja_env.from_string(tpl).render(week=w)
+    bars = {b.split('data-day="')[1][0]: b[:b.index(">")] for b in html.split('<button type="button" class="week-day')[1:]}
+    assert "disabled" in bars["4"] and "future" in bars["4"]
+    assert "disabled" not in bars["5"] and "future" not in bars["5"]
+    details = [d.split('"')[0] for d in html.split('class="week-detail" data-day="')[1:]]
+    # רביעי (היום) ויום שישי — ושישי במספר היום שלו, לא במקום הרביעי ברשימה
+    assert details == ["0", "1", "2", "3", "5"]
+    assert "חוג" in html.split('class="week-detail" data-day="5"')[1]
 
 
 # ─── דפדוף לשבועות קודמים (מתן, 2.10) ─────────────────────────────────────

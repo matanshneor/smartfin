@@ -29,18 +29,22 @@
     </div>
     <div class="week-bars" role="group" aria-label="הוצאות לפי יום">
         {% for d in week.days %}
-        {% set h = 10 if d.future else ([6, ((d.total / week.max * 84) | round | int) if week.max else 6] | max) %}
-        <button type="button" class="week-day{% if d.today %} today{% endif %}{% if d.selected %} is-selected{% endif %}{% if d.future %} future{% endif %}{% if not d.future and not d.total %} zero{% endif %}"
-                data-day="{{ loop.index0 }}" {% if d.future %}disabled{% endif %}
+        {# יום שעוד לא הגיע נעול — אלא אם הוזנה אליו עסקה מראש (מתן, 4.10) #}
+        {% set ahead = d.future and not d.total %}
+        {% set h = 10 if ahead else ([6, ((d.total / week.max * 84) | round | int) if week.max else 6] | max) %}
+        <button type="button" class="week-day{% if d.today %} today{% endif %}{% if d.selected %} is-selected{% endif %}{% if ahead %} future{% endif %}{% if not d.future and not d.total %} zero{% endif %}"
+                data-day="{{ loop.index0 }}" {% if ahead %}disabled{% endif %}
                 aria-pressed="{{ 'true' if d.selected else 'false' }}"
-                aria-label="יום {{ d.label }} {{ d.day }}.{{ d.month }}{% if d.future %} — עוד לא הגיע{% else %}: ₪{{ d.total | round | int | money }}{% endif %}">
-            <span class="week-amt">{% if not d.future and d.total %}{{ d.total | round | int | money }}{% endif %}</span>
+                aria-label="יום {{ d.label }} {{ d.day }}.{{ d.month }}{% if ahead %} — עוד לא הגיע{% else %}: ₪{{ d.total | round | int | money }}{% endif %}">
+            <span class="week-amt">{% if d.total %}{{ d.total | round | int | money }}{% endif %}</span>
             <span class="week-bar" style="height: {{ h }}px;"></span>
             <span class="week-lbl">{{ d.label }}</span>
         </button>
         {% endfor %}
     </div>
-    {% for d in week.days if not d.future %}
+    {# ‎if‎ בתוך הלולאה ולא מסנן עליה: ‎loop.index0‎ חייב להיות מספר היום
+       בשבוע, ויום נעול יכול לבוא לפני יום עם עסקה שהוזנה מראש #}
+    {% for d in week.days %}{% if not (d.future and not d.total) %}
     <div class="week-detail" data-day="{{ loop.index0 }}" {% if not d.selected %}hidden{% endif %}>
         <p class="week-detail-head"><span>{{ 'היום' if d.today else 'יום ' ~ d.label }} · {{ d.day }}.{{ d.month }}</span><span>₪{{ d.total | money }}</span></p>
         {% if d.transactions %}
@@ -53,5 +57,5 @@
         <p class="week-empty">לא בוצעו עסקאות {{ 'היום' if d.today else 'ביום זה' }}</p>
         {% endif %}
     </div>
-    {% endfor %}
+    {% endif %}{% endfor %}
 </section>

@@ -1,8 +1,10 @@
-"""חודש שעוד לא הגיע (מתן, 30.9 — רעיון 6).
+"""חודש עתידי והחודש הנוכחי — מה מופיע בהם (מתן, 4.10).
 
-נראה כמו כל חודש, עם מה שידוע עד כה: מה שהוזן אליו מראש, ועוד מופעי
-העסקאות הקבועות שייפלו בו — בתאריכים שבהם ייפלו בפועל. הם נספרים במאזן
-החודשי ובפילוחים, אבל אינם עסקאות אמיתיות, ולכן אין להם מזהה ללחיצה.
+עסקה קבועה מופיעה רק מהיום שהיא יורדת, כשהמנוע יוצר אותה כעסקה אמיתית —
+לא מראש, לא בחודש הנוכחי ולא בחודש עתידי. עסקה שהוזנה ידנית בתאריך עתידי
+היא שורה רגילה: מופיעה בחודש שלה, נספרת בו, ונפתחת לעריכה.
+
+(עד 4.10 חודש עתידי הציג מראש את המופעים הצפויים — מתן, 30.9 — וזה בוטל.)
 """
 import datetime
 
@@ -11,117 +13,41 @@ import pytest
 from backend import app as app_module
 from backend import supabase_config as db
 from backend.app import app
-from tests._fake_db import FakeSupabase
 
 pytestmark = pytest.mark.unit
 
 _FAM = "11111111-1111-1111-1111-111111111111"
 _ME  = "22222222-2222-2222-2222-222222222222"
-_TODAY = datetime.date(2026, 9, 30)
+_TODAY = datetime.date(2026, 10, 4)
 
 
-def _template(id_, amount, date, freq="monthly_1", type_="expense", end=None, project=None,
-              name="שכר דירה", icon="🏠"):
-    return {"id": id_, "family_id": _FAM, "amount": amount, "type": type_, "date": date,
-            "description": name, "user_id": None, "category_id": "c1", "project_id": project,
-            "project_category_id": None, "is_recurring": True, "recurring_parent_id": None,
-            "recurring_frequency": freq, "recurring_end_date": end, "receipt_path": "r/1.jpg",
-            "workplace": None, "categories": {"name": name, "icon": icon},
+def _row(id_, amount, date, name, icon, recurring=False):
+    return {"id": id_, "family_id": _FAM, "amount": amount, "type": "expense", "date": date,
+            "description": name, "user_id": None, "category_id": "c1", "project_id": None,
+            "project_category_id": None, "is_recurring": recurring, "recurring_parent_id": None,
+            "recurring_frequency": "monthly_15" if recurring else None,
+            "recurring_end_date": None, "receipt_path": None, "workplace": None,
+            "categories": {"name": name, "icon": icon},
             "project_categories": None, "profiles": None, "projects": None}
 
 
-def _projected(templates, year=2026, month=11):
-    import unittest.mock as m
-    with m.patch.object(db, "get_client", lambda: FakeSupabase(transactions=templates)):
-        return db.projected_month_rows(_FAM, year, month, today=_TODAY)
-
-
-def test_each_template_lands_on_its_real_dates_in_that_month():
-    rows = _projected([_template("rent", 5500, "2026-01-01"),
-                       _template("gan", 300, "2026-09-03", freq="weekly", name="גן")])
-
-    got = sorted((r["recurring_parent_id"], r["date"]) for r in rows)
-    assert got == [("gan", "2026-11-05"), ("gan", "2026-11-12"), ("gan", "2026-11-19"),
-                   ("gan", "2026-11-26"), ("rent", "2026-11-01")]
-    rent = next(r for r in rows if r["recurring_parent_id"] == "rent")
-    assert rent["amount"] == 5500 and rent["categories"]["name"] == "שכר דירה"
-    # לא תבנית, בלי קבלה, ומסומן כצפוי
-    assert rent["is_recurring"] is False and rent["receipt_path"] is None and rent["projected"]
-
-
-def test_a_series_that_ends_before_the_month_is_not_there():
-    rows = _projected([_template("gym", 200, "2026-01-01", end="2026-10-15")])
-
-    assert rows == []
-
-
-def test_past_months_get_nothing():
-    """שם המופעים כבר נוצרו כעסקאות אמיתיות — אסור לספור אותם פעמיים."""
-    def boom():
-        raise AssertionError("שליפה לחודש שעבר")
-    import unittest.mock as m
-    with m.patch.object(db, "get_client", boom):
-        assert db.projected_month_rows(_FAM, 2026, 8, today=_TODAY) == []
-        assert db.projected_month_rows(_FAM, 2026, 3, today=_TODAY) == []
-
-
-_MID = datetime.date(2026, 10, 4)
-
-
-def _projected_now(templates, existing=()):
-    import unittest.mock as m
-    with m.patch.object(db, "get_client", lambda: FakeSupabase(transactions=templates)):
-        return db.projected_month_rows(_FAM, 2026, 10, today=_MID, existing=existing)
-
-
-def test_the_current_month_gets_only_what_is_still_ahead():
-    """מתן, 4.10: שכר הדירה של ה-15 הופיע בנובמבר אבל לא באוקטובר."""
-    rows = _projected_now([_template("rent", 5500, "2026-01-01"),
-                           _template("phone", 120, "2026-01-15", freq="monthly_15", name="סלולר"),
-                           _template("gan", 300, "2026-09-03", freq="weekly", name="גן")])
-
-    got = sorted((r["recurring_parent_id"], r["date"]) for r in rows)
-    # ה-1 וה-1.10 של הגן כבר עברו — הם עסקאות אמיתיות שהמנוע יצר
-    assert got == [("gan", "2026-10-08"), ("gan", "2026-10-15"), ("gan", "2026-10-22"),
-                   ("gan", "2026-10-29"), ("phone", "2026-10-15")]
-
-
-def test_a_period_already_taken_this_month_is_not_projected_again():
-    """משכורת שנוצרה ב-2 לחודש, והתבנית עברה מאז ל-20: אותו חודש, אותה משכורת."""
-    tpl = _template("pay", 14000, "2026-01-20", freq="monthly_same", type_="income", name="משכורת")
-    made = {"id": "i1", "recurring_parent_id": "pay", "date": "2026-10-02"}
-
-    assert _projected_now([tpl], existing=[made]) == []
-    assert len(_projected_now([tpl])) == 1
-
-
-def test_an_occurrence_deleted_on_purpose_does_not_come_back():
-    tpl = {**_template("phone", 120, "2026-01-15", freq="monthly_15", name="סלולר"),
-           "recurring_skips": ["2026-10-15"]}
-
-    assert _projected_now([tpl]) == []
-
-
-# ── העמוד ─────────────────────────────────────────────────────────────
-
 @pytest.fixture
-def future_page(monkeypatch):
+def month_page(monkeypatch):
     app.config["TESTING"] = True
     monkeypatch.setattr(db, "set_auth_token", lambda t: None)
     monkeypatch.setattr(db, "materialize_recurring", lambda fid: (0, True))
     monkeypatch.setattr(db, "get_anomalies", lambda *a, **k: [])
     monkeypatch.setattr(db, "get_family", lambda *a, **k: {"id": _FAM})
     monkeypatch.setattr(app_module, "family_settings", lambda: dict(db.DEFAULT_FAMILY_SETTINGS))
-    monkeypatch.setattr(app_module.clock, "now", lambda: datetime.datetime(2026, 9, 30, 12, 0))
+    monkeypatch.setattr(app_module.clock, "now", lambda: datetime.datetime(2026, 10, 4, 12, 0))
     monkeypatch.setattr(app_module.clock, "today", lambda: _TODAY)
 
-    def render(real_rows, templates, url="/month?year=2026&month=11"):
+    def render(real_rows, url):
         monkeypatch.setattr(db, "fetch_month_page", lambda fid, y, m: {
             "family": {"id": _FAM}, "settings": dict(db.DEFAULT_FAMILY_SETTINGS),
             "members": [{"id": _ME, "name": "מתן"}],
             "categories": [{"id": "c1", "name": "שכר דירה", "icon": "🏠", "type": "expense"}],
             "rows": real_rows, "archive": []})
-        monkeypatch.setattr(db, "get_client", lambda: FakeSupabase(transactions=templates))
         with app.test_client() as c:
             with c.session_transaction() as sess:
                 sess["user_id"] = _ME
@@ -132,50 +58,18 @@ def future_page(monkeypatch):
     return render
 
 
-def test_a_future_month_looks_like_any_month_with_what_is_known(future_page):
-    html = future_page([], [_template("rent", 5500, "2026-01-01")])
+@pytest.mark.parametrize("url", ["/month", "/month?year=2026&month=11"])
+def test_a_recurring_series_adds_nothing_before_its_date(month_page, url):
+    """התבנית עצמה מחודש ינואר לא בשורות החודש — ואין שום מופע צפוי."""
+    html = month_page([], url)
 
-    assert "לא נרשמו עסקאות" not in html
-    assert "מאזן החודש" in html
-    assert "₪5,500" in html
-    assert "01.11" in html
-
-
-def test_projected_rows_cannot_be_opened_for_editing(future_page):
-    """אין מאחוריהן עסקה במסד — לחיצה הייתה מחזירה "העסקה כבר נמחקה"."""
-    html = future_page([], [_template("rent", 5500, "2026-01-01")])
-
-    # שורת "השוואה לחודשים קודמים" (‎cat-tx-more‎) היא קישור ולא עסקה
-    rows = [r for r in html.split('<li class="cat-tx-row')[1:] if not r.startswith(" cat-tx-more")]
-    assert rows, "אין שורות"
-    for r in rows:
-        head = r[:r.index(">")]
-        assert 'data-id=""' in head and 'role="button"' not in head
+    assert "empty-state" in html
 
 
-def test_with_no_templates_an_empty_future_month_stays_empty(future_page):
-    html = future_page([], [])
+def test_a_one_time_future_transaction_shows_in_its_month(month_page):
+    trip = _row("trip", 1400, "2026-11-20", "טיסה", "✈️")
+    html = month_page([trip], "/month?year=2026&month=11")
 
-    assert "לא נרשמו עסקאות" in html
-
-
-def test_projected_and_real_rows_are_in_one_date_order(future_page):
-    real = [{**_template("trip", 1400, "2026-11-20", name="טיסה", icon="✈️"),
-             "is_recurring": False, "recurring_frequency": None, "receipt_path": None}]
-    html = future_page(real, [_template("rent", 5500, "2026-01-01"),
-                              _template("phone", 120, "2026-01-15", freq="monthly_15", name="סלולר", icon="📱")])
-
-    all_tx = html[html.index('id="txSearch"'):]
-    assert all_tx.index("20.11") < all_tx.index("15.11") < all_tx.index("01.11")
-    # העסקה האמיתית עדיין נפתחת לעריכה
-    assert 'data-id="trip"' in all_tx
-
-
-def test_the_current_month_shows_what_is_still_ahead(future_page, monkeypatch):
-    monkeypatch.setattr(app_module.clock, "now", lambda: datetime.datetime(2026, 10, 4, 12, 0))
-    monkeypatch.setattr(app_module.clock, "today", lambda: _MID)
-    html = future_page([], [_template("phone", 120, "2026-01-15", freq="monthly_15",
-                                      name="סלולר", icon="📱")], url="/month")
-
-    assert "החודש הנוכחי" in html
-    assert "15.10" in html and "₪120" in html
+    assert "₪1,400" in html and "20.11" in html
+    # עסקה אמיתית — נפתחת לעריכה
+    assert 'data-id="trip"' in html
