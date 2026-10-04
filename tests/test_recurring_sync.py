@@ -35,6 +35,7 @@ def client(monkeypatch):
         ("fetch_month_page", {"family": {}, "settings": dict(_db.DEFAULT_FAMILY_SETTINGS),
                               "members": [], "categories": [], "rows": [], "archive": []}),
         ("get_month_transactions", []), ("get_anomalies", []),
+        ("projected_month_rows", []),
     ]:
         # בלי ‎raising=True‎ (ברירת המחדל) שם שהשתנה נבלע בשקט. שלושה
         # שמות ברשימה הזאת כבר לא היו קיימים — הזיוף לא עשה כלום, אף

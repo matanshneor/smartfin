@@ -55,14 +55,51 @@ def test_a_series_that_ends_before_the_month_is_not_there():
     assert rows == []
 
 
-def test_the_current_and_past_months_get_nothing():
+def test_past_months_get_nothing():
     """שם המופעים כבר נוצרו כעסקאות אמיתיות — אסור לספור אותם פעמיים."""
     def boom():
-        raise AssertionError("שליפה לחודש שאינו עתידי")
+        raise AssertionError("שליפה לחודש שעבר")
     import unittest.mock as m
     with m.patch.object(db, "get_client", boom):
-        assert db.projected_month_rows(_FAM, 2026, 9, today=_TODAY) == []
+        assert db.projected_month_rows(_FAM, 2026, 8, today=_TODAY) == []
         assert db.projected_month_rows(_FAM, 2026, 3, today=_TODAY) == []
+
+
+_MID = datetime.date(2026, 10, 4)
+
+
+def _projected_now(templates, existing=()):
+    import unittest.mock as m
+    with m.patch.object(db, "get_client", lambda: FakeSupabase(transactions=templates)):
+        return db.projected_month_rows(_FAM, 2026, 10, today=_MID, existing=existing)
+
+
+def test_the_current_month_gets_only_what_is_still_ahead():
+    """מתן, 4.10: שכר הדירה של ה-15 הופיע בנובמבר אבל לא באוקטובר."""
+    rows = _projected_now([_template("rent", 5500, "2026-01-01"),
+                           _template("phone", 120, "2026-01-15", freq="monthly_15", name="סלולר"),
+                           _template("gan", 300, "2026-09-03", freq="weekly", name="גן")])
+
+    got = sorted((r["recurring_parent_id"], r["date"]) for r in rows)
+    # ה-1 וה-1.10 של הגן כבר עברו — הם עסקאות אמיתיות שהמנוע יצר
+    assert got == [("gan", "2026-10-08"), ("gan", "2026-10-15"), ("gan", "2026-10-22"),
+                   ("gan", "2026-10-29"), ("phone", "2026-10-15")]
+
+
+def test_a_period_already_taken_this_month_is_not_projected_again():
+    """משכורת שנוצרה ב-2 לחודש, והתבנית עברה מאז ל-20: אותו חודש, אותה משכורת."""
+    tpl = _template("pay", 14000, "2026-01-20", freq="monthly_same", type_="income", name="משכורת")
+    made = {"id": "i1", "recurring_parent_id": "pay", "date": "2026-10-02"}
+
+    assert _projected_now([tpl], existing=[made]) == []
+    assert len(_projected_now([tpl])) == 1
+
+
+def test_an_occurrence_deleted_on_purpose_does_not_come_back():
+    tpl = {**_template("phone", 120, "2026-01-15", freq="monthly_15", name="סלולר"),
+           "recurring_skips": ["2026-10-15"]}
+
+    assert _projected_now([tpl]) == []
 
 
 # ── העמוד ─────────────────────────────────────────────────────────────
@@ -78,7 +115,7 @@ def future_page(monkeypatch):
     monkeypatch.setattr(app_module.clock, "now", lambda: datetime.datetime(2026, 9, 30, 12, 0))
     monkeypatch.setattr(app_module.clock, "today", lambda: _TODAY)
 
-    def render(real_rows, templates):
+    def render(real_rows, templates, url="/month?year=2026&month=11"):
         monkeypatch.setattr(db, "fetch_month_page", lambda fid, y, m: {
             "family": {"id": _FAM}, "settings": dict(db.DEFAULT_FAMILY_SETTINGS),
             "members": [{"id": _ME, "name": "מתן"}],
@@ -89,7 +126,7 @@ def future_page(monkeypatch):
             with c.session_transaction() as sess:
                 sess["user_id"] = _ME
                 sess["family_id"] = _FAM
-            res = c.get("/month?year=2026&month=11")
+            res = c.get(url)
             assert res.status_code == 200
             return res.get_data(as_text=True)
     return render
@@ -132,3 +169,13 @@ def test_projected_and_real_rows_are_in_one_date_order(future_page):
     assert all_tx.index("20.11") < all_tx.index("15.11") < all_tx.index("01.11")
     # העסקה האמיתית עדיין נפתחת לעריכה
     assert 'data-id="trip"' in all_tx
+
+
+def test_the_current_month_shows_what_is_still_ahead(future_page, monkeypatch):
+    monkeypatch.setattr(app_module.clock, "now", lambda: datetime.datetime(2026, 10, 4, 12, 0))
+    monkeypatch.setattr(app_module.clock, "today", lambda: _MID)
+    html = future_page([], [_template("phone", 120, "2026-01-15", freq="monthly_15",
+                                      name="סלולר", icon="📱")], url="/month")
+
+    assert "החודש הנוכחי" in html
+    assert "15.10" in html and "₪120" in html

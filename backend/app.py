@@ -1234,10 +1234,11 @@ def month_view():
     p1 = db.fetch_month_page(family_id, year, month)
     settings_ = p1["settings"]
     rows      = p1["rows"]
-    if is_future:
+    if is_future or is_current:
         # חודש עתידי נראה כמו כל חודש, עם מה שידוע עד כה — כולל העסקאות
-        # הקבועות שייפלו בו (מתן, 30.9). מכאן והלאה הן שורות כמו כל שורה.
-        rows = sorted(rows + db.projected_month_rows(family_id, year, month),
+        # הקבועות שייפלו בו (מתן, 30.9). בחודש הנוכחי — אלה שעוד לפנינו
+        # (מתן, 4.10). מכאן והלאה הן שורות כמו כל שורה.
+        rows = sorted(rows + db.projected_month_rows(family_id, year, month, existing=rows),
                       key=lambda r: str(r.get("date") or ""), reverse=True)
 
     # מוזן כאן ולא לפני ‎render_template‎ כמו קודם: שליפות שלב 2 (חריגות,

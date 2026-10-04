@@ -1767,13 +1767,20 @@ def _recurring_occurrences(template: dict, until) -> list:
     return out
 
 
-def projected_month_rows(family_id: str, year: int, month: int, today=None) -> list:
+def projected_month_rows(family_id: str, year: int, month: int, today=None,
+                         existing=()) -> list:
     """המופעים שהעסקאות הקבועות ייצרו בחודש שעוד לא הגיע (מתן, 30.9).
 
     חודש עתידי מוצג כמו כל חודש, עם מה שידוע עד כה — ומה שידוע הוא גם
     שכר הדירה של ה-1 בו. המופעים נוצרים כעסקאות אמיתיות רק כשהתאריך
-    מגיע (‎materialize_recurring‎), ולכן בחודש הנוכחי ובחודשים שעברו אין
-    מה להוסיף: שם הם כבר קיימים, והוספה הייתה סופרת אותם פעמיים.
+    מגיע (‎materialize_recurring‎), ולכן בחודשים שעברו אין מה להוסיף: שם
+    הם כבר קיימים, והוספה הייתה סופרת אותם פעמיים. בחודש הנוכחי — רק מה
+    שאחרי היום (מתן, 4.10: שכר הדירה של ה-15 לא הופיע ב-4 לחודש, אבל כן
+    הופיע כשנכנסו לחודש הבא).
+
+    ‎existing‎ — שורות החודש האמיתיות. מופע שהתקופה שלו כבר תפוסה בהן
+    (למשל משכורת שנוצרה ב-5 והתבנית עברה מאז ל-10) לא נוסף שוב, וגם לא
+    מופע שנמחק במכוון (‎recurring_skips‎) — בדיוק כמו במנוע עצמו.
 
     כל שורה היא העתק של התבנית בתאריך המופע, באותה צורה בדיוק כמו שורות
     החודש — כדי שכל הסיכומים והפילוחים יעברו עליה בלי מקרה מיוחד. היא
@@ -1781,7 +1788,7 @@ def projected_month_rows(family_id: str, year: int, month: int, today=None) -> l
     import calendar
     from datetime import date
     today = today or clock.today()
-    if (year, month) <= (today.year, today.month):
+    if (year, month) < (today.year, today.month):
         return []
     client = get_client()
     if not client:
@@ -1800,8 +1807,12 @@ def projected_month_rows(family_id: str, year: int, month: int, today=None) -> l
     last = date(year, month, calendar.monthrange(year, month)[1])
     out = []
     for t in templates:
+        freq = t.get("recurring_frequency") or "monthly_1"
+        seen = {date.fromisoformat(str(r["date"])[:10]) for r in existing
+                if t["id"] in (r.get("id"), r.get("recurring_parent_id"))}
+        seen |= {date.fromisoformat(str(d)[:10]) for d in (t.get("recurring_skips") or [])}
         for d in _recurring_occurrences(t, last):
-            if d < first or d <= today:
+            if d < first or d <= today or _already_materialized(freq, d, seen):
                 continue
             out.append({**t, "id": f"projected-{t['id']}-{d.isoformat()}",
                         "date": d.isoformat(), "is_recurring": False,
