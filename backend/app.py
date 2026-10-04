@@ -1165,6 +1165,17 @@ def dashboard():
     # מיחזור תוצאות המקבץ ל-context-processors ו-_member_colors (בלי שליפה חוזרת)
     _prime_request_cache(family_id, settings=batch["settings"], categories=batch["categories"], members=batch["members"])
 
+    # "איך מצרפים בן משפחה" (מתן, 5.10) — בכניסה הראשונה, אחרי אשף הפתיחה
+    # (‎?welcome=1‎ מכפתור "לאפליקציה"), ורק כשעוד אין במשפחה אף אחד אחר
+    welcome_invite = None
+    if request.args.get("welcome") == "1" and len(batch["members"] or []) == 1:
+        try:
+            family = _fresh_invite(db.get_family(family_id), user)
+        except db.DataUnavailable:
+            family = None          # קישוט: תקלה לא מפילה את דף הבית
+        if family and family.get("invite_code") and not _invite_expired(family):
+            welcome_invite = {"code": family["invite_code"], "family_name": family.get("name") or ""}
+
     return render_template(
         "index.html",
         active_page="dashboard",
@@ -1176,6 +1187,7 @@ def dashboard():
         month_label=_month_label(now.year, now.month),
         month=now.month,
         is_new_family=batch["is_new"],
+        welcome_invite=welcome_invite,
     )
 
 

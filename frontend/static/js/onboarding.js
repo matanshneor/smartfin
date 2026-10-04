@@ -126,7 +126,8 @@ window.escapeHtml = window.escapeHtml || function (s) {
     });
 
     document.getElementById('finishOnboardingBtn').addEventListener('click', function () {
-        window.location.href = '/';
+        // ‎welcome=1‎ — דף הבית מסביר בפעם הראשונה איך מצרפים בן משפחה
+        window.location.href = '/?welcome=1';
     });
 
     document.getElementById('toStep2Btn').addEventListener('click', function () {

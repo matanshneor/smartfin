@@ -137,7 +137,9 @@ def test_the_app_says_monthly_balance_and_never_checking_account():
     assert not hits, hits
     for page in ("index.html", "month.html", "landing.html"):
         html = re.sub(r"\{#.*?#\}", "", (_ROOT / "frontend/templates" / page).read_text(encoding="utf-8"), flags=re.S)
-        # "מאזן החודש" (מתן, 1.10), ולא עוד "מאזן חודשי"
+        # "מאזן החודש" (מתן, 1.10), ולא עוד "מאזן חודשי" — חוץ ממשפט אחד
+        # בחלון "איך מצרפים בן משפחה", שמתן כתב כך במפורש (5.10)
+        html = html.replace("רואים את אותן עסקאות ואותו מאזן חודשי.", "")
         assert "מאזן החודש" in html and "מאזן חודשי" not in html, page
 
 

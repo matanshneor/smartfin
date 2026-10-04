@@ -4760,3 +4760,14 @@ body > .color-sheet { z-index: 180; }
 .cat-month-date { flex: none; width: 3.2em; font-size: 0.78rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 .cat-month-desc { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cat-month-amount { flex: none; color: var(--color-expense); font-weight: 600; font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+
+/* "איך מצרפים בן משפחה" (מתן, 5.10) — באותו חלון תחתון כמו בחירת הצבע */
+.welcome-invite { z-index: 190; }
+.welcome-steps {
+    margin: 0; padding-inline-start: 22px;
+    display: flex; flex-direction: column; gap: 8px;
+    font-size: 0.92rem; line-height: 1.5;
+}
+.welcome-steps li::marker { color: var(--color-gold-text); font-weight: 700; }
+.welcome-code { font-weight: 700; letter-spacing: 0.08em; color: var(--color-text); }
+.welcome-invite .submit-btn { margin-top: 4px; }

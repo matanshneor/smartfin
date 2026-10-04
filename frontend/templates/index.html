@@ -229,4 +229,26 @@
     <div class="search-results" id="searchResults"></div>
 </div>
 <script src="{{ url_for('static', filename='js/search.js') }}"></script>
+
+{# "איך מצרפים בן משפחה" — פעם אחת, אחרי אשף הפתיחה (מתן, 5.10) #}
+{% if welcome_invite %}
+<div class="color-sheet welcome-invite" id="welcomeInvite" role="dialog" aria-modal="true" aria-labelledby="welcomeInviteTitle"
+     data-code="{{ welcome_invite.code }}" data-family="{{ welcome_invite.family_name }}">
+    <div class="color-sheet-card">
+        <p class="color-sheet-title" id="welcomeInviteTitle">👋 איך מצרפים בן משפחה?</p>
+        <ol class="welcome-steps">
+            <li>הכפתור למטה יוצר הודעה עם קישור — שולחים אותה לחבר או בן משפחה.</li>
+            <li>מי שמקבל לוחץ על הקישור ונרשם — ומצטרף אליכם למשפחה.</li>
+            <li>מאותו רגע אתם מנהלים את התקציב ביחד, רואים את אותן עסקאות ואותו מאזן חודשי.</li>
+        </ol>
+        <p class="color-sheet-hint">
+            קוד ההזמנה: <span class="welcome-code" id="welcomeCode" dir="ltr">{{ welcome_invite.code }}</span> · תקף לשבוע.
+            אפשר למצוא אותו גם בהגדרות, תחת "הזמנת בן משפחה".
+        </p>
+        <button type="button" class="submit-btn" id="welcomeSendBtn">שליחת הזמנה</button>
+        <button type="button" class="btn-sm btn-ghost color-sheet-close" id="welcomeCloseBtn">לא עכשיו</button>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='js/welcome-invite.js') }}"></script>
+{% endif %}
 {% endblock %}
