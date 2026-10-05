@@ -61,7 +61,7 @@ def test_the_owner_field_still_hides_the_same_way():
     """בקרת-נגד: הדפוס שממנו העתקתי עדיין קיים."""
     js = _strip_comments(_read("frontend/static/js/transactions.js"))
 
-    assert "ownerGroup.style.display = hasOwner ? '' : 'none';" in js
+    assert "ownerGroup.style.display = (hasOwner && !window.SF_PAGE_DATA.singleMember) ? '' : 'none';" in js
 
 
 # ─── 2. אפשר לקבוע תקציב מהמקום שבו מבינים שצריך ─────────────────────────────

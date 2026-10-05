@@ -410,9 +410,11 @@
         modalSheet.classList.toggle('savings-mode', type === 'savings');
         buildProjectSelect(selectedProjectId, keepOriginal);
         refreshCategoryGrid(selectedCategoryId, keepOriginal);
-        // בורר "של מי?" מופיע רק בסוגים שהמשפחה הפעילה בהם שיוך (העדפות משפחה)
+        // בורר "של מי?" מופיע רק בסוגים שהמשפחה הפעילה בהם שיוך (העדפות משפחה),
+        // ולא כשבמשפחה אדם אחד (מתן, 5.10). אז הוא רק מוסתר: הבחירה נבנית
+        // ונשלחת כמו תמיד — בלעדיה השרת היה רושם על המחובר עסקה שהייתה משותפת.
         const hasOwner = !!window.SF_ATTRIBUTION[type];
-        ownerGroup.style.display = hasOwner ? '' : 'none';
+        ownerGroup.style.display = (hasOwner && !window.SF_PAGE_DATA.singleMember) ? '' : 'none';
         if (hasOwner) {
             document.getElementById('ownerLabel').textContent = OWNER_LABELS[type];
             buildOwnerToggle(selectedOwner, keepOriginal);

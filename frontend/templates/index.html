@@ -190,7 +190,7 @@
                         {% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ tx.amount | money }}
                     </p>
                     </div>
-                    {% if family_settings.owner_attribution[tx.type] %}
+                    {% if (show_owner or {}).get(tx.type) %}
                     {% set color = member_colors.get(tx.user_id) %}
                     <span class="owner-pill owner-{{ color if color is not none else 'shared' }}">
                         {{ tx.user_name if tx.user_id else 'משותפת' }}

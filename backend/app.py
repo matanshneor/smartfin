@@ -511,9 +511,40 @@ def inject_family_settings():
     if "user_id" not in session:
         return {"family_settings": None}
     try:
-        return {"family_settings": family_settings()}
+        settings = family_settings()
     except db.DataUnavailable:
         return {"family_settings": None}
+    # משפחה של אדם אחד (מתן, 5.10): "של מי" אומר כלום — לא התגית ליד כל
+    # עסקה, לא הגרף "לפי בן משפחה" ולא השאלה בחלון. רק בתצוגה: ההעדפה
+    # עצמה לא משתנה, וכשמצטרף מישהו הכל חוזר. עצל: נשלף רק בעמוד שבאמת
+    # מציג "של מי" — לא בדף שגיאה, למשל.
+    single = _LazySingleMember()
+    return {"family_settings": settings, "single_member": single, "show_owner": _ShowOwner(settings, single)}
+
+
+class _LazySingleMember:
+    """‎single_member()‎ בתבנית — האם במשפחה אדם אחד. בספק (שליפה נכשלה) — לא."""
+    def __init__(self):
+        self._value = None
+
+    def __call__(self) -> bool:
+        if self._value is None:
+            fid = session.get("family_id")
+            try:
+                self._value = bool(fid) and len(db.get_family_members(fid)) == 1
+            except db.DataUnavailable:
+                self._value = False
+        return self._value
+
+
+class _ShowOwner:
+    """‎show_owner.get(type)‎ — להציג "של מי" לסוג הזה: השיוך פעיל, ויש יותר מאדם אחד."""
+    def __init__(self, settings, single):
+        self._attr = (settings or {}).get("owner_attribution") or {}
+        self._single = single
+
+    def get(self, tx_type, default=False):
+        return bool(self._attr.get(tx_type)) and not self._single()
 
 
 def assign_member_colors(members: list, chosen: dict) -> dict:
@@ -1272,7 +1303,10 @@ def month_view():
         strip_months.sort(key=lambda m: (m["year"], m["month"]))
 
     # שלב 2 — שליפות שתלויות בהעדפות/בסיכום
-    active_types = [t for t in ("expense", "income", "savings") if settings_["owner_attribution"].get(t)]
+    # גרף "לפי בן משפחה" — לא כשבמשפחה אדם אחד: עמודה אחת לא אומרת כלום
+    # (מתן, 5.10; כמו בעמוד ההשוואה)
+    active_types = [t for t in ("expense", "income", "savings")
+                    if settings_["owner_attribution"].get(t) and len(p1["members"] or []) > 1]
     p2_tasks = {
         # קטגוריה עם תקציב מדלגת על התראת הממוצע — יש לה התראה מדויקת יותר
         "anomalies":    partial(db.get_anomalies, family_id, year, month, summary, settings_,

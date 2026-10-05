@@ -94,3 +94,13 @@ def test_ten_rows_are_asked_for(monkeypatch):
     from pathlib import Path
     src = (Path(__file__).resolve().parent.parent / "backend/app.py").read_text(encoding="utf-8")
     assert "db.get_recent_transactions(family_id, limit=10," in src
+
+
+def test_recent_skips_recurring_rows_from_months_that_are_over():
+    """מתן (5.10): שכר דירה "מיולי" יצר מיד את יולי–אוקטובר, וכולם קפצו לראש
+    "עסקאות אחרונות". עסקה רגילה מהעבר — נשארת; מהסדרה — רק מהחודש הנוכחי.
+    ‎not.is.true‎: העמודה מאפשרת ‎NULL‎, ושורה כזו היא עסקה רגילה."""
+    f = db._recent_series_filter(datetime.date(2026, 10, 5))
+    assert f == "and(is_recurring.not.is.true,recurring_parent_id.is.null),date.gte.2026-10-01"
+    import inspect
+    assert ".or_(_recent_series_filter())" in inspect.getsource(db.get_recent_transactions)

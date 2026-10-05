@@ -300,7 +300,7 @@
          הדפדפן, ולכן CSP קפדני לא חוסם אותו — וזה מה שמאפשר להוציא את כל
          ה-JS לקבצים חיצוניים בלי לאבד גישה למשתני Jinja. -->
     <script type="application/json" id="sf-page-data">
-        {{ {'attribution': (family_settings.owner_attribution if family_settings else {})} | tojson }}
+        {{ {'attribution': (family_settings.owner_attribution if family_settings else {}), 'singleMember': (single_member() if single_member is defined else false)} | tojson }}
     </script>
 
     <script src="{{ url_for('static', filename='js/net.js') }}"></script>

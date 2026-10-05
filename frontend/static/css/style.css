@@ -284,6 +284,7 @@ ul { list-style: none; }
     color: var(--color-gold-bright);
     font-weight: 600;
     text-decoration: none;
+    position: relative;
 }
 
 .avatar-circle {
@@ -2250,7 +2251,7 @@ a.submit-btn {
 /* טווח הגרפים בעמוד ההשוואה (מתן, 3.10 — רעיון 24) */
 .range-chips { display: flex; gap: 6px; margin: 4px 0 10px; }
 .range-chips[hidden] { display: none; }
-.range-chip { padding: 5px 12px; font-size: 0.78rem; }
+.range-chip { padding: 5px 12px; font-size: 0.78rem; position: relative; }
 
 .cat-trend-chips .tx-cat-chip.active {
     background: var(--gradient-gold); color: #FFFFFF; border-color: transparent;
@@ -3784,6 +3785,19 @@ li.transaction-item.swipe-ready > .swipe-content {
     width: 44px;
     height: 44px;
     transform: translate(-50%, -50%);
+}
+
+/* וכפתורים רחבים ונמוכים (מתן, 5.10): 44 לגובה בלבד. לרוחב — רק חצי
+   מהרווח שבין שכנים (6px בין כפתורי הטווח), כדי ששני אזורים לא יעלו זה על זה */
+.range-chip::before,
+.back-to-current::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    height: 44px;
+    left: -3px;
+    right: -3px;
+    transform: translateY(-50%);
 }
 
 /* ═══ עמודים משפטיים ══════════════════════════════════════════════════════ */

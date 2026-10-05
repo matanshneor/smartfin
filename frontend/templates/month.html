@@ -168,7 +168,7 @@
                     data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
                     <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
                     <span class="cat-tx-desc">{{ tx.description or tx.category_name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}</span>
-                    {% if family_settings.owner_attribution.income %}
+                    {% if (show_owner or {}).get('income') %}
                     {% set color = member_colors.get(tx.user_id) %}
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
                     {% endif %}
@@ -295,7 +295,7 @@
                     data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
                     <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
                     <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.is_recurring or tx.recurring_parent_id %} · 🔁 {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
-                    {% if family_settings.owner_attribution.expense %}
+                    {% if (show_owner or {}).get('expense') %}
                     {% set color = member_colors.get(tx.user_id) %}
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
                     {% endif %}
@@ -386,7 +386,7 @@
                     data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
                     <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
                     <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}</span>
-                    {% if family_settings.owner_attribution.savings %}
+                    {% if (show_owner or {}).get('savings') %}
                     {% set color = member_colors.get(tx.user_id) %}
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
                     {% endif %}
@@ -440,7 +440,7 @@
         <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
         <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.is_recurring or tx.recurring_parent_id %} · 🔁 {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
         {% if tx.project_id %}<span class="project-tag">{{ tx.project_icon or '🎯' }} {{ tx.project_name or 'פרויקט' }}</span>{% endif %}
-        {% if family_settings.owner_attribution[tx.type] %}
+        {% if (show_owner or {}).get(tx.type) %}
         {% set color = member_colors.get(tx.user_id) %}
         <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
         {% endif %}

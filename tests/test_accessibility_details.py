@@ -102,3 +102,11 @@ def test_zoom_is_not_disabled_as_a_shortcut():
 
     assert "maximum-scale" not in base
     assert "user-scalable=no" not in base
+
+
+def test_wide_small_controls_get_a_44px_tall_target():
+    """מתן (5.10): כפתורי הטווח בהשוואה (27px) ו"חזרה לחודש הנוכחי" (17px)."""
+    css = (_ROOT / "frontend/static/css/style.css").read_text(encoding="utf-8")
+    block = css[css.index(".range-chip::before,"):][:260]
+    assert ".back-to-current::before" in block and "height: 44px;" in block
+    assert "left: -3px;" in block and "right: -3px;" in block, "לא לעלות על הכפתור השכן (רווח 6px)"

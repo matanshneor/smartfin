@@ -1470,6 +1470,7 @@ def get_recent_transactions(family_id: str, limit: int = 5, settings: dict = Non
             .select("*, categories(name, icon), project_categories(name, icon), profiles(name, workplace), projects(owner_id, name, icon)") \
             .eq("family_id", family_id) \
             .is_("project_id", "null") \
+            .or_(_recent_series_filter()) \
             .order("created_at", desc=True) \
             .limit(fetch_limit) \
             .execute()
@@ -1478,6 +1479,20 @@ def get_recent_transactions(family_id: str, limit: int = 5, settings: dict = Non
     except Exception as e:
         logger.exception("get_recent_transactions")
         raise DataUnavailable("get_recent_transactions") from e
+
+
+def _recent_series_filter(today=None) -> str:
+    """"עסקאות אחרונות" בלי עסקאות קבועות של חודשים שכבר עברו (מתן, 5.10).
+
+    עסקה קבועה שנוספת עם תאריך התחלה בעבר (שכר דירה "מיולי") מייצרת מיד את
+    העותקים של כל החודשים שעברו — וכולם נוצרו הרגע, אז כולם קפצו לראש
+    הרשימה ודחקו את מה שבאמת הוזן עכשיו. מה שנשאר: כל עסקה רגילה, וכל עסקה
+    מסדרה קבועה מתחילת החודש הנוכחי. בשאילתה ולא אחריה — אחרת סדרה של שנה
+    הייתה תופסת את כל השורות שנשלפו.
+
+    ‎not.is.true‎ ולא ‎eq.false‎: העמודה מאפשרת ‎NULL‎, ושורה כזו היא עסקה רגילה."""
+    month_start = (today or clock.today()).replace(day=1).isoformat()
+    return f"and(is_recurring.not.is.true,recurring_parent_id.is.null),date.gte.{month_start}"
 
 
 def get_month_transactions(family_id: str, year: int, month: int, settings: dict = None,
