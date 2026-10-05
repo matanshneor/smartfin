@@ -29,7 +29,9 @@ def notify_owner(subject: str, lines: list) -> bool:
     to = os.environ.get("OWNER_NOTIFY_EMAIL", "").strip()
     if not key or not to:
         return False
-    body_html = "".join(f"<p style=\"margin:0 0 6px\">{html.escape(line)}</p>" for line in lines)
+    # שורה ריקה = רווח בין חלקים (פרטי המשפחה / מי זה)
+    body_html = "".join(f"<p style=\"margin:0 0 6px\">{html.escape(line)}</p>" if line
+                        else "<div style=\"height:10px\"></div>" for line in lines)
     payload = {
         "from": os.environ.get("NOTIFY_FROM", "").strip() or _DEFAULT_FROM,
         "to": [to],

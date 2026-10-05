@@ -57,25 +57,30 @@ def test_a_failing_send_never_raises(monkeypatch):
 def mails(monkeypatch):
     out = []
     monkeypatch.setattr(app_module.notify, "notify_owner", lambda subject, lines: out.append((subject, lines)))
-    monkeypatch.setattr(db, "get_family_members", lambda fid: [{"id": _ME}, {"id": "x"}])
+    monkeypatch.setattr(db, "get_family_members", lambda fid: [
+        {"id": _ME, "name": "מתן", "full_name": "מתן שניאור", "email": "m@example.com", "phone": "0501234567"},
+        {"id": "x", "name": "אור", "full_name": "אור שניאור", "email": "o@example.com", "phone": None}])
     monkeypatch.setattr(db, "get_family", lambda fid: {"id": fid, "name": "משפחת שניאור"})
     return out
 
 
 def test_finishing_the_wizard_mails_the_name_and_count(mails):
     with app.test_request_context():
-        app_module._notify_owner_about_family("new", _FAM, "משפחת כהן")
+        app_module._notify_owner_about_family("new", _FAM, "משפחת כהן", person_id=_ME)
     subject, lines = mails[0]
     assert subject == "משפחה חדשה ב-SmartFin: משפחת כהן"
     assert "משפחה חדשה נרשמה: משפחת כהן" in lines and "חברי משפחה: 2" in lines
+    # מי פתח אותה — שם מלא, מייל וטלפון (מתן, 5.10)
+    assert lines[lines.index("מי פתח אותה:") + 1:] == ["שם: מתן שניאור", "מייל: m@example.com", "טלפון: 0501234567"]
 
 
 def test_joining_mails_the_new_count(mails):
     with app.test_request_context():
-        app_module._notify_owner_about_family("joined", _FAM)
+        app_module._notify_owner_about_family("joined", _FAM, person_id="x")
     subject, lines = mails[0]
     assert subject == "מישהו הצטרף למשפחת שניאור ב-SmartFin"
     assert "חברי משפחה עכשיו: 2" in lines
+    assert lines[lines.index("מי הצטרף:") + 1:] == ["שם: אור שניאור", "מייל: o@example.com", "טלפון: לא הוזן"]
 
 
 def test_a_failure_while_preparing_the_mail_does_not_break_the_join(monkeypatch):
@@ -89,6 +94,6 @@ def test_a_failure_while_preparing_the_mail_does_not_break_the_join(monkeypatch)
 def test_all_three_entry_points_send_it():
     import inspect
     src = inspect.getsource(app_module)
-    assert '_notify_owner_about_family("new", user["family_id"], family_name)' in inspect.getsource(app_module.onboarding_complete)
-    assert '_notify_owner_about_family("joined", family_id)' in inspect.getsource(app_module.join_family)
-    assert '_notify_owner_about_family("joined", joined_id)' in src       # הצטרפות בהרשמה עם קוד
+    assert '_notify_owner_about_family("new", user["family_id"], family_name, person_id=user["id"])' in inspect.getsource(app_module.onboarding_complete)
+    assert '_notify_owner_about_family("joined", family_id, person_id=user["id"])' in inspect.getsource(app_module.join_family)
+    assert '_notify_owner_about_family("joined", joined_id, person_id=response.user.id)' in src   # הצטרפות בהרשמה עם קוד
