@@ -29,10 +29,6 @@ def test_a_gone_transaction_is_not_part_of_a_series(empty):
     assert db.recurring_occurrence(_GONE, _FAM) == (None, True)
 
 
-def test_a_gone_transaction_has_no_type(empty):
-    assert db.transaction_type(_GONE, _FAM) is None
-
-
 def test_a_gone_transaction_is_not_an_instance(empty):
     assert db.is_recurring_instance(_GONE, _FAM) is False
 

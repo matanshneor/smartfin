@@ -2129,22 +2129,6 @@ def recurring_occurrence(transaction_id: str, family_id: str):
         raise DataUnavailable("recurring_occurrence") from e
 
 
-def transaction_type(transaction_id: str, family_id: str):
-    """סוג העסקה (‎expense‎/‎income‎/‎savings‎), או ‎None‎ אם לא נמצאה.
-
-    נדרש כדי לאמת שקטגוריה מתאימה לסוג — הסוג עצמו לא נשלח בגוף
-    הבקשה במסלול הסנכרון, והוא לא ניתן לשינוי שם ממילא."""
-    client = get_client()
-    if not client:
-        raise DataUnavailable("transaction_type: no client")
-    try:
-        row = _maybe_one(client.table("transactions").select("type") \
-            .eq("id", transaction_id).eq("family_id", family_id))
-        return (row or {}).get("type")
-    except Exception as e:
-        raise DataUnavailable("transaction_type") from e
-
-
 def is_recurring_instance(transaction_id: str, family_id: str) -> bool:
     """האם העסקה היא מופע שנוצר מסדרה קבועה (ולא תבנית בפני עצמה).
 

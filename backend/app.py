@@ -2958,54 +2958,6 @@ def sync_recurring_template(template_id):
 
 # ─── API: Receipt scanning (צילום קבלה) ───────────────────────────────────────
 
-@app.route("/api/transactions/<tx_id>/receipt", methods=["POST"])
-@limiter.limit("20 per minute")
-@login_required
-@tx_visible_required("tx_id")
-def attach_receipt(tx_id):
-    """צירוף קבלה להוצאה קיימת (מתן, 3.10 — רעיון 34). רק התמונה: בלי קריאה
-    אוטומטית (לא נוגעים בסכום, בתיאור או בתאריך, ולא נספר במכסת הסריקות).
-    קבלה קודמת — נמחקת, אלא אם עסקה אחרת עדיין מצביעה עליה."""
-    user = get_current_user()
-    family_id = user["family_id"]
-    if not family_id:
-        return jsonify({"error": "לא מצאנו את המשפחה שלכם — רעננו את הדף"}), 400
-    try:
-        tx_type = db.transaction_type(tx_id, family_id)
-    except db.DataUnavailable:
-        return jsonify({"error": "לא הצלחנו לבדוק את העסקה — נסו שוב"}), 503
-    if tx_type is None:
-        return jsonify({"error": "העסקה לא נמצאה"}), 404
-    if tx_type != "expense":
-        return jsonify({"error": "אפשר לצרף קבלה רק להוצאה"}), 422
-
-    file = request.files.get("image")
-    if not file:
-        return jsonify({"error": "לא התקבלה תמונה"}), 422
-    if (file.mimetype or "") not in db._RECEIPT_MEDIA_TYPES:
-        return jsonify({"error": "סוג הקובץ לא נתמך — נא לצלם או לבחור תמונה (JPG/PNG/WebP)"}), 422
-    image_bytes = file.read()
-    if not image_bytes:
-        return jsonify({"error": "לא התקבלה תמונה"}), 422
-    if len(image_bytes) > 6 * 1024 * 1024:
-        return jsonify({"error": "התמונה גדולה מדי — נסו שוב עם תמונה קטנה יותר"}), 413
-
-    old_path = db.get_transaction_receipt_path(tx_id, family_id)
-    new_path, err = db.upload_receipt(session.get("access_token"), family_id, image_bytes,
-                                      file.mimetype or "image/jpeg")
-    if err or not new_path:
-        logger.error("attach_receipt: upload: %s", err)
-        return jsonify({"error": "העלאת הקבלה נכשלה — נסו שוב"}), 500
-    result, err = db.update_transaction(tx_id, family_id, {"receipt_path": new_path})
-    if err or not result:
-        # העסקה לא קיבלה את הקובץ — הוא לא שייך לכלום, מוחקים אותו
-        db.delete_receipt(session.get("access_token"), new_path)
-        return jsonify({"error": "צירוף הקבלה נכשל — נסו שוב"}), 500
-    if old_path and old_path != new_path:
-        _delete_unused_receipts(family_id, [old_path])
-    return jsonify({"status": "ok", "replaced": bool(old_path)})
-
-
 @app.route("/api/receipts/discard", methods=["POST"])
 @limiter.limit("30 per minute")
 @login_required

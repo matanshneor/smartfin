@@ -715,12 +715,12 @@ def test_a_new_transaction_is_checked_before_it_is_saved():
 
 
 def test_an_edit_can_be_undone_from_the_toast():
-    """מתן (30.9, סבב 6 פריט 10): בחלון העריכה ובעורך שבשורה בדף הבית.
+    """מתן (30.9, סבב 6 פריט 10): בחלון העריכה — מאז 5.10 גם בדף הבית.
     לא אחרי "עדכן להבא" — הביטול היה מחזיר רק חצי מהשינוי."""
     js = _strip_comments(_read("frontend/static/js/transactions.js"))
     assert "Object.assign({}, spec.body, { if_match: spec.if_match })" in js
     assert "!(followUp && (followUp.series || followUp.error))" in js
-    assert "rememberUndo(undoSpec(tx, data.transaction, 'העסקה עודכנה'))" in js
+    assert "undoSpec(myOriginal, data.transaction, message)" in js
     assert "{ label: 'ביטול', onClick: function () { runUndo(spec); } }" in js
 
 

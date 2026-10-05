@@ -39,18 +39,16 @@ def test_the_refresh_waits_while_something_is_being_edited():
     assert "refreshWhenEditingEnds = true" in body
 
 
-def test_both_editing_surfaces_count():
-    """המודאל ועורך-השורה. שכחתי אחד מהם = רענון באמצע הקלדה."""
+def test_the_editing_window_counts():
+    """מאז 5.10 יש רק חלון עריכה אחד — גם בדף הבית (העורך בשורה הוסר)."""
     body = _fn("somethingIsBeingEdited")
 
     assert "overlay.classList.contains('open')" in body
-    assert "openInlineRow" in body
 
 
 def test_the_deferred_refresh_actually_happens_when_editing_ends():
     """דחייה בלי השלמה היא יתרה שלא מתעדכנת לעולם."""
     assert "refreshIfPending();" in _fn("closeModal")
-    assert "refreshIfPending();" in _fn("closeInlineEditor")
 
     body = _fn("refreshIfPending")
     assert "refreshWhenEditingEnds" in body and "refreshAfterDelete()" in body

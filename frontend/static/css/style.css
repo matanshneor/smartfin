@@ -844,8 +844,7 @@ a.kpi-chip:active { transform: scale(0.97); }
 }
 
 
-/* השורה עצמה היא מיכל אנכי: כותרת (.tx-head) + עורך מתקפל (.tx-editor).
-   הריפוד עבר ל-.tx-head כדי שהעורך יוכל להיפתח בלי רווח כפול. */
+/* השורה היא מיכל, והריפוד על .tx-head — עליו יושבים פאנלי ההחלקה */
 .transaction-item {
     display: block;
     background: var(--color-card);
@@ -869,9 +868,6 @@ a.kpi-chip:active { transform: scale(0.97); }
     background: var(--color-card-hover);
     transform: scale(0.99);
 }
-
-/* כרטיסייה פתוחה לא "נלחצת" — היא כבר במוקד */
-.transaction-item.open:active { transform: none; background: var(--color-card); }
 
 .tx-icon {
     width: 38px;
@@ -930,70 +926,6 @@ a.kpi-chip:active { transform: scale(0.97); }
 .tx-amount.income  { color: var(--color-income); }
 .tx-amount.expense { color: var(--color-expense); }
 .tx-amount.savings { color: var(--color-savings); }
-
-/* ════ עריכה בתוך הכרטיסייה (דף הבית) ════
-   הגובה מונפש דרך grid-template-rows: 0fr→1fr — הדרך היחידה לאנימציית
-   גובה חלקה בלי לדעת את הגובה מראש (max-height מחייב ניחוש, ומקפיץ
-   כשהניחוש שגוי). ההנפשה של השאר היא opacity+transform בלבד, שרצות על
-   ה-compositor ולא גורמות לחישוב פריסה מחדש. */
-
-.tx-editor {
-    display: grid;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows 0.32s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.transaction-item.open .tx-editor { grid-template-rows: 1fr; }
-
-.tx-editor > .tx-editor-inner { overflow: hidden; }
-
-.tx-editor-body {
-    padding: 2px 14px 14px;
-    border-top: 1px solid var(--divider-subtle);
-    margin-top: 2px;
-    opacity: 0;
-    transform: translateY(-4px);
-    transition: opacity 0.2s ease 0.06s, transform 0.2s ease 0.06s;
-}
-
-.transaction-item.open .tx-editor-body { opacity: 1; transform: none; }
-
-/* פוקוס: הפתוחה מורמת ומודגשת, השאר נסוגות */
-.transaction-item.open {
-    box-shadow: var(--shadow-lift);
-    border-color: var(--color-gold-border);
-}
-
-li.transaction-item.open.swipe-ready > .swipe-content {
-    box-shadow: var(--shadow-lift);
-    border-color: var(--color-gold-border);
-}
-
-.transactions-list.has-open .transaction-item:not(.open) {
-    opacity: 0.42;
-    transform: scale(0.985);
-}
-
-.tx-editor-row { margin-top: 12px; }
-
-.tx-editor-actions {
-    display: flex;
-    gap: 8px;
-    margin-top: 14px;
-}
-
-.tx-editor-actions .btn-sm { flex: 1; }
-
-.tx-editor-delete {
-    flex: 0 0 46px;
-    border: none;
-    border-radius: var(--radius-sm);
-    background: rgba(185, 28, 28, 0.08);
-    color: var(--color-expense);
-    font-size: 0.95rem;
-    cursor: pointer;
-    font-family: inherit;
-}
 
 /* ── תגי שם צבעוניים: למי שייכת העסקה ── */
 
@@ -1935,13 +1867,8 @@ a.submit-btn {
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-/* צירוף קבלה להוצאה קיימת (מתן, 3.10 — רעיון 34) */
-/* העיצוב — של ‎.scan-btn‎ (אותו מקום בראש החלון) */
-.receipt-attach-btn:disabled { opacity: 0.6; }
-.receipt-attach-btn[hidden] { display: none; }
-
-/* "הוזנה ע״י אור · אתמול 18:32" — מידע משני בתחתית חלון העריכה (מתן, 3.10) */
-.tx-entered-meta { margin: 12px 0 0; text-align: center; font-size: 0.78rem; color: var(--color-text-muted); }
+/* "הוזנה ע״י אור · אתמול 18:32" — בשורת הכותרת של חלון העריכה (מתן, 3.10 / 5.10) */
+.tx-entered-meta { margin: 0; text-align: end; font-size: 0.72rem; line-height: 1.3; color: var(--color-text-muted); max-width: 45%; }
 .tx-entered-meta[hidden] { display: none; }
 
 .edit-mode-actions {
@@ -4804,3 +4731,67 @@ body.tx-screen-open { overflow: hidden; }
     padding: 14px 16px calc(env(safe-area-inset-bottom, 0px) + 24px);
 }
 .cat-tx-list.tx-screen-list { background: var(--color-card); border: var(--border-subtle); border-radius: var(--radius); box-shadow: var(--shadow-card); padding: 4px 14px; }
+
+/* ─── חלון הוספה/עריכה במסך אחד (מתן, 5.10) ───────────────────────────
+   הקטגוריות בגודל של היום; מה שהתקצר הוא כל השאר: רווחים, "סריקת קבלה",
+   "של מי", התאריך בשורה אחת, תדירות ותאריך סיום זה לצד זה, ושכפול/מחיקה
+   כקישורים. מוגבל לחלון — טפסים בעמודים אחרים לא משתנים. */
+/* החלון עד 96% מגובה המסך (היה 92%), וריפוד תחתון קטן יותר — כך הוא
+   נכנס במסך אחד בלי להקטין את הקטגוריות */
+#modalOverlay .modal-sheet { max-height: 96vh; max-height: 96dvh; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+#modalOverlay .modal-handle { margin-bottom: 8px; }
+#modalOverlay .toggle-btn { padding-block: 7px; }
+#modalOverlay .tx-form .form-input:not(.amount-input) { padding-block: 9px; }
+#modalOverlay .submit-btn { padding-block: 13px; }
+#modalOverlay .scan-btn { padding: 8px; margin-bottom: 8px; font-size: 0.85rem; }
+#modalOverlay .modal-header { gap: 8px; margin-bottom: 10px; }
+.modal-title-row { display: flex; align-items: center; gap: 10px; padding-inline-end: 44px; min-height: 32px; }
+.modal-title-row .modal-title { flex: 1; }
+#modalOverlay .tx-form .form-group { margin-bottom: 8px; }
+#modalOverlay .form-label { margin-bottom: 5px; }
+#modalOverlay .amount-input { padding-block: 7px; }
+#modalOverlay .owner-btn { padding: 7px 4px; font-size: 0.85rem; }
+#modalOverlay .form-error:empty { min-height: 0; margin: 0; }
+#modalOverlay .recurring-group { margin-top: 12px; margin-bottom: 10px; }
+.modal-sheet.is-edit .recurring-group { margin-top: 8px; }
+
+.date-row { display: flex; align-items: center; gap: 8px; }
+.date-row .date-quick-chips { margin-bottom: 0; }
+.date-pick {
+    position: relative; display: inline-flex; align-items: center; gap: 6px;
+    margin-inline-start: auto; padding: 6px 14px; border-radius: 99px;
+    background: var(--color-card); border: 1px solid rgba(var(--ink-rgb), 0.14);
+    font-size: 0.82rem; font-weight: 600; color: var(--color-text-soft); white-space: nowrap;
+}
+.date-pick.active { color: var(--color-gold-text); background: var(--color-gold-dim); border-color: var(--color-gold-border); }
+.date-pick-change { display: none; }
+/* שדה התאריך האמיתי — שקוף, ומכסה את כל הכפתור: נגיעה פותחת את הבורר */
+.date-pick-input {
+    position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0;
+    font-size: max(1rem, 16px); cursor: pointer; border: 0; padding: 0; margin: 0;
+    -webkit-appearance: none; appearance: none; color-scheme: light;
+}
+.date-pick:focus-within { box-shadow: 0 0 0 3px rgba(166, 124, 0, 0.14); border-color: var(--color-gold); }
+/* עריכה: בלי היום/אתמול/שלשום — התאריך המלא בעברית, ו"שינוי" */
+.modal-sheet.is-edit .date-quick-chips { display: none; }
+.modal-sheet.is-edit .date-pick {
+    flex: 1; margin: 0; gap: 10px; min-height: 44px; padding: 5px 12px;
+    border-radius: var(--radius-sm); font-size: 0.95rem; font-weight: 500; color: var(--color-text);
+}
+.modal-sheet.is-edit .date-pick-icon {
+    width: 32px; height: 32px; border-radius: 9px; background: var(--color-input);
+    display: flex; align-items: center; justify-content: center; font-size: 1rem;
+}
+.modal-sheet.is-edit .date-pick-text { flex: 1; }
+.modal-sheet.is-edit .date-pick-change { display: inline; color: var(--color-gold-text); font-size: 0.8rem; font-weight: 600; }
+
+#modalOverlay .recurring-fields { padding: 12px; margin-top: 10px; }
+#modalOverlay .recurring-fields.visible { display: grid; grid-template-columns: 3fr 2fr; gap: 8px; }
+/* "כל חודש (באותו התאריך)" ארוך — לתדירות יותר רוחב, וטקסט מעט קטן */
+#modalOverlay .recurring-fields .form-input { font-size: 0.88rem; padding-inline: 10px; }
+#modalOverlay .recurring-fields select.form-input { padding-left: 28px; background-position: left 10px center; }
+#modalOverlay .recurring-fields .form-group { margin-bottom: 0; min-width: 0; }
+
+#modalOverlay .edit-mode-actions { justify-content: center; gap: 28px; margin-top: 8px; }
+#modalOverlay .duplicate-tx-btn,
+#modalOverlay .delete-tx-btn { flex: none; padding: 5px 4px; background: none; border: 0; font-size: 0.88rem; }

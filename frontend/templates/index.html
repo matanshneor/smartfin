@@ -156,8 +156,8 @@
     {% if transactions %}
     <ul class="transactions-list" aria-label="רשימת עסקאות אחרונות">
         {% for tx in transactions %}
-        {# role/tabindex יושבים על .tx-head ולא על ה-li: אחרי הפתיחה ה-li מכיל
-           טופס, ו-role="button" שעוטף שדות קלט הוא שגוי לקוראי מסך #}
+        {# role/tabindex על .tx-head: הוא מה שנפתח לעריכה. בתוך ה-li יושבים גם
+           תג הקבלה (קישור) ופאנלי ההחלקה, ו-role="button" לא אמור לעטוף אותם #}
         <li class="transaction-item" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
             data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
             data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}"
@@ -165,7 +165,7 @@
             data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
             data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
                     data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
-            <div class="tx-head" role="button" tabindex="0" aria-expanded="false"
+            <div class="tx-head" role="button" tabindex="0" aria-haspopup="dialog"
                  aria-label="עריכת {{ tx.category_name }}, {{ tx.amount | money }} שקלים">
                 <div class="tx-icon {{ tx.type }}">
                     <span class="tx-emoji">{{ tx.category_icon }}</span>
@@ -198,9 +198,6 @@
                     {% endif %}
                 </div>
             </div>
-            {# מיכל העורך נשאר ריק עד הפתיחה — בלעדיו כל טעינת עמוד הייתה נושאת
-               טופס שלם לכל עסקה ברשימה #}
-            <div class="tx-editor"><div class="tx-editor-inner"></div></div>
         </li>
         {% endfor %}
     </ul>

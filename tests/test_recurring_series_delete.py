@@ -272,12 +272,12 @@ def test_a_recurring_transaction_is_not_asked_the_generic_question_first():
 
 
 def test_every_delete_path_goes_through_the_same_gate():
-    """שלושה מסלולי מחיקה — המודאל, העורך בשורה, וההחלקה. שלושתם
+    """מסלולי המחיקה — המודאל וההחלקה (העורך בשורה הוסר ב-5.10). כולם
     שאלו את השאלה הגנרית בנפרד, וכל אחד היה יכול להישאר מאחור."""
     js = _js()
 
     assert js.count("title: 'למחוק את העסקה?'") == 1, "נשארה שאלה גנרית מקומית"
-    assert js.count("confirmDelete(") == 4, "לא כל מסלולי המחיקה עוברים בשער"
+    assert js.count("confirmDelete(") == 3, "לא כל מסלולי המחיקה עוברים בשער"
 
 
 def test_an_ordinary_transaction_still_gets_asked():

@@ -124,14 +124,6 @@
             </button>
             <input type="file" id="receiptInput" accept="image/*" capture="environment" hidden>
 
-            {# צירוף קבלה להוצאה קיימת (מתן, 3.10 — רעיון 34): במקום של "סריקת קבלה",
-               שמוסתר בעריכה, ובאותו עיצוב (מתן: "קטן מדי", "יותר למעלה"). רק התמונה,
-               בלי קריאה אוטומטית. בלי ‎capture‎ — אפשר לצלם או לבחור תמונה קיימת #}
-            <button type="button" class="scan-btn receipt-attach-btn" id="receiptAttachBtn" hidden>
-                <span class="scan-btn-icon">📷</span>
-                <span class="scan-btn-text receipt-attach-label">צירוף קבלה</span>
-            </button>
-            <input type="file" id="receiptAttachInput" accept="image/*" hidden>
 
             <!-- Scanner Animation -->
             <div class="scanner-wrapper" id="scannerWrapper" aria-hidden="true">
@@ -148,7 +140,12 @@
 
             <!-- Header: title + toggle -->
             <div class="modal-header">
-                <h2 class="modal-title" id="modalTitle">הוספת עסקה</h2>
+                <div class="modal-title-row">
+                    <h2 class="modal-title" id="modalTitle">הוספת עסקה</h2>
+                    {# מי הזין ומתי (מתן, 3.10) — נטען כשהחלון נפתח לעריכה. בשורת
+                       הכותרת ולא בתחתית: כך חלון העריכה נכנס במסך אחד (מתן, 5.10) #}
+                    <p class="tx-entered-meta" id="txEnteredMeta" hidden></p>
+                </div>
                 <div class="type-toggle type-toggle-3" role="group" aria-label="מחלקת העסקה">
                     <button class="toggle-btn active" id="toggleExpense" data-type="expense" aria-pressed="true">הוצאה</button>
                     <button class="toggle-btn" id="toggleIncome" data-type="income" aria-pressed="false">הכנסה</button>
@@ -176,12 +173,7 @@
                     <input type="hidden" id="txReceiptPath" name="receipt_path">
                 </div>
 
-                <div class="form-group" id="ownerGroup">
-                    <label class="form-label" id="ownerLabel">של מי ההוצאה?</label>
-                    <div class="owner-toggle" id="ownerToggle" role="radiogroup" aria-label="בחירת בן משפחה"></div>
-                    <input type="hidden" id="txOwner" name="owner">
-                </div>
-
+                {# התיאור מיד אחרי הקטגוריה — שניהם עונים על "על מה" (מתן, 5.10) #}
                 <div class="form-group">
                     <label class="form-label" for="txDescription">תיאור קצר</label>
                     <input class="form-input" type="text" id="txDescription"
@@ -191,15 +183,32 @@
                     <div class="desc-suggest" id="descSuggest" role="listbox" aria-label="תיאורים קודמים" hidden></div>
                 </div>
 
+                <div class="form-group" id="ownerGroup">
+                    <label class="form-label" id="ownerLabel">של מי ההוצאה?</label>
+                    <div class="owner-toggle" id="ownerToggle" role="radiogroup" aria-label="בחירת בן משפחה"></div>
+                    <input type="hidden" id="txOwner" name="owner">
+                </div>
+
+
+                {# שורה אחת (מתן, 5.10): בהוספה — היום/אתמול/שלשום ו"תאריך אחר";
+                   בעריכה — רק התאריך, בעברית, עם "שינוי". שדה התאריך עצמו שקוף
+                   ומכסה את הכפתור, כך שנגיעה פותחת את הבורר של המכשיר. #}
                 <div class="form-group">
                     <label class="form-label" for="txDate">תאריך</label>
-                    <div class="date-quick-chips">
-                        <button type="button" class="date-chip" data-days="0">היום</button>
-                        <button type="button" class="date-chip" data-days="-1">אתמול</button>
-                        {# שלשום (מתן, 30.9 — סבב 6, פריט 11): ביום ראשון מזינים את שישי #}
-                        <button type="button" class="date-chip" data-days="-2">שלשום</button>
+                    <div class="date-row">
+                        <div class="date-quick-chips">
+                            <button type="button" class="date-chip" data-days="0">היום</button>
+                            <button type="button" class="date-chip" data-days="-1">אתמול</button>
+                            {# שלשום (מתן, 30.9 — סבב 6, פריט 11): ביום ראשון מזינים את שישי #}
+                            <button type="button" class="date-chip" data-days="-2">שלשום</button>
+                        </div>
+                        <div class="date-pick">
+                            <span class="date-pick-icon" aria-hidden="true">📅</span>
+                            <span class="date-pick-text" id="datePickText" aria-hidden="true">תאריך אחר</span>
+                            <span class="date-pick-change" aria-hidden="true">שינוי ›</span>
+                            <input class="date-pick-input" type="date" id="txDate" required>
+                        </div>
                     </div>
-                    <input class="form-input" type="date" id="txDate" required>
                 </div>
 
                 <div class="form-group recurring-group">
@@ -209,6 +218,7 @@
                         <span class="checkbox-text">עסקה קבועה</span>
                     </label>
 
+                    {# תדירות ותאריך סיום באותה שורה (מתן, 5.10) #}
                     <div class="recurring-fields" id="recurringFields">
                         <div class="form-group">
                             <label class="form-label" for="txFrequency">תדירות</label>
@@ -255,8 +265,6 @@
                     <button type="button" class="btn-ghost duplicate-tx-btn" id="duplicateTxBtn">שכפול העסקה</button>
                     <button type="button" class="delete-tx-btn" id="deleteTxBtn">מחיקת העסקה</button>
                 </div>
-                {# מי הזין ומתי (מתן, 3.10) — נטען כשהחלון נפתח לעריכה #}
-                <p class="tx-entered-meta" id="txEnteredMeta" hidden></p>
 
             </form>
 

@@ -71,27 +71,6 @@ def test_settings_fields_have_a_label_a_screen_reader_can_read(field, label):
     assert label in html
 
 
-def test_the_inline_editor_links_its_labels_to_its_fields():
-    """הטקסט היה שם כל הזמן — פשוט לא מקושר."""
-    js = (_ROOT / "frontend/static/js/transactions.js").read_text(encoding="utf-8")
-    block = js[js.index("function buildInlineEditor"):][:3000]
-
-    # ה-uid משורשר לתוך המחרוזת, אז אין גרש סוגר אחרי שם השדה
-    for field in ("amount", "desc", "date"):
-        assert f'for="\' + uid + \'-{field}"' in block, \
-            f"התווית של {field} לא מקושרת"
-        assert f'id="\' + uid + \'-{field}"' in block, \
-            f"לשדה {field} אין id שהתווית מצביעה אליו"
-
-
-def test_each_inline_editor_gets_its_own_ids():
-    """יותר מעורך אחד נבנה בחיי העמוד. id חוזר היה מקשר תווית לשדה של
-    שורה אחרת — כלומר קורא מסך שמקריא את המספר הלא נכון."""
-    js = (_ROOT / "frontend/static/js/transactions.js").read_text(encoding="utf-8")
-
-    assert "++inlineEditorSeq" in js
-
-
 def test_the_visually_hidden_class_is_still_read_aloud():
     """‎display:none‎ היה מסתיר גם מקורא המסך — כלומר תווית שלא עושה כלום."""
     body = _rule(".sr-only")
