@@ -17,6 +17,7 @@ from .money import format_money
 from .wording import count_of, day_label, share_map, HEBREW_MONTHS as _HEBREW_MONTHS
 from . import clock
 from . import logs
+from . import notify
 
 logs.setup()
 logger = logs.get("smartfin.app")
@@ -882,7 +883,9 @@ def signup():
                     session_obj = getattr(response, "session", None)
                     if session_obj and session_obj.access_token:
                         db.set_auth_token(session_obj.access_token)
-                    _, join_err = db.join_family_by_code(invite_code)
+                    joined_id, join_err = db.join_family_by_code(invite_code)
+                    if joined_id and not join_err:
+                        _notify_owner_about_family("joined", joined_id)
                     if join_err:
                         logger.warning("signup join failed for %s: %s", email, join_err)
                         success = (f"נרשמתם בהצלחה! אבל {join_err}. "
@@ -1090,7 +1093,29 @@ def onboarding_complete():
         logger.error("onboarding bulk_add_categories: %s", err)
         return jsonify({"error": "שמירת הקטגוריות נכשלה — נסו שוב"}), 500
 
+    _notify_owner_about_family("new", user["family_id"], family_name)
     return jsonify({"status": "ok", "categories_created": count})
+
+
+def _notify_owner_about_family(kind: str, family_id: str, family_name: str = None):
+    """מייל לבעל האתר (מתן, 5.10): משפחה סיימה את אשף הפתיחה, או שמישהו
+    הצטרף למשפחה. שם המשפחה וכמה חברים יש בה עכשיו. נשלף כאן, בבקשה —
+    השליחה עצמה ב-thread בלי גישה למסד (ראו ‎notify.py‎). קישוט: שום
+    תקלה כאן לא מפילה הרשמה או הצטרפות."""
+    try:
+        members = db.get_family_members(family_id)
+        name = family_name or (db.get_family(family_id) or {}).get("name") or "בלי שם"
+        count = len(members)
+        when = clock.now().strftime("%d.%m.%Y %H:%M")
+        if kind == "new":
+            subject = f"משפחה חדשה ב-SmartFin: {name}"
+            lines = [f"משפחה חדשה נרשמה: {name}", f"חברי משפחה: {count}", f"מתי: {when}"]
+        else:
+            subject = f"מישהו הצטרף ל{name} ב-SmartFin"
+            lines = [f"בן משפחה חדש הצטרף ל{name}", f"חברי משפחה עכשיו: {count}", f"מתי: {when}"]
+        notify.notify_owner(subject, lines)
+    except Exception:
+        logger.exception("notify owner about family (%s)", kind)
 
 
 def _sync_recurring(family_id):
@@ -3601,6 +3626,7 @@ def join_family():
     family_id, err = db.join_family_by_code(code)
     if err:
         return jsonify({"error": err}), 400
+    _notify_owner_about_family("joined", family_id)
 
     # בלי עדכון ה-session המשתמש ימשיך לראות את המשפחה הישנה עד ליציאה וכניסה
     session["family_id"] = family_id

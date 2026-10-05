@@ -159,6 +159,7 @@ flask --app backend.app run --port 8080
 | `RATELIMIT_STORAGE_URI` | shared rate-limit storage (e.g. a Redis URL). Without it the counters are per-process, which means they barely limit anything across 4 workers — the app logs a warning when this happens in production |
 | `RECEIPT_GLOBAL_MONTHLY_LIMIT` | scans per month across **all** families (default 2000) |
 | `SENTRY_DSN` | error reporting. Request bodies, cookies and auth headers are stripped before sending |
+| `RESEND_API_KEY`, `OWNER_NOTIFY_EMAIL` | an email to the site owner when a family finishes onboarding or someone joins one (family name + member count). Without both, nothing is sent |
 | `LOG_LEVEL` | `INFO` by default |
 | `CSP_REPORT_ONLY` | set while tightening the Content-Security-Policy, so violations are reported instead of blocking |
 
