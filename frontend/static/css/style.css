@@ -1289,6 +1289,7 @@ body:has(.modal-overlay.open) .toast {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
+    transition: opacity 0.2s, visibility 0s;   /* גלוי מיד בפתיחה — ראו ‎.modal-overlay.open‎ */
 }
 
 .confirm-card {
@@ -1383,6 +1384,11 @@ body:has(.modal-overlay.open) .toast {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
+    /* בפתיחה ‎visibility‎ מתחלף **מיד** (בסגירה — בסוף הדעיכה, כמו קודם).
+       במעבר רגיל הוא עוד ‎hidden‎ ברגע הראשון, ובדיוק אז הקוד מעביר את
+       המיקוד לשדה הסכום — והדפדפן מסרב למקד בתוך אלמנט מוסתר. המיקוד
+       נשאר על +, ו-Escape (שנקלט בתוך החלון) לא סגר אותו (מתן, 7.10). */
+    transition: opacity 0.25s, visibility 0s;
 }
 
 .modal-sheet {
