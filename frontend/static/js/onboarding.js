@@ -33,6 +33,23 @@ window.escapeHtml = window.escapeHtml || function (s) {
     // ואיתו כל מה שאחריו — בדיוק כמו שקרה ב-core.js.
     if (!step0) return;
 
+    /* מעבר בין מסכים — הבא נכנס מהצד, לפי כיוון הקריאה (מתן, 7.10 — סבב תנועה,
+     * סעיף 4). בעברית "קדימה" הוא שמאלה: הבא מגיע משמאל, וחזרה — מימין.
+     * קודם המסך התחלף בבת אחת, ולא היה ברור אם התקדמתם או חזרתם.
+     * ‎here‎ — איפה אנחנו בסדר: בחירה 0, הצטרפות 1, שלבים 1–3, הזמנה 4.
+     * ‎animate‎ ולא CSS — הכלל הכללי של תנועה מופחתת לא חל עליו, ולכן הבדיקה כאן. */
+    let here = 0;
+    const calm = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    function enter(el, at) {
+        const dir = at >= here ? 1 : -1;
+        here = at;
+        if (calm || !el || !el.animate) return;
+        el.animate([
+            { opacity: 0, transform: 'translateX(' + (dir * -24) + 'px)' },
+            { opacity: 1, transform: 'none' },
+        ], { duration: 300, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+    }
+
     function goToStep(n) {
         errorBox.textContent = '';
         step0.style.display    = 'none';
@@ -43,6 +60,7 @@ window.escapeHtml = window.escapeHtml || function (s) {
             steps[i].style.display = i === n ? 'block' : 'none';
             dots[i].classList.toggle('active', i <= n);
         });
+        enter(steps[n], n);
     }
 
     function showChoice(which) {
@@ -52,6 +70,7 @@ window.escapeHtml = window.escapeHtml || function (s) {
         dotsBar.style.display  = 'none';
         step0.style.display    = which === 'start' ? 'block' : 'none';
         stepJoin.style.display = which === 'join'  ? 'block' : 'none';
+        enter(which === 'join' ? stepJoin : step0, which === 'join' ? 1 : 0);
     }
 
     // ─── המזלג: משפחה חדשה או הצטרפות ───────────────────────────────────
@@ -243,6 +262,7 @@ window.escapeHtml = window.escapeHtml || function (s) {
             [1, 2, 3].forEach(function (i) { steps[i].style.display = 'none'; });
             dotsBar.style.display = 'none';
             stepInvite.style.display = 'block';
+            enter(stepInvite, 4);
         })
         .catch(function () {
             errorBox.textContent = window.sfNetError();
