@@ -1374,7 +1374,10 @@ body:has(.modal-overlay.open) .toast {
     padding: 14px 20px calc(28px + env(safe-area-inset-bottom, 0px));
     box-shadow: 0 -12px 50px rgba(20, 16, 7, 0.25);
     transform: translateY(60px);
-    transition: transform 0.38s cubic-bezier(0.18, 1.2, 0.3, 1);
+    /* עולה ונעצר חלק, בלי לקפוץ מעבר (מתן, 7.10 — בנוסח אפל, סעיף 4). קפיצה
+       שמורה לתנועה שהייתה בה תנופה של האצבע; לחיצה על + היא לא כזו. העקומה
+       של החלונות באייפון. המשיכה למטה מנהלת את התנועה שלה ב-JS. */
+    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .modal-overlay.open .modal-sheet {

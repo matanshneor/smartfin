@@ -84,6 +84,18 @@ try:
                 setTimeout(tick, 8);
             })""", [y0, dist])
 
+        # 0. בפתיחה בלחיצה החלון עולה ונעצר — לא קופץ מעבר למקום ולא חוזר
+        page.evaluate("document.getElementById('fabBtn').click()")
+        tops = page.evaluate("""() => new Promise(done => {
+            const sh = document.querySelector('.modal-sheet'), out = [], t0 = performance.now();
+            (function f() { out.push(sh.getBoundingClientRect().top);
+                if (performance.now() - t0 < 700) requestAnimationFrame(f); else done(out); })();
+        })""")
+        final = tops[-1]
+        check("opening by tap doesn't overshoot (highest %.1f px above the final spot)" % (final - min(tops)),
+              min(tops) >= final - 0.5)
+        page.click(".modal-close"); page.wait_for_timeout(500)
+
         # 1. גרירה קצרה ואיטית, עצירה, עזיבה — חוזר למקום
         open_sheet()
         hy = handle_y()
