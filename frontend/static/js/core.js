@@ -62,6 +62,48 @@ window.escapeHtml = function (s) {
 // קצרים. הרטט מנוסה בשתי דרכים כי אין אחת שעובדת בכל מקום —
 // navigator.vibrate באנדרואיד, ומתג switch נסתר שמפעיל את ה-haptic של iOS.
 // אין שום דרך לדעת אם המכשיר מושתק, אז לא מנסים: iOS פשוט יבלע את הצליל.
+/* ── תנועה פיזיקלית, משותפת לחלון, לשורות ולכרטיס "השבוע" (מתן, 7.10 — בנוסח אפל) ── */
+
+// קפיץ במונחים של אפל: ‎response‎ — כמה מהר מגיעים (שניות), ‎damping‎ — 1
+// בלי קפיצה, פחות מ-1 קופץ קצת מעבר. מתחיל מהמקום ומהמהירות הנוכחיים,
+// אז אין תפר בין האצבע לתנועה. מחזיר פונקציה שעוצרת אותו באמצע.
+window.sfSpring = function (from, to, v0, response, damping, paint, done, until) {
+    const k = Math.pow(2 * Math.PI / response, 2), c = 4 * Math.PI * damping / response;
+    let x = from, v = v0, last = performance.now(), raf;
+    raf = requestAnimationFrame(function frame(now) {
+        const dt = Math.min((now - last) / 1000, 0.064);
+        last = now;
+        const n = Math.max(1, Math.ceil(dt / 0.004));
+        for (let i = 0; i < n; i++) { v += (-k * (x - to) - c * v) * dt / n; x += v * dt / n; }
+        if ((until && until(x)) || (Math.abs(x - to) < 0.5 && Math.abs(v) < 8)) {
+            paint(until ? x : to); done(); return;
+        }
+        paint(x);
+        raf = requestAnimationFrame(frame);
+    });
+    return function () { cancelAnimationFrame(raf); };
+};
+
+// לאן הייתה מגיעה תנועה במהירות הזו אילו המשיכה לדעוך. ‎0.998‎ — כמו
+// גלילה; ‎0.99‎ — קצר יותר, למרחקים קטנים כמו שורה.
+window.sfProject = function (v, rate) {
+    rate = rate || 0.998;
+    return (v / 1000) * rate / (1 - rate);
+};
+
+// מעבר לגבול — כל פיקסל נוסף זז פחות (כמו בקצה של רשימה באייפון)
+window.sfRubber = function (over, dim) { return (over * dim * 0.55) / (dim + 0.55 * Math.abs(over)); };
+
+// מהירות (px/s) מ-‎100ms‎ האחרונות של הגרירה, לא מכולה. לפחות פריים
+// אחד: הדפדפן מאחד תנועות מהירות, ושתי דגימות באותה אלפית שנייה נתנו
+// מהירות אפס — והנפה חזקה לא עשתה כלום.
+window.sfVelocity = function (samples, now) {
+    const end = samples[samples.length - 1];
+    let first = end;
+    for (let i = samples.length - 1; i >= 0 && now - samples[i].t <= 100; i--) first = samples[i];
+    return (end.p - first.p) / Math.max(end.t - first.t, 16) * 1000;
+};
+
 (function () {
     let audioCtx = null;
 
@@ -542,6 +584,7 @@ document.addEventListener('click', function (e) {
     // אחרי 8px מחליטים פעם אחת אם זו תנועה הצידה או גלילה. הצידה — המסך
     // ננעל עד שהאצבע עוזבת, והכרטיס זז איתה. גלילה — לא נוגעים בכלום.
     let sx = null, sy = 0, axis = null, drag = null;
+    let samples = [];                  // מיקום וזמן, למהירות בעזיבה
 
     function canGo(card, older) {
         const b = card.querySelector('.week-nav-btn[aria-label="' + (older ? 'שבוע קודם' : 'שבוע הבא') + '"]');
@@ -558,6 +601,7 @@ document.addEventListener('click', function (e) {
         if (!card || loading || e.touches.length !== 1) { sx = null; return; }
         sx = e.touches[0].clientX; sy = e.touches[0].clientY;
         axis = null; drag = card;
+        samples = [{ t: e.timeStamp, p: sx }];
     }, { passive: true });
 
     document.addEventListener('touchmove', function (e) {
@@ -573,6 +617,8 @@ document.addEventListener('click', function (e) {
         const allowed = canGo(drag, dx < 0);
         drag.style.transition = '';
         drag.style.transform = 'translateX(' + Math.round(dx * (allowed ? 0.45 : 0.12)) + 'px)';
+        samples.push({ t: e.timeStamp, p: e.touches[0].clientX });
+        if (samples.length > 6) samples.shift();
     }, { passive: false });
 
     document.addEventListener('touchend', function (e) {
@@ -582,8 +628,12 @@ document.addEventListener('click', function (e) {
         const wasX = axis === 'x';
         sx = null; drag = null; axis = null;
         if (!wasX) return;
-        const older = dx < 0;
-        if (Math.abs(dx) < 50 || !canGo(card, older)) { settle(card); return; }
+        // לפי **לאן התנועה הולכת** ולא רק כמה זזה (מתן, 7.10 — בנוסח אפל):
+        // הנפה קצרה ומהירה מעבירה שבוע, וגרירה ארוכה שחוזרת לאחור — לא
+        const aim = dx + window.sfProject(window.sfVelocity(samples, e.timeStamp), 0.99);
+        const older = aim < 0;
+        // גרירה לצד אחד והנפה חזרה לצד השני — התחרטות, לא בקשה לשבוע ההפוך
+        if (Math.abs(aim) < 50 || (aim < 0) !== (dx < 0) || !canGo(card, older)) { settle(card); return; }
         const offset = Number(card.dataset.offset);
         goToWeek(card, older ? offset + 1 : offset - 1, null, older ? -1 : 1);
     }, { passive: true });

@@ -316,8 +316,10 @@
     }
 
     let modalLastFocused = null;
+    let resetSheetDrag = function () {};   // נקבע עם המשיכה לסגירה, למטה
 
     function openModal() {
+        resetSheetDrag();
         loadDescriptions();
         hideSuggest();
         modalLastFocused = document.activeElement;
@@ -591,6 +593,125 @@
             first.focus();
         }
     });
+
+    // תנועה פיזיקלית משותפת — ב-core.js
+    const sfSpring = window.sfSpring, sfProject = window.sfProject,
+          sfRubber = window.sfRubber, sfVelocity = window.sfVelocity;
+
+    /* ── משיכה למטה סוגרת את החלון (מתן, 7.10 — עיצוב בנוסח אפל, סעיף 1) ──
+     *
+     * הידית שבראש החלון לא עשתה כלום, ובאייפון כל חלון כזה נסגר במשיכה.
+     * החלון זז עם האצבע אחד-לאחד. בעזיבה ההחלטה לפי **לאן התנועה הולכת**
+     * ולא רק איפה היא נעצרה: המהירות מוטלת קדימה (הנוסחה של אפל לגלילה),
+     * אז הנפה קצרה ומהירה סוגרת, וגרירה ארוכה ואיטית שחוזרת למעלה — לא.
+     * למעלה מהמקום הוא מתנגד בהדרגה במקום להיעצר בבת אחת.
+     *
+     * האנימציה אחרי העזיבה היא קפיץ שממשיך במהירות של האצבע, בלי תפר
+     * בין הגרירה לתנועה. ונגיעה בחלון באמצע החזרה תופסת אותו מהמקום שבו
+     * הוא באמת נמצא. */
+    (function () {
+        const sheet = modalSheetEl;
+        if (!sheet) return;
+        const SCRIM = 0.6;                       // השקיפות של הרקע הכהה, כמו ב-‎.modal-overlay‎
+        const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let y = 0, anim = null, cleanup = 0, g = null;
+
+        function paint(v) {
+            y = v;
+            sheet.style.transform = 'translateY(' + v + 'px)';
+            const p = Math.min(Math.max(v / sheet.offsetHeight, 0), 1);
+            overlay.style.backgroundColor = 'rgba(20, 16, 7, ' + (SCRIM * (1 - p)).toFixed(3) + ')';
+        }
+        function clearInline() {
+            sheet.style.transition = sheet.style.transform = '';
+            overlay.style.backgroundColor = '';
+            y = 0;
+        }
+        function stop() {
+            if (anim) { anim(); anim = null; }
+            clearTimeout(cleanup); cleanup = 0;
+        }
+        // חלון שנפתח מחדש מתחיל נקי, גם אם הסגירה הקודמת עוד לא סיימה לנקות
+        resetSheetDrag = function () { stop(); clearInline(); };
+
+        function spring(to, v0, response, damping, done, until) {
+            stop();
+            anim = sfSpring(y, to, v0, response, damping, paint,
+                            function () { anim = null; done(); }, until);
+        }
+
+        function snapBack(v) {
+            if (calm) { stop(); clearInline(); return; }
+            spring(0, v, 0.3, 0.8, clearInline);
+        }
+        function dismiss(v) {
+            const h = sheet.offsetHeight;
+            function offScreen() {
+                closeModal();
+                // הרקע דוהה עכשיו; החלון כבר מחוץ למסך. אחרי הדעיכה מחזירים
+                // אותו בשקט למצב הסגור של ה-CSS, בלי שתיראה תנועה.
+                cleanup = setTimeout(function () {
+                    cleanup = 0;
+                    clearInline();
+                    sheet.style.transition = 'none';
+                    void sheet.offsetHeight;          // נקבע בלי מעבר, ורק אז המעבר חוזר
+                    sheet.style.transition = '';
+                }, 300);
+            }
+            if (calm) { offScreen(); return; }
+            spring(h + 40, Math.max(v, 600), 0.3, 1, offScreen, function (x) { return x >= h; });
+        }
+
+        overlay.addEventListener('touchstart', function (e) {
+            if (!overlay.classList.contains('open') || e.touches.length !== 1) return;
+            if (!sheet.contains(e.target)) return;
+            const t = e.touches[0];
+            g = { x0: t.clientX, y0: t.clientY, from: 0, axis: null, samples: [] };
+            if (anim) {
+                // תפיסה באמצע תנועה: ממשיכים מהמקום שבו החלון באמת נמצא
+                stop();
+                g.axis = 'y';
+                g.from = y;
+                sheet.style.transition = 'none';
+            }
+            g.samples.push({ t: e.timeStamp, p: t.clientY });
+        }, { passive: true });
+
+        overlay.addEventListener('touchmove', function (e) {
+            if (!g) return;
+            const t = e.touches[0];
+            const dx = t.clientX - g.x0, dy = t.clientY - g.y0;
+            if (!g.axis) {
+                if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+                // הצידה (פסי הקטגוריות), למעלה, או חלון שגלול פנימה — זו
+                // גלילה רגילה, לא משיכה
+                if (Math.abs(dx) > Math.abs(dy) || dy < 0 || sheet.scrollTop > 0) { g = null; return; }
+                g.axis = 'y';
+                g.y0 += 8;                          // בלי קפיצה של 8 הפיקסלים של ההחלטה
+                sheet.style.transition = 'none';
+            }
+            e.preventDefault();                    // החלון זז, לא התוכן שבתוכו
+            const raw = g.from + t.clientY - g.y0;
+            paint(raw >= 0 ? raw : sfRubber(raw, sheet.offsetHeight));
+            g.samples.push({ t: e.timeStamp, p: t.clientY });
+            if (g.samples.length > 6) g.samples.shift();
+        }, { passive: false });
+
+        function release(e, cancelled) {
+            if (!g) return;
+            const dragged = g.axis === 'y';
+            const s = g.samples;
+            g = null;
+            if (!dragged) return;
+            if (cancelled) { snapBack(0); return; }
+            const v = sfVelocity(s, e.timeStamp);
+            const h = sheet.offsetHeight;
+            if (v >= 0 && y + sfProject(v) > Math.min(h / 2, 240)) dismiss(v);
+            else snapBack(v);
+        }
+        overlay.addEventListener('touchend', function (e) { release(e, false); }, { passive: true });
+        overlay.addEventListener('touchcancel', function (e) { release(e, true); }, { passive: true });
+    })();
 
     // החלפת סוג שומרת את הפרויקט שנבחר, אם הוא עוקב גם אחרי הסוג החדש
     // (‎buildProjectSelect‎ מוריד אותו אם לא). קודם כל החלפה איפסה אותו.
@@ -1629,8 +1750,10 @@
     (function () {
         const ROW_SELECTOR = '.transaction-item, .cat-tx-row, .recurring-row';
         const OPEN_X = 76;    // מרחק הנעילה הפתוחה, תואם לרוחב .swipe-action
-        const THRESHOLD = 42; // גרירה מעבר לזה תינעל פתוחה בשחרור
+        const THRESHOLD = 42; // לאן התנועה הולכת (מקום + תנופה) — מעבר לזה נפתחת
+        const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         let drag = null;
+        let anim = null;    // { content, cancel } — הקפיץ שרץ עכשיו, אם יש
         let openRow = null; // השורה שכרגע פתוחה (אם יש), כדי לסגור אותה בלחיצה במקום אחר
 
         // שורת עסקה קבועה ברשימה של ההגדרות — שם "הסרה" עוצרת את הסדרה
@@ -1661,9 +1784,28 @@
             row.appendChild(content);
         }
 
+        function stopAnim() {
+            if (anim) { anim.cancel(); anim = null; }
+        }
+
+        // מגיעים ל-‎to‎ בקפיץ שממשיך במהירות של האצבע (‎v‎, px/s). פתיחה
+        // אחרי הנפה קופצת טיפה מעבר — הייתה בה תנופה; סגירה נעצרת חלק.
+        function settleTo(content, from, to, v) {
+            stopAnim();
+            if (calm) { content.style.transition = ''; content.style.transform = to ? 'translateX(' + to + 'px)' : ''; return; }
+            content.style.transition = 'none';
+            const paint = function (x) { content.style.transform = 'translateX(' + x + 'px)'; };
+            anim = { content: content, cancel: sfSpring(from, to, v, 0.3, to ? 0.85 : 1, paint, function () {
+                anim = null;
+                content.style.transition = '';
+                if (!to) content.style.transform = '';
+            }) };
+        }
+
         function closeRow(row) {
             const content = row.querySelector('.swipe-content');
-            if (content) content.style.transform = '';
+            if (anim && anim.content === content) stopAnim();
+            if (content) { content.style.transition = ''; content.style.transform = ''; }
             row.classList.remove('swipe-open');
             if (openRow === row) openRow = null;
         }
@@ -1704,6 +1846,7 @@
                 startY: touch.clientY,
                 deltaX: 0,
                 dragging: false,
+                samples: [{ t: e.timeStamp, p: touch.clientX }],
             };
         }, { passive: true });
 
@@ -1716,14 +1859,24 @@
                 if (Math.abs(dx) < 8) return;
                 if (Math.abs(dy) > Math.abs(dx)) { drag = null; return; } // גלילה אנכית — לא swipe
                 drag.dragging = true;
+                drag.startX += dx > 0 ? 8 : -8;    // בלי קפיצה של 8 הפיקסלים של ההחלטה
+                // בלי ההשהיה של ה-CSS: השורה זזה עם האצבע, לא 0.2 שניות אחריה
+                if (anim && anim.content === drag.content) stopAnim();
+                drag.content.style.transition = 'none';
             }
-            drag.deltaX = Math.max(-100, Math.min(100, dx));
+            // עד רוחב הכפתור — אחד לאחד; מעבר לו — התנגדות שגדלה בהדרגה,
+            // במקום קיר ב-100 פיקסלים
+            const raw = touch.clientX - drag.startX;
+            const over = Math.abs(raw) - OPEN_X;
+            drag.deltaX = over <= 0 ? raw : Math.sign(raw) * (OPEN_X + sfRubber(over, drag.row.offsetWidth));
             drag.content.style.transform = 'translateX(' + drag.deltaX + 'px)';
+            drag.samples.push({ t: e.timeStamp, p: touch.clientX });
+            if (drag.samples.length > 6) drag.samples.shift();
         }, { passive: true });
 
-        document.addEventListener('touchend', function () {
+        document.addEventListener('touchend', function (e) {
             if (!drag) return;
-            const { row, content, deltaX, dragging } = drag;
+            const { row, content, deltaX, dragging, samples } = drag;
             if (dragging) {
                 // מונע פתיחת עריכה מה-click הסינתטי שהדפדפן עשוי לירות אחרי
                 // המגע. דפדפנים בדרך כלל לא יורים click אחרי גרירה אמיתית,
@@ -1732,17 +1885,33 @@
                 justSwiped = true;
                 setTimeout(function () { justSwiped = false; }, 400);
             }
-            if (dragging && Math.abs(deltaX) > THRESHOLD) {
-                const openDir = deltaX > 0 ? 'right' : 'left';
-                content.style.transform = 'translateX(' + (openDir === 'right' ? OPEN_X : -OPEN_X) + 'px)';
+            // ההחלטה לפי **לאן התנועה הולכת**: הנפה קצרה ומהירה פותחת, וגרירה
+            // ארוכה שחוזרת לאחור — לא. הכיוון — של הנקודה שאליה היא מגיעה.
+            const v = dragging ? sfVelocity(samples, e.timeStamp) : 0;
+            const aim = deltaX + sfProject(v, 0.99);
+            // גרירה לצד אחד והנפה חזרה לצד השני — התחרטות: נסגרת, לא נפתחת הפוך
+            if (dragging && Math.abs(aim) > THRESHOLD && (aim > 0) === (deltaX > 0)) {
+                const openDir = aim > 0 ? 'right' : 'left';
                 content.dataset.openDir = openDir;
                 row.classList.add('swipe-open');
                 openRow = row;
+                settleTo(content, deltaX, openDir === 'right' ? OPEN_X : -OPEN_X, v);
+            } else if (dragging) {
+                row.classList.remove('swipe-open');
+                if (openRow === row) openRow = null;
+                settleTo(content, deltaX, 0, v);
             } else {
                 closeRow(row);
             }
             drag = null;
         });
+
+        // הדפדפן לקח את המגע (גלילה, חלון מערכת) — השורה חוזרת למקום ולא נתקעת באמצע
+        document.addEventListener('touchcancel', function () {
+            if (!drag) return;
+            if (drag.dragging) closeRow(drag.row);
+            drag = null;
+        }, { passive: true });
 
         // לחיצה במקום כלשהו מחוץ לשורה הפתוחה (כולל שורה אחרת) סוגרת אותה
         document.addEventListener('click', function (e) {
