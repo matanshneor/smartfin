@@ -4546,6 +4546,32 @@ body > .color-sheet { z-index: 180; }
     display: flex; flex-direction: column; gap: 12px;
 }
 .color-sheet-title { margin: 0; font-weight: 700; font-size: 1.05rem; }
+
+/* החלונות הקטנים (אייקון, צבע, תקציבים, "איך מצרפים") — עולים מלמטה כמו
+   החלון הראשי, ויורדים באותו מסלול (מתן, 7.10 — סבב תנועה, סעיף 2). קודם
+   הם קפצו בבת אחת, והחלון הראשי ואישור המחיקה כבר זזו — לא היה אחיד.
+   ‎@starting-style‎ — הכניסה, בלי JS. ‎allow-discrete‎ משאיר את החלון מוצג
+   בזמן היציאה; דפדפן שלא מכיר אותם פשוט פותח וסוגר בלי תנועה. */
+.icon-picker, .color-sheet {
+    opacity: 1;
+    transition: opacity 250ms ease, display 250ms allow-discrete, overlay 250ms allow-discrete;
+}
+.icon-picker-card, .color-sheet-card {
+    transform: translateY(0);
+    transition: transform 350ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.icon-picker[hidden], .color-sheet[hidden] { opacity: 0; pointer-events: none; }
+.icon-picker[hidden] .icon-picker-card,
+.color-sheet[hidden] .color-sheet-card {
+    transform: translateY(100%);
+    transition-duration: 200ms;            /* יציאה מהירה מהכניסה */
+    transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+}
+@starting-style {
+    .icon-picker:not([hidden]), .color-sheet:not([hidden]) { opacity: 0; }
+    .icon-picker:not([hidden]) .icon-picker-card,
+    .color-sheet:not([hidden]) .color-sheet-card { transform: translateY(100%); }
+}
 .color-sheet-hint { margin: -6px 0 0; font-size: 0.82rem; color: var(--color-text-muted); }
 .color-sheet-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .color-option {

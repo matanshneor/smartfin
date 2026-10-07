@@ -60,7 +60,7 @@ try:
         page.click("#memberColorOpen"); page.wait_for_timeout(300)
         print("after pick:", page.locator(".color-option.is-current").get_attribute("data-color"),
               "| button swatch:", page.locator(".member-color-swatch").get_attribute("style"))
-        page.keyboard.press("Escape"); page.wait_for_timeout(200)
+        page.keyboard.press("Escape"); page.wait_for_timeout(450)   # החלון יורד ב-250ms
         print("escape closes:", not page.is_visible("#memberColorSheet"))
         page.goto(BASE + "/"); page.wait_for_timeout(1000)
         print("home pill class:", page.locator(".owner-pill").first.get_attribute("class") if page.locator(".owner-pill").count() else "(no pills — attribution off)")

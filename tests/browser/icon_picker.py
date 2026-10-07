@@ -38,13 +38,13 @@ try:
         page.click("button.submit-btn")
         page.wait_for_url(lambda u: "/login" not in u, timeout=15000)
 
-        page.goto(BASE + "/projects#new"); page.wait_for_timeout(1000)
+        page.goto(BASE + "/projects/new"); page.wait_for_timeout(1000)
         page.fill("#projectName", "טיול ליפן"); page.wait_for_timeout(100)
         print("suggested for 'טיול ליפן':", page.input_value("#projectIcon"))
         page.click("#projectIcon"); page.wait_for_timeout(300)
         print("picker open:", page.is_visible(".icon-picker"), "| keyboard focus on field:", page.evaluate("document.activeElement.id") == "projectIcon")
         page.screenshot(path="/tmp/icon_picker.png")
-        page.locator(".icon-picker-btn", has_text="🏖").click(); page.wait_for_timeout(200)
+        page.locator(".icon-picker-btn", has_text="🏖").click(); page.wait_for_timeout(450)   # הבורר יורד ב-250ms
         print("picked:", page.input_value("#projectIcon"), "| picker closed:", not page.is_visible(".icon-picker"))
         page.fill("#projectName", "דלק"); page.wait_for_timeout(100)
         print("hand pick not overwritten by suggestion:", page.input_value("#projectIcon"))

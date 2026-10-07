@@ -569,7 +569,14 @@ window.addEventListener('sf:refreshed', paint);
     }
 
     function closeBudgets() {
-        if (sheet) { sheet.remove(); sheet = null; }
+        // קודם ‎hidden‎ — החלון יורד באותו מסלול שעלה (style.css, ‎.color-sheet‎) —
+        // ורק אחרי התנועה יוצא מהעמוד. ‎sheet‎ מתאפס מיד: פתיחה חדשה בונה חלון חדש.
+        if (sheet) {
+            const gone = sheet;
+            sheet = null;
+            gone.hidden = true;
+            setTimeout(function () { gone.remove(); }, 300);
+        }
         const btn = document.getElementById('budgetsOpen');
         if (btn) btn.focus({ preventScroll: true });
     }
