@@ -149,6 +149,23 @@
 
 html {
     -webkit-text-size-adjust: 100%;
+    /* בלי הריבוע האפור שהטלפון צובע על כל נגיעה — הסימן הכי בולט ש"זה אתר".
+       לכפתורים יש ‎:active‎ משלהם (מתן, 7.10 — סבב מגע, סעיף 1) */
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* כפתורים מתנהגים ככפתורים (סבב מגע, 7.10):
+   ‎manipulation‎ — נגיעה כפולה מהירה (שתי קטגוריות, + פעמיים) לא מגדילה את
+   המסך, והלחיצה נקלטת מיד. זום באצבעות נשאר.
+   ‎user-select‎ — לחיצה ארוכה על "שמירה" לא מסמנת את המילה. רק על פקדים:
+   סכומים, תיאורים וקודים נשארים ניתנים להעתקה. */
+button, a, [role="button"], label, summary, select {
+    touch-action: manipulation;
+}
+button, [role="button"], summary, .nav-item, a.btn-sm, a.submit-btn {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
 }
 /* גודל טקסט — מהגדרות → תצוגה, לכל טלפון (מתן, 30.9 — סבב 6, פריט 9).
    כל הגדלים בעמוד ב-rem, אז שינוי אחד כאן מגדיל הכל יחד. */
@@ -1017,7 +1034,7 @@ a.kpi-chip:active { transform: scale(0.97); }
     transform: translate(-50%, -50%);
 }
 
-.receipt-badge:hover { background: var(--color-gold-border); }
+@media (hover: hover) and (pointer: fine) { .receipt-badge:hover { background: var(--color-gold-border); } }
 
 /* בשורות עסקה הסיכה בגובה הטקסט, כדי שלא תגביה את השורה (מתן, 30.9).
    אזור הלחיצה נשאר 44px דרך ‎::before‎, שלא תופס מקום בפריסה. */
@@ -1398,6 +1415,7 @@ body:has(.modal-overlay.open) .toast {
     max-height: 92vh;
     max-height: 92dvh;
     overflow-y: auto;
+    overscroll-behavior: contain;
     background: var(--color-bg-elevated);
     border-radius: 26px 26px 0 0;
     padding: 14px 20px calc(28px + env(safe-area-inset-bottom, 0px));
@@ -3148,7 +3166,7 @@ a.btn-sm { display: inline-flex; align-items: center; justify-content: center; t
 
 .cat-tx-more { justify-content: flex-start; padding-top: 10px; }
 .cat-tx-more a { font-size: 0.8125rem; color: var(--color-gold-text); text-decoration: none; font-weight: 600; }
-.cat-tx-more a:hover { text-decoration: underline; }
+@media (hover: hover) and (pointer: fine) { .cat-tx-more a:hover { text-decoration: underline; } }
 
 /* ─── Auth pages (dark fintech) ───────────────────────────────── */
 
@@ -3407,12 +3425,12 @@ a.btn-sm { display: inline-flex; align-items: center; justify-content: center; t
     transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
-.onboarding-choice:hover,
 .onboarding-choice:focus-visible {
     background: var(--color-card-hover);
     box-shadow: var(--shadow-lift);
     transform: translateY(-1px);
 }
+@media (hover: hover) and (pointer: fine) { .onboarding-choice:hover {  background: var(--color-card-hover);  box-shadow: var(--shadow-lift);  transform: translateY(-1px); } }
 
 .onboarding-choice:active { transform: translateY(0); }
 
@@ -3933,11 +3951,11 @@ li.transaction-item.swipe-ready > .swipe-content {
 
 .auth-back svg { width: 15px; height: 15px; flex-shrink: 0; }
 
-.auth-back:hover,
 .auth-back:focus-visible {
     color: var(--hero-text);
     border-color: rgba(212, 175, 55, 0.45);
 }
+@media (hover: hover) and (pointer: fine) { .auth-back:hover {  color: var(--hero-text);  border-color: rgba(212, 175, 55, 0.45); } }
 
 .auth-back:focus-visible {
     outline: 2px solid var(--color-gold-bright);
@@ -3994,7 +4012,7 @@ li.transaction-item.swipe-ready > .swipe-content {
     border: 1px solid var(--hero-chip-border); background: var(--hero-chip-bg);
     transition: color 0.15s ease, border-color 0.15s ease;
 }
-.lp-nav-link:hover { color: var(--hero-text); border-color: rgba(212,175,55,0.5); }
+@media (hover: hover) and (pointer: fine) { .lp-nav-link:hover { color: var(--hero-text); border-color: rgba(212,175,55,0.5); } }
 
 .lp-hero-grid {
     max-width: 1080px; margin: 0 auto; padding-top: 52px;
@@ -4031,14 +4049,14 @@ li.transaction-item.swipe-ready > .swipe-content {
     padding: 15px 34px; border-radius: 999px; box-shadow: var(--shadow-gold);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-.lp-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(166,124,0,0.38); }
+@media (hover: hover) and (pointer: fine) { .lp-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(166,124,0,0.38); } }
 
 .lp-btn-quiet {
     display: inline-block; color: var(--hero-text); text-decoration: none;
     font-weight: 600; font-size: 1rem; padding: 15px 26px; border-radius: 999px;
     border: 1px solid var(--hero-chip-border); background: var(--hero-chip-bg);
 }
-.lp-btn-quiet:hover { border-color: rgba(212,175,55,0.45); }
+@media (hover: hover) and (pointer: fine) { .lp-btn-quiet:hover { border-color: rgba(212,175,55,0.45); } }
 
 .lp-micro { margin-top: 20px; font-size: 0.8rem; color: var(--hero-text-muted); }
 
@@ -4261,7 +4279,7 @@ li.transaction-item.swipe-ready > .swipe-content {
 }
 .lp-footer-links { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; font-size: 0.86rem; }
 .lp-footer-links a { color: var(--color-text-muted); text-decoration: none; }
-.lp-footer-links a:hover { color: var(--color-gold-text); }
+@media (hover: hover) and (pointer: fine) { .lp-footer-links a:hover { color: var(--color-gold-text); } }
 
 .lp a:focus-visible, .lp-nav-link:focus-visible {
     outline: 2px solid var(--color-gold-bright); outline-offset: 3px; border-radius: 6px;
@@ -4460,6 +4478,7 @@ body.search-open { overflow: hidden; }
 .search-summary { margin: 12px 4px 4px; font-size: 0.85rem; color: var(--color-text-muted); }
 .search-results {
     flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;   /* בסוף הרשימה הגלילה נעצרת, לא ממשיכה לעמוד (סבב מגע) */
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
 }
 .search-month { margin: 16px 4px 6px; font-size: 0.85rem; font-weight: 700; color: var(--color-text-soft); }
@@ -4503,7 +4522,8 @@ body.search-open { overflow: hidden; }
 }
 .icon-picker[hidden] { display: none; }
 .icon-picker-card {
-    width: 100%; max-width: 560px; max-height: 80vh; overflow-y: auto;
+    width: 100%; max-width: 560px; max-height: 80vh; max-height: 80dvh; overflow-y: auto;
+    overscroll-behavior: contain;
     background: var(--color-card); border-radius: 20px 20px 0 0;
     padding: 16px 14px calc(env(safe-area-inset-bottom, 0px) + 16px);
     box-shadow: var(--shadow-lift);
@@ -4516,7 +4536,8 @@ body.search-open { overflow: hidden; }
     aspect-ratio: 1; min-height: 36px; border: 0; border-radius: 10px;
     background: transparent; font-size: 1.35rem; line-height: 1; cursor: pointer;
 }
-.icon-picker-btn:hover, .icon-picker-btn:focus-visible { background: var(--color-input); }
+.icon-picker-btn:focus-visible { background: var(--color-input); }
+@media (hover: hover) and (pointer: fine) { .icon-picker-btn:hover { background: var(--color-input); } }
 .icon-picker-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 12px; }
 input.emoji-input { cursor: pointer; caret-color: transparent; }
 input.emoji-input[data-free-typing] { cursor: text; caret-color: auto; }
@@ -4628,8 +4649,8 @@ body > .color-sheet { z-index: 180; }
 @media (prefers-reduced-motion: reduce) { .sk-card { animation: none; } }
 
 /* חלון התקציבים בעמוד החודש (מתן, 30.9) — אותו חלון-מלמטה כמו בחירת הצבע */
-.budget-sheet-card { max-height: 86vh; }
-.budget-sheet-list { overflow-y: auto; display: flex; flex-direction: column; min-height: 0; }
+.budget-sheet-card { max-height: 86vh; max-height: 86dvh; }
+.budget-sheet-list { overscroll-behavior: contain; overflow-y: auto; display: flex; flex-direction: column; min-height: 0; }
 .budget-sheet-row {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     padding: 10px 0; border-top: 1px solid var(--divider-subtle); cursor: default;
@@ -4693,8 +4714,8 @@ body > .color-sheet { z-index: 180; }
 .week-empty { margin: 0; font-size: 0.8rem; color: var(--color-text-muted); }
 
 /* חלון ההוצאות של קטגוריה בחודש — עמוד ההשוואה (מתן, 30.9) */
-.cat-month-sheet .color-sheet-card { max-height: 80vh; }
-.cat-month-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; min-height: 0; }
+.cat-month-sheet .color-sheet-card { max-height: 80vh; max-height: 80dvh; }
+.cat-month-list { list-style: none; margin: 0; padding: 0; overscroll-behavior: contain; overflow-y: auto; min-height: 0; }
 .cat-month-list li {
     display: flex; align-items: center; gap: 10px; padding: 10px 0;
     border-top: 1px solid var(--divider-subtle); font-size: 0.9rem;
@@ -4825,6 +4846,7 @@ body.tx-screen-open { overflow: hidden; }
 .tx-screen-bar .all-tx-count { background: var(--hero-chip-bg); color: var(--hero-text); border: 1px solid var(--hero-chip-border); }
 .tx-screen-body {
     flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;   /* בסוף הרשימה הגלילה נעצרת, לא ממשיכה לעמוד (סבב מגע) */
     padding: 14px 16px calc(env(safe-area-inset-bottom, 0px) + 24px);
 }
 .cat-tx-list.tx-screen-list { background: var(--color-card); border: var(--border-subtle); border-radius: var(--radius); box-shadow: var(--shadow-card); padding: 4px 14px; }
@@ -4892,3 +4914,13 @@ body.tx-screen-open { overflow: hidden; }
 #modalOverlay .edit-mode-actions { justify-content: center; gap: 28px; margin-top: 8px; }
 #modalOverlay .duplicate-tx-btn,
 #modalOverlay .delete-tx-btn { flex: none; padding: 5px 4px; background: none; border: 0; font-size: 0.88rem; }
+
+/* מקלדת פתוחה (סבב מגע, 7.10): הסרגל התחתון ו-+ יורדים מהדרך. באנדרואיד,
+   עם ‎interactive-widget=resizes-content‎ (ב-viewport), המסך מתכווץ מעל
+   המקלדת — וסרגל צף היה יושב עליה ומכסה את מה שמקלידים. כמו באפליקציות. */
+@media (pointer: coarse) {
+    body:has(:is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea, select):focus) .bottom-nav,
+    body:has(:is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea, select):focus) .fab {
+        visibility: hidden;
+    }
+}
