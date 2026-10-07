@@ -1436,10 +1436,48 @@
      * אותה עסקה מופיעה ב"כל העסקאות", בקטגוריה שלה ובחלוקה לפי בן משפחה —
      * והעותקים האחרים נשארו לחיצים עד הרענון, על עסקה שכבר לא קיימת. */
     function removeTransactionRows(id, row) {
-        if (row) row.remove();
+        if (row) leaveRow(row);
         if (!id) return;
         document.querySelectorAll('.transaction-item, .cat-tx-row, .recurring-row')
-            .forEach(function (el) { if (el.dataset.id === id) el.remove(); });
+            .forEach(function (el) { if (el.dataset.id === id) leaveRow(el); });
+    }
+
+    /* שורה שנמחקה יוצאת בעדינות ולא נעלמת ברגע (מתן, 7.10 — סבב תנועה, סעיף 1).
+     *
+     * ‎row.remove()‎ לבד העלים אותה, וכל השורות שמתחתיה קפצו למעלה בבת אחת.
+     * עכשיו: דהייה וכיווץ קל (120ms), ואז הגובה נסגר (180ms) והשורות שמתחת
+     * עולות ברצף. גם הרווח של הרשימה (‎gap‎) נסגר — אחרת הוא קפץ בסוף.
+     *
+     * השורה מפסיקה להיות עסקה **מיד**: בלי ‎data-id‎ אי אפשר ללחוץ עליה,
+     * להחליק אותה או למצוא אותה שוב בזמן שהיא יוצאת. בתנועה מופחתת הכלל
+     * הכללי ב-style.css מאפס את כל המעברים, והשורות נסגרות מיד. */
+    function leaveRow(el) {
+        if (!el.isConnected || el.dataset.leaving) return;
+        if (el.offsetParent === null) { el.remove(); return; }   // מוסתרת — אין מה לראות
+        el.dataset.leaving = '1';
+        el.removeAttribute('data-id');
+        el.setAttribute('aria-hidden', 'true');
+        el.style.pointerEvents = 'none';
+        const parent = el.parentElement;
+        const gap = parent ? parseFloat(getComputedStyle(parent).rowGap) || 0 : 0;
+        el.style.boxSizing = 'border-box';
+        el.style.height = el.offsetHeight + 'px';
+        el.style.overflow = 'hidden';
+        el.style.transition = 'opacity 120ms ease-out, transform 120ms ease-out';
+        el.style.opacity = '0';
+        el.style.transform = 'scale(0.98)';
+        setTimeout(function () {
+            const ease = '180ms cubic-bezier(0.22, 1, 0.36, 1)';
+            el.style.transition = ['height', 'margin', 'padding', 'border-width']
+                .map(function (p) { return p + ' ' + ease; }).join(', ');
+            el.style.height = '0px';
+            el.style.paddingTop = el.style.paddingBottom = '0px';
+            el.style.borderTopWidth = el.style.borderBottomWidth = '0px';
+            el.style.marginTop = el.style.marginBottom = '0px';
+            // הרווח שבין השורה לשכנה — נבלע בשוליים שליליים, באותו קצב
+            if (gap) el.style[el.nextElementSibling ? 'marginBottom' : 'marginTop'] = -gap + 'px';
+        }, 120);
+        setTimeout(function () { el.remove(); }, 320);
     }
 
     function askAboutSeries(txData, row, later, onFail) {

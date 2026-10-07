@@ -57,7 +57,10 @@ try:
         page.goto(BASE + "/month")
         copies = lambda: page.evaluate("(id) => document.querySelectorAll('[data-id=\"' + id + '\"]').length", tid)
         before = copies()
-        page.click("#txScreenOpen")
+        # "לכל עסקאות החודש" מופיע רק כשיש יותר מ-5 (מאז 5.10); עם עסקה אחת היא
+        # כבר ברשימה המקוצרת
+        if page.locator("#txScreenOpen").count():
+            page.click("#txScreenOpen")
         page.locator(f'.cat-tx-row[data-id="{tid}"]').locator("visible=true").first.click()
         page.wait_for_selector("#modalOverlay.open")
         page.click("#deleteTxBtn")
