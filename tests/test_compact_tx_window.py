@@ -49,8 +49,11 @@ def test_who_entered_it_sits_by_the_title():
     assert header.index('id="modalTitle"') < header.index('id="txEnteredMeta"') < header.index("</div>")
 
 
-def test_frequency_and_end_date_share_a_row():
-    assert "#modalOverlay .recurring-fields.visible { display: grid; grid-template-columns: 3fr 2fr;" in _CSS
+def test_frequency_and_end_date_stack_at_16px():
+    """עד 7.10 הם ישבו באותה שורה ב-0.88rem — והאייפון עשה זום בנגיעה בהם.
+    מתן (7.10) בחר: 16px, אחד מתחת לשני."""
+    assert "#modalOverlay .recurring-fields.visible { display: grid; grid-template-columns: 1fr;" in _CSS
+    assert "#modalOverlay .recurring-fields .form-input { font-size: max(1rem, 16px);" in _CSS
 
 
 def test_the_categories_keep_todays_size():

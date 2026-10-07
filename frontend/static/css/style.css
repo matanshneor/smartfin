@@ -4874,7 +4874,8 @@ body.tx-screen-open { overflow: hidden; }
 #modalOverlay .recurring-group { margin-top: 12px; margin-bottom: 10px; }
 .modal-sheet.is-edit .recurring-group { margin-top: 8px; }
 
-.date-row { display: flex; align-items: center; gap: 8px; }
+/* ‎wrap‎: במסך צר או בטקסט "גדול מאוד" "תאריך אחר" יורד שורה במקום לצאת מהמסך (7.10) */
+.date-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .date-row .date-quick-chips { margin-bottom: 0; }
 .date-pick {
     position: relative; display: inline-flex; align-items: center; gap: 6px;
@@ -4905,9 +4906,11 @@ body.tx-screen-open { overflow: hidden; }
 .modal-sheet.is-edit .date-pick-change { display: inline; color: var(--color-gold-text); font-size: 0.8rem; font-weight: 600; }
 
 #modalOverlay .recurring-fields { padding: 12px; margin-top: 10px; }
-#modalOverlay .recurring-fields.visible { display: grid; grid-template-columns: 3fr 2fr; gap: 8px; }
+/* אחד מתחת לשני (מתן, 7.10): ב-16px "כל חודש (באותו התאריך)" והתאריך לא נכנסו זה לצד זה */
+#modalOverlay .recurring-fields.visible { display: grid; grid-template-columns: 1fr; gap: 8px; }
 /* "כל חודש (באותו התאריך)" ארוך — לתדירות יותר רוחב, וטקסט מעט קטן */
-#modalOverlay .recurring-fields .form-input { font-size: 0.88rem; padding-inline: 10px; }
+/* 16px ולא 0.88rem: מתחת ל-16 האייפון מגדיל את כל המסך בנגיעה בשדה ולא חוזר (7.10) */
+#modalOverlay .recurring-fields .form-input { font-size: max(1rem, 16px); padding-inline: 10px; }
 #modalOverlay .recurring-fields select.form-input { padding-left: 28px; background-position: left 10px center; }
 #modalOverlay .recurring-fields .form-group { margin-bottom: 0; min-width: 0; }
 
