@@ -104,6 +104,36 @@ window.sfVelocity = function (samples, now) {
     return (end.p - first.p) / Math.max(end.t - first.t, 16) * 1000;
 };
 
+/* אזור שנפתח ונסגר בהחלקה של הגובה ולא בקפיצה (מתן, 7.10 — סבב תנועה, סעיף 5).
+ * ‎apply(open)‎ עושה את ההחלפה עצמה (מחלקה) — בפתיחה מיד ואז מגדלים מ-0, בסגירה
+ * מכווצים ורק בסוף מחליפים. לחיצה באמצע — ממשיכים מהגובה שעל המסך עכשיו.
+ * ‎animate‎ ולא CSS, ולכן תנועה מופחתת נבדקת כאן: הכלל הכללי לא חל עליו. */
+window.sfReveal = function (body, open, apply) {
+    const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (calm || !body || !body.animate) { apply(open); return; }
+    const from = body.sfAnim ? body.offsetHeight : null;     // באמצע תנועה קודמת
+    if (body.sfAnim) { body.sfAnim.cancel(); body.sfAnim = null; }
+    if (open) apply(true);
+    const cs = getComputedStyle(body);
+    const full = { height: body.offsetHeight + 'px', opacity: 1,
+                   paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom,
+                   marginTop: cs.marginTop, marginBottom: cs.marginBottom,
+                   borderTopWidth: cs.borderTopWidth, borderBottomWidth: cs.borderBottomWidth };
+    const none = { height: '0px', opacity: 0, paddingTop: '0px', paddingBottom: '0px',
+                   marginTop: '0px', marginBottom: '0px', borderTopWidth: '0px', borderBottomWidth: '0px' };
+    const start = Object.assign({}, open ? none : full);
+    if (from !== null) { start.height = from + 'px'; start.opacity = open ? 0.5 : 1; }
+    body.style.overflow = 'hidden';
+    const anim = body.animate([start, open ? full : none],
+        { duration: open ? 220 : 180, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+    body.sfAnim = anim;
+    anim.onfinish = function () {
+        body.sfAnim = null;
+        body.style.overflow = '';
+        if (!open) apply(false);
+    };
+};
+
 (function () {
     let audioCtx = null;
 

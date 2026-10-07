@@ -19,6 +19,10 @@ settingsHeaders.forEach(function (header) {
         });
         // תיבה פתוחה מעליה נסגרה — העמוד קפץ והתיבה החדשה ברחה למעלה.
         if (closedAbove) group.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        // נפתחת בהחלקה (סבב תנועה, 7.10). רק הפתיחה: הקבוצה שנסגרת למעלה
+        // נסגרת מיד, אחרת הגלילה אל החדשה מחושבת כשהעמוד עוד זז
+        const body = group.querySelector && group.querySelector('.settings-group-body');
+        if (body && window.sfReveal) window.sfReveal(body, true, function () {});
     });
 });
 

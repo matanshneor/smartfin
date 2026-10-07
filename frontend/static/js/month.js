@@ -35,8 +35,12 @@ window.addEventListener('sf:refreshed', centerStrip);
 function toggleExpand(trigger) {
     const wrap = trigger.closest('.legend-item-wrap');
     if (!wrap) return;
-    const isOpen = wrap.classList.toggle('open');
+    // המצב לפי ‎aria-expanded‎ ולא לפי המחלקה: בסגירה המחלקה נשארת עד סוף ההחלקה
+    const isOpen = trigger.getAttribute('aria-expanded') !== 'true';
     trigger.setAttribute('aria-expanded', isOpen);
+    const list = wrap.querySelector('.cat-tx-list');
+    const apply = function (open) { wrap.classList.toggle('open', open); };
+    if (list && window.sfReveal) window.sfReveal(list, isOpen, apply); else apply(isOpen);
 }
 
 document.addEventListener('click', function (e) {
