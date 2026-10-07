@@ -644,8 +644,13 @@ ul { list-style: none; }
     align-items: center;
     justify-content: center;
     border-radius: 9px;
-    transition: background 0.3s cubic-bezier(0.22, 1, 0.36, 1), color 0.25s;
+    transition: background 0.3s cubic-bezier(0.22, 1, 0.36, 1), color 0.25s, transform 120ms ease-out;
 }
+
+/* משוב לחיצה — הכפתור מגיב ברגע הנגיעה, לא רק כשהעמוד מתחלף (מתן, 7.10 —
+   סבב תנועה, סעיף 6). עדין בכוונה: לוחצים על אלה עשרות פעמים ביום. בסרגל
+   רק האייקון מתכווץ — כל הכפתור הוא רבע מהרוחב, וזה נראה כמו קפיצה. */
+.nav-item:active .nav-icon { transform: scale(0.94); }
 
 .nav-item .nav-icon svg {
     width: 20px;
@@ -1458,8 +1463,9 @@ body:has(.modal-overlay.open) .toast {
     font-size: 0.9rem;
     font-weight: 600;
     color: var(--color-text-muted);
-    transition: all 0.2s;
+    transition: all 0.2s, transform 120ms ease-out;
 }
+.toggle-btn:active:not(:disabled) { transform: scale(0.97); }
 
 .toggle-btn.active {
     background: var(--gradient-gold);
@@ -2648,6 +2654,8 @@ li.zero-cat-row { display: none; }
     font-weight: 600;
 }
 /* קישור שנראה ככפתור ("ביטול" במסך פרויקט חדש חוזר לרשימה) */
+.btn-sm { transition: transform 120ms ease-out; }
+.btn-sm:active:not(:disabled) { transform: scale(0.97); }   /* משוב לחיצה — ראו ‎.nav-icon‎ */
 a.btn-sm { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 
 .btn-primary {
