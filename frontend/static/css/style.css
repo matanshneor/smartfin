@@ -315,7 +315,8 @@ ul { list-style: none; }
     font-size: 0.78rem;
     font-weight: 500;
     color: var(--hero-text-muted);
-    letter-spacing: 0.08em;
+    /* מרווח רחב שייך לאותיות גדולות באנגלית; בעברית הוא מפרק מילים (מתן, 7.10) */
+    letter-spacing: 0.01em;
     margin-bottom: 2px;
 }
 
@@ -324,7 +325,7 @@ ul { list-style: none; }
     font-weight: 700;
     line-height: 1.15;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.025em;   /* מספר גדול — מהדקים, אחרת הספרות נראות מפוזרות */
     background: var(--gradient-gold-text);
     -webkit-background-clip: text;
     background-clip: text;
@@ -3987,7 +3988,8 @@ li.transaction-item.swipe-ready > .swipe-content {
 }
 
 .lp-eyebrow {
-    font-size: 0.76rem; font-weight: 600; letter-spacing: 0.16em;
+    /* 0.16em פירק את "ניהול תקציב משפחתי" לאותיות בודדות (מתן, 7.10) */
+    font-size: 0.76rem; font-weight: 600; letter-spacing: 0.02em;
     color: var(--color-gold-bright); margin: 0 0 16px;
     display: flex; align-items: center; gap: 10px;
 }
