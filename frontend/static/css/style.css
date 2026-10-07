@@ -4777,6 +4777,27 @@ body > .color-sheet { z-index: 180; }
     display: flex; flex-direction: column;
 }
 .tx-screen[hidden] { display: none; }
+
+/* מסכים מלאים — חיפוש ו"כל עסקאות החודש" — עולים מעט מלמטה ודוהים פנימה,
+   ויורדים באותו מסלול (מתן, 7.10 — סבב תנועה, סעיף 3). קודם הם הופיעו ברגע.
+   תזוזה קצרה (24px) ולא מסך שלם: לחיפוש נכנסים כדי להקליד מיד. במנוחה
+   ‎transform: none‎ — אחרת המסך נהיה נקודת ייחוס לכל מה שצף בתוכו. */
+.search-screen, .tx-screen {
+    opacity: 1;
+    transform: none;
+    transition: opacity 300ms cubic-bezier(0.32, 0.72, 0, 1), transform 300ms cubic-bezier(0.32, 0.72, 0, 1),
+                display 300ms allow-discrete, overlay 300ms allow-discrete;
+}
+.search-screen[hidden], .tx-screen[hidden] {
+    opacity: 0;
+    transform: translateY(24px);
+    pointer-events: none;
+    transition-duration: 200ms;            /* יציאה מהירה מהכניסה */
+    transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+}
+@starting-style {
+    .search-screen:not([hidden]), .tx-screen:not([hidden]) { opacity: 0; transform: translateY(24px); }
+}
 body.tx-screen-open { overflow: hidden; }
 .tx-screen-bar {
     display: flex; align-items: center; gap: 12px;
