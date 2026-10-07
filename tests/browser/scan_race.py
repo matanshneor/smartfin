@@ -81,8 +81,8 @@ try:
         print("   url:", page.url, "| rows with id:", page.locator(f'[data-id="{created}"]').count(),
               "| visible:", [page.locator(f'[data-id="{created}"]').nth(i).is_visible() for i in range(page.locator(f'[data-id="{created}"]').count())])
         page.screenshot(path="/tmp/before_row_click.png")
-        page.locator(f'[data-id="{created}"]').first.click()      # עורך בשורה
-        page.locator(".inline-more").first.click()                   # "עוד אפשרויות" → החלון המלא
+        # מאז 5.10 נגיעה בשורה פותחת ישר את החלון המלא (העורך בשורה הוסר)
+        page.locator(f'[data-id="{created}"] .tx-head').first.click()
         page.wait_for_selector("#modalOverlay.open", timeout=5000)
         page.wait_for_timeout(4000)
         v = vals()

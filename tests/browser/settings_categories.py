@@ -56,14 +56,17 @@ try:
         in_plus = lambda: page.evaluate("""() => [...document.querySelectorAll('#categoryGrid .cat-btn')]
                                            .map(b => b.textContent.trim())""")
 
+        # ‎+‎ מוסתר בהגדרות (‎body.no-fab‎), אבל החלון נפתח שם — עריכת עסקה קבועה.
+        # פותחים אותו כמו שהכפתור פותח, דרך הכפתור עצמו (קיים, רק לא מוצג)
+        open_form = lambda: page.evaluate("document.getElementById('fabBtn').click()")
         # הטופס נפתח פעם אחת לפני השינוי — כך המטמון שלו כבר מלא, כמו אצל משתמש
-        page.click("#fabBtn"); page.wait_for_selector("#modalOverlay.open"); page.click("#modalClose")
+        open_form(); page.wait_for_selector("#modalOverlay.open"); page.click("#modalClose")
 
         page.fill("#newCatName", "PETS-TEST"); page.fill("#newCatIcon", "🐶")
         page.click("#addCatForm button[type=submit]"); page.wait_for_timeout(1500)
         row = page.locator('.category-row[data-name="PETS-TEST"]')
         print("new row has budget control:", row.locator(".budget-enabled").count() == 1)
-        page.click("#fabBtn"); page.wait_for_selector("#modalOverlay.open")
+        open_form(); page.wait_for_selector("#modalOverlay.open")
         print("new category in +:", any("PETS-TEST" in c for c in in_plus()))
         page.click("#modalClose")
 
@@ -73,7 +76,7 @@ try:
         renamed = page.locator('.category-row[data-name="PETS-RENAMED"]')
         print("renamed row keeps budget control:", renamed.locator(".budget-enabled").count() == 1,
               "| name shown:", renamed.locator(".cat-row-name").text_content())
-        page.click("#fabBtn"); page.wait_for_selector("#modalOverlay.open")
+        open_form(); page.wait_for_selector("#modalOverlay.open")
         print("renamed category in +:", any("PETS-RENAMED" in c for c in in_plus()))
         page.click("#modalClose")
         b.close()

@@ -77,9 +77,12 @@ try:
             page.wait_for_timeout(1000)
 
         # ── 1. עסקה א', ומיד עסקה ב' — והתשובות של א' מגיעות אחרונות
+        # "לכל עסקאות החודש" מופיע רק מעל 5 עסקאות (מאז 5.10). כאן יש פחות, והן
+        # ברשימה המקוצרת — שם גם + נגיש (המסך המלא מכסה אותו)
+        open_all = lambda: page.locator("#txScreenOpen").click() if page.locator("#txScreenOpen").count() else None
         page.route("**/api/categories", hold)
         page.goto(BASE + "/month")
-        page.click("#txScreenOpen")      # "כל העסקאות" — הרשימה מקופלת
+        open_all()      # "כל העסקאות" — הרשימה מקופלת
         row("ROW-A").click(); row("ROW-B").click()
         release_newest_first()
         f = form()
@@ -96,7 +99,7 @@ try:
 
         # ── 2. עסקה, ומיד + — והתשובות של העסקה מגיעות אחרונות
         page.goto(BASE + "/month")        # מטמון ריק מחדש
-        page.click("#txScreenOpen")
+        open_all()
         row("ROW-A").click(); page.click("#fabBtn")
         release_newest_first()
         f = form()

@@ -57,12 +57,17 @@ try:
         put = lambda url, body: page.request.put(BASE + url, data=json.dumps(body),
                                                 headers={"Content-Type": "application/json"}).json()
         print("setup:", helper("setup", today))
-        # עסקה בלי קטגוריה
-        post("/api/transactions", {"amount": "80", "type": "expense", "date": today, "description": "KEEP-NOCAT"})
+        # "עסקה בלי קטגוריה" ירדה מכאן (7.10): מאז 30.9 המסד עצמו לא מאפשר אותה
+        # (‎transactions_category_required‎), אז אין מה לשמור עליו בעריכה
         # פרויקט שעוקב אחרי הכנסות, הכנסה בו — ואז הוא מפסיק לעקוב
         proj = post("/api/projects", {"name": "KEEP-PROJ", "track_expense": True, "track_income": True})
         pid = (proj.get("project") or proj).get("id")
+        # קטגוריה חובה מאז 30.9 — ובפרויקט, קטגוריה של הפרויקט עצמו
+        pcats = page.request.get(BASE + f"/api/projects/{pid}/categories?type=income").json()
+        pcats = pcats.get("categories", pcats) if isinstance(pcats, dict) else pcats
+        print("project income category:", bool(pcats))
         post("/api/transactions", {"amount": "700", "type": "income", "date": today,
+                                   "project_category_id": pcats[0]["id"] if pcats else None,
                                    "description": "KEEP-PROJ-INC", "project_id": pid})
         put(f"/api/projects/{pid}", {"name": "KEEP-PROJ", "track_expense": True, "track_income": False})
         before = json.loads(helper("read"))
@@ -76,7 +81,7 @@ try:
             page.wait_for_selector("#modalOverlay.open")
             page.fill("#txAmount", new_amount); page.click("#submitBtn"); page.wait_for_timeout(2500)
 
-        for desc, amount in (("KEEP-NOCAT", "81"), ("KEEP-GONE", "91"), ("KEEP-PROJ-INC", "701")):
+        for desc, amount in (("KEEP-GONE", "91"), ("KEEP-PROJ-INC", "701")):
             tid = page.evaluate(f"""() => {{ const r = [...document.querySelectorAll('.cat-tx-row')]
                 .find(e => e.dataset.description === '{desc}'); return r ? r.dataset.id : null; }}""") \
                 or None
@@ -86,7 +91,7 @@ try:
             edit(f'.cat-tx-row[data-id="{tid}"]', amount)
 
         after = json.loads(helper("read"))
-        for desc, field in (("KEEP-NOCAT", "category_id"), ("KEEP-GONE", "user_is_B"), ("KEEP-PROJ-INC", "project_id")):
+        for desc, field in (("KEEP-GONE", "user_is_B"), ("KEEP-PROJ-INC", "project_id")):
             was, now = before[desc], after[desc]
             print(f"{desc:14} amount {was['amount']}→{now['amount']} | {field}: {was[field]!s:.8} → {now[field]!s:.8}",
                   "->", "OK" if now[field] == was[field] and now["amount"] != was["amount"] else "WRONG")
@@ -109,7 +114,9 @@ finally:
         "t('categories').delete().eq('family_id', fid).eq('name', 'SCANTEST-CAT').execute()",
         "print('cleaned')",
     ])
-    subprocess.run([os.path.join(ROOT, ".venv/bin/python3"), "-c", cleanup], cwd=ROOT)
+    # קודם העסקאות (KEEP-*) ורק אז הקטגוריה הזמנית: מחיקת קטגוריה שעסקה עוד
+    # משתמשת בה מאפסת את הקטגוריה של העסקה — והמסד מסרב (קטגוריה חובה, 30.9)
     subprocess.run([os.path.join(ROOT, ".venv/bin/python3"), os.path.join(ROOT, "tests/browser/edit_keep_helper.py"), "cleanup"], cwd=ROOT)
+    subprocess.run([os.path.join(ROOT, ".venv/bin/python3"), "-c", cleanup], cwd=ROOT)
     os.killpg(os.getpgid(srv.pid), signal.SIGTERM)
     time.sleep(2)   # תהליך-הבן של Flask נסגר רגע אחרי

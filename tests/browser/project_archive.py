@@ -56,12 +56,13 @@ try:
         print("edit page now offers:", page.locator("[data-archive-project]").inner_text().strip())
 
         page.goto(BASE + "/projects"); page.wait_for_timeout(1000)
-        print("in main list:", page.locator("#projectsList .project-name", has_text="PA-שיפוץ").count())
-        print("sections:", page.locator("#activeProjects .chart-title").inner_text(), "|",
-              page.locator("#finishedProjects .chart-title").inner_text(),
-              "| finished list:", page.locator("#finishedProjects .project-name").all_inner_texts())
+        print("in main list:", page.locator("#projectsList .project-tile-name", has_text="PA-שיפוץ").count())
+        # מאז העיצוב החדש של העמוד: הפעילים בגלריה בלי כותרת, והסתיימו כ"שבבים"
+        print("sections:", page.get_attribute("#activeProjects", "aria-label"), "|",
+              page.locator("#finishedProjects .projects-section-title").inner_text(),
+              "| finished list:", [t.strip() for t in page.locator("#finishedProjects .finished-chip").all_inner_texts()])
         page.screenshot(path="/tmp/projects_two.png")
-        page.locator(".finished-projects .project-name", has_text="PA-שיפוץ").click(); page.wait_for_timeout(1200)
+        page.locator(".finished-projects .finished-chip", has_text="PA-שיפוץ").click(); page.wait_for_timeout(1200)
         print("banner:", page.locator(".project-archived-banner").inner_text().replace("\n", " | "))
         page.screenshot(path="/tmp/archived.png")
 
@@ -81,7 +82,7 @@ try:
         page.locator(".project-archived-banner [data-archive-project]").click(); page.wait_for_timeout(2000)
         print("after back to active — banner:", page.locator(".project-archived-banner").count())
         page.goto(BASE + "/projects"); page.wait_for_timeout(800)
-        print("back in main list:", page.locator("#projectsList .project-name", has_text="PA-שיפוץ").count(),
+        print("back in main list:", page.locator("#projectsList .project-tile-name", has_text="PA-שיפוץ").count(),
               "| finished section:", page.locator(".finished-projects").count())
         b.close()
 finally:

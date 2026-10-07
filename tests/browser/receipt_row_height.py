@@ -9,6 +9,7 @@
 """
 import os, json, time, datetime, subprocess, signal
 from playwright.sync_api import sync_playwright
+from _month_fill import fill_month
 import _accounts  # noqa: F401 — חשבונות בדיקה זמניים, נמחקים בסוף הריצה
 
 ROOT = os.getcwd()
@@ -68,6 +69,7 @@ try:
         print("created:", st)
         H = """desc => [...document.querySelectorAll('.transaction-item, .cat-tx-row')].filter(r => r.textContent.includes(desc) && r.offsetParent !== null)
                  .map(r => ((r.querySelector(".tx-head") || r).getBoundingClientRect().height).toFixed(2))"""
+        fill_month(page, BASE)               # "לכל עסקאות החודש" — רק מעל 5 עסקאות
         for path in ("/", "/month"):
             page.goto(BASE + path); page.wait_for_timeout(900)
             if path == "/month":

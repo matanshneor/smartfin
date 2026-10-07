@@ -6,6 +6,7 @@
 """
 import os, json, time, datetime, subprocess, signal
 from playwright.sync_api import sync_playwright
+from _month_fill import fill_month
 import _accounts  # noqa: F401 — חשבונות בדיקה זמניים, נמחקים בסוף הריצה
 
 ROOT = os.getcwd()
@@ -72,6 +73,7 @@ try:
             if url: page.goto(BASE + url); page.wait_for_timeout(1600)
             page.screenshot(path=f"{SHOTS}/{name}.png", full_page=full)
 
+        fill_month(page, BASE)               # "לכל עסקאות החודש" — רק מעל 5 עסקאות
         shot("home", "/")
         shot("month", "/month")
         page.click("#txScreenOpen"); page.wait_for_timeout(300)
@@ -89,7 +91,8 @@ try:
         page.goto(BASE + "/"); page.wait_for_timeout(1000)
         page.click("#fabBtn"); page.wait_for_timeout(1000)
         shot("add_form", full=False)
-        page.keyboard.press("Escape"); page.wait_for_timeout(400)
+        # ✕ ולא Escape: אחרי + המיקוד נשאר על הכפתור, ו-Escape נקלט רק בתוך החלון
+        page.click(".modal-close"); page.wait_for_timeout(400)
         page.click("#searchOpen"); page.fill("#searchInput", "DK-TEST"); page.wait_for_timeout(1500)
         shot("search", full=False)
         page.keyboard.press("Escape")

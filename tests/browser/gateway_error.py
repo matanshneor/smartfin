@@ -45,7 +45,8 @@ try:
             status=502, content_type="text/html", body="<html><body>Application failed to respond</body></html>")
             if route.request.method == "POST" else route.continue_())
         page.goto(BASE + "/settings")
-        page.click("#fabBtn"); page.wait_for_selector("#modalOverlay.open")
+        page.evaluate("document.getElementById('fabBtn').click()")   # + מוסתר בהגדרות (body.no-fab); החלון נפתח שם
+        page.wait_for_selector("#modalOverlay.open")
         page.fill("#txAmount", "44"); page.click("#submitBtn"); page.wait_for_timeout(1500)
         msg = page.text_content("#formError")
         print("message:", repr(msg))

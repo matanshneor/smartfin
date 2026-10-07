@@ -54,7 +54,9 @@ try:
                                         ("expense", ex["TF-סופר"], 64, "TF-TEST מכולת"),
                                         ("expense", ex["TF-דלק"], 50, "TF-TEST פז"),
                                         ("income", by["income"], 5000, "TF-TEST משכורת"),
-                                        ("savings", by["savings"], 700, "TF-TEST קרן")):
+                                        ("savings", by["savings"], 700, "TF-TEST קרן"),
+                                        # שישית — "לכל עסקאות החודש" מופיע רק מעל 5 (מאז 5.10)
+                                        ("expense", ex["TF-דלק"], 30, "TF-TEST סונול")):
             api("POST", "/api/transactions", {"amount": amount, "type": kind, "category_id": cat,
                                               "date": today, "description": desc})
         page.goto(BASE + "/month"); page.wait_for_timeout(1500)
@@ -80,7 +82,9 @@ try:
         print("back to expense resets:", visible(), count())
         page.locator(".tx-cat-chips:visible .tx-cat-chip", has_text="TF-סופר").click(); page.wait_for_timeout(150)
         page.screenshot(path="/tmp/cat_filter.png")
-        # צ'יפי התאריך בטופס עדיין עובדים, והסינון לא נגע בתאריך
+        # צ'יפי התאריך בטופס עדיין עובדים, והסינון לא נגע בתאריך.
+        # קודם סוגרים את "כל העסקאות" — המסך מכסה את +, גם למשתמש
+        page.keyboard.press("Escape"); page.wait_for_timeout(400)
         page.click("#fabBtn"); page.wait_for_timeout(800)
         page.locator(".date-quick-chips .date-chip", has_text="אתמול").click(); page.wait_for_timeout(100)
         print("form date after אתמול:", page.input_value("#txDate"),

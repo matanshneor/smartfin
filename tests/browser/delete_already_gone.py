@@ -66,8 +66,8 @@ try:
         print("deleted behind the back:", api("DELETE", f"/api/transactions/{tx}")[0])
 
         row.locator(".tx-head").click()
-        page.wait_for_selector(".inline-del", timeout=5000)
-        page.click(".inline-del")
+        page.wait_for_selector("#modalOverlay.open #deleteTxBtn", timeout=5000)
+        page.click("#deleteTxBtn")
         page.wait_for_selector("#confirmOverlay.open", timeout=5000)
         page.click("#confirmYes")
         page.wait_for_timeout(1200)

@@ -56,7 +56,8 @@ try:
         page.goto(BASE + "/settings")
         navigations = []
         page.on("framenavigated", lambda f: navigations.append(f.url) if f == page.main_frame else None)
-        page.click("#fabBtn"); page.wait_for_selector("#modalOverlay.open")
+        page.evaluate("document.getElementById('fabBtn').click()")   # + מוסתר בהגדרות (body.no-fab); החלון נפתח שם
+        page.wait_for_selector("#modalOverlay.open")
         page.fill("#txAmount", "33"); page.fill("#txDescription", "NOSTORE")
         page.click("#submitBtn"); page.wait_for_timeout(3500)
         error_shown = page.evaluate("() => (document.getElementById('formError') || {}).textContent || ''")

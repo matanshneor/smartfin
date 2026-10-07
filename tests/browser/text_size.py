@@ -64,7 +64,7 @@ try:
             }).slice(0, 4).map(el => el.className || el.tagName)""")
             print(url, "| sideways:", page.evaluate("document.documentElement.scrollWidth > innerWidth"), "| sticking out:", wide)
             page.screenshot(path=f"/tmp/xl{url.replace('/', '_') or '_home'}.png")
-        page.click("#fabBtn") if page.url.endswith("/settings") else None
+        page.evaluate("document.getElementById('fabBtn').click()") if page.url.endswith("/settings") else None   # + מוסתר בהגדרות
         page.goto(BASE + "/"); page.wait_for_timeout(800); page.click("#fabBtn"); page.wait_for_timeout(900)
         page.screenshot(path="/tmp/xl_form.png")
         page.evaluate("localStorage.setItem('sf_text_size', 'normal')")

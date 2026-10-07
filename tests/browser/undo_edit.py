@@ -49,9 +49,12 @@ try:
         tid = (made.get("transaction") or made)["id"]
         amount_now = lambda: next(t["amount"] for t in page.request.get(BASE + "/api/search?q=UN-TEST").json()["results"])
 
+        # "לכל עסקאות החודש" מופיע רק מעל 5 עסקאות (מאז 5.10). כאן יש פחות, והן
+        # ברשימה המקוצרת — שם גם + נגיש (המסך המלא מכסה אותו)
+        open_all = lambda: page.locator("#txScreenOpen").click() if page.locator("#txScreenOpen").count() else None
         # 1. עמוד החודש — חלון עריכה
         page.goto(BASE + "/month"); page.wait_for_timeout(1200)
-        page.click("#txScreenOpen"); page.wait_for_timeout(300)
+        open_all(); page.wait_for_timeout(300)
         page.locator(f'.cat-tx-row[data-id="{tid}"]:visible').first.click(); page.wait_for_timeout(1200)
         page.fill("#txAmount", "320"); page.click("#submitBtn"); page.wait_for_timeout(2800)
         print("month — toast:", page.locator("#appToast .toast-msg").inner_text(), "|", page.locator("#appToast .toast-action").inner_text(), "| now:", amount_now())
@@ -59,19 +62,17 @@ try:
         page.click("#appToast .toast-action"); page.wait_for_timeout(2800)
         print("month — after בטל:", amount_now(), "|", page.locator("#appToast .toast-msg").inner_text())
 
-        # 2. דף הבית — עריכה בתוך השורה
+        # 2. דף הבית — אותו חלון עריכה (מאז 5.10; קודם עריכה בתוך השורה)
         page.goto(BASE + "/"); page.wait_for_timeout(1000)
         page.locator(f'.transaction-item[data-id="{tid}"] .tx-head').click(); page.wait_for_timeout(1200)
-        row = page.locator(f'.transaction-item[data-id="{tid}"]')
-        row.locator('input[inputmode="decimal"], input[type="number"]').first.fill("410")
-        row.locator("button", has_text="שמור").click(); page.wait_for_timeout(3000)
+        page.fill("#txAmount", "410"); page.click("#submitBtn"); page.wait_for_timeout(3000)
         print("home — toast:", page.locator("#appToast .toast-msg").inner_text(), "| action:", page.locator("#appToast .toast-action").count(), "| now:", amount_now())
         page.click("#appToast .toast-action"); page.wait_for_timeout(3000)
         print("home — after בטל:", amount_now())
 
         # 3. מישהו שינה בינתיים — "בטל" לא דורס
         page.goto(BASE + "/month"); page.wait_for_timeout(1200)
-        page.click("#txScreenOpen"); page.wait_for_timeout(300)
+        open_all(); page.wait_for_timeout(300)
         page.locator(f'.cat-tx-row[data-id="{tid}"]:visible').first.click(); page.wait_for_timeout(1200)
         page.fill("#txAmount", "500"); page.click("#submitBtn"); page.wait_for_timeout(2800)
         api("PUT", f"/api/transactions/{tid}", {"amount": 555, "type": "expense", "category_id": cat,

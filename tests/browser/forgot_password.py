@@ -49,7 +49,7 @@ try:
             answer.update(status=status, body=body)
             page.click("#forgotBtn"); page.wait_for_timeout(700)
             err = page.text_content("#forgotError"); ok = page.text_content("#forgotSuccess")
-            right = (ok.startswith("אם האימייל רשום") and not err) if status == 200 \
+            right = (ok.startswith("אם המייל רשום") and not err) if status == 200 \
                     else (err == body["error"] and not ok)
             print(f"{name:13} [{status}] error={err!r} success={ok[:20]!r}  ->", "OK" if right else "WRONG")
         b.close()

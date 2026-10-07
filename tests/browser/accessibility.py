@@ -67,8 +67,8 @@ try:
 
         page.goto(BASE + "/")
         page.focus(f'.transaction-item[data-id="{tx}"] .tx-head')
-        page.keyboard.press("Enter"); page.wait_for_selector(".inline-del", timeout=5000)
-        page.focus(".inline-del"); page.keyboard.press("Enter")
+        page.keyboard.press("Enter"); page.wait_for_selector("#modalOverlay.open #deleteTxBtn", timeout=5000)
+        page.focus("#deleteTxBtn"); page.keyboard.press("Enter")
         page.wait_for_selector("#confirmOverlay.open", timeout=5000)
         page.focus("#confirmYes"); page.keyboard.press("Enter")
         page.wait_for_selector(".toast.show .toast-action", timeout=5000)
