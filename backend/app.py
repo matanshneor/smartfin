@@ -2000,7 +2000,9 @@ def update_project_category_route(project_id, cat_id):
 @project_access_required
 def delete_project_category_route(project_id, cat_id):
     user = get_current_user()
-    project = db.get_project_for_transaction(project_id, user["family_id"]) or {}
+    # ‎get_project_for_transaction‎ לא מחזירה ‎id‎ — בלעדיו השאילתה רצה עם "None"
+    project = {**(db.get_project_for_transaction(project_id, user["family_id"]) or {}),
+               "id": project_id}
     return _delete_category("project", cat_id, user, project=project)
 
 
@@ -2009,7 +2011,9 @@ def delete_project_category_route(project_id, cat_id):
 @project_access_required
 def project_category_usage_route(project_id, cat_id):
     user = get_current_user()
-    project = db.get_project_for_transaction(project_id, user["family_id"]) or {}
+    # ‎get_project_for_transaction‎ לא מחזירה ‎id‎ — בלעדיו השאילתה רצה עם "None"
+    project = {**(db.get_project_for_transaction(project_id, user["family_id"]) or {}),
+               "id": project_id}
     return _category_usage("project", cat_id, user, project=project)
 
 

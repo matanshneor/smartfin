@@ -208,7 +208,9 @@ def test_a_plain_member_still_cannot_delete(client, monkeypatch, fake):
 
 @pytest.fixture
 def project_gate(monkeypatch):
-    project = dict(_PROJECT)
+    # כמו הפונקציה האמיתית: בלי ‎id‎ ובלי שם — רק הבעלים ודגלי המעקב
+    project = {k: _PROJECT[k] for k in
+               ("owner_id", "track_expense", "track_income", "track_savings")}
     monkeypatch.setattr(db, "get_project_for_transaction", lambda pid, fam: project)
     return project
 
