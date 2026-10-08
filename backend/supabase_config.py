@@ -2738,7 +2738,13 @@ def _seed_project_categories(project_id: str, family_id: str, types: list):
     if not client:
         return
     try:
-        family_cats = [c for c in get_categories(family_id) if c.get("type") in types]
+        # כיבוי מעקב לא מוחק את הקטגוריות, אז הדלקה מחדש הייתה זורעת אותן
+        # שוב — "משכורת" פעמיים. מה שכבר יש בפרויקט (שם+סוג) לא מועתק.
+        existing = {(c["name"], c["type"]) for c in client.table("project_categories")
+                    .select("name, type").eq("project_id", project_id)
+                    .eq("family_id", family_id).execute().data}
+        family_cats = [c for c in get_categories(family_id) if c.get("type") in types
+                       and (c["name"], c["type"]) not in existing]
         if not family_cats:
             return
         rows = [{
