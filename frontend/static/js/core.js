@@ -319,23 +319,31 @@ window.sfReveal = function (body, open, apply) {
      * אין עסקה בלי קטגוריה: קודם שואלים את השרת כמה עסקאות יש בה ולאן
      * אפשר להעביר אותן, ואז שואלים את המשתמש באותו דיאלוג. השרת אוכף את
      * אותו כלל בעצמו (409 בלי יעד), כך שהשאלה כאן היא נוחות ולא ההגנה.
-     * מחזיר ‎Promise‎ של ‎true‎ כשהקטגוריה נמחקה. */
+     *
+     * ‎sfAskCategoryDeletion‎ רק שואלת: ‎Promise‎ של ‎{target, count}‎ (‎target‎
+     * ‎null‎ כשאין עסקאות), או ‎null‎ כשבוטל/נחסם. עמוד עריכת הפרויקט מוחק רק
+     * בשמירה (מתן, 9.10), ולכן הוא שואל עכשיו ומוחק אחר כך. ‎adjust‎ — אופציונלי,
+     * מתקן את רשימת היעדים לפי שינויים שעוד לא נשמרו. */
     let deletingCategory = false;
-    window.sfDeleteCategory = function (baseUrl, name) {
+    function catJson(r) {
+        return r.json().catch(function () { return {}; })
+            .then(function (d) { return { ok: r.ok, d: d }; });
+    }
+    window.sfAskCategoryDeletion = function (baseUrl, name, adjust) {
         // נגיעה כפולה ב-✕ פתחה שתי שאלות ברצף, והתשובה לראשונה נבלעה בשנייה
-        if (deletingCategory) return Promise.resolve(false);
+        if (deletingCategory) return Promise.resolve(null);
         deletingCategory = true;
-        function json(r) {
-            return r.json().catch(function () { return {}; })
-                .then(function (d) { return { ok: r.ok, d: d }; });
-        }
         let usage = null;
-        return fetch(baseUrl + '/usage').then(json).then(function (res) {
-            if (!res.ok || res.d.blocked) {
-                window.showToast(res.d.blocked || res.d.error || 'המחיקה נכשלה', 'error');
+        return fetch(baseUrl + '/usage').then(catJson).then(function (res) {
+            if (!res.ok) {
+                window.showToast(res.d.error || 'המחיקה נכשלה', 'error');
                 return false;
             }
-            usage = res.d;
+            usage = adjust ? adjust(res.d) : res.d;
+            if (usage.blocked) {
+                window.showToast(usage.blocked, 'error');
+                return false;
+            }
             const count = usage.count || 0;
             const opts = { title: 'למחוק את "' + name + '"?', confirmText: 'מחיקת הקטגוריה' };
             if (count) {
@@ -350,27 +358,40 @@ window.sfReveal = function (body, open, apply) {
             }
             return window.appConfirm(opts);
         }).then(function (answer) {
-            if (!answer) return false;
+            if (!answer) return null;
             const target = usage.count ? answer : null;
-            const url = baseUrl + (target ? '?move_to=' + encodeURIComponent(target) : '');
-            return fetch(url, { method: 'DELETE' }).then(json).then(function (res) {
+            return {
+                target: target, count: usage.count || 0,
+                dest: target && usage.alternatives.find(function (c) { return c.id === target; }),
+            };
+        }).catch(function () {
+            window.showToast(window.sfNetError(), 'error');
+            return null;
+        }).then(function (choice) {
+            deletingCategory = false;
+            return choice;
+        });
+    };
+
+    /* שואל ומוחק מיד (הגדרות). ‎Promise‎ של ‎true‎ כשהקטגוריה נמחקה. */
+    window.sfDeleteCategory = function (baseUrl, name) {
+        return window.sfAskCategoryDeletion(baseUrl, name).then(function (choice) {
+            if (!choice) return false;
+            const url = baseUrl + (choice.target ? '?move_to=' + encodeURIComponent(choice.target) : '');
+            return fetch(url, { method: 'DELETE' }).then(catJson).then(function (res) {
                 if (!res.ok) {
                     window.showToast(res.d.error || 'המחיקה נכשלה', 'error');
                     return false;
                 }
-                const dest = target && usage.alternatives.find(function (c) { return c.id === target; });
-                window.showToast(dest
-                    ? 'הקטגוריה נמחקה — ' + (usage.count === 1 ? 'העסקה הועברה' : usage.count + ' עסקאות הועברו')
-                      + ' ל"' + dest.name + '"'
+                window.showToast(choice.dest
+                    ? 'הקטגוריה נמחקה — ' + (choice.count === 1 ? 'העסקה הועברה' : choice.count + ' עסקאות הועברו')
+                      + ' ל"' + choice.dest.name + '"'
                     : 'הקטגוריה נמחקה');
                 return true;
             });
         }).catch(function () {
             window.showToast(window.sfNetError(), 'error');
             return false;
-        }).then(function (deleted) {
-            deletingCategory = false;
-            return deleted;
         });
     };
 

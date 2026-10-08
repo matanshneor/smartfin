@@ -82,3 +82,65 @@ document.addEventListener('click', function (e) {
     btn.textContent = open ? btn.dataset.less : btn.dataset.more;
 });
 })();
+
+/* ═══ מחיקת הפרויקט ═══ (עברה מעמוד העריכה לתחתית עמוד הפרויקט — מתן, 9.10)
+ *
+ * **אין כאן ‎appConfirm‎**: האזור נפתח, מראה כמה עסקאות ובכמה כסף עומדים
+ * על הפרק, ומבקש בחירה מפורשת. דיאלוג נוסף מעל זה היה שאלה שנייה על מה
+ * שכבר מוצג במלואו. בהאצלה — רענון רך מחליף את העמוד אחרי הוספת עסקה. */
+(function () {
+function parts() {
+    return {
+        toggle: document.getElementById('toggleDeleteProjectBtn'),
+        form:   document.getElementById('deleteProjectForm'),
+        error:  document.getElementById('deleteProjectError'),
+    };
+}
+
+document.addEventListener('click', function (e) {
+    const p = parts();
+    if (!p.form) return;
+
+    if (e.target.closest('#toggleDeleteProjectBtn')) {
+        // ‎visible‎ ולא ‎open‎ — זה הקלאס ש-‎.password-form‎ כבר משתמש בו
+        const open = p.form.classList.toggle('visible');
+        p.toggle.setAttribute('aria-expanded', String(open));
+        return;
+    }
+    if (e.target.closest('#cancelDeleteProjectBtn')) {
+        p.form.classList.remove('visible');
+        p.toggle.setAttribute('aria-expanded', 'false');
+        p.error.textContent = '';
+        return;
+    }
+    const go = e.target.closest('#confirmDeleteProjectBtn');
+    if (!go || go.disabled) return;
+    go.disabled = true;
+    p.error.textContent = '';
+    fetch('/api/projects/' + go.dataset.id, {
+        method:  'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+    })
+    .then(r => r.json().catch(() => ({})).then(d => ({ ok: r.ok, d: d })))
+    .then(function (res) {
+        if (!res.ok || res.d.status !== 'ok') {
+            p.error.textContent = res.d.error || 'המחיקה נכשלה';
+            go.disabled = false;
+            return;
+        }
+        // ‎deleted‎ הוא מספר העסקאות שנמחקו בפועל — השרת מחזיר אותו
+        // כדי שלא נצטרך להבטיח מספר שלא נבדק.
+        const wiped = res.d.deleted || 0;
+        try {
+            window.sfToastAfterReload(wiped
+                ? 'הפרויקט נמחק, ואיתו ' + window.sfCount(wiped, 'עסקה אחת', 'עסקאות')
+                : 'הפרויקט נמחק');
+        } catch (err) { /* אין אחסון — נוותר על הטוסט, לא על הניווט */ }
+        window.location.href = '/projects';
+    })
+    .catch(function () {
+        p.error.textContent = window.sfNetError();
+        go.disabled = false;
+    });
+});
+})();

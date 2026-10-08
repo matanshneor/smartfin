@@ -35,6 +35,8 @@ eval(require('fs').readFileSync(process.argv[1], 'utf8'));
     for (const step of scenario.steps) {
         if (step.message) listeners.message({ data: { type: 'prefetch', url: step.message } });
         if (step.wait) now += step.wait;
+        if (step.write) listeners.fetch({ request: { method: step.write, mode: 'cors', url: 'https://app/api/x' },
+                                          respondWith: () => {} });
         if (step.navigate) {
             let served;
             listeners.fetch({ request: { method: 'GET', mode: 'navigate', url: 'https://app' + step.navigate },
@@ -90,3 +92,11 @@ def test_the_page_side_sends_the_message_on_touch():
     part = js[js.index("document.addEventListener('pointerdown'"):]
     assert "sw.postMessage({ type: 'prefetch', url: url.pathname + url.search });" in part
     assert "url.pathname.startsWith('/api/')" in part
+
+
+def test_a_save_throws_away_pages_loaded_before_it():
+    """נגיעה ב"ביטול" (העמוד נטען), "המשך עריכה", "שמירה" — והניווט אחרי
+    השמירה קיבל את העמוד מלפניה, עם הקטגוריות הישנות (מתן, 9.10)."""
+    for method in ("POST", "PUT", "DELETE"):
+        assert _run([{"message": "/projects/p1"}, {"write": method}, {"navigate": "/projects/p1"}]) == \
+            ["https://app/projects/p1", "https://app/projects/p1"], method

@@ -193,7 +193,8 @@ def test_backing_out_of_the_second_question_cancels_everything(path):
 
 def test_it_says_how_many_transactions_are_at_stake():
     """✕ ברשימה לא נשא שום מספר. בתוך הפרויקט אפשר לומר בדיוק מה יאבד."""
-    html = (_ROOT / "frontend/templates/project_edit.html").read_text(encoding="utf-8")
+    # המחיקה בתחתית עמוד הפרויקט מאז 9.10
+    html = (_ROOT / "frontend/templates/project_detail.html").read_text(encoding="utf-8")
     block = html[html.index("project-danger"):]
 
     assert "tx_count" in block

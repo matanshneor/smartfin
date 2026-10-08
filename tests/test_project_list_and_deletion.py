@@ -24,6 +24,8 @@ pytestmark = pytest.mark.unit
 _ROOT = Path(__file__).resolve().parent.parent
 _LIST = (_ROOT / "frontend/templates/projects.html").read_text(encoding="utf-8")
 _EDIT = (_ROOT / "frontend/templates/project_edit.html").read_text(encoding="utf-8")
+# המחיקה עברה לתחתית עמוד הפרויקט (מתן, 9.10)
+_DETAIL = (_ROOT / "frontend/templates/project_detail.html").read_text(encoding="utf-8")
 _JS = _ROOT / "frontend/static/js"
 
 _FAM, _ME = "f" * 8, "m" * 8
@@ -78,14 +80,30 @@ def test_the_project_page_still_shows_the_totals():
     assert "project.spent" in detail
 
 
-def test_deletion_lives_in_the_projects_own_management():
-    assert "project-danger" in _EDIT
-    assert 'id="confirmDeleteProjectBtn"' in _EDIT
+def test_deletion_lives_at_the_bottom_of_the_project_page():
+    """לא בעמוד העריכה — שם רק עריכה (מתן, 9.10)."""
+    assert "project-danger" not in _EDIT and "confirmDeleteProjectBtn" not in _EDIT
+    assert 'id="confirmDeleteProjectBtn"' in _DETAIL
+    assert _DETAIL.index("project-danger") > _DETAIL.rindex("כל העסקאות ("), "המחיקה לא בתחתית"
+
+
+def test_finishing_comes_before_deleting_in_the_same_card():
+    """הסיום הוא הדרך הרכה — רואים אותו לפני המחיקה."""
+    card = _DETAIL[_DETAIL.index('class="chart-card project-finish"'):]
+    assert card.index("data-archive-project") < card.index("project-danger")
+
+
+def test_a_finished_project_can_still_be_deleted():
+    card = _DETAIL[_DETAIL.index('class="chart-card project-finish"'):]
+    finish = card[card.index("{% if not project.archived %}"):]
+    finish = finish[:finish.index("{% endif %}")]
+    assert "data-archive-project" in finish, "הסיום לא תלוי במצב הפרויקט"
+    assert "project-danger" not in finish, "המחיקה מוסתרת בפרויקט שהסתיים"
 
 
 def test_it_says_how_many_transactions_will_be_affected():
     """✕ ברשימה לא נשא שום מספר."""
-    block = _EDIT[_EDIT.index("project-danger"):]
+    block = _DETAIL[_DETAIL.index("project-danger"):]
 
     assert "tx_count" in block
     assert "אין לפרויקט עסקאות" in block, "פרויקט ריק מקבל ניסוח משלו"
@@ -94,8 +112,8 @@ def test_it_says_how_many_transactions_will_be_affected():
 def test_there_is_no_choice_to_keep_the_transactions_any_more():
     """"להשאיר" הבטיח "יחזרו לקטגוריה הרגילה", והן נחתו בבית כ"ללא קטגוריה"
     וייקרו את החודשים שעברו. מתן החליט: מחיקת פרויקט מוחקת את העסקאות שבו."""
-    block = _EDIT[_EDIT.index("project-danger"):]
-    js = (_JS / "project-edit.js").read_text(encoding="utf-8")
+    block = _DETAIL[_DETAIL.index("project-danger"):]
+    js = (_JS / "project-detail.js").read_text(encoding="utf-8")
 
     assert "data-tx-mode" not in block
     assert "הקטגוריה הרגילה" not in block + js
@@ -103,7 +121,7 @@ def test_there_is_no_choice_to_keep_the_transactions_any_more():
 
 
 def test_the_warning_says_what_goes_and_what_does_not_change():
-    block = _EDIT[_EDIT.index("project-danger"):]
+    block = _DETAIL[_DETAIL.index("project-danger"):]
 
     assert "יחד עם" in block and "project.spent" in block, "לא נאמר מה נמחק ובכמה כסף"
     assert "ההוצאות של הבית לא ישתנו" in block
@@ -198,8 +216,9 @@ def test_the_management_page_is_one_container():
 def test_every_section_became_a_block_inside_it():
     """כל חלק נשאר חלק — רק בלי מסגרת משלו."""
     blocks = _EDIT.count("project-settings-block")
-    # 5 מאז "סיום הפרויקט" (מתן, 30.9); 4 מאז שעבר לעמוד הפרויקט (9.10)
-    assert blocks == 4, f"נמצאו {blocks} בלוקים במקום 4"
+    # 5 מאז "סיום הפרויקט" (מתן, 30.9); 3 מאז שהסיום והמחיקה עברו לעמוד
+    # הפרויקט (9.10): פרטים, בעלות, קטגוריות
+    assert blocks == 3, f"נמצאו {blocks} בלוקים במקום 3"
 
 
 def test_the_sections_are_separated_by_a_line_and_not_by_a_gap():
@@ -207,16 +226,7 @@ def test_the_sections_are_separated_by_a_line_and_not_by_a_gap():
     body = _EDIT[_EDIT.index('class="project-settings"'):]
     dividers = body.count('class="group-divider"')
 
-    assert dividers == 3, f"{dividers} קווי הפרדה בין 4 חלקים"
-
-
-def test_the_delete_section_is_part_of_the_same_menu():
-    """הוא היה ‎settings-group‎ בזמן שהשאר היו ‎chart-card‎ — אותו מסך,
-    שני סגנונות."""
-    block = _EDIT[_EDIT.index("project-danger"):]
-
-    assert "settings-group" not in block
-    assert "project-settings-block project-danger" in _EDIT
+    assert dividers == 2, f"{dividers} קווי הפרדה בין 3 חלקים"
 
 
 def test_the_container_carries_the_card_styling_now():
@@ -444,8 +454,6 @@ def test_after_creating_it_goes_into_the_new_project():
 
 # ─── סיום הפרויקט בעמוד הפרויקט, שמירה בפס תחתון (מתן, 9.10) ──────────
 
-_DETAIL = (_ROOT / "frontend/templates/project_detail.html").read_text(encoding="utf-8")
-
 
 def test_finishing_a_project_moved_to_the_bottom_of_the_project_page():
     assert "data-archive-project" not in _EDIT, "סיום הפרויקט עדיין בעמוד העריכה"
@@ -465,7 +473,54 @@ def test_save_sits_in_a_bar_outside_the_details_form():
     assert 'type="submit"' not in form, "השמירה עדיין בתוך החלק של הפרטים"
     bar = _EDIT[_EDIT.index('class="project-save-bar"'):]
     assert 'form="editProjectForm"' in bar, "הכפתור בפס לא מחובר לטופס"
-    assert _EDIT.index('class="project-save-bar"') > _EDIT.index("project-danger"), \
+    assert _EDIT.index('class="project-save-bar"') > _EDIT.index('</section>'), \
         "הפס צריך להיות אחרון בעמוד"
     js = (_ROOT / "frontend/static/js/project-edit.js").read_text(encoding="utf-8")
     assert "button[form=\"editProjectForm\"]" in js, "הקוד מחפש את הכפתור בתוך הטופס ולא ימצא אותו"
+
+
+# ─── כל עריכה נשמרת רק ב"שמירת השינויים" (מתן, 9.10) ─────────────────
+
+_EDIT_JS = (_JS / "project-edit.js").read_text(encoding="utf-8")
+
+
+def _handler(marker):
+    """גוף המטפל שמתחיל ב-‎marker‎, עד סופו."""
+    body = _EDIT_JS[_EDIT_JS.index(marker):]
+    return body[:body.index("\n});")]
+
+
+def test_category_actions_do_not_reach_the_server_on_their_own():
+    """הוספה, שינוי שם ומחיקה מסמנים בלבד; ‎fetch‎ אחד — בשמירה."""
+    adding = _EDIT_JS[_EDIT_JS.index("addForm.addEventListener('submit'"):]
+    adding = adding[:adding.index("\n});")]
+    assert "fetch(" not in adding and "call(" not in adding, "הוספת קטגוריה עדיין שולחת מיד"
+    for marker in (".delete-cat-btn')", ".cat-edit-ok')", ".undo-cat-btn')"):
+        h = _handler(marker)
+        assert "fetch(" not in h and "call(" not in h, f"{marker} שולח לשרת מיד"
+
+
+def test_ownership_waits_for_save_too():
+    for btn in ("shareBtn.addEventListener", "unshareBtn.addEventListener"):
+        h = _EDIT_JS[_EDIT_JS.index(btn):]
+        h = h[:h.index("\n}")]
+        assert "fetch(" not in h and "call(" not in h, f"{btn} משנה בעלות בלי שמירה"
+    assert "'/' + ownership" in _EDIT_JS, "השמירה לא שולחת את שינוי הבעלות"
+
+
+def test_new_categories_are_saved_before_deletions():
+    """עסקאות של קטגוריה שנמחקת יכולות לעבור לקטגוריה שנוספה באותה עריכה —
+    אז היא צריכה להיות קיימת בשרת לפני המחיקה."""
+    steps = _EDIT_JS[_EDIT_JS.index("function saveSteps()"):]
+    assert steps.index("'POST'") < steps.index("'DELETE'")
+
+
+def test_leaving_with_unsaved_changes_asks_first():
+    assert "beforeunload" in _EDIT_JS
+    assert "לצאת בלי לשמור?" in _EDIT_JS
+
+
+def test_the_categories_section_starts_closed_with_a_count():
+    assert 'id="projectCatToggle"' in _EDIT and 'aria-expanded="false"' in _EDIT
+    assert '<div id="projectCatBody" hidden>' in _EDIT
+    assert 'id="projectCatCount"' in _EDIT

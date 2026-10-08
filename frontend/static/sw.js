@@ -93,7 +93,13 @@ function takePrefetched(request) {
 
 self.addEventListener('fetch', function (e) {
     // Only intercept same-origin GET requests
-    if (e.request.method !== 'GET') return;
+    if (e.request.method !== 'GET') {
+        // שמירה/מחיקה/הוספה הופכת כל עמוד שנטען מוקדם לישן: נגיעה ב"ביטול"
+        // ואז "שמירה" תוך 5 שניות החזירה לעמוד הפרויקט את המצב שלפני השמירה
+        // (מתן, 9.10). הכתיבה עצמה עוברת לרשת כרגיל.
+        prefetched.clear();
+        return;
+    }
     if (!e.request.url.startsWith(self.location.origin)) return;
 
     const url = new URL(e.request.url);

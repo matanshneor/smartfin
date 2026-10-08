@@ -251,13 +251,14 @@ def test_every_delete_chain_handles_a_dropped_connection():
     """בלי ‎.catch‎ השורה נשארת על המסך בלי שום הודעה, והמשתמש לוחץ ✕
     שוב ושוב."""
     # מחיקת קטגוריה (משפחה ופרויקט) עוברת דרך עוזר אחד ב-core.js
-    for f in ("project-edit.js", "settings.js"):
-        assert "window.sfDeleteCategory(" in _read(f"frontend/static/js/{f}"), f
+    # (עמוד עריכת הפרויקט רק שואל, ומוחק בשמירה — מתן, 9.10)
+    assert "window.sfDeleteCategory(" in _read("frontend/static/js/settings.js")
+    assert "window.sfAskCategoryDeletion(" in _read("frontend/static/js/project-edit.js")
     js = _strip_comments(_read("frontend/static/js/core.js"))
-    block = js[js.index("window.sfDeleteCategory = function"):]
-    block = block[:block.index("\n    };")]
-
-    assert ".catch(" in block
+    for name in ("window.sfAskCategoryDeletion = function", "window.sfDeleteCategory = function"):
+        block = js[js.index(name):]
+        block = block[:block.index("\n    };")]
+        assert ".catch(" in block, name
 
 
 def test_local_storage_is_never_touched_unguarded():

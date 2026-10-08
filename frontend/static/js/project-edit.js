@@ -1,146 +1,211 @@
 const SF_VIEW = window.sfData('sf-view-data');
 
+/* ═══ עריכת פרויקט — הכל נשמר בבת אחת (מתן, 9.10) ═══
+ *
+ * עד עכשיו רק הפרטים חיכו לכפתור; קטגוריה שנוספה, שונתה או נמחקה, ושינוי
+ * בעלות, נשלחו לשרת ברגע הנגיעה — ו"ביטול" לא ביטל אותם. עכשיו כל שינוי
+ * נרשם כאן ומסומן על המסך, ונשלח רק ב"שמירת השינויים". "ביטול" באמת מבטל.
+ *
+ * בשמירה הסדר קבוע: פרטים, בעלות, קטגוריות חדשות, שינויי שם, מחיקות.
+ * חדשות לפני מחיקות — כדי שעסקאות של קטגוריה שנמחקת יוכלו לעבור לקטגוריה
+ * שנוספה באותה עריכה. שלב שנכשל עוצר את השאר; מה שכבר נשמר יוצא מהרשימה,
+ * ו"שמירה" שנייה ממשיכה מאותה נקודה. */
 (function () {
 const projectId = document.getElementById('projectCategoriesArea').dataset.projectId;
 const detailUrl = SF_VIEW.detailUrl;
-
-// ── עריכת פרטי הפרויקט ──
 const editForm  = document.getElementById('editProjectForm');
-const editError = document.getElementById('editProjectError');
+const saveError = document.getElementById('projectSaveError');
+const saveBtn   = document.querySelector('button[form="editProjectForm"]');
 
-editForm.addEventListener('submit', function (e) {
-    e.preventDefault();
-    editError.textContent = '';
-    const name = document.getElementById('editProjectName').value.trim();
-    const icon = document.getElementById('editProjectIcon').value.trim();
-    const description = document.getElementById('editProjectDescription').value.trim();
-    const budgetVal = document.getElementById('editProjectBudget').value;
-    const trackExpense = document.getElementById('editProjectTrackExpense').checked;
-    const trackIncome  = document.getElementById('editProjectTrackIncome').checked;
-    const trackSavings = document.getElementById('editProjectTrackSavings').checked;
-    if (!name) { editError.textContent = 'נא להזין שם לפרויקט'; return; }
-    if (!trackExpense && !trackIncome && !trackSavings) {
-        editError.textContent = 'יש לבחור לפחות מחלקה אחת למעקב';
-        return;
+const fields = {
+    name:         document.getElementById('editProjectName'),
+    icon:         document.getElementById('editProjectIcon'),
+    description:  document.getElementById('editProjectDescription'),
+    budget:       document.getElementById('editProjectBudget'),
+    trackExpense: document.getElementById('editProjectTrackExpense'),
+    trackIncome:  document.getElementById('editProjectTrackIncome'),
+    trackSavings: document.getElementById('editProjectTrackSavings'),
+};
+function fieldValues() {
+    return Object.keys(fields).map(function (k) {
+        const el = fields[k];
+        return el.type === 'checkbox' ? el.checked : el.value;
+    }).join('\u0001');
+}
+const initialFields = fieldValues();
+
+function json(r) {
+    return r.json().catch(function () { return {}; })
+        .then(function (d) { return { ok: r.ok, d: d }; });
+}
+function call(method, url, body) {
+    const opts = { method: method };
+    if (body) {
+        opts.headers = { 'Content-Type': 'application/json' };
+        opts.body = JSON.stringify(body);
     }
+    return fetch(url, opts).then(json).then(function (res) {
+        if (!res.ok || res.d.error) throw new Error(res.d.error || 'השמירה נכשלה');
+        return res.d;
+    });
+}
 
-    const editSubmitBtn = document.querySelector('button[form="editProjectForm"]');
-    editSubmitBtn.disabled = true;
-    fetch('/api/projects/' + projectId, {
-        method:  'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-            name: name,
-            icon: icon,
-            description: description,
-            budget_target: budgetVal ? parseFloat(budgetVal) : null,
-            track_expense: trackExpense,
-            track_income: trackIncome,
-            track_savings: trackSavings,
-        }),
-    })
-    .then(r => r.json())
-    .then(function (data) {
-        if (data.error) { editSubmitBtn.disabled = false; editError.textContent = data.error; return; }
-        window.sfToastAfterReload('הפרויקט עודכן');
-        window.location.href = detailUrl;
-    })
-    .catch(function () { editSubmitBtn.disabled = false; editError.textContent = window.sfNetError(); });
-});
-
-// ── הפיכת פרויקט אישי למשותף / החזרתו להיות אישי ──
+// ── בעלות: נרשמת עכשיו, נשלחת בשמירה ──
 const shareBtn   = document.getElementById('shareProjectBtn');
 const unshareBtn = document.getElementById('unshareProjectBtn');
+const ownershipNote = document.getElementById('ownershipPending');
+let ownership = null;           // ‎'share'‎ / ‎'unshare'‎ / ‎null‎
+
+function showOwnership() {
+    const btn = shareBtn || unshareBtn;
+    if (!btn) return;
+    btn.textContent = ownership ? 'ביטול השינוי'
+                    : (shareBtn ? 'הפיכה למשותף' : 'החזרה לפרויקט אישי');
+    ownershipNote.hidden = !ownership;
+    ownershipNote.textContent = ownership === 'share'
+        ? 'הפרויקט יהפוך למשותף בשמירה'
+        : 'הפרויקט יחזור להיות אישי בשמירה';
+}
 
 if (shareBtn) {
     shareBtn.addEventListener('click', function () {
+        if (ownership) { ownership = null; showOwnership(); return; }
         window.appConfirm({
             title: 'להפוך את הפרויקט למשותף?',
-            message: 'כל בני המשפחה יראו את הפרויקט, וההוצאות/הכנסות שכבר נרשמו בו יהפכו לשיוך משותף. תמיד אפשר להחזיר אותו להיות אישי בעצמך בעתיד.',
+            message: 'כל בני המשפחה יראו את הפרויקט, וההוצאות/הכנסות שכבר נרשמו בו יהפכו לשיוך משותף. תמיד אפשר להחזיר אותו להיות אישי בעצמך בעתיד. השינוי ייכנס לתוקף בשמירה.',
             confirmText: 'הפיכה למשותף',
             danger: false,
         }).then(function (ok) {
             if (!ok) return;
-            fetch('/api/projects/' + projectId + '/share', { method: 'PUT' })
-            .then(r => r.json())
-            .then(function (d) {
-                if (d.error) { window.showToast(d.error, 'error'); return; }
-                window.location.reload();
-            })
-            .catch(function () { window.showToast(window.sfNetError(), 'error'); });
+            ownership = 'share';
+            showOwnership();
         });
     });
 }
 
 if (unshareBtn) {
     unshareBtn.addEventListener('click', function () {
+        if (ownership) { ownership = null; showOwnership(); return; }
         // "אור רשם כאן 10 עסקאות" — מחושב בשרת. הפרויקט יוסתר מהם, כולל מה
         // שהם עצמם רשמו בו, אז זה נאמר לפני ולא מתגלה אחרי.
         const others = unshareBtn.dataset.othersNote;
         window.appConfirm({
             title: 'להחזיר את הפרויקט להיות אישי?',
-            message: others
+            message: (others
                 ? others + '. אחרי ההחזרה הפרויקט יהיה גלוי רק לך — '
                   + 'גם את העסקאות האלה, והן יסומנו "נרשמה ע״י".'
-                : 'מעכשיו הפרויקט גלוי רק לך. עסקאות שכבר נרשמו כמשותפות יישארו כך.',
+                : 'מעכשיו הפרויקט גלוי רק לך. עסקאות שכבר נרשמו כמשותפות יישארו כך.')
+                + ' השינוי ייכנס לתוקף בשמירה.',
             confirmText: 'החזרה לפרויקט אישי',
             danger: !!others,
         }).then(function (ok) {
             if (!ok) return;
-            fetch('/api/projects/' + projectId + '/unshare', { method: 'PUT' })
-            .then(r => r.json())
-            .then(function (d) {
-                if (d.error) { window.showToast(d.error, 'error'); return; }
-                window.location.reload();
-            })
-            .catch(function () { window.showToast(window.sfNetError(), 'error'); });
+            ownership = 'unshare';
+            showOwnership();
         });
     });
 }
 
-// ── קטגוריות הפרויקט (מנוהלות תמיד במסך העריכה) ──
-const catTabs  = document.querySelectorAll('.project-cat-tabs .toggle-btn');
-const catList  = document.getElementById('projectCatList');
-const addForm  = document.getElementById('addProjectCatForm');
-const addError = document.getElementById('addProjectCatError');
-let currentTab = catTabs.length ? catTabs[0].dataset.catTab : null;
+// ── קטגוריות הפרויקט ──
+//
+// כל קטגוריה ברשימה אחת: ‎{id, type, name, icon, origName, origIcon, isNew,
+// deleted}‎. ‎deleted‎ הוא ‎{target}‎ — לאן יעברו העסקאות (‎null‎ כשאין).
+// לחדשה יש מזהה זמני עד השמירה.
+const catTabs   = document.querySelectorAll('.project-cat-tabs .toggle-btn');
+const catList   = document.getElementById('projectCatList');
+const addForm   = document.getElementById('addProjectCatForm');
+const addError  = document.getElementById('addProjectCatError');
+const toggleBtn = document.getElementById('projectCatToggle');
+const catBody   = document.getElementById('projectCatBody');
+const countEl   = document.getElementById('projectCatCount');
+const tracked   = Array.prototype.map.call(catTabs, function (b) { return b.dataset.catTab; });
+let currentTab  = tracked[0] || null;
+let cats = [];
+let loaded = false;
+let tmpSeq = 0;
 
-function catRowInnerHTML(id, icon, name) {
-    return `
-        <span class="cat-row-icon">${escapeHtml(icon)}</span>
-        <span class="cat-row-name">${escapeHtml(name)}</span>
-        <button class="edit-cat-btn" data-id="${escapeHtml(id)}" aria-label="עריכת הקטגוריה">
+const TYPE_NOUN = { expense: 'הוצאות', income: 'הכנסות', savings: 'חיסכון' };
+
+function find(id) { return cats.find(function (c) { return c.id === id; }); }
+function live(type) {
+    return cats.filter(function (c) { return c.type === type && !c.deleted; });
+}
+function isRenamed(c) { return !c.isNew && (c.name !== c.origName || c.icon !== c.origIcon); }
+function catsDirty() {
+    return cats.some(function (c) { return c.isNew || c.deleted || isRenamed(c); });
+}
+function isDirty() {
+    return fieldValues() !== initialFields || !!ownership || catsDirty();
+}
+
+function updateCount() {
+    if (!loaded) return;
+    const n = cats.filter(function (c) { return tracked.indexOf(c.type) !== -1 && !c.deleted; }).length;
+    countEl.textContent = '(' + n + ')';
+}
+
+function rowHTML(c) {
+    let tag = '';
+    if (c.deleted) {
+        const dest = c.deleted.target && find(c.deleted.target);
+        tag = 'תימחק בשמירה' + (dest ? ' · העסקאות יעברו ל"' + dest.name + '"' : '');
+    } else if (c.isNew) {
+        tag = 'חדשה';
+    } else if (isRenamed(c)) {
+        tag = 'שונתה';
+    }
+    const id = escapeHtml(c.id);
+    const actions = c.deleted
+        ? `<button type="button" class="btn-sm btn-ghost undo-cat-btn" data-id="${id}">ביטול</button>`
+        : `<button type="button" class="edit-cat-btn" data-id="${id}" aria-label="עריכת הקטגוריה">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
             </svg>
         </button>
-        <button class="delete-cat-btn" data-id="${escapeHtml(id)}" aria-label="מחיקת הקטגוריה">✕</button>
+        <button type="button" class="delete-cat-btn" data-id="${id}" aria-label="מחיקת הקטגוריה">✕</button>`;
+    return `
+        <span class="cat-row-icon">${escapeHtml(c.icon)}</span>
+        <span class="cat-row-name"><span class="cat-name-text">${escapeHtml(c.name)}</span>${tag ? `<span class="cat-pending-tag">${escapeHtml(tag)}</span>` : ''}</span>
+        ${actions}
     `;
 }
 
-function renderCatRow(cat) {
-    const li = document.createElement('li');
-    li.className = 'category-row';
-    li.dataset.id = cat.id;
-    li.dataset.name = cat.name;
-    li.dataset.icon = cat.icon;
-    li.innerHTML = catRowInnerHTML(cat.id, cat.icon, cat.name);
-    return li;
+function render() {
+    updateCount();
+    if (!loaded) return;
+    catList.innerHTML = '';
+    cats.filter(function (c) { return c.type === currentTab; }).forEach(function (c) {
+        const li = document.createElement('li');
+        li.className = 'category-row'
+            + (c.deleted ? ' is-deleted' : c.isNew ? ' is-new' : isRenamed(c) ? ' is-renamed' : '');
+        li.dataset.id = c.id;
+        li.innerHTML = rowHTML(c);
+        catList.appendChild(li);
+    });
 }
 
-function loadCats(type) {
+function load() {
     catList.innerHTML = '<li class="category-row"><span class="cat-row-name">טוען…</span></li>';
-    window.sfFetchList('/api/projects/' + projectId + '/categories?type=' + type)
-        .then(function (cats) {
-            if (currentTab !== type) return;
-            catList.innerHTML = '';
-            cats.forEach(cat => catList.appendChild(renderCatRow(cat)));
+    window.sfFetchList('/api/projects/' + projectId + '/categories')
+        .then(function (rows) {
+            cats = rows.map(function (r) {
+                return { id: r.id, type: r.type, name: r.name, icon: r.icon || '📦',
+                         origName: r.name, origIcon: r.icon || '📦', isNew: false, deleted: null };
+            });
+            loaded = true;
+            render();
         })
         .catch(function () {
             catList.innerHTML = '';
             window.showToast(window.sfNetError(), 'error');
         });
 }
+
+toggleBtn.addEventListener('click', function () {
+    const open = toggleBtn.getAttribute('aria-expanded') !== 'true';
+    toggleBtn.setAttribute('aria-expanded', String(open));
+    catBody.hidden = !open;
+});
 
 catTabs.forEach(function (btn) {
     btn.addEventListener('click', function () {
@@ -151,184 +216,236 @@ catTabs.forEach(function (btn) {
         btn.classList.add('active');
         btn.setAttribute('aria-selected', 'true');
         currentTab = btn.dataset.catTab;
-        loadCats(currentTab);
+        render();
     });
 });
 
-if (currentTab) loadCats(currentTab);
+if (currentTab) load();
 
-if (addForm) {
-    addForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        addError.textContent = '';
-        const icon = document.getElementById('newProjectCatIcon').value.trim() || '🏷';
-        const name = document.getElementById('newProjectCatName').value.trim();
-        if (!name) { addError.textContent = 'נא להזין שם קטגוריה'; return; }
+function nameTaken(name, type, exceptId) {
+    return live(type).some(function (c) { return c.id !== exceptId && c.name === name; });
+}
 
-        const addCatBtn = addForm.querySelector('button[type="submit"]');
-        addCatBtn.disabled = true;
-        fetch('/api/projects/' + projectId + '/categories', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ name, icon, type: currentTab }),
-        })
-        .then(r => r.json())
-        .then(function (cat) {
-            addCatBtn.disabled = false;
-            if (cat.error) { addError.textContent = cat.error; return; }
-            catList.appendChild(renderCatRow(cat));
-            // המטמון של טופס ה-+ (transactions.js) לא ידע על השינוי
-            if (window.sfForgetCategories) window.sfForgetCategories();
-            document.getElementById('newProjectCatName').value = '';
-            document.getElementById('newProjectCatIcon').value = '🏷';
-        })
-        .catch(function () { addCatBtn.disabled = false; addError.textContent = window.sfNetError(); });
-    });
+addForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    addError.textContent = '';
+    if (!loaded) return;
+    const iconEl = document.getElementById('newProjectCatIcon');
+    const nameEl = document.getElementById('newProjectCatName');
+    const icon = iconEl.value.trim() || '🏷';
+    const name = nameEl.value.trim();
+    if (!name) { addError.textContent = 'נא להזין שם קטגוריה'; return; }
+    if (nameTaken(name, currentTab)) { addError.textContent = 'כבר יש קטגוריה בשם הזה'; return; }
+    cats.push({ id: 'new-' + (++tmpSeq), type: currentTab, name: name, icon: icon,
+                origName: name, origIcon: icon, isNew: true, deleted: null });
+    nameEl.value = '';
+    iconEl.value = '🏷';
+    render();
+});
+
+// קטגוריה שעסקאות של קטגוריה אחרת אמורות לעבור אליה לא נמחקת — אחרת
+// בשמירה הן היו עוברות אליה ואז נשארות בלי יעד
+function pendingTargetOf(id) {
+    return cats.find(function (c) { return c.deleted && c.deleted.target === id; });
 }
 
 document.addEventListener('click', function (e) {
     const btn = e.target.closest('.delete-cat-btn');
     if (!btn) return;
-    const id  = btn.dataset.id;
-    const row = btn.closest('.category-row');
-    const name = (row.querySelector('.cat-row-name') || {}).textContent || '';
-
-    window.sfDeleteCategory('/api/projects/' + projectId + '/categories/' + id, name.trim())
-    .then(function (deleted) {
-        if (!deleted) return;
-        row.style.transition = 'opacity 0.25s';
-        row.style.opacity = '0';
-        setTimeout(() => row.remove(), 260);
-        if (window.sfForgetCategories) window.sfForgetCategories();
-    });
+    const c = find(btn.dataset.id);
+    if (!c) return;
+    const source = pendingTargetOf(c.id);
+    if (source) {
+        window.showToast('העסקאות של "' + source.name + '" עוברות לכאן. בטלו קודם את המחיקה שלה.', 'error');
+        return;
+    }
+    if (c.isNew) {          // עוד לא נשמרה — פשוט יוצאת מהרשימה
+        cats = cats.filter(function (x) { return x !== c; });
+        render();
+        return;
+    }
+    // השרת יודע כמה עסקאות יש בה; את היעדים מתקנים לפי מה שעוד לא נשמר:
+    // בלי קטגוריות שסומנו למחיקה, עם השמות החדשים, ועם החדשות שנוספו
+    window.sfAskCategoryDeletion('/api/projects/' + projectId + '/categories/' + c.id, c.name,
+        function (usage) {
+            const alternatives = live(c.type)
+                .filter(function (x) {
+                    return x.id !== c.id && (x.isNew
+                        || (usage.alternatives || []).some(function (a) { return a.id === x.id; }));
+                })
+                .map(function (x) { return { id: x.id, name: x.name, icon: x.icon }; });
+            let blocked = null;
+            if (!alternatives.length && (usage.blocked || (usage.alternatives || []).length)) {
+                blocked = usage.blocked || ('זו קטגוריית ה' + (TYPE_NOUN[c.type] || '')
+                    + ' האחרונה — בלעדיה אי אפשר לרשום עסקאות במחלקה הזאת. אפשר לשנות לה את השם במקום למחוק.');
+            }
+            return { count: usage.count, alternatives: alternatives, blocked: blocked };
+        })
+        .then(function (choice) {
+            if (!choice) return;
+            c.deleted = { target: choice.target };
+            render();
+        });
 });
 
-// ── עריכת קטגוריה (inline) — מחקה את זרימת העריכה של קטגוריות המשפחה ──
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.undo-cat-btn');
+    if (!btn) return;
+    const c = find(btn.dataset.id);
+    if (c) { c.deleted = null; render(); }
+});
+
+// ── שינוי שם/אייקון בתוך השורה — "אישור" מעדכן את הרשימה, לא את השרת ──
 document.addEventListener('click', function (e) {
     const btn = e.target.closest('.edit-cat-btn');
     if (!btn) return;
     const row = btn.closest('.category-row');
-    if (!row || row.classList.contains('editing')) return;
-
-    const id       = btn.dataset.id;
-    const origIcon = row.dataset.icon || '📦';
-    const origName = row.dataset.name || '';
+    const c = find(btn.dataset.id);
+    if (!row || !c || row.classList.contains('editing')) return;
 
     row.classList.add('editing');
-    row.dataset.origHtml = row.innerHTML;
     row.innerHTML = `
         <div class="cat-edit-form">
             <div class="add-cat-row">
                 <input class="form-input emoji-input cat-edit-icon" type="text" maxlength="2" aria-label="אייקון">
                 <input class="form-input cat-edit-name" type="text" maxlength="30" aria-label="שם קטגוריה">
             </div>
+            <p class="form-error cat-edit-error" role="alert"></p>
             <div class="edit-actions">
-                <button class="btn-sm btn-primary cat-edit-save" data-id="${escapeHtml(id)}">שמירה</button>
-                <button class="btn-sm btn-ghost cat-edit-cancel">ביטול</button>
+                <button type="button" class="btn-sm btn-primary cat-edit-ok" data-id="${escapeHtml(c.id)}">אישור</button>
+                <button type="button" class="btn-sm btn-ghost cat-edit-cancel">ביטול</button>
             </div>
         </div>
     `;
-    row.querySelector('.cat-edit-icon').value = origIcon;
-    row.querySelector('.cat-edit-name').value = origName;
+    row.querySelector('.cat-edit-icon').value = c.icon;
+    row.querySelector('.cat-edit-name').value = c.name;
     row.querySelector('.cat-edit-name').focus();
 });
 
 document.addEventListener('click', function (e) {
-    const cancelBtn = e.target.closest('.cat-edit-cancel');
-    if (cancelBtn) {
-        const row = cancelBtn.closest('.category-row');
-        row.innerHTML = row.dataset.origHtml;
-        row.classList.remove('editing');
+    if (e.target.closest('.cat-edit-cancel')) { render(); return; }
+    const ok = e.target.closest('.cat-edit-ok');
+    if (!ok) return;
+    const row  = ok.closest('.category-row');
+    const c    = find(ok.dataset.id);
+    const icon = row.querySelector('.cat-edit-icon').value.trim() || '📦';
+    const name = row.querySelector('.cat-edit-name').value.trim();
+    const err  = row.querySelector('.cat-edit-error');
+    if (!name) { row.querySelector('.cat-edit-name').focus(); return; }
+    if (nameTaken(name, c.type, c.id)) { err.textContent = 'כבר יש קטגוריה בשם הזה'; return; }
+    c.name = name;
+    c.icon = icon;
+    if (c.isNew) { c.origName = name; c.origIcon = icon; }
+    render();
+});
+
+// ── שמירה ──
+function saveSteps() {
+    const steps = [];
+    const name = fields.name.value.trim();
+    const budgetVal = fields.budget.value;
+    steps.push(function () {
+        return call('PUT', '/api/projects/' + projectId, {
+            name: name,
+            icon: fields.icon.value.trim(),
+            description: fields.description.value.trim(),
+            budget_target: budgetVal ? parseFloat(budgetVal) : null,
+            track_expense: fields.trackExpense.checked,
+            track_income: fields.trackIncome.checked,
+            track_savings: fields.trackSavings.checked,
+        });
+    });
+    if (ownership) {
+        steps.push(function () {
+            return call('PUT', '/api/projects/' + projectId + '/' + ownership).then(function () {
+                ownership = null;
+            });
+        });
+    }
+    cats.filter(function (c) { return c.isNew && !c.deleted; }).forEach(function (c) {
+        steps.push(function () {
+            return call('POST', '/api/projects/' + projectId + '/categories',
+                        { name: c.name, icon: c.icon, type: c.type })
+                .then(function (saved) {
+                    cats.forEach(function (x) {
+                        if (x.deleted && x.deleted.target === c.id) x.deleted.target = saved.id;
+                    });
+                    c.id = saved.id;
+                    c.isNew = false;
+                });
+        });
+    });
+    cats.filter(function (c) { return !c.isNew && !c.deleted && isRenamed(c); }).forEach(function (c) {
+        steps.push(function () {
+            return call('PUT', '/api/projects/' + projectId + '/categories/' + c.id,
+                        { name: c.name, icon: c.icon })
+                .then(function () { c.origName = c.name; c.origIcon = c.icon; });
+        });
+    });
+    cats.filter(function (c) { return !c.isNew && c.deleted; }).forEach(function (c) {
+        steps.push(function () {
+            const target = c.deleted.target;
+            return call('DELETE', '/api/projects/' + projectId + '/categories/' + c.id
+                        + (target ? '?move_to=' + encodeURIComponent(target) : ''))
+                .then(function () { cats = cats.filter(function (x) { return x !== c; }); });
+        });
+    });
+    return steps;
+}
+
+let leaving = false;
+editForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    saveError.textContent = '';
+    if (!fields.name.value.trim()) { saveError.textContent = 'נא להזין שם לפרויקט'; return; }
+    if (!fields.trackExpense.checked && !fields.trackIncome.checked && !fields.trackSavings.checked) {
+        saveError.textContent = 'יש לבחור לפחות מחלקה אחת למעקב';
+        return;
+    }
+    if (document.querySelector('.category-row.editing')) {
+        saveError.textContent = 'יש קטגוריה בעריכה — אשרו או בטלו אותה קודם';
         return;
     }
 
-    const saveBtn = e.target.closest('.cat-edit-save');
-    if (!saveBtn) return;
-    const row  = saveBtn.closest('.category-row');
-    const id   = saveBtn.dataset.id;
-    const icon = row.querySelector('.cat-edit-icon').value.trim() || '📦';
-    const name = row.querySelector('.cat-edit-name').value.trim();
-    if (!name) { row.querySelector('.cat-edit-name').focus(); return; }
-
     saveBtn.disabled = true;
-    fetch('/api/projects/' + projectId + '/categories/' + id, {
-        method:  'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ name, icon }),
-    })
-    .then(r => r.json())
-    .then(function (d) {
-        if (d.error) { window.showToast(d.error, 'error'); saveBtn.disabled = false; return; }
-        row.classList.remove('editing');
-        row.dataset.name = name;
-        row.dataset.icon = icon;
-        row.innerHTML = catRowInnerHTML(id, icon, name);
+    const steps = saveSteps();
+    let chain = Promise.resolve();
+    steps.forEach(function (step) { chain = chain.then(step); });
+    chain.then(function () {
         if (window.sfForgetCategories) window.sfForgetCategories();
-        window.showToast('הקטגוריה עודכנה');
-    })
-    .catch(function () { window.showToast(window.sfNetError(), 'error'); saveBtn.disabled = false; });
+        leaving = true;
+        window.sfToastAfterReload('הפרויקט עודכן');
+        window.location.href = detailUrl;
+    }).catch(function (err) {
+        saveBtn.disabled = false;
+        if (window.sfForgetCategories) window.sfForgetCategories();
+        render();
+        showOwnership();
+        saveError.textContent = (err && err.message && !/^Failed to fetch|NetworkError|Load failed/.test(err.message))
+            ? err.message : window.sfNetError();
+    });
 });
-})();
 
-// ── מחיקת הפרויקט ──
-//
-// עברה לכאן מ-✕ שישב ליד כל שורה ברשימת הפרויקטים: הפעולה הבלתי הפיכה
-// ביותר בעמוד, במרחק נגיעה אחת מהשם, בלי שום הקשר על מה עומד להימחק.
-// כאן המשתמש כבר ראה את הסכומים ואת העסקאות.
-//
-// ולכן גם **אין כאן ‎appConfirm‎**: האזור נפתח, מראה כמה עסקאות עומדות
-// על הפרק, ומבקש בחירה מפורשת. דיאלוג נוסף מעל זה היה שאלה שנייה על
-// מה שכבר מוצג במלואו.
-(function () {
-    const toggle = document.getElementById('toggleDeleteProjectBtn');
-    const form   = document.getElementById('deleteProjectForm');
-    const go     = document.getElementById('confirmDeleteProjectBtn');
-    const cancel = document.getElementById('cancelDeleteProjectBtn');
-    const errorEl = document.getElementById('deleteProjectError');
-    if (!toggle || !form || !go) return;
+// ── יציאה בלי לשמור ──
+window.addEventListener('beforeunload', function (e) {
+    if (leaving || !isDirty()) return;
+    e.preventDefault();
+    e.returnValue = '';
+});
 
-    // ‎visible‎ ולא ‎open‎ — זה הקלאס ש-‎.password-form‎ כבר משתמש בו.
-    toggle.addEventListener('click', function () {
-        const open = form.classList.toggle('visible');
-        toggle.setAttribute('aria-expanded', String(open));
+document.addEventListener('click', function (e) {
+    const link = e.target.closest('.project-save-cancel, .hero-top a.stats-nav-btn');
+    if (!link || !isDirty()) return;
+    e.preventDefault();
+    window.appConfirm({
+        title: 'לצאת בלי לשמור?',
+        message: 'השינויים שעשיתם בעמוד הזה לא יישמרו.',
+        confirmText: 'יציאה בלי שמירה',
+        cancelText: 'המשך עריכה',
+    }).then(function (ok) {
+        if (!ok) return;
+        leaving = true;
+        window.location.href = link.href;
     });
-
-    if (cancel) {
-        cancel.addEventListener('click', function () {
-            form.classList.remove('visible');
-            toggle.setAttribute('aria-expanded', 'false');
-            errorEl.textContent = '';
-        });
-    }
-
-    go.addEventListener('click', function () {
-        go.disabled = true;
-        errorEl.textContent = '';
-
-        fetch('/api/projects/' + go.dataset.id, {
-            method:  'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-        })
-        .then(r => r.json().then(d => ({ ok: r.ok, d: d })))
-        .then(function (res) {
-            if (!res.ok || res.d.status !== 'ok') {
-                errorEl.textContent = res.d.error || 'המחיקה נכשלה';
-                go.disabled = false;
-                return;
-            }
-            // ‎deleted‎ הוא מספר העסקאות שנמחקו בפועל — השרת מחזיר אותו
-            // כדי שלא נצטרך להבטיח מספר שלא נבדק.
-            const wiped = res.d.deleted || 0;
-            try {
-                window.sfToastAfterReload(wiped
-                    ? 'הפרויקט נמחק, ואיתו ' + window.sfCount(wiped, 'עסקה אחת', 'עסקאות')
-                    : 'הפרויקט נמחק');
-            } catch (e) { /* אין אחסון — נוותר על הטוסט, לא על הניווט */ }
-            window.location.href = '/projects';
-        })
-        .catch(function () {
-            errorEl.textContent = window.sfNetError();
-            go.disabled = false;
-        });
-    });
+});
 })();

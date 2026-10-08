@@ -4354,8 +4354,33 @@ li.transaction-item.swipe-ready > .swipe-content {
     .project-save-bar { background: var(--dock-bg-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 
-/* סיום הפרויקט בתחתית עמוד הפרויקט */
-.project-finish .group-row { padding: 0; }
+/* סיום ומחיקה בתחתית עמוד הפרויקט (מתן, 9.10) */
+.project-finish .group-row { padding: 4px 0; }
+.project-finish > .group-divider { margin: 10px 0; }
+
+/* קטגוריות הפרויקט — כותרת שנפתחת (מתן, 9.10). השורה כולה לחיצה, לא רק החץ */
+.settings-collapse-title { margin: 0; }
+.settings-collapse {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    background: none; border: 0; padding: 4px 0; margin: 0;
+    font: inherit; color: inherit; text-align: start; cursor: pointer;
+}
+.settings-collapse-count { color: var(--color-text-muted); font-weight: 500; font-size: 0.9rem; }
+.settings-collapse .expand-chevron { margin-inline-start: auto; transition: transform 0.2s; }
+.settings-collapse[aria-expanded="true"] .expand-chevron { transform: rotate(180deg); }
+
+/* שינויים שעוד לא נשמרו — מסומנים על המסך עד "שמירת השינויים" */
+.cat-pending-tag {
+    display: inline-block; margin-inline-start: 8px;
+    font-size: 0.72rem; font-weight: 600; color: var(--color-gold-text);
+}
+.category-row.is-deleted .cat-row-icon,
+.category-row.is-deleted .cat-row-name { opacity: 0.55; }
+.category-row.is-deleted .cat-name-text { text-decoration: line-through; }
+.category-row.is-deleted .cat-pending-tag { display: block; margin: 2px 0 0; color: var(--color-expense); }
+.pending-note { margin: 4px 0 0; font-size: 0.8rem; font-weight: 600; color: var(--color-gold-text); }
+.project-save-error:empty { display: none; }
+.project-save-error { margin: 0 0 8px; text-align: center; }
 
 /* הכותרת הראשונה כבר נושאת את הריווח של הבלוק */
 .project-settings-block > .chart-title:first-child { margin-top: 0; }
