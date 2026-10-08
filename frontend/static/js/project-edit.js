@@ -24,7 +24,7 @@ editForm.addEventListener('submit', function (e) {
         return;
     }
 
-    const editSubmitBtn = editForm.querySelector('button[type="submit"]');
+    const editSubmitBtn = document.querySelector('button[form="editProjectForm"]');
     editSubmitBtn.disabled = true;
     fetch('/api/projects/' + projectId, {
         method:  'PUT',

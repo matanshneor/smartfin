@@ -489,7 +489,7 @@ window.softReload = function (selector, pendingToast) {
 
 
 // ── "הפרויקט הסתיים" / "פתיחה מחדש" (מתן, 30.9 — סבב 6, פריט 3) ──
-// הכפתור בעמוד העריכה ובפס של פרויקט שהסתיים. סיום שואל קודם; החזרה לא —
+// הכפתור בתחתית עמוד הפרויקט ובפס של פרויקט שהסתיים. סיום שואל קודם; החזרה לא —
 // היא לא מסתירה כלום.
 document.addEventListener('click', function (e) {
     const btn = e.target.closest && e.target.closest('[data-archive-project]');

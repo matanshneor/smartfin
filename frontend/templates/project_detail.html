@@ -219,6 +219,22 @@
     {% endif %}
 </section>
 
+{# סיום הפרויקט — בתחתית עמוד הפרויקט ולא בעמוד העריכה (מתן, 9.10): זו
+   פעולה על הפרויקט, לא שינוי בהגדרות שלו. פרויקט שכבר הסתיים — הפס
+   למעלה מציע "פתיחה מחדש", אז כאן אין מה להציג. #}
+{% if not project.archived %}
+<section class="chart-card project-finish">
+    <div class="group-row">
+        <div class="group-row-info">
+            <p class="group-row-label">סיום הפרויקט</p>
+            <p class="group-row-hint">יוצא מהרשימה ומטופס ההוספה. העסקאות והסכומים נשמרים, ואפשר להחזיר אותו.</p>
+        </div>
+        <button type="button" class="btn-sm btn-ghost" data-archive-project="{{ project.id }}"
+                data-archived="true" data-name="{{ project.name }}">הפרויקט הסתיים</button>
+    </div>
+</section>
+{% endif %}
+
 {% endblock %}
 
 {% block scripts %}

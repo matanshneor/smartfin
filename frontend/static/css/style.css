@@ -4323,7 +4323,39 @@ li.transaction-item.swipe-ready > .swipe-content {
     overflow: hidden;
     margin-bottom: 16px;
 }
-.project-settings-block { padding: 18px 16px; }
+.project-settings-block { padding: 14px 16px; }
+.project-settings .form-group { margin-bottom: 12px; }
+
+/* מחלקות המעקב בשורה אחת ולא שלוש שורות (מתן, 9.10 — העמוד היה ארוך מדי) */
+.track-row { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+
+/* פס השמירה (מתן, 9.10): נשאר בתחתית המסך מעל הסרגל, לכל העמוד ולא רק
+   לחלק הראשון. כשהמקלדת פתוחה הסרגל נעלם (ראו "מקלדת פתוחה"), והפס יורד
+   למקומו כדי לא לרחף באמצע. */
+.project-save-bar {
+    position: sticky;
+    bottom: calc(var(--dock-height) + var(--dock-gap) * 2 + env(safe-area-inset-bottom, 0px));
+    z-index: 5;
+    display: flex; gap: 8px;
+    padding: 10px;
+    background: var(--dock-bg);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(var(--ink-rgb), 0.08);
+    border-radius: 16px;
+    box-shadow: var(--shadow-dock);
+}
+.project-save-btn, .project-save-cancel {
+    padding: 12px 18px; border-radius: 11px; font-size: 0.95rem; font-weight: 600;
+    text-align: center; text-decoration: none;
+}
+.project-save-btn { flex: 1; }
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+    .project-save-bar { background: var(--dock-bg-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+
+/* סיום הפרויקט בתחתית עמוד הפרויקט */
+.project-finish .group-row { padding: 0; }
 
 /* הכותרת הראשונה כבר נושאת את הריווח של הבלוק */
 .project-settings-block > .chart-title:first-child { margin-top: 0; }
@@ -4925,5 +4957,11 @@ body.tx-screen-open { overflow: hidden; }
     body:has(:is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea, select):focus) .bottom-nav,
     body:has(:is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea, select):focus) .fab {
         visibility: hidden;
+    }
+}
+/* ופס השמירה בעריכת פרויקט יורד למקום שהסרגל פינה */
+@media (pointer: coarse) {
+    body:has(:is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea, select):focus) .project-save-bar {
+        bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     }
 }

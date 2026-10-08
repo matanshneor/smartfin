@@ -47,7 +47,7 @@
         </div>
         <div class="form-group">
             <label class="form-label" for="editProjectDescription">תיאור (אופציונלי)</label>
-            <textarea class="form-input" id="editProjectDescription" maxlength="200" rows="2"
+            <textarea class="form-input" id="editProjectDescription" maxlength="200" rows="1"
                       placeholder="למשל: טיול משפחתי ליפן, קיץ 2026">{{ project.description or '' }}</textarea>
         </div>
         <div class="form-group">
@@ -61,12 +61,13 @@
             {# השדה עמד בלי מילת הסבר אחת: שתי מילים וקופסה לסכום, בלי
                לומר אם מדובר בתקרה, בתחזית או בכסף שכבר הופרש. #}
             <p class="field-hint" id="budgetTargetHint">
-                כמה תכננתם להוציא על הפרויקט. בעמוד הפרויקט יופיע פס
-                שמראה כמה מהסכום כבר נוצל. לא חוסם כלום — רק מראה איפה אתם.
+                כמה תכננתם להוציא. בעמוד הפרויקט יופיע פס שמראה כמה
+                מהסכום כבר נוצל — בלי לחסום כלום.
             </p>
         </div>
         <div class="form-group">
             <label class="form-label">אילו מחלקות לעקוב?</label>
+            <div class="track-row">
             <label class="checkbox-label">
                 <input type="checkbox" id="editProjectTrackExpense" class="checkbox-input" {% if project.track_expense %}checked{% endif %}>
                 <span class="checkbox-custom"></span>
@@ -82,12 +83,9 @@
                 <span class="checkbox-custom"></span>
                 <span class="checkbox-text">חיסכון</span>
             </label>
+            </div>
         </div>
         <p class="form-error" id="editProjectError" role="alert"></p>
-        <div class="edit-actions">
-            <button type="submit" class="btn-sm btn-primary">שמירת השינויים</button>
-            <a href="{{ url_for('project_detail', project_id=project.id) }}" class="btn-sm btn-ghost">ביטול</a>
-        </div>
     </form>
 </div>
 
@@ -153,30 +151,6 @@
 
 <div class="group-divider"></div>
 
-{# הפרויקט הסתיים (מתן, 30.9 — סבב 6, פריט 3): יוצא מהרשימות ומטופס ההוספה,
-   ושום דבר לא נמחק. מעל המחיקה — זו הדרך הרכה, ורוב מי שחושב למחוק
-   פרויקט שנגמר בעצם רוצה רק שהוא לא יפריע. #}
-<div class="project-settings-block">
-    <div class="group-row">
-        <div class="group-row-info">
-            <p class="group-row-label">{{ 'הפרויקט הסתיים' if project.archived else 'סיום הפרויקט' }}</p>
-            <p class="group-row-hint">
-                {% if project.archived %}
-                    לא מופיע ברשימת הפרויקטים ובטופס ההוספה. העסקאות והסכומים שמורים.
-                {% else %}
-                    יוצא מהרשימה ומטופס ההוספה. העסקאות והסכומים נשמרים, ואפשר להחזיר אותו.
-                {% endif %}
-            </p>
-        </div>
-        <button type="button" class="btn-sm btn-ghost" data-archive-project="{{ project.id }}"
-                data-archived="{{ 'false' if project.archived else 'true' }}" data-name="{{ project.name }}">
-            {{ 'פתיחה מחדש' if project.archived else 'הפרויקט הסתיים' }}
-        </button>
-    </div>
-</div>
-
-<div class="group-divider"></div>
-
 {# מחיקת הפרויקט.
    הכפתור ישב קודם כ-✕ ברשימת הפרויקטים, במרחק נגיעה אחת מהשם ובלי שום
    הקשר על מה עומד להימחק. כאן, בתוך הפרויקט, כבר ראית את הסכומים ואת
@@ -224,6 +198,13 @@
 </div>
 
 </section>
+
+{# השמירה בפס שנשאר בתחתית המסך (מתן, 9.10): בראש העמוד, מתחת לפרטים, היא
+   נראתה שייכת רק לחלק הראשון. ‎form=‎ — הכפתור מחוץ לטופס ועדיין שולח אותו. #}
+<div class="project-save-bar">
+    <button type="submit" form="editProjectForm" class="btn-primary project-save-btn">שמירת השינויים</button>
+    <a href="{{ url_for('project_detail', project_id=project.id) }}" class="btn-ghost project-save-cancel">ביטול</a>
+</div>
 
 {% endblock %}
 

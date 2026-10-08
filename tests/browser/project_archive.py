@@ -49,11 +49,17 @@ try:
         api("POST", "/api/transactions", {"amount": 4000, "type": "expense", "project_id": pid,
                                           "project_category_id": pcat, "date": datetime.date.today().isoformat(),
                                           "description": "PA-TEST קבלן"})
+        # מאז 9.10 הסיום בתחתית עמוד הפרויקט, לא בעמוד העריכה
         page.goto(BASE + f"/projects/{pid}/edit"); page.wait_for_timeout(1000)
-        page.locator("[data-archive-project]").click(); page.wait_for_timeout(400)
+        print("edit page finish buttons (expect 0):", page.locator("[data-archive-project]").count())
+        page.goto(BASE + f"/projects/{pid}"); page.wait_for_timeout(1000)
+        page.locator(".project-finish [data-archive-project]").scroll_into_view_if_needed()
+        page.screenshot(path="/tmp/finish_bottom.png", full_page=True)
+        page.locator(".project-finish [data-archive-project]").click(); page.wait_for_timeout(400)
         print("confirm asks:", page.locator(".confirm-overlay.open, #confirmOverlay.open").count() or page.locator("text=לסמן את").count())
         page.locator("button", has_text="סיום הפרויקט").last.click(); page.wait_for_timeout(2000)
-        print("edit page now offers:", page.locator("[data-archive-project]").inner_text().strip())
+        print("project page now: banner", page.locator(".project-archived-banner").count(),
+              "| bottom finish block (expect 0):", page.locator(".project-finish").count())
 
         page.goto(BASE + "/projects"); page.wait_for_timeout(1000)
         print("in main list:", page.locator("#projectsList .project-tile-name", has_text="PA-שיפוץ").count())

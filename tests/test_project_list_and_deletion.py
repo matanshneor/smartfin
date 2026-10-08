@@ -198,8 +198,8 @@ def test_the_management_page_is_one_container():
 def test_every_section_became_a_block_inside_it():
     """כל חלק נשאר חלק — רק בלי מסגרת משלו."""
     blocks = _EDIT.count("project-settings-block")
-    # 5 מאז "סיום הפרויקט" (מתן, 30.9)
-    assert blocks == 5, f"נמצאו {blocks} בלוקים במקום 5"
+    # 5 מאז "סיום הפרויקט" (מתן, 30.9); 4 מאז שעבר לעמוד הפרויקט (9.10)
+    assert blocks == 4, f"נמצאו {blocks} בלוקים במקום 4"
 
 
 def test_the_sections_are_separated_by_a_line_and_not_by_a_gap():
@@ -207,7 +207,7 @@ def test_the_sections_are_separated_by_a_line_and_not_by_a_gap():
     body = _EDIT[_EDIT.index('class="project-settings"'):]
     dividers = body.count('class="group-divider"')
 
-    assert dividers == 4, f"{dividers} קווי הפרדה בין 5 חלקים"
+    assert dividers == 3, f"{dividers} קווי הפרדה בין 4 חלקים"
 
 
 def test_the_delete_section_is_part_of_the_same_menu():
@@ -440,3 +440,32 @@ def test_whatever_comes_in_the_address_is_text_and_short(new_screen):
 def test_after_creating_it_goes_into_the_new_project():
     js = (_JS / "projects.js").read_text(encoding="utf-8")
     assert "window.location.href = data.id ? '/projects/' + encodeURIComponent(data.id) : '/projects';" in js
+
+
+# ─── סיום הפרויקט בעמוד הפרויקט, שמירה בפס תחתון (מתן, 9.10) ──────────
+
+_DETAIL = (_ROOT / "frontend/templates/project_detail.html").read_text(encoding="utf-8")
+
+
+def test_finishing_a_project_moved_to_the_bottom_of_the_project_page():
+    assert "data-archive-project" not in _EDIT, "סיום הפרויקט עדיין בעמוד העריכה"
+    tail = _DETAIL[_DETAIL.rindex("כל העסקאות ("):]
+    assert 'data-archived="true"' in tail, "אין כפתור סיום בתחתית עמוד הפרויקט"
+
+
+def test_the_finish_button_is_not_offered_for_a_finished_project():
+    """לפרויקט שהסתיים יש כבר "פתיחה מחדש" בפס העליון."""
+    tail = _DETAIL[_DETAIL.rindex("כל העסקאות ("):]
+    block = tail[tail.index("{% if not project.archived %}"):]
+    assert block.index('data-archived="true"') < block.index("{% endif %}")
+
+
+def test_save_sits_in_a_bar_outside_the_details_form():
+    form = _EDIT[_EDIT.index('id="editProjectForm"'):_EDIT.index("</form>")]
+    assert 'type="submit"' not in form, "השמירה עדיין בתוך החלק של הפרטים"
+    bar = _EDIT[_EDIT.index('class="project-save-bar"'):]
+    assert 'form="editProjectForm"' in bar, "הכפתור בפס לא מחובר לטופס"
+    assert _EDIT.index('class="project-save-bar"') > _EDIT.index("project-danger"), \
+        "הפס צריך להיות אחרון בעמוד"
+    js = (_ROOT / "frontend/static/js/project-edit.js").read_text(encoding="utf-8")
+    assert "button[form=\"editProjectForm\"]" in js, "הקוד מחפש את הכפתור בתוך הטופס ולא ימצא אותו"
