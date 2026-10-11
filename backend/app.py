@@ -1299,7 +1299,7 @@ def month_view():
         return render_template(
             "month.html", active_page="month", user=user,
             summary=db._empty_summary(), expense_breakdown=[], income_breakdown=[], income_sources=[],
-            savings_breakdown=[], member_breakdowns=[], anomalies=[], month_transactions=[],
+            savings_breakdown=[], member_breakdowns=[], month_transactions=[],
             member_colors={}, month_label=_month_label(year, month), year=year, month=month,
             strip_months=[{"year": year, "month": month}], hebrew_months=_HEBREW_MONTHS,
             is_current=is_current, is_future=is_future, summary_data=db._empty_summary(),
@@ -1356,7 +1356,6 @@ def month_view():
     # (מתן, 5.10; כמו בעמוד ההשוואה)
     active_types = [t for t in ("expense", "income", "savings")
                     if settings_["owner_attribution"].get(t) and len(p1["members"] or []) > 1]
-    anomalies = db.month_alerts(family_id, year, month, summary, settings_, expense_breakdown)
     month_transactions = db.month_transactions_from_rows(rows, settings_, user["id"])
     # שורת הקטגוריות מתחת ל"הוצאות" וכו׳ ב"כל העסקאות" (מתן, 30.9)
     tx_cat_chips = db.category_filter_chips(month_transactions)
@@ -1420,7 +1419,6 @@ def month_view():
         savings_home=savings_home,
         savings_breakdown=savings_breakdown,
         member_breakdowns=member_breakdowns,
-        anomalies=anomalies,
         month_transactions=month_transactions,
         tx_cat_chips=tx_cat_chips,
         project_month=project_month,

@@ -93,17 +93,8 @@
     'biweekly':   'כל שבועיים'
 } %}
 
-<!-- Alerts: חריגות -->
-{% if anomalies %}
-<section class="alerts-section" aria-label="התראות">
-    {# לחיצה מובילה ליעד של ההתראה בעמוד הזה (מתן, 11.10) — ‎month.js‎ #}
-    {% for alert in anomalies %}
-    <a class="alert-card {{ alert.severity }}" href="#{{ alert.target or 'top' }}">
-        <span class="alert-text">{{ alert.text }}</span>
-    </a>
-    {% endfor %}
-</section>
-{% endif %}
+{# ההתראות מוצגות רק בדף הבית (מתן, 11.10). כאן חריגה מתקציב כבר כתובה
+   תחת הקטגוריה, ומאזן שלילי — באדום בראש העמוד. #}
 
 {# חודש בלי אף עסקה היה מרנדר חמישה כרטיסי גרף ריקים בזה אחר זה, בלי
    שום הסבר. משפחה חדשה נוחתת כאן ישר מהדשבורד ורואה מסך שנראה שבור.
