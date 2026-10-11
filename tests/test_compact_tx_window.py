@@ -56,7 +56,8 @@ def test_frequency_and_end_date_stack_at_16px():
     assert "#modalOverlay .recurring-fields .form-input { font-size: max(1rem, 16px);" in _CSS
 
 
-def test_the_categories_keep_todays_size():
-    """מתן: "הקטגוריות באותו גודל של היום" — אין כאן כלל שמקטין אותן."""
-    block = _CSS[_CSS.index("/* ─── חלון הוספה/עריכה במסך אחד"):]
-    assert ".cat-btn" not in block and ".category-grid" not in block
+def test_the_categories_are_taller_and_show_the_whole_name():
+    """מתן (11.10): "תגדיל טיפה את הקטגוריות, אני רוצה שיראו את כל השמות" —
+    במקום "באותו גודל של היום" (5.10)."""
+    assert "#modalOverlay .cat-btn { min-height: 76px;" in _CSS
+    assert "#modalOverlay .cat-btn > span:last-child { overflow-wrap: anywhere; }" in _CSS

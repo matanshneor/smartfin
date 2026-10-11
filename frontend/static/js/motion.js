@@ -64,7 +64,7 @@
     function runStagger() {
         if (reduceMotion) return;
         const items = document.querySelectorAll(
-            '.summary-card, .chart-card, .transaction-item, .settings-card, ' +
+            '.summary-cards, .chart-card, .transaction-item, .settings-card, ' +
             '.month-item, .alert-card, .kpi-card, .empty-state'
         );
         items.forEach(function (el, i) {

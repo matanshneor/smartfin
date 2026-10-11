@@ -117,11 +117,6 @@
 
             <div class="modal-handle"></div>
 
-            <!-- Scan Receipt Button (הוצאות בלבד — ראה setType) -->
-            <button class="scan-btn" id="scanBtn" type="button">
-                <span class="scan-btn-icon">📷</span>
-                <span class="scan-btn-text">סריקת קבלה</span>
-            </button>
             <input type="file" id="receiptInput" accept="image/*" capture="environment" hidden>
 
 
@@ -145,6 +140,12 @@
                     {# מי הזין ומתי (מתן, 3.10) — נטען כשהחלון נפתח לעריכה. בשורת
                        הכותרת ולא בתחתית: כך חלון העריכה נכנס במסך אחד (מתן, 5.10) #}
                     <p class="tx-entered-meta" id="txEnteredMeta" hidden></p>
+                    {# סריקת קבלה בשורת הכותרת ולא ברוחב מלא מעליה (מתן, 11.10) —
+                       חוסך שורה שלמה. הוצאות בלבד, ולא בעריכה (‎setType‎) #}
+                    <button class="scan-btn" id="scanBtn" type="button">
+                        <span class="scan-btn-icon" aria-hidden="true">📷</span>
+                        <span class="scan-btn-text">סריקת קבלה</span>
+                    </button>
                 </div>
                 <div class="type-toggle type-toggle-3" role="group" aria-label="מחלקת העסקה">
                     <button class="toggle-btn active" id="toggleExpense" data-type="expense" aria-pressed="true">הוצאה</button>
@@ -156,8 +157,9 @@
             <!-- Form -->
             <form class="tx-form" id="txForm" novalidate>
 
-                <div class="form-group">
-                    <label class="form-label" for="txAmount">סכום (₪)</label>
+                {# הסכום גדול ובמרכז, בצבע המחלקה (מתן, 11.10) #}
+                <div class="form-group amount-group">
+                    <label class="form-label" for="txAmount">סכום</label>
                     <div class="amount-input-wrap">
                         <span class="amount-currency">₪</span>
                         <input class="form-input amount-input" type="number" id="txAmount"
@@ -173,8 +175,11 @@
                     <input type="hidden" id="txReceiptPath" name="receipt_path">
                 </div>
 
+                {# כל הפרטים בבלוק אחד, שורה לכל פרט עם קו דק ביניהן — כמו
+                   בהגדרות של האייפון (מתן, 11.10) #}
+                <div class="tx-details">
                 {# התיאור מיד אחרי הקטגוריה — שניהם עונים על "על מה" (מתן, 5.10) #}
-                <div class="form-group">
+                <div class="form-group detail-row">
                     <label class="form-label" for="txDescription">תיאור קצר</label>
                     <input class="form-input" type="text" id="txDescription"
                            placeholder="למשל: שופרסל, משכורת…" maxlength="80" enterkeyhint="done"
@@ -183,7 +188,7 @@
                     <div class="desc-suggest" id="descSuggest" role="listbox" aria-label="תיאורים קודמים" hidden></div>
                 </div>
 
-                <div class="form-group" id="ownerGroup">
+                <div class="form-group detail-row" id="ownerGroup">
                     <label class="form-label" id="ownerLabel">של מי ההוצאה?</label>
                     <div class="owner-toggle" id="ownerToggle" role="radiogroup" aria-label="בחירת בן משפחה"></div>
                     <input type="hidden" id="txOwner" name="owner">
@@ -193,14 +198,13 @@
                 {# שורה אחת (מתן, 5.10): בהוספה — היום/אתמול/שלשום ו"תאריך אחר";
                    בעריכה — רק התאריך, בעברית, עם "שינוי". שדה התאריך עצמו שקוף
                    ומכסה את הכפתור, כך שנגיעה פותחת את הבורר של המכשיר. #}
-                <div class="form-group">
+                <div class="form-group detail-row">
                     <label class="form-label" for="txDate">תאריך</label>
                     <div class="date-row">
                         <div class="date-quick-chips">
                             <button type="button" class="date-chip" data-days="0">היום</button>
                             <button type="button" class="date-chip" data-days="-1">אתמול</button>
-                            {# שלשום (מתן, 30.9 — סבב 6, פריט 11): ביום ראשון מזינים את שישי #}
-                            <button type="button" class="date-chip" data-days="-2">שלשום</button>
+                            {# "שלשום" הוסר (מתן, 11.10) — "תאריך אחר" מכסה אותו #}
                         </div>
                         <div class="date-pick">
                             <span class="date-pick-icon" aria-hidden="true">📅</span>
@@ -211,7 +215,7 @@
                     </div>
                 </div>
 
-                <div class="form-group recurring-group">
+                <div class="form-group detail-row recurring-group">
                     <label class="checkbox-label">
                         <input type="checkbox" id="txRecurring" class="checkbox-input">
                         <span class="checkbox-custom"></span>
@@ -236,6 +240,8 @@
                         </div>
                     </div>
                 </div>
+
+                </div>{# ‎.tx-details‎ #}
 
                 {# בתחתית ולא אחרי הסכום (מתן, 30.9): רוב העסקאות לא בפרויקט.
                    מוסתר לגמרי כשאין פרויקט שעוקב אחרי הסוג (‎buildProjectSelect‎).

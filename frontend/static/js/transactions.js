@@ -347,6 +347,14 @@
         });
     }
 
+    /* הסכום במרכז, וה-₪ צמוד אליו (מתן, 11.10): השדה ברוחב של מה שכתוב בו.
+     * ‎field-sizing‎ עוד לא בכל הדפדפנים — אז ברוחב בתווים, אחרי כל שינוי. הטקסט
+     * מיושר לצד ה-₪, כך שהמקום העודף (הנקודה צרה מתו) נשאר בצד השני. */
+    function fitAmount() {
+        const text = txAmount.value || txAmount.placeholder || '0';
+        txAmount.style.width = (text.length + 0.3) + 'ch';
+    }
+
     function resetScanUI() {
         // ‎txReceiptPath‎ **חייב** להתאפס כאן ולא רק ב-‎resetForm‎.
         // ‎closeModal‎ קורא לכאן בלבד, ו-‎resetForm‎ רץ רק מ-‎openAddModal‎ —
@@ -365,6 +373,7 @@
         }
         txAmount.placeholder = AMOUNT_PLACEHOLDER_DEFAULT;
         txDescription.placeholder = DESCRIPTION_PLACEHOLDER_DEFAULT;
+        fitAmount();
     }
 
     function closeModal() {
@@ -380,6 +389,7 @@
 
     function resetForm() {
         txForm.reset();
+        fitAmount();
         txDate.value = defaultTxDate();
         txReceiptPath.value = '';
         formError.textContent = '';
@@ -534,6 +544,7 @@
                 setType(tx.type, selectedCategoryId, tx.userId || 'shared', tx.projectId, true);
 
                 txAmount.value       = plainAmount(tx.amount);
+                fitAmount();
                 txDescription.value  = tx.description || '';
                 txDate.value         = tx.date;
                 syncDateChips();
@@ -821,6 +832,7 @@
         scanBtn.disabled = true;
         scanBtn.querySelector('.scan-btn-text').textContent = 'סורק…';
         txAmount.placeholder = 'מפענח נתונים…';
+        fitAmount();
         txDescription.placeholder = 'מפענח נתונים…';
         formError.textContent = '';
 
@@ -847,6 +859,7 @@
             }
             const data = result.data;
             txAmount.value = data.amount;
+            fitAmount();
             if (data.merchant) txDescription.value = data.merchant;
             if (data.date) txDate.value = data.date;
             if (previous && previous !== data.receipt_path) discardReceipt(previous);
@@ -911,6 +924,7 @@
     // ניקוי סימון-שגיאה של שדה הסכום ברגע שמתקנים אותו (נגישות)
     txAmount.addEventListener('input', function () {
         txAmount.removeAttribute('aria-invalid');
+        fitAmount();
     });
 
     // כפתור השמירה הוא <label>, לא <button> — ראה ההערה ליד הסימון.

@@ -725,13 +725,13 @@ def test_an_edit_can_be_undone_from_the_toast():
     assert "{ label: 'ביטול', onClick: function () { runUndo(spec); } }" in js
 
 
-def test_the_date_chips_include_the_day_before_yesterday():
-    """מתן (30.9, סבב 6 פריט 11)."""
+def test_the_date_chips_are_today_and_yesterday():
+    """"שלשום" נוסף ב-30.9 (סבב 6 פריט 11) והוסר ב-11.10 — מתן: "אפשר להסיר"."""
     tpl = _read("frontend/templates/base.html")
     chips = tpl[tpl.index('class="date-quick-chips"'):]
     chips = chips[:chips.index("</div>")]
-    assert [d for d in ("0", "-1", "-2") if f'data-days="{d}"' in chips] == ["0", "-1", "-2"]
-    assert ">שלשום<" in chips
+    assert [d for d in ("0", "-1", "-2") if f'data-days="{d}"' in chips] == ["0", "-1"]
+    assert ">שלשום<" not in chips
 
 
 def test_the_month_header_stays_on_top_once_the_balance_scrolls_away():
