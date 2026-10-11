@@ -71,7 +71,7 @@ def test_a_conflict_that_is_not_a_duplicate_still_raises():
 
 def test_the_average_divides_by_the_window_and_not_by_what_it_found():
     """חודש בלי הוצאה בקטגוריה הוא ₪0, לא חודש שלא קרה."""
-    body = _fn("get_anomalies")
+    body = _fn("category_monthly_averages")
 
     assert "_HISTORY_MONTHS" in body, "הממוצע עדיין מחולק במספר החודשים שנמצאו"
     assert "/ len(past)" not in body

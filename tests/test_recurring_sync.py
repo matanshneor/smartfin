@@ -34,7 +34,7 @@ def client(monkeypatch):
         # קוראים לשולפים הבודדים שלמעלה, אז שניהם מזויפים כאן.
         ("fetch_month_page", {"family": {}, "settings": dict(_db.DEFAULT_FAMILY_SETTINGS),
                               "members": [], "categories": [], "rows": [], "archive": []}),
-        ("get_month_transactions", []), ("get_anomalies", []),
+        ("get_month_transactions", []),
     ]:
         # בלי ‎raising=True‎ (ברירת המחדל) שם שהשתנה נבלע בשקט. שלושה
         # שמות ברשימה הזאת כבר לא היו קיימים — הזיוף לא עשה כלום, אף

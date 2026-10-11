@@ -1233,14 +1233,14 @@ def dashboard():
     # מיחזור תוצאות המקבץ ל-context-processors ו-_member_colors (בלי שליפה חוזרת)
     _prime_request_cache(family_id, settings=batch["settings"], categories=batch["categories"], members=batch["members"])
 
-    # התראות החודש גם בבית, כשיש (מתן, 11.10) — אותן התראות כמו בעמוד
-    # החודש, ולחיצה מובילה ליעד שלהן שם. קישוט: תקלה לא מפילה את דף הבית.
+    # התראות החודש — רק כאן, כשיש (מתן, 11.10): חריגה מתקציב של קטגוריה,
+    # ומאזן. לחיצה מובילה ליעד בעמוד החודש. שורות החודש נשלפות רק כשיש
+    # תקציבים — בלעדיהם אין מה לבדוק. קישוט: תקלה לא מפילה את דף הבית.
     try:
         expense_breakdown = db.apply_budgets(db.category_breakdown_from_rows(
             db.fetch_month_rows(family_id, now.year, now.month), batch["categories"], "expense"),
-            batch["settings"])
-        alerts = db.month_alerts(family_id, now.year, now.month, batch["summary"],
-                                 batch["settings"], expense_breakdown)
+            batch["settings"]) if (batch["settings"] or {}).get("limits") else []
+        alerts = db.month_alerts(batch["summary"], expense_breakdown)
     except db.DataUnavailable:
         alerts = []
 
@@ -3357,25 +3357,6 @@ def update_family_settings_route():
             k: bool(oa[k]) for k in ("expense", "income", "savings") if k in oa
         }
 
-    if isinstance(body.get("anomaly"), dict):
-        an, out = body["anomaly"], {}
-        if "enabled" in an:
-            out["enabled"] = bool(an["enabled"])
-        try:
-            if "percent" in an:
-                pct = int(an["percent"])
-                if not 100 <= pct <= 1000:
-                    return jsonify({"error": "אחוז ההתראה חייב להיות בין 100 ל-1000"}), 422
-                out["percent"] = pct
-            if "min_gap" in an:
-                gap = int(an["min_gap"])
-                if not 0 <= gap <= 100000:
-                    return jsonify({"error": "הפער המינימלי חייב להיות בין 0 ל-100,000"}), 422
-                out["min_gap"] = gap
-        except (TypeError, ValueError):
-            return jsonify({"error": "ערכי ההתראות חייבים להיות מספרים"}), 422
-        patch["anomaly"] = out
-
     # תקציבי קטגוריות. מגיעים מהלקוח, אז נאמתים כמו כל סכום כסף אחר,
     # ונבדקים שהם באמת קטגוריות של המשפחה הזאת.
     if isinstance(body.get("limits"), dict):
@@ -3407,9 +3388,6 @@ def update_family_settings_route():
         # את ‎limits‎ במלואה ולא ממזגת אותה — ראו ‎_WHOLE_MAP_KEYS‎. לפני כן
         # היא מוזגה ב-‎.update()‎, שיכולה רק להוסיף, ולכן הסרה לא נשמרה.
         patch["limits"] = limits
-
-    if "show_workplace" in body:
-        patch["show_workplace"] = bool(body["show_workplace"])
 
     if not patch:
         return jsonify({"error": "לא התקבלו הגדרות לעדכון"}), 422

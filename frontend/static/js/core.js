@@ -134,48 +134,18 @@ window.sfReveal = function (body, open, apply) {
     };
 };
 
-(function () {
-    let audioCtx = null;
-
-    function tone(ctx, freq, startAt, dur, peak) {
-        const osc  = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, ctx.currentTime + startAt);
-        // עטיפת עוצמה רכה — בלי "קליק" בקצוות
-        gain.gain.setValueAtTime(0.0001, ctx.currentTime + startAt);
-        gain.gain.exponentialRampToValueAtTime(peak, ctx.currentTime + startAt + 0.012);
-        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + startAt + dur);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(ctx.currentTime + startAt);
-        osc.stop(ctx.currentTime + startAt + dur + 0.02);
-    }
-
-    window.appFeedback = function () {
-        try {
-            if (localStorage.getItem('sf_feedback_off') === '1') return;
-        } catch (e) { /* אין אחסון — ברירת המחדל היא שהמשוב פעיל */ }
-
-        // צליל
-        try {
-            const Ctx = window.AudioContext || window.webkitAudioContext;
-            if (Ctx) {
-                if (!audioCtx) audioCtx = new Ctx();
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-                tone(audioCtx, 783.99,  0,    0.16, 0.10);  // סול
-                tone(audioCtx, 1174.66, 0.12, 0.30, 0.09);  // רה, אוקטבה מעל
-            }
-        } catch (err) { /* אין שמע — לא סיבה להיכשל */ }
-
-        // רטט — אנדרואיד בלבד. באייפון אין navigator.vibrate, ושינוי מתג
-        // מקוד לא מפעיל את ה-Taptic (נבדק): שם הנקישה מגיעה מהמגע עצמו
-        // בכפתור השמירה, שהוא <label> של מתג switch נסתר.
-        try {
-            if (navigator.vibrate) navigator.vibrate([12, 40, 22]);
-        } catch (err) { /* אין רטט — ממשיכים */ }
-    };
-})();
+// משוב בשמירה: רטט קצר בלבד (מתן, 11.10). עד אז נשמע גם צליל של שני
+// טונים, עם מתג כיבוי בהגדרות — ומתג נדרש רק בגלל הצליל: באפליקציה
+// שמשתמשים בה בקופה בסופר, צליל הוא מה שגורם להסיר אותה. רטט שקט, אז
+// הוא לא צריך הגדרה.
+window.appFeedback = function () {
+    // רטט — אנדרואיד בלבד. באייפון אין navigator.vibrate, ושינוי מתג
+    // מקוד לא מפעיל את ה-Taptic (נבדק): שם הנקישה מגיעה מהמגע עצמו
+    // בכפתור השמירה, שהוא <label> של מתג switch נסתר.
+    try {
+        if (navigator.vibrate) navigator.vibrate([12, 40, 22]);
+    } catch (err) { /* אין רטט — ממשיכים */ }
+};
 
 // ── מערכת משוב גלובלית: toast + דיאלוג אישור ──
 (function () {

@@ -651,8 +651,6 @@ def ensure_family(user_id: str, family_name: str = "המשפחה שלי"):
 # בדיוק את מה שהיה עד היום; רק מה שהמשפחה שינתה נשמר ב-DB.
 DEFAULT_FAMILY_SETTINGS = {
     "owner_attribution": {"expense": True, "income": True, "savings": False},
-    "anomaly": {"enabled": True, "percent": 150, "min_gap": 300},
-    "show_workplace": True,
     # תקציב יעד לקטגוריה: ‎{"<category_id>": {"amount": 2000, "alert": true}}‎
     # קטגוריה שאינה כאן פשוט אין לה תקציב, וזו ברירת המחדל — אף אחת לא
     # מקבלת תקציב בלי שהמשפחה קבעה אותו.
@@ -729,14 +727,14 @@ def apply_budgets(breakdown: list, settings: dict) -> list:
 # ‎limits‎ ממופה לפי מזהה קטגוריה, וכשמסירים תקציב הוא פשוט נעדר מהמפה
 # החדשה. מיזוג ב-‎.update()‎ יכול רק להוסיף או לדרוס מפתחות — לעולם לא
 # למחוק — אז ההסרה לא נשמרה מעולם: המסך הראה תקציב כבוי, והשרת המשיך
-# להחזיק אותו. שאר המפתחות המקוננים (owner_attribution, anomaly) הם
+# להחזיק אותו. שאר המפתחות המקוננים (owner_attribution) הם
 # רשומות עם שדות קבועים ונכון להמשיך למזג אותן.
 # ‎member_colors‎ (סבב 6, פריט 13) — המפה המלאה נשלחת תמיד, ומי שעזב יוצא ממנה
 _WHOLE_MAP_KEYS = frozenset({"limits", "member_colors"})
 
 
 def _merge_settings(base: dict, patch: dict) -> dict:
-    """מיזוג ברמה אחת של עומק — מפתחות מקוננים (owner_attribution, anomaly)
+    """מיזוג ברמה אחת של עומק — מפתחות מקוננים (owner_attribution)
     מתמזגים במקום להימחק כשמעדכנים רק חלק מהם. ראו ‎_WHOLE_MAP_KEYS‎
     לחריגים שמוחלפים במלואם."""
     out = {k: (dict(v) if isinstance(v, dict) else v) for k, v in base.items()}
@@ -3323,7 +3321,7 @@ def member_trend(family_id: str, months: list) -> list:
 def category_monthly_averages(family_id: str, today=None) -> dict:
     """ממוצע חודשי לכל קטגוריה, לכל המחלקות — לשורה "בממוצע ₪1,850 בחודש"
     בהגדרות (מתן, 3.10 — רעיון 38). שלושת החודשים **השלמים** האחרונים, מחולק
-    ב-3 (כמו ההתראות — ראו ‎get_anomalies‎), בלי פרויקטים. קטגוריה בלי שום
+    ב-3, בלי פרויקטים. קטגוריה בלי שום
     הוצאה בחלון — לא במילון. זורקת DataUnavailable."""
     today = today or clock.today()
     end = f"{today.year:04d}-{today.month:02d}-01"           # לא כולל החודש הנוכחי
@@ -3347,82 +3345,22 @@ def category_monthly_averages(family_id: str, today=None) -> dict:
     return {cid: round(t / _HISTORY_MONTHS) for cid, t in totals.items() if t > 0}
 
 
-def _category_history_averages(family_id: str, year: int, month: int):
-    """השאילתה של get_anomalies: מחזירה
-    (current, history, labels) — סכום החודש הנוכחי לכל קטגוריית הוצאה,
-    וההיסטוריה החודשית שלה בשלושת החודשים הקודמים (לחישוב ממוצע).
-    המפתח הוא מזהה הקטגוריה (ראו ‎category_breakdown_from_rows‎), ו-labels
-    ממפה אותו לשם ולאייקון שמוצגים בהתראה.
-    ממוטב-לבקשה: שני הקוראים רצים באותו עמוד — השאילתה רצה פעם אחת."""
-    return _request_cache(
-        f"cat_history:{family_id}:{year}:{month}",
-        lambda: _fetch_category_history_averages(family_id, year, month))
-
-
 # כמה חודשים אחורה נכללים בממוצע. הקבוע יושב כאן כי גם השליפה וגם
 # החישוב חייבים להסכים עליו — אחרת "ממוצע שלושת החודשים" מחושב על
 # חלון אחר ממה שנשלף.
 _HISTORY_MONTHS = 3
 
 
-def _fetch_category_history_averages(family_id: str, year: int, month: int):
-    client = get_client()
-    if not client:
-        return {}, {}, {}
+def balance_alerts(summary: dict) -> list:
+    """התראות על המאזן: הוצאות מעל ההכנסות, או מאזן שלילי.
 
-    start_month, start_year = month - _HISTORY_MONTHS, year
-    while start_month <= 0:
-        start_month += 12
-        start_year  -= 1
+    עד 11.10 כאן הייתה גם "קטגוריה גבוהה מהממוצע שלה", עם הגדרה משלה
+    (אחוז + פער מינימלי). מתן: "מסובך מדי — מי שירצה התראות יפעיל תקציב
+    לקטגוריות". ההתראות על קטגוריה הן מאז רק חריגה מתקציב (‎budget_alerts‎).
 
-    result = client.table("transactions") \
-        .select("amount, date, category_id, categories(name, icon)") \
-        .eq("family_id", family_id) \
-        .eq("type", "expense") \
-        .is_("project_id", "null") \
-        .gte("date", f"{start_year}-{start_month:02d}-01") \
-        .lt("date", _next_month(year, month)) \
-        .execute()
-
-    current_key = f"{year}-{month:02d}"
-    current: dict = {}
-    history: dict = {}   # category_id -> {month_key -> total}
-    labels: dict = {}
-
-    for row in result.data:
-        cat = row.get("categories") or {}
-        cid = row.get("category_id")
-        labels[cid] = {"name": cat.get("name") or _NO_CATEGORY,
-                       "icon": cat.get("icon") or "📦"}
-        key = row["date"][:7]
-        if key == current_key:
-            current[cid] = current.get(cid, 0) + float(row["amount"])
-        else:
-            history.setdefault(cid, {})
-            history[cid][key] = history[cid].get(key, 0) + float(row["amount"])
-
-    return current, history, labels
-
-
-def get_anomalies(family_id: str, year: int, month: int, summary: dict,
-                  settings: dict = None, skip_categories=None) -> list:
-    """Flags unusual data for the month:
-    - expense categories running above the family's threshold vs their
-      3-previous-months average (percent + minimum gap from settings)
-    - expenses exceeding income
-    - negative checking-account balance (עו"ש)
-    Returns a list of {"severity": "warning"|"danger", "text": str, "target": str|None}.
-
-    ‎target‎ — לאן לחיצה על ההתראה מובילה בעמוד החודש (מתן, 11.10): עוגן
-    הקטגוריה (‎cat-<id>‎), פירוט ההוצאות, או ‎None‎ = ראש העמוד."""
-    cfg = (settings or DEFAULT_FAMILY_SETTINGS).get("anomaly", {})
-    if not cfg.get("enabled", True):
-        return []
-    ratio   = float(cfg.get("percent", 150)) / 100.0
-    min_gap = float(cfg.get("min_gap", 300))
-
+    Returns a list of {"severity", "text", "target"}. ‎target‎ — לאן לחיצה
+    על ההתראה מובילה בעמוד החודש: פירוט ההוצאות, או ‎None‎ = ראש העמוד."""
     alerts = []
-
     if summary.get("income", 0) > 0 and summary.get("expense", 0) > summary["income"]:
         alerts.append({
             "severity": "danger",
@@ -3438,39 +3376,6 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
             # המאזן עצמו, בראש עמוד החודש
             "target": None,
         })
-
-    try:
-        current, history, labels = _category_history_averages(family_id, year, month)
-        skip = set(skip_categories or ())
-        for cid, total in current.items():
-            # לקטגוריה עם תקציב יש כבר התראה משלה, מדויקת יותר. שתי
-            # התראות על אותה קטגוריה הן רעש, והן גם סותרות: "40% מעל
-            # הממוצע" ליד "בתוך התקציב" מבלבל יותר משהוא מסביר.
-            if cid in skip:
-                continue
-            past = history.get(cid)
-            if not past:
-                continue
-            # מחלקים ב-3 ולא ב-‎len(past)‎, כי "ממוצע שלושת החודשים
-            # האחרונים" הוא בדיוק זה: חודש בלי הוצאה בקטגוריה הוא ₪0
-            # ולא חודש שלא קרה.
-            #
-            # ‎len(past)‎ עשה שני נזקים הפוכים: תשלום שנתי בודד (ביטוח
-            # ₪3,600 ביולי) הפך ל"ממוצע ₪3,600", וכל אוגוסט נראה תקין
-            # לנצח; ומנגד ₪50 בחודש אחד בלבד הפכו ₪400 ל"700% מעל
-            # הממוצע" — התראה על קטגוריה שאין עליה שום היסטוריה.
-            avg = sum(past.values()) / _HISTORY_MONTHS
-            if avg > 0 and total > avg * ratio and total - avg >= min_gap:
-                pct = round((total / avg - 1) * 100)
-                label = labels[cid]
-                alerts.append({
-                    "severity": "warning",
-                    "text": f'{label["icon"]} ההוצאה על {label["name"]} (₪{format_money(total)}) גבוהה ב-{pct}% מהממוצע (₪{format_money(avg)})',
-                    "target": category_anchor(cid),
-                })
-    except Exception:
-        logger.exception("get_anomalies")
-
     return alerts
 
 
@@ -3502,15 +3407,11 @@ def category_anchor(category_id) -> str:
     return f"cat-{category_id}" if category_id else "expense-breakdown"
 
 
-def month_alerts(family_id: str, year: int, month: int, summary: dict,
-                 settings: dict, expense_breakdown: list) -> list:
-    """כל ההתראות של החודש — לעמוד החודש ולדף הבית, מאותו מקום.
+def month_alerts(summary: dict, expense_breakdown: list) -> list:
+    """כל ההתראות של החודש, לדף הבית: חריגה מתקציב של קטגוריה, ומאזן.
 
-    ‎expense_breakdown‎ אחרי ‎apply_budgets‎. קטגוריה עם תקציב מדלגת על
-    התראת הממוצע — יש לה התראה מדויקת יותר."""
-    skip = [r["category_id"] for r in expense_breakdown if r.get("budget")]
-    return budget_alerts(expense_breakdown) + list(
-        get_anomalies(family_id, year, month, summary, settings, skip_categories=skip))
+    ‎expense_breakdown‎ אחרי ‎apply_budgets‎."""
+    return budget_alerts(expense_breakdown) + balance_alerts(summary)
 
 
 # ─── Family members ───────────────────────────────────────────────────────────
@@ -3663,9 +3564,9 @@ def _next_month(year: int, month: int) -> str:
 
 def _format_transactions(rows: list, settings: dict = None) -> list:
     cfg = settings or DEFAULT_FAMILY_SETTINGS
-    # מקום עבודה נשען על שיוך ההכנסה לבן משפחה — בלי שיוך הכנסות אין את מי להציג
-    show_workplace = (cfg.get("show_workplace", True)
-                      and cfg.get("owner_attribution", {}).get("income", True))
+    # מקום עבודה נשען על שיוך ההכנסה לבן משפחה — בלי שיוך הכנסות אין את מי
+    # להציג. בלי הגדרה משלו מאז 11.10 (מתן): כששיוך הכנסות פעיל, הוא מוצג.
+    show_workplace = cfg.get("owner_attribution", {}).get("income", True)
     out = []
     for row in rows:
         # עסקה המשויכת לפרויקט משתמשת בקטגוריה הייעודית שלו (project_categories),
@@ -3688,7 +3589,7 @@ def _format_transactions(rows: list, settings: dict = None) -> list:
             "category_icon":        cat.get("icon", "📦"),
             "user_id":              row.get("user_id"),
             "user_name":            first_name(user.get("name", "")) if row.get("user_id") else "משותפת",
-            # מיקום העבודה מוצג רק על הכנסות משכורת, ורק אם המשפחה בחרה בכך.
+            # מיקום העבודה מוצג רק על הכנסות משכורת.
             # מעדיפים תיעוד קפוא על העסקה עצמה (row.workplace) — כדי ששינוי
             # מקום עבודה עתידי לא ישנה בטעות היסטוריה; NULL (עסקאות ישנות
             # מלפני התכונה) נופל חזרה לחיפוש חי מהפרופיל כמו קודם.

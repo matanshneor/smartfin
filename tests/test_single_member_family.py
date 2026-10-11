@@ -36,7 +36,7 @@ def home(monkeypatch):
     summary = {"income": 0.0, "expense": 50.0, "savings": 0.0, "balance": -50.0, "remaining": 0.0, "expense_pct": 0}
     for fn, val in (("get_family_settings", on), ("get_categories", [{"id": "c", "name": "x", "type": "expense"}]),
                     ("family_has_no_transactions", False), ("get_monthly_summary", summary),
-                    ("week_spending", None), ("fetch_month_rows", []), ("get_anomalies", []), ("get_recent_transactions", [_TX])):
+                    ("week_spending", None), ("fetch_month_rows", []), ("get_recent_transactions", [_TX])):
         monkeypatch.setattr(db, fn, lambda *a, _v=val, **k: _v)
 
     def render(members):

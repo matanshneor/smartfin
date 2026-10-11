@@ -83,18 +83,17 @@ def test_the_settings_titles_say_what_is_inside():
     """מתן (30.9): "תצוגה" — מה יש בה, ולא "בטלפון הזה בלבד"; ו"העדפות משפחה"
     כבר לא כוללות תצוגה."""
     tpl = (_ROOT / "frontend/templates/settings.html").read_text(encoding="utf-8")
-    assert '<span class="group-sub">מצב כהה, גודל טקסט וצליל</span>' in tpl
+    # בלי "וצליל" ובלי "והתראות" מ-11.10: שתי ההגדרות האלה ירדו
+    assert '<span class="group-sub">מצב כהה וגודל טקסט</span>' in tpl
     assert "בטלפון הזה בלבד" not in tpl
-    assert '<span class="group-sub">שיוך עסקאות והתראות</span>' in tpl
+    assert '<span class="group-sub">שיוך עסקאות</span>' in tpl
 
 
-def test_the_sound_toggle_lives_with_the_per_phone_settings():
-    """מתן (1.10): "צליל ורטט" נשמר בטלפון בלבד — אז הוא ב"תצוגה", עם שאר
-    מה שנשמר לכל טלפון, ולא ב"העדפות משפחה"."""
+def test_there_is_no_sound_and_so_no_sound_toggle():
+    """מתן (11.10): הצליל בשמירה הוסר, ונשאר רטט שקט בלבד — אז גם המתג
+    "צליל ורטט" ירד מ"תצוגה". לא נשאר צליל שאי אפשר לכבות."""
     tpl = (_ROOT / "frontend/templates/settings.html").read_text(encoding="utf-8")
-    display = tpl[tpl.index('id="display-settings"'):]
-    display = display[:display.index("</section>")]
-    assert 'id="feedbackToggle"' in display
-    family = tpl[tpl.index('<span class="group-title">העדפות משפחה</span>'):]
-    family = family[:family.index("</section>")]
-    assert "feedbackToggle" not in family
+    assert 'id="feedbackToggle"' not in tpl
+    core = (_ROOT / "frontend/static/js/core.js").read_text(encoding="utf-8")
+    assert "AudioContext" not in core and "createOscillator" not in core
+    assert "navigator.vibrate" in core

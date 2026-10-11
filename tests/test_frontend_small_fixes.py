@@ -99,28 +99,7 @@ def test_zero_toggle_still_marked_as_a_button_in_the_template():
 
 
 # ─── ג5: הצליל ניתן לכיבוי ────────────────────────────────────────────────────
-
-def test_settings_has_a_control_that_writes_the_feedback_flag():
-    """הדגל היה קיים בקוד הקריאה (‎core.js‎) בלי שום דבר שכותב אליו.
-    בלי הבקרה הזאת זו דלת מילוט מקושטת שאף אחד לא יכול לפתוח."""
-    js = _strip_comments(_read("frontend/static/js/settings.js"))
-
-    assert "feedbackToggle" in js
-    assert re.search(r"setItem\(['\"]sf_feedback_off['\"]", js), \
-        "אין קוד שכותב את הדגל שהצליל נשען עליו"
-    assert re.search(r"removeItem\(['\"]sf_feedback_off['\"]", js), \
-        "אין דרך להדליק בחזרה — רק לכבות"
-
-
-def test_the_toggle_exists_in_the_settings_template():
-    html = _read("frontend/templates/settings.html")
-    assert 'id="feedbackToggle"' in html
-
-
-def test_the_flag_is_still_read_by_core_js():
-    """בקרת-נגד: אם ‎core.js‎ הפסיק לקרוא את הדגל, המתג החדש לא עושה כלום."""
-    js = _read("frontend/static/js/core.js")
-    assert "sf_feedback_off" in js
+# הצליל עצמו הוסר (מתן, 11.10) — ראו ‎test_dark_mode.test_there_is_no_sound_and_so_no_sound_toggle‎.
 
 
 # ─── ג9: הפס בדשבורד לא משקר בחודש הראשון ────────────────────────────────────

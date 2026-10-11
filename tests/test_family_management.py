@@ -271,4 +271,8 @@ def test_leaving_is_hidden_for_a_family_of_one():
     """לעזוב משפחה שאתה לבד בה זה רק ליצור משפחה ריקה אחרת."""
     html = (_ROOT / "frontend/templates/settings.html").read_text(encoding="utf-8")
 
-    assert "{% if members | length > 1 %}" in html
+    # מ-11.10 עזיבה והצטרפות הן שורה אחת: מי שלבד רואה רק "הצטרפות",
+    # ו"פתיחת משפחה חדשה" (העזיבה עצמה) מוצגת רק כשיש עוד מישהו
+    assert "{% set alone = members | length <= 1 %}" in html
+    leave = html[html.index("{% if not alone %}"):]
+    assert 'id="leaveFamilyBtn"' in leave[:leave.index("{% endif %}")]

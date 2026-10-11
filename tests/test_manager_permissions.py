@@ -132,7 +132,7 @@ def test_budgets_and_settings_stay_shared(client, monkeypatch):
     monkeypatch.setattr(app_module, "family_settings",
                         lambda: dict(app_module.db.DEFAULT_FAMILY_SETTINGS))
 
-    res = client.put("/api/family/settings", json={"show_workplace": True})
+    res = client.put("/api/family/settings", json={"owner_attribution": {"expense": True}})
 
     assert res.status_code == 200
 
