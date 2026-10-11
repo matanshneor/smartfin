@@ -707,11 +707,16 @@
             const dx = t.clientX - g.x0, dy = t.clientY - g.y0;
             if (!g.axis) {
                 if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-                // הצידה (פסי הקטגוריות), למעלה, או חלון שגלול פנימה — זו
-                // גלילה רגילה, לא משיכה
-                if (Math.abs(dx) > Math.abs(dy) || dy < 0 || sheet.scrollTop > 0) { g = null; return; }
+                // הצידה (פסי הקטגוריות), או גלילה של תוכן החלון שעוד יש לאן
+                // לגלול — זו גלילה רגילה, לא משיכה. למטה — רק מראש התוכן;
+                // למעלה — רק כשהתוכן כבר בסופו: אז החלון נמתח למעלה בהתנגדות
+                // וחוזר כמו קפיץ (מתן, 11.10 — עד אז לא זז בכלל).
+                const atEnd = sheet.scrollTop + sheet.clientHeight >= sheet.scrollHeight - 1;
+                if (Math.abs(dx) > Math.abs(dy) || (dy > 0 && sheet.scrollTop > 0) || (dy < 0 && !atEnd)) {
+                    g = null; return;
+                }
                 g.axis = 'y';
-                g.y0 += 8;                          // בלי קפיצה של 8 הפיקסלים של ההחלטה
+                g.y0 += dy > 0 ? 8 : -8;            // בלי קפיצה של 8 הפיקסלים של ההחלטה
                 sheet.style.transition = 'none';
             }
             e.preventDefault();                    // החלון זז, לא התוכן שבתוכו

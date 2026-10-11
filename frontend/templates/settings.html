@@ -2,7 +2,7 @@
 
 {% block title %}SmartFin – הגדרות{% endblock %}
 {# בלי + בהגדרות (מתן, 1.10): אין כאן עסקאות, והכפתור רק מסתיר שורות #}
-{% block body_class %}no-fab{% endblock %}
+{% block body_class %}no-fab settings-page{% endblock %}
 
 {% block hero %}
 {# שם המשפחה בצד שמאל, באותה שורה עם "הגדרות" (מתן, 1.10 — אפשרות ה) #}
@@ -755,9 +755,11 @@
 
        הכתובת גלויה כרגיל: העמוד הזה מאחורי התחברות, וההסתרה מבוטים
        נחוצה רק בעמודים הציבוריים. #}
+    {# שורה אחת ולא שתיים (מתן, 11.10): כשכל הקבוצות סגורות, ההגדרות נכנסות
+       במסך אחד גם באפליקציה המותקנת — והכותרת לא נעלמת אחרי החלקה לתחתית. #}
     <section class="settings-contact">
-        <p class="settings-contact-label">משהו לא עובד, או שאלה על הנתונים שלכם?</p>
-        <a class="btn-sm btn-ghost" href="mailto:matanshneor1@gmail.com?subject=SmartFin">כתבו לנו</a>
+        <p class="settings-contact-label">משהו לא עובד, או שאלה על הנתונים שלכם?
+            <a class="settings-contact-link" href="mailto:matanshneor1@gmail.com?subject=SmartFin">כתבו לנו</a></p>
     </section>
 
 </div>

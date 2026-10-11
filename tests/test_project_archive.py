@@ -142,7 +142,7 @@ def test_settings_has_no_plus():
     from pathlib import Path
     root = Path(__file__).resolve().parent.parent
     tpl = (root / "frontend/templates/settings.html").read_text(encoding="utf-8")
-    assert "{% block body_class %}no-fab{% endblock %}" in tpl
+    assert "{% block body_class %}no-fab settings-page{% endblock %}" in tpl
     assert "body.no-fab .fab { display: none; }" in (root / "frontend/static/css/style.css").read_text(encoding="utf-8")
 
 

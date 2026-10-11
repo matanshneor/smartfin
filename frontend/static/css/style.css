@@ -1483,7 +1483,10 @@ body:has(.modal-overlay.open) .toast {
     background: var(--color-bg-elevated);
     border-radius: 26px 26px 0 0;
     padding: 14px 20px calc(28px + env(safe-area-inset-bottom, 0px));
-    box-shadow: 0 -12px 50px rgba(20, 16, 7, 0.25);
+    /* הצל השני הוא המשך של רקע החלון כלפי מטה: כשמושכים אותו למעלה (מתן,
+       11.10) לא נפתח רווח ריק מתחתיו. צל ולא ‎::after‎ — החלון גולל, ומה
+       שמחוץ לו נחתך. */
+    box-shadow: 0 160px 0 0 var(--color-bg-elevated), 0 -12px 50px rgba(20, 16, 7, 0.25);
     transform: translateY(60px);
     /* עולה ונעצר חלק, בלי לקפוץ מעבר (מתן, 7.10 — בנוסח אפל, סעיף 4). קפיצה
        שמורה לתנועה שהייתה בה תנופה של האצבע; לחיצה על + היא לא כזו. העקומה
@@ -2517,7 +2520,7 @@ li.zero-cat-row { display: none; }
 .settings-groups {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .settings-group {
@@ -2535,7 +2538,9 @@ li.zero-cat-row { display: none; }
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 15px 16px;
+    /* שורה אחת מאז שהשורה שמתחת לכותרת ירדה (מתן, 11.10) — אז נמוכה יותר:
+       כשהכול סגור, ההגדרות נכנסות במסך אחד גם באפליקציה המותקנת */
+    padding: 11px 16px;
     text-align: right;
     -webkit-tap-highlight-color: transparent;
 }
@@ -3153,7 +3158,7 @@ a.btn-sm { display: inline-flex; align-items: center; justify-content: center; t
 
 .logout-form { margin: 0; }
 /* מתחת לכל התיבות, לא בתוך "חשבון" (מתן, 1.10) */
-.settings-logout { margin-top: 18px; }
+.settings-logout { margin-top: 12px; }
 
 /* כותרת עם פעולה בצידה (למשל "כל העסקאות" + ייצוא) */
 .chart-title-row {
@@ -4384,10 +4389,18 @@ li.transaction-item.swipe-ready > .swipe-content {
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    padding: 28px 16px calc(24px + env(safe-area-inset-bottom));
+    /* המרווח מהסרגל התחתון (כולל אזור הבית של האייפון) כבר בתחתית ‎main‎ */
+    padding: 12px 16px 0;
     text-align: center;
 }
-.settings-contact-label { margin: 0; font-size: 0.8125rem; color: var(--color-text-muted); }
+.settings-contact-label { margin: 0; font-size: 0.8125rem; color: var(--color-text-muted); line-height: 1.6; }
+.settings-contact-link {
+    display: inline-block;
+    padding: 6px 2px;                       /* יעד נגיעה סביר בתוך שורת טקסט */
+    color: var(--color-gold-text);
+    font-weight: 700;
+    text-decoration: none;
+}
 
 /* ─── ניהול הפרויקט: תפריט אחד מתמשך ──────────────────────────────
    העמוד היה ארבעה ‎chart-card‎ נפרדים עם 16px ביניהם, והאחרון בסגנון
@@ -4522,6 +4535,13 @@ li.transaction-item.swipe-ready > .swipe-content {
    בפינה השמאלית התחתונה — בדיוק על "מחק פרויקט". הפעולה הבלתי הפיכה
    בעמוד הייתה חצי מוסתרת מאחורי כפתור שלא שייך לשם. */
 body.no-fab .fab { display: none; }
+/* בהגדרות אין כפתור +, אז אין צורך במקום בשבילו בתחתית (מתן, 11.10). 96
+   הפיקסלים של ה-+ הפכו את ההגדרות לגבוהות מהמסך גם כשהכול סגור — אחרי
+   החלקה לתחתית הקפיץ נעצר שם, והכותרת "הגדרות" נשארה מחוץ למסך. מרווח
+   מהסרגל בלבד. (עריכת פרויקט — גם בלי +, אבל עם פס שמירה בתחתית.) */
+body.settings-page .main-content {
+    padding-bottom: calc(var(--dock-height) + var(--dock-gap) + env(safe-area-inset-bottom, 0px) + 16px);
+}
 
 /* ‎.category-row:last-child‎ מאפסת את הריפוד התחתון, ומיד אחריה התחילה
    שורת ההוספה — כך ש"הוסף" נראה כמו כפתור של הקטגוריה האחרונה ולא
