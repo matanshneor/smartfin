@@ -79,7 +79,10 @@ def test_a_month_with_data_is_untouched():
     html = _render_month([_TX])
 
     assert "empty-state" not in html
-    assert html.count('"chart-card"') == 4   # "הוצאות מול חיסכון" הוסר (30.9)
+    # "הוצאות מול חיסכון" הוסר (30.9). סוג בלי עסקאות — שורה אחת ולא כרטיס
+    # (מתן, 11.10): כאן יש רק הוצאה, אז הכנסות וחיסכון הן שורות.
+    assert html.count('"chart-card"') == 2
+    assert html.count('class="empty-row"') == 2
     assert "chart.umd" in html
 
 

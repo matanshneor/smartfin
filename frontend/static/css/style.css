@@ -757,6 +757,11 @@ a.kpi-chip:active { transform: scale(0.97); }
     animation: breakdown-flash 1.6s ease-out;
 }
 
+/* שורה ריקה (‎.empty-row‎) שהגיעו אליה מהריבוע למעלה — אותו הבהוב */
+.empty-row.flash {
+    animation: breakdown-flash 1.6s ease-out;
+}
+
 /* הקטגוריה שהתראה הובילה אליה (מתן, 11.10) — אותו מרווח מהכותרת הדביקה
    כמו הפירוטים */
 .legend-item-wrap[id] { scroll-margin-top: calc(58px + env(safe-area-inset-top, 0px)); }
@@ -774,6 +779,7 @@ a.kpi-chip:active { transform: scale(0.97); }
 @media (prefers-reduced-motion: reduce) {
     .chart-card.flash,
     .category-grid.flash,
+    .empty-row.flash,
     .legend-item-wrap.flash { animation: none; outline: 3px solid var(--color-gold); outline-offset: 2px; }
 }
 
@@ -1159,6 +1165,40 @@ a.kpi-chip:active { transform: scale(0.97); }
     border-inline-start-color: var(--color-expense);
     color: var(--alert-danger-ink);
 }
+
+/* ─── שורה ריקה בעמוד החודש (מתן, 11.10) ────────────────────────
+   סוג בלי עסקאות החודש: שורה אחת במקום כרטיס ריק, ו"+ הוספה" שפותח את
+   חלון ההוספה על הסוג הזה */
+.empty-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 10px 12px 10px 16px;
+    background: var(--color-card);
+    border: var(--border-subtle);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+    scroll-margin-top: calc(58px + env(safe-area-inset-top, 0px));
+}
+.empty-row-icon { font-size: 1.1rem; }
+.empty-row-text { flex: 1; }
+.empty-row-add {
+    min-height: 36px;
+    padding: 6px 14px;
+    border: none;
+    border-radius: 999px;
+    background: var(--color-gold-dim);
+    color: var(--color-gold-text);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.12s ease;
+}
+.empty-row-add:active { transform: scale(0.96); }
 
 /* התראה היא קישור ליעד שלה (מתן, 11.10) */
 a.alert-card {
