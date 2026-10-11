@@ -1233,16 +1233,17 @@ def dashboard():
     # מיחזור תוצאות המקבץ ל-context-processors ו-_member_colors (בלי שליפה חוזרת)
     _prime_request_cache(family_id, settings=batch["settings"], categories=batch["categories"], members=batch["members"])
 
-    # התראות החודש — רק כאן, כשיש (מתן, 11.10): חריגה מתקציב של קטגוריה,
-    # ומאזן. לחיצה מובילה ליעד בעמוד החודש. שורות החודש נשלפות רק כשיש
+    # התראות החודש — רק כאן, כשיש (מתן, 11.10): חריגה מתקציב של קטגוריה.
+    # לחיצה מובילה לקטגוריה בעמוד החודש. שורות החודש נשלפות רק כשיש
     # תקציבים — בלעדיהם אין מה לבדוק. קישוט: תקלה לא מפילה את דף הבית.
-    try:
-        expense_breakdown = db.apply_budgets(db.category_breakdown_from_rows(
-            db.fetch_month_rows(family_id, now.year, now.month), batch["categories"], "expense"),
-            batch["settings"]) if (batch["settings"] or {}).get("limits") else []
-        alerts = db.month_alerts(batch["summary"], expense_breakdown)
-    except db.DataUnavailable:
-        alerts = []
+    alerts = []
+    if (batch["settings"] or {}).get("limits"):
+        try:
+            alerts = db.month_alerts(db.apply_budgets(db.category_breakdown_from_rows(
+                db.fetch_month_rows(family_id, now.year, now.month), batch["categories"], "expense"),
+                batch["settings"]))
+        except db.DataUnavailable:
+            pass
 
     # "איך מצרפים בן משפחה" (מתן, 5.10) — בכניסה הראשונה, אחרי אשף הפתיחה
     # (‎?welcome=1‎ מכפתור "לאפליקציה"), ורק כשעוד אין במשפחה אף אחד אחר

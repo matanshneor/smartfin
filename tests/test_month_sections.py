@@ -161,28 +161,28 @@ def test_the_expanded_project_links_to_its_own_page():
 
 # ═══ אין עותק שני של קוד המחיקה ══════════════════════════════════════════════
 
-def test_the_delete_handler_lives_in_exactly_one_file():
-    """אותה רשימה מוצגת עכשיו בשני עמודים. שני עותקים של המטפל היו
-    הופכים כל תיקון לשניים — בדיוק מה שקרה ל-‎Chart.defaults‎, שם זה
-    היה באג משולש."""
-    # ‎closest('.delete-recurring-btn')‎ הוא המטפל; ‎querySelector‎ עליו
-    # ב-month.js הוא רק קביעת מיקוד במצב ניהול, ולא עותק שני.
+def test_the_series_is_stopped_from_one_place():
+    """ה-✕ בשורה ירד (מתן, 11.10 — חלופה א׳). העצירה עברה לכפתור בחלון
+    העריכה ולהחלקה, ושניהם עוברים דרך אותה פונקציה — ‎stopSeriesFromSettings‎."""
     owners = [f.name for f in _JS.glob("*.js")
-              if "closest('.delete-recurring-btn')" in f.read_text(encoding="utf-8")]
-
-    assert owners == ["transactions.js"], f"המטפל נמצא ב: {owners}"
-
-
-def test_the_x_in_settings_still_stops_the_series_without_deleting():
-    """בקרת-נגד. "עצירה בלי למחוק" היא פעולה אמיתית שצריך שתהיה איפשהו,
-    וההגדרות הן המקום שבו מנהלים את הסדרה ולא חודש מסוים."""
+              if "function stopSeriesFromSettings" in f.read_text(encoding="utf-8")]
+    assert owners == ["transactions.js"], f"הפונקציה נמצאת ב: {owners}"
     js = (_JS / "transactions.js").read_text(encoding="utf-8")
-    block = js[js.index("const btn = e.target.closest('.delete-recurring-btn');"):]
-    block = block[:block.index("function stopSeriesFromSettings")] + \
-        js[js.index("function stopSeriesFromSettings"):][:2000]
+    assert "window.sfStopSeries = stopSeriesFromSettings;" in js
+    assert "delete-recurring-btn" not in js
 
-    assert "/api/recurring/" in block
-    assert "deleteWithUndo" not in block
+
+def test_stopping_a_series_from_settings_does_not_delete_money():
+    """בקרת-נגד. "עצירה בלי למחוק" היא פעולה אמיתית שצריך שתהיה איפשהו,
+    וההגדרות הן המקום שבו מנהלים את הסדרה ולא חודש מסוים. כפתור המחיקה
+    בחלון, כשנפתח מ"עסקאות קבועות", עוצר את הסדרה — לא מוחק את התבנית."""
+    js = (_JS / "transactions.js").read_text(encoding="utf-8")
+    stop = js[js.index("function stopSeriesFromSettings"):][:2000]
+    assert "/api/recurring/" in stop and "deleteWithUndo" not in stop
+    handler = js[js.index("deleteBtn.addEventListener('click'"):]
+    handler = handler[:handler.index("const row = document.querySelector")]
+    assert "if (editingSeries)" in handler and "window.sfStopSeries(seriesRow)" in handler
+    assert "deleteWithUndo" not in handler
 
 
 def test_removing_a_row_on_the_month_page_refreshes_the_totals():

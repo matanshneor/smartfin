@@ -2900,6 +2900,49 @@ a.btn-sm { display: inline-flex; align-items: center; justify-content: center; t
 .recurring-amount.expense { color: var(--color-expense); }
 .recurring-amount.savings { color: var(--color-savings); }
 
+/* סיכום וקבוצות (מתן, 11.10 — חלופה א׳): כמה נכנס, יוצא ונחסך כל חודש */
+.recurring-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.recurring-sum {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 6px;
+    border-radius: var(--radius-sm);
+    background: var(--color-input);
+    text-align: center;
+}
+.recurring-sum-label { font-size: 0.72rem; color: var(--color-text-muted); }
+.recurring-sum-value {
+    font-weight: 700;
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.recurring-sum-value.income  { color: var(--color-income); }
+.recurring-sum-value.expense { color: var(--color-expense); }
+.recurring-sum-value.savings { color: var(--color-savings); }
+
+.recurring-group-title {
+    margin: 14px 0 8px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--color-text-muted);
+}
+.recurring-row { cursor: pointer; }
+.recurring-chevron { display: flex; color: var(--color-text-muted); opacity: 0.6; }
+.recurring-chevron svg { width: 16px; height: 16px; }
+.recurring-hint {
+    margin-top: 12px;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
 /* Categories management */
 .categories-list {
     display: flex;
@@ -2969,8 +3012,7 @@ a.btn-sm { display: inline-flex; align-items: center; justify-content: center; t
 .category-row.editing .cat-edit-name { flex: 1; min-width: 0; }
 .category-row.editing .btn-sm { padding: 8px 12px; white-space: nowrap; }
 
-.delete-cat-btn,
-.delete-recurring-btn {
+.delete-cat-btn {
     position: relative;
     width: 30px;
     height: 30px;
@@ -3872,7 +3914,6 @@ li.transaction-item.swipe-ready > .swipe-content {
 .icon-btn::before,
 .edit-cat-btn::before,
 .delete-cat-btn::before,
-.delete-recurring-btn::before,
 .receipt-badge::before,
 .stats-nav-btn::before,
 .pref-switch::before {

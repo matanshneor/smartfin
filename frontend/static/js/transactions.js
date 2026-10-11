@@ -528,6 +528,9 @@
         editId = tx.id;
         editingRecurringParentId = tx.recurringParentId || null;
         editingSeries = !!(triggerEl && triggerEl.closest && triggerEl.closest('#recurringList'));
+        // מתוך "עסקאות קבועות" הכפתור עוצר את הסדרה ולא מוחק שורה — ראו
+        // ‎deleteBtn‎ למטה. השם אומר מה הוא עושה.
+        deleteBtn.textContent = editingSeries ? 'הסרת העסקה הקבועה' : 'מחיקת העסקה';
         editingOriginal = tx;
         originalAmount = parseFloat(tx.amount);
         modalTitle.textContent = 'עריכת עסקה';
@@ -1676,6 +1679,17 @@
     // Delete (edit mode only)
     deleteBtn.addEventListener('click', function () {
         if (!editId) return;
+        // עסקה קבועה שנפתחה מ"עסקאות קבועות" בהגדרות: עוצרים את הסדרה, כמו
+        // ה-✕ שהיה בשורה (מתן, 11.10 — ה-✕ ירד). מחיקה רגילה כאן הייתה
+        // מוחקת את שורת התבנית — העסקה הראשונה, כסף אמיתי שכבר נרשם.
+        if (editingSeries) {
+            const seriesRow = document.querySelector('#recurringList [data-id="' + editId + '"]');
+            if (seriesRow && window.sfStopSeries) {
+                closeModal();
+                window.sfStopSeries(seriesRow);
+            }
+            return;
+        }
         const row = document.querySelector('[data-id="' + editId + '"]');
         // כשהשורה לא ברשימה (עריכה מהעמוד השני, למשל) — המודאל עצמו
         // כבר יודע אם זו סדרה
@@ -1789,7 +1803,7 @@
     // מתן ביקש שתיראה כמו בעמוד החודש.
     document.addEventListener('click', function (e) {
         if (justSwiped) { justSwiped = false; return; }
-        if (e.target.closest('.receipt-badge, .delete-recurring-btn, .swipe-action')) return;
+        if (e.target.closest('.receipt-badge, .swipe-action')) return;
         const row = e.target.closest('.transaction-item, .cat-tx-row, .recurring-row');
         if (!row || !row.dataset.id) return;
         openEditModal(buildTxFromRow(row), row);
@@ -1799,7 +1813,7 @@
     // role="button" tabindex="0" בתבניות, בדיוק כמו .legend-item[role=button] הקיים ב-month.html ──
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Enter' && e.key !== ' ') return;
-        if (e.target.closest('.receipt-badge, .delete-recurring-btn, .swipe-action')) return;
+        if (e.target.closest('.receipt-badge, .swipe-action')) return;
         const row = e.target.closest('.transaction-item, .cat-tx-row, .recurring-row');
         if (!row || !row.dataset.id) return;
         e.preventDefault();
@@ -1882,7 +1896,7 @@
         // בונה את מה שנוגעים בו ממילא.
 
         document.addEventListener('touchstart', function (e) {
-            if (e.target.closest('.receipt-badge, .delete-recurring-btn, .swipe-action')) return;
+            if (e.target.closest('.receipt-badge, .swipe-action')) return;
             const row = e.target.closest(ROW_SELECTOR);
             if (!row || !row.dataset.id) return;
             ensureSwipeStructure(row);
@@ -2014,21 +2028,8 @@
         });
     })();
 
-    /* ── ה-✕ על עסקה קבועה — רק בהגדרות ← עסקאות קבועות ─────────────────
-     *
-     * "הסרה": עצירת העסקה הקבועה בלי למחוק שום כסף שכבר נרשם. בעמוד החודש
-     * היה ✕ נוסף שמחק עסקאות — ומכיוון שהשורה שם הייתה העסקה של החודש
-     * הראשון, "רק את זו" מחקה את ינואר. החלק הוסר משם (מתן, 2.10).
-     */
-    document.addEventListener('click', function (e) {
-        const btn = e.target.closest('.delete-recurring-btn');
-        if (!btn) return;
-        const row = btn.closest('.recurring-row');
-        if (!row || !row.dataset.id) return;
-        stopSeriesFromSettings(row);
-    });
-
-    /* עצירת סדרה מתוך "עסקאות קבועות" בהגדרות — ה-✕ וההחלקה שניהם כאן.
+    /* עצירת סדרה מתוך "עסקאות קבועות" בהגדרות — ההחלקה וכפתור "הסרת העסקה
+     * הקבועה" בחלון העריכה (‎window.sfStopSeries‎) שניהם כאן.
      * ‎onCancel‎: מה לעשות אם המשתמש חזר בו (ההחלקה סוגרת את השורה). */
     function stopSeriesFromSettings(row, onCancel) {
         window.appConfirm({
@@ -2055,5 +2056,6 @@
             .catch(function () { window.showToast(window.sfNetError(), 'error'); });
         });
     }
+    window.sfStopSeries = stopSeriesFromSettings;
 
 })();

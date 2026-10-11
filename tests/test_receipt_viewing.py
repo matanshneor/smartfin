@@ -64,7 +64,8 @@ def test_the_row_handlers_still_ignore_the_badge():
     """בלי ההחרגה, לחיצה על הסמל פותחת גם את מודאל העריכה."""
     js = (_ROOT / "frontend/static/js/transactions.js").read_text(encoding="utf-8")
 
-    assert js.count(".receipt-badge, .delete-recurring-btn, .swipe-action") >= 3
+    # ה-✕ של עסקה קבועה ירד (מתן, 11.10), אז הוא כבר לא ברשימת ההחרגות
+    assert js.count(".receipt-badge, .swipe-action") >= 3
 
 
 def test_the_badge_has_a_real_tap_target():
