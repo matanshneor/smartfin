@@ -234,8 +234,8 @@ def test_storage_access_cannot_take_the_whole_file_down():
     והבדיקות כאן נפלו על משהו שלא היה קשור אליהן."""
     core = _read(_JS / "core.js")
 
-    for call in ("sessionStorage.getItem", "sessionStorage.removeItem",
-                 "localStorage.getItem"):
+    # ‎localStorage.getItem‎ היה כאן בשביל דגל הצליל, שירד עם הצליל (11.10)
+    for call in ("sessionStorage.getItem", "sessionStorage.removeItem"):
         i = core.index(call)
         before = core[max(0, i - 300):i]
         assert "try {" in before, f"{call} בלי try"

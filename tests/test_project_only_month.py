@@ -36,7 +36,6 @@ def month_page(monkeypatch):
     app.config["TESTING"] = True
     monkeypatch.setattr(db, "set_auth_token", lambda t: None)
     monkeypatch.setattr(db, "materialize_recurring", lambda fid: (0, True))
-    monkeypatch.setattr(db, "get_anomalies", lambda *a, **k: [])
     monkeypatch.setattr(db, "get_family", lambda *a, **k: {"id": _FAM})
     monkeypatch.setattr(app_module, "family_settings",
                         lambda: dict(db.DEFAULT_FAMILY_SETTINGS))

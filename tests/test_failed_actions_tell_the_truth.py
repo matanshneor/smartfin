@@ -49,8 +49,7 @@ def test_a_server_error_status_counts_as_failure_too():
 
 @pytest.mark.parametrize("control,anchor", [
     ("שיוך הוצאה/הכנסה/חיסכון", "attrSwitches.forEach"),
-    ("התראות חריגה",           "anomalyEnabled.addEventListener"),
-    ("הצגת מקום עבודה",        "showWorkplace.addEventListener"),
+    # "התראות חריגה" ו"הצגת מקום עבודה" ירדו מההגדרות (מתן, 11.10)
 ])
 def test_every_switch_passes_a_way_back(control, anchor):
     """מתג אחד שנשכח הוא מתג שממשיך לשקר."""
@@ -113,7 +112,8 @@ def test_every_call_to_saveprefs_passes_a_way_back():
     # הקריאה הראשונה היא ההגדרה עצמה (‎function savePrefs(patch, revert)‎)
     calls = _call_args(body, "savePrefs")[1:]
 
-    assert len(calls) >= 4, f"נמצאו רק {len(calls)} קריאות — הבדיקה כנראה לא מוצאת אותן"
+    # שיוך ותקציבים. התראות ומקום עבודה ירדו מההגדרות (מתן, 11.10)
+    assert len(calls) >= 2, f"נמצאו רק {len(calls)} קריאות — הבדיקה כנראה לא מוצאת אותן"
     for args in calls:
         # ארגומנט שני כלשהו: פונקציה בשורה, או שם של אחת שהועברה פנימה.
         # מה שנבדק הוא שיש מסלול החזרה, לא איך הוא נכתב.

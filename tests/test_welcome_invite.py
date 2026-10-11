@@ -31,7 +31,7 @@ def home(monkeypatch):
     for fn, val in (("get_family_settings", dict(db.DEFAULT_FAMILY_SETTINGS)),
                     ("get_categories", [{"id": "c", "name": "x", "type": "expense"}]),
                     ("family_has_no_transactions", True), ("get_monthly_summary", summary),
-                    ("week_spending", None), ("fetch_month_rows", []), ("get_anomalies", []), ("get_recent_transactions", [])):
+                    ("week_spending", None), ("fetch_month_rows", []), ("get_recent_transactions", [])):
         monkeypatch.setattr(db, fn, lambda *a, _v=val, **k: _v)
     monkeypatch.setattr(db, "get_family", lambda *a, **k: {
         "id": _FAM, "name": "משפחת שניאור", "invite_code": "K4F2QX",

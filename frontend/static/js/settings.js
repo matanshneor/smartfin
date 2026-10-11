@@ -644,6 +644,23 @@ function toggleForm(btnId, formId, onClose) {
     });
 }
 
+// עזיבה/הצטרפות — חלונית אחת (מתן, 11.10)
+(function () {
+    const btn  = document.getElementById('toggleFamilyMoveBtn');
+    const form = document.getElementById('familyMoveForm');
+    if (!btn || !form) return;
+    btn.addEventListener('click', function () {
+        const open = form.classList.toggle('visible');
+        btn.setAttribute('aria-expanded', String(open));
+        if (!open) {
+            const input = document.getElementById('joinCodeInput');
+            const err = document.getElementById('joinFamilyError');
+            if (input) input.value = '';
+            if (err) err.textContent = '';
+        }
+    });
+})();
+
 function resetEmailForm() {
     document.getElementById('newEmail').value = '';
     document.getElementById('emailCurrentPassword').value = '';
@@ -909,84 +926,19 @@ function savePrefs(patch, revert) {
 
 
 // ── העדפות משפחה: שמירה מיידית של כל שינוי ──
+// התראות על חריגות ו"מקום עבודה על שורות משכורת" ירדו מכאן (מתן, 11.10):
+// מי שרוצה התראות קובע תקציב לקטגוריה, ומקום העבודה מוצג תמיד.
 (function () {
-const attrSwitches   = document.querySelectorAll('[data-pref-type]');
-const anomalyEnabled = document.getElementById('anomalyEnabled');
-const anomalyFields  = document.getElementById('anomalyFields');
-const anomalyPercent = document.getElementById('anomalyPercent');
-const anomalyGap     = document.getElementById('anomalyGap');
-const anomalySentence = document.getElementById('anomalySentence');
-const showWorkplace  = document.getElementById('showWorkplace');
-const workplaceRow   = document.getElementById('workplaceRow');
-const workplaceNote  = document.getElementById('workplaceNote');
-if (!anomalyEnabled) return;
-
-// דוגמה קונקרטית עם קטגוריה היפותטית של ₪1,000 בחודש — הופכת את שני
-// התנאים המופשטים (אחוז + פער) למספר שקלים מוחשי אחד שקל להבין.
-function updateSentence() {
-    const pct = parseInt(anomalyPercent.value, 10) || 150;
-    const gap = parseInt(anomalyGap.value, 10) || 0;
-    const EXAMPLE_AVG = 1000;
-    const threshold = Math.max(EXAMPLE_AVG * (pct / 100), EXAMPLE_AVG + gap);
-    anomalySentence.textContent =
-        `לדוגמה: קטגוריה שבדרך כלל עולה כ-₪${EXAMPLE_AVG.toLocaleString('en-US')} בחודש תסומן כחריגה ` +
-        `רק אם ההוצאה החודש עברה ₪${Math.round(threshold).toLocaleString('en-US')}`;
-}
-
-// מקום עבודה נשען על שיוך הכנסות — בלי שיוך אין את מי להציג
-const workplaceDefaultNote = workplaceNote.textContent;
-function updateWorkplaceState() {
-    const incomeOn = document.querySelector('[data-pref-type="income"]').checked;
-    showWorkplace.disabled = !incomeOn;
-    workplaceRow.classList.toggle('disabled', !incomeOn);
-    workplaceNote.textContent = incomeOn ? workplaceDefaultNote : 'דורש שיוך הכנסות';
-}
+const attrSwitches = document.querySelectorAll('[data-pref-type]');
 
 attrSwitches.forEach(function (sw) {
     sw.addEventListener('change', function () {
         const box = this, was = !box.checked;
         const patch = {};
         patch[box.dataset.prefType] = box.checked;
-        savePrefs({ owner_attribution: patch }, function () {
-            box.checked = was;
-            if (box.dataset.prefType === 'income') updateWorkplaceState();
-        });
-        if (box.dataset.prefType === 'income') updateWorkplaceState();
+        savePrefs({ owner_attribution: patch }, function () { box.checked = was; });
     });
 });
-
-anomalyEnabled.addEventListener('change', function () {
-    const box = this, was = !box.checked;
-    anomalyFields.classList.toggle('off', !box.checked);
-    savePrefs({ anomaly: { enabled: box.checked } }, function () {
-        box.checked = was;
-        anomalyFields.classList.toggle('off', !was);
-    });
-});
-
-[anomalyPercent, anomalyGap].forEach(function (inp) {
-    inp.addEventListener('input', updateSentence);
-    inp.addEventListener('change', function () {
-        // שדות מספר: הערך הקודם נשמר לפני השליחה, כי אין "הפוך" לשחזר אליו
-        const before = { pct: inp.dataset.saved || inp.defaultValue, el: inp };
-        savePrefs({ anomaly: {
-            percent: parseInt(anomalyPercent.value, 10) || 150,
-            min_gap: parseInt(anomalyGap.value, 10) || 0,
-        }}, function () {
-            before.el.value = before.pct;
-            updateSentence();
-        });
-        inp.dataset.saved = inp.value;
-    });
-});
-
-showWorkplace.addEventListener('change', function () {
-    const box = this, was = !box.checked;
-    savePrefs({ show_workplace: box.checked }, function () { box.checked = was; });
-});
-
-updateSentence();
-updateWorkplaceState();
 })();
 
 /* ─── ניהול חברי המשפחה ──────────────────────────────────────────────────────
@@ -1280,35 +1232,6 @@ updateWorkplaceState();
     });
 })();
 
-// ── צליל ורטט בשמירה (העדפת מכשיר) ──
-//
-// ‎core.js‎ בודק ‎localStorage['sf_feedback_off']‎ לפני שהוא משמיע — ושום
-// דבר בכל הריפו לא כתב אליו מעולם. דלת מילוט שקיימת בקוד ולא נגישה
-// לאיש היא בדיוק אותו סוג של הבטחה שלא מתקיימת.
-//
-// מקומית ולא בהגדרות המשפחה: זו העדפה של המכשיר, לא של התקציב.
-(function () {
-    const toggle = document.getElementById('feedbackToggle');
-    if (!toggle) return;
-
-    function read() {
-        try { return localStorage.getItem('sf_feedback_off') !== '1'; }
-        catch (e) { return true; }   // אין אחסון — ברירת המחדל פעילה
-    }
-
-    toggle.checked = read();
-    toggle.addEventListener('change', function () {
-        try {
-            if (toggle.checked) localStorage.removeItem('sf_feedback_off');
-            else localStorage.setItem('sf_feedback_off', '1');
-        } catch (e) {
-            window.showToast('לא הצלחנו לשמור את ההעדפה במכשיר הזה', 'error');
-            return;
-        }
-        // מנגנים מיד כשמדליקים, כדי שהמתג יגיד מה הוא עושה
-        if (toggle.checked && window.appFeedback) window.appFeedback();
-    });
-})();
 
 // ── תצוגה: בהיר / כהה (מתן, 30.9 — סבב 6, פריט 4) ──
 // נשמר בטלפון בלבד. ‎data-theme‎ על ‎<html>‎ מחליף את כל הצבעים מיד — בלי
@@ -1408,6 +1331,13 @@ updateWorkplaceState();
     const input = document.getElementById('joinCodeInput');
     if (!code || !input) return;
     input.value = code.replace(/[^A-Za-z0-9]/g, '').slice(0, 12).toUpperCase();
+    // הקוד יושב בחלונית "עזיבה/הצטרפות" — פותחים אותה
+    const moveForm = document.getElementById('familyMoveForm');
+    if (moveForm && !moveForm.classList.contains('visible')) {
+        moveForm.classList.add('visible');
+        const moveBtn = document.getElementById('toggleFamilyMoveBtn');
+        if (moveBtn) moveBtn.setAttribute('aria-expanded', 'true');
+    }
     const group = input.closest('.settings-group');
     if (group && !group.classList.contains('open')) {
         const header = group.querySelector('.settings-group-header');

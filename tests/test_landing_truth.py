@@ -46,55 +46,32 @@ def test_the_landing_page_shows_the_current_month(anon):
 
 
 # ─── ההתראה ─────────────────────────────────────────────────────────────────
+#
+# מאז 11.10 התראה על קטגוריה היא רק חריגה מתקציב (התראת "מעל הממוצע" הוסרה
+# מהמוצר). המוקאפ חייב להראות התראה שהמוצר באמת יורה — עם המספרים שלו.
 
 def _demo_numbers():
-    """המספרים שמוצגים במוקאפ: ההוצאה על מזון והאחוז שבהתראה."""
+    """המספרים שמוצגים במוקאפ: ההוצאה על מזון, והתקציב והחריגה שבהתראה."""
     spend = int(re.search(r"מזון</span><b>₪([\d,]+)</b>", _HTML).group(1).replace(",", ""))
-    pct   = int(re.search(r"(\d+)% מעל הממוצע", _HTML).group(1))
-    return spend, pct
+    m = re.search(r"₪([\d,]+) מתוך תקציב של ₪([\d,]+) — חריגה של ₪([\d,]+)", _HTML)
+    alert_spend, budget, excess = (int(g.replace(",", "")) for g in m.groups())
+    return spend, alert_spend, budget, excess
 
 
 def test_the_example_would_actually_fire():
-    """הלב. הסף האמיתי הוא שני תנאים יחד, ו-18% לא עבר אף אחד מהם."""
-    _, pct = _demo_numbers()
-    threshold = db.DEFAULT_FAMILY_SETTINGS["anomaly"]["percent"] - 100
-
-    assert pct > threshold, f"{pct}% לא מפעיל התראה — הסף הוא {threshold}%"
+    spend, alert_spend, budget, excess = _demo_numbers()
+    assert alert_spend == spend, "ההתראה מדברת על סכום אחר מזה שבמוקאפ"
+    assert spend > budget and excess == spend - budget
 
 
-def test_the_example_also_clears_the_shekel_gap():
-    """התנאי השני, שקל ולא אחוז: קטגוריה קטנה יכולה לקפוץ ב-80% ועדיין
-    לא להצדיק התראה."""
-    spend, pct = _demo_numbers()
-    avg = spend / (1 + pct / 100)
-    min_gap = db.DEFAULT_FAMILY_SETTINGS["anomaly"]["min_gap"]
-
-    assert spend - avg >= min_gap, f"פער של ₪{spend - avg:,.0f} מתחת ל-₪{min_gap}"
+def test_the_alert_text_is_the_products_own_wording():
+    """אותו ניסוח כמו ‎db.budget_alerts‎ — לא ניסוח שיווקי שהמוצר לא מראה."""
+    spend, _, budget, _ = _demo_numbers()
+    row = {"category_id": "c", "name": "מזון", "icon": "🛒", "total": spend}
+    text = db.budget_alerts(db.apply_budgets([row], {"limits": {"c": {"amount": budget}}}))[0]["text"]
+    assert text.split(": ", 1)[1] in _HTML
 
 
-def test_the_numbers_stay_tied_to_the_real_default():
-    """בקרת-נגד: אם ברירת המחדל של הסף תשתנה, הבדיקות למעלה ייפלו —
-    ולא יישאר דף שיווק שמבטיח משהו אחר מהמוצר."""
-    anomaly = db.DEFAULT_FAMILY_SETTINGS["anomaly"]
-
-    assert anomaly["percent"] == 150
-    assert anomaly["min_gap"] == 300
-
-
-# ─── הסעיף השני שמוכר את אותה תכונה ─────────────────────────────────────────
-#
-# המוקאפ תוקן (הבדיקות למעלה), אבל אותה הבטחה חזרה בפסקת ההסבר שמתחתיו:
-# "קטגוריה שעברה את הממוצע... מסומנת" — משפט שנכון על 10% חריגה, ולא רק
-# על 50%+שקל. מי שקרא רק את המשפט הזה ציפה להתראה שלא תגיע.
-
-def test_the_explanation_text_does_not_repeat_the_same_lie():
-    """הבדיקה על התוכן המוצג בפועל, לא על תגובת ‎{# #}‎ שמתעדת את התיקון."""
+def test_nothing_promises_the_removed_average_alert():
     visible = re.sub(r"\{#.*?#\}", "", _HTML, flags=re.S)
-    assert "שעברה את הממוצע" not in visible, \
-        "הפסקה עדיין מבטיחה התראה על כל חריגה, לא רק על 50%+שקל"
-
-
-def test_the_explanation_states_both_conditions():
-    """הכלל האמיתי הוא שני תנאים יחד: אחוז וגם סכום."""
-    section = _HTML[_HTML.index("קטגוריה שחרגה"):][:200]
-    assert "בחצי" in section or "50" in section
+    assert "מעל הממוצע" not in visible and "מהממוצע" not in visible

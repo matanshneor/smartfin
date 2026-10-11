@@ -118,25 +118,6 @@ def test_alerting_defaults_to_on_when_a_budget_is_set():
     assert db.category_budget({"limits": {_CAT: {"amount": 2000}}}, _CAT)["alert"] is True
 
 
-# ─── ההתראה מחליפה את זו של הממוצע ───────────────────────────────────────────
-
-def test_a_budgeted_category_is_excluded_from_the_average_alert(monkeypatch):
-    """שתי התראות על אותה קטגוריה הן רעש, והן סותרות: "40% מעל הממוצע"
-    ליד "בתוך התקציב" מבלבל יותר משהוא מסביר."""
-    monkeypatch.setattr(db, "_category_history_averages",
-                        lambda f, y, m: ({"c1": 3000}, {"c1": {"a": 1000}},
-                                                 {"c1": {"name": "מכולת", "icon": "🛒"}}))
-    monkeypatch.setattr(db, "get_client", lambda: object())
-
-    with_skip = db.get_anomalies("f", 2026, 9, {"income": 1, "expense": 0, "remaining": 1},
-                                 db.DEFAULT_FAMILY_SETTINGS, skip_categories=["c1"])
-    without   = db.get_anomalies("f", 2026, 9, {"income": 1, "expense": 0, "remaining": 1},
-                                 db.DEFAULT_FAMILY_SETTINGS)
-
-    assert any("מהממוצע" in a["text"] for a in without), "הבדיקה לא בודקת כלום"
-    assert not any("מהממוצע" in a["text"] for a in with_skip)
-
-
 # ─── השמירה ──────────────────────────────────────────────────────────────────
 
 @pytest.fixture

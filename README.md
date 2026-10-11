@@ -79,8 +79,9 @@ SmartFin/
   family per month, and `RECEIPT_GLOBAL_MONTHLY_LIMIT` (default 2000) across all
   families, which is what protects the OpenAI bill from an open sign-up form.
   Manual entry is always available.
-- Saving a transaction plays a short synthesized two-tone chime and fires haptic
-  feedback (`navigator.vibrate`, with a hidden `switch` input as the iOS fallback).
+- Saving a transaction fires a short haptic tap (`navigator.vibrate`, with a hidden
+  `switch` input as the iOS fallback). There is no sound, so there is nothing to
+  switch off.
 
 ### Projects (a trip, a renovation, an event…)
 
@@ -95,8 +96,8 @@ SmartFin/
 
 ### Analytics
 
-- Anomaly alert: a category exceeding its trailing three-month average
-- Per-category monthly budgets, with a progress bar and an overrun warning
+- Per-category monthly budgets, with a progress bar and an overrun warning. An
+  overrun is also an alert on the home page — the only kind of category alert
 - CSV export of any month (`/month.csv`), and a full account export
   (`/account.json`) covering profile, categories, projects and every
   transaction — the data-portability right, which one month at a time

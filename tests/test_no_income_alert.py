@@ -11,11 +11,10 @@ pytestmark = pytest.mark.unit
 
 
 def _alerts(monkeypatch, **summary):
-    monkeypatch.setattr(db, "_category_history_averages", lambda *a: ({}, {}, {}))
     base = {"income": 0.0, "expense": 0.0, "savings": 0.0}
     base.update(summary)
     base["remaining"] = round(base["income"] - base["expense"] - base["savings"], 2)
-    return [a["text"] for a in db.get_anomalies("fam", 2026, 9, base)]
+    return [a["text"] for a in db.balance_alerts(base)]
 
 
 def test_no_income_yet_is_not_a_negative_balance(monkeypatch):

@@ -265,13 +265,22 @@
             </div>
             {% endif %}
 
-            <!-- הצטרפות למשפחה אחרת -->
+            {# עזיבה והצטרפות למשפחה אחרת — שורה אחת (מתן, 11.10). הצטרפות היא
+               פעולה של פעם בחיים, ובפועל היא אותו מהלך כמו עזיבה: יוצאים מהמשפחה
+               הזאת, ועוברים לאחרת או לחדשה וריקה. מי שלבד במשפחה לא "עוזב" —
+               אצלו השורה היא רק הצטרפות. ‎#join-family‎ נשאר: קישור הזמנה
+               (‎/join/<code>‎) פותח את החלונית וממלא בה את הקוד. #}
+            {% set alone = members | length <= 1 %}
             <div class="group-divider"></div>
-            <div class="group-row group-row-stack">
+            <div class="group-row">
                 <div class="group-row-info">
-                    <p class="group-row-label">הצטרפות למשפחה אחרת</p>
-                    <p class="group-row-hint">קיבלתם קוד הזמנה? הזינו אותו כאן</p>
+                    <p class="group-row-label">{{ 'הצטרפות למשפחה אחרת' if alone else 'עזיבת המשפחה' }}</p>
+                    <p class="group-row-hint">{{ 'קיבלתם קוד הזמנה? מצטרפים איתו כאן' if alone else 'עוברים למשפחה אחרת עם קוד הזמנה, או פותחים משפחה חדשה וריקה' }}</p>
                 </div>
+                <button class="btn-sm {{ 'btn-ghost' if alone else 'btn-danger-ghost' }}" id="toggleFamilyMoveBtn"
+                        aria-expanded="false" aria-controls="familyMoveForm">{{ 'הצטרפות' if alone else 'עזיבה' }}</button>
+            </div>
+            <div class="password-form" id="familyMoveForm">
                 <div class="join-family-row" id="join-family">
                     <label class="sr-only" for="joinCodeInput">קוד הזמנה</label>
                     <input class="form-input invite-code-input" type="text" id="joinCodeInput"
@@ -280,19 +289,14 @@
                     <button class="btn-sm btn-primary" id="joinFamilyBtn">הצטרפות</button>
                 </div>
                 <p class="form-error" id="joinFamilyError" role="alert"></p>
-            </div>
-
-            <!-- עזיבת המשפחה -->
-            {% if members | length > 1 %}
-            <div class="group-divider"></div>
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">עזיבת המשפחה</p>
-                    <p class="group-row-hint">תפתח לך משפחה חדשה וריקה. החשבון שלך נשאר.</p>
+                {% if not alone %}
+                <p class="family-move-or">או</p>
+                <div class="family-move-new">
+                    <p class="group-row-hint">תיפתח לך משפחה חדשה וריקה. החשבון שלך נשאר.</p>
+                    <button class="btn-sm btn-danger-ghost" id="leaveFamilyBtn">פתיחת משפחה חדשה</button>
                 </div>
-                <button class="btn-sm btn-danger-ghost" id="leaveFamilyBtn">עזיבה</button>
+                {% endif %}
             </div>
-            {% endif %}
 
             {# הסרת בן משפחה — מוסתרת בכוונה (החלטה של מתן, 30.9). הדרך הרגילה
                לצאת היא לצאת בעצמך; ההסרה נשארת רק למקרה חירום, למשל קוד
@@ -392,7 +396,7 @@
             </span>
             <span class="group-text">
                 <span class="group-title">העדפות משפחה</span>
-                <span class="group-sub">שיוך עסקאות והתראות</span>
+                <span class="group-sub">שיוך עסקאות</span>
             </span>
             <span class="group-chevron">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -434,57 +438,9 @@
                 </label>
             </div>
 
-            <div class="group-divider"></div>
-
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">התראות על חריגות</p>
-                    <p class="group-row-hint">התראה כשקטגוריית הוצאה גבוהה בהרבה מהרגיל שלה בשלושת החודשים האחרונים</p>
-                </div>
-                <label class="pref-switch">
-                    <input type="checkbox" aria-label="התראות על חריגות" id="anomalyEnabled"
-                           {% if family_settings.anomaly.enabled %}checked{% endif %}>
-                    <span class="pref-slider"></span>
-                </label>
-            </div>
-            <div class="anomaly-fields {% if not family_settings.anomaly.enabled %}off{% endif %}" id="anomalyFields">
-                <p class="field-hint anomaly-intro">שני התנאים הבאים צריכים להתקיים <strong>יחד</strong> כדי לקבל התראה:</p>
-                <div class="anomaly-inputs">
-                    <div class="form-group">
-                        <label class="form-label" for="anomalyPercent">1. ההוצאה גבוהה לפחות ב-</label>
-                        <div class="suffix-input-wrap">
-                            <input type="number" inputmode="numeric" id="anomalyPercent" class="form-input suffix-input"
-                                   min="100" max="1000" step="5" value="{{ family_settings.anomaly.percent }}">
-                            <span class="suffix-unit">%</span>
-                        </div>
-                        <p class="field-hint">מהממוצע הרגיל בקטגוריה (100% = בדיוק כמו הרגיל)</p>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="anomalyGap">2. וגם הפער בפועל לפחות</label>
-                        <div class="amount-input-wrap">
-                            <span class="amount-currency">₪</span>
-                            <input type="number" inputmode="numeric" id="anomalyGap" class="form-input amount-input"
-                                   min="0" max="100000" step="50" value="{{ family_settings.anomaly.min_gap }}">
-                        </div>
-                        <p class="field-hint">כדי שהתראה לא תופעל מקטגוריה זולה שקפצה בכמה שקלים בודדים</p>
-                    </div>
-                </div>
-                <p class="field-hint anomaly-example" id="anomalySentence"></p>
-            </div>
-
-            <div class="group-divider"></div>
-
-            <div class="group-row" id="workplaceRow">
-                <div class="group-row-info">
-                    <p class="group-row-label">מקום עבודה על שורות משכורת</p>
-                    <p class="group-row-hint" id="workplaceNote">מוצג בקטן מתחת למשכורת של כל בן משפחה</p>
-                </div>
-                <label class="pref-switch">
-                    <input type="checkbox" aria-label="מקום עבודה על שורות משכורת" id="showWorkplace"
-                           {% if family_settings.show_workplace %}checked{% endif %}>
-                    <span class="pref-slider"></span>
-                </label>
-            </div>
+            {# "התראות על חריגות" ו"מקום עבודה על שורות משכורת" ירדו (מתן,
+               11.10). מי שרוצה התראות קובע תקציב לקטגוריה — חריגה ממנו מופיעה
+               בבית. מקום העבודה מוצג תמיד מתחת למשכורת. #}
         </div>
     </section>
 
@@ -563,7 +519,7 @@
             </span>
             <span class="group-text">
                 <span class="group-title">תצוגה</span>
-                <span class="group-sub">מצב כהה, גודל טקסט וצליל</span>
+                <span class="group-sub">מצב כהה וגודל טקסט</span>
             </span>
             <span class="group-chevron">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -587,24 +543,8 @@
                     <button type="button" class="toggle-btn text-size-choice" data-size="xlarge" aria-pressed="false">גדול מאוד</button>
                 </div>
             </div>
-            {# צליל ורטט. דלת המילוט (‎sf_feedback_off‎) הייתה בקוד מאז
-               ההתחלה ושום דבר בכל הריפו לא כתב אליה — כלומר כל שמירה
-               השמיעה צליל ורטטה, בלי שום דרך לכבות. באפליקציה שמשתמשים
-               בה בקופה בסופר זה דבר שמוביל להסרה ולא לדיווח.
-
-               מקומית ולא בהגדרות המשפחה בכוונה: זו העדפה של המכשיר.
-               אבא רוצה צליל בטלפון שלו ואמא לא רוצה בשלה. לכן ב"תצוגה",
-               עם שאר מה שנשמר לכל טלפון — ולא ב"העדפות משפחה" (מתן, 1.10). #}
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">צליל ורטט בשמירה</p>
-                    <p class="group-row-hint">משוב קצר כשעסקה נכנסת. ההגדרה נשמרת במכשיר הזה בלבד</p>
-                </div>
-                <label class="pref-switch">
-                    <input type="checkbox" aria-label="צליל ורטט בשמירה" id="feedbackToggle">
-                    <span class="pref-slider"></span>
-                </label>
-            </div>
+            {# "צליל ורטט בשמירה" ירד (מתן, 11.10): הצליל הוסר, והרטט שקט —
+               אין מה לכבות. #}
         </div>
     </section>
 
@@ -636,7 +576,7 @@
                     <p class="group-row-value" dir="ltr" style="text-align:right;" id="accountEmailValue">{{ account.email }}</p>
                     <p class="group-row-hint" id="emailPendingNote" {% if not account.pending_email %}hidden{% endif %}>ממתין לאישור: <span dir="ltr" id="emailPendingValue">{{ account.pending_email or '' }}</span> — המייל יתחלף אחרי הלחיצה על הקישור שנשלח אליו. אם הגיע מייל אישור גם לכתובת הנוכחית, צריך ללחוץ גם עליו.</p>
                 </div>
-                <button class="btn-sm btn-ghost" id="toggleEmailBtn">שינוי</button>
+                <button class="btn-sm btn-ghost" id="toggleEmailBtn">עדכון כתובת מייל</button>
             </div>
 
             <div class="password-form" id="emailForm">
@@ -664,7 +604,7 @@
                     <p class="group-row-label">טלפון</p>
                     <p class="group-row-value" dir="ltr" style="text-align:right;" id="accountPhoneValue">{{ account.phone or 'לא הוזן' }}</p>
                 </div>
-                <button class="btn-sm btn-ghost" id="togglePhoneBtn">שינוי</button>
+                <button class="btn-sm btn-ghost" id="togglePhoneBtn">עדכון מספר טלפון</button>
             </div>
 
             <div class="password-form" id="phoneForm">
@@ -712,73 +652,78 @@
                 </div>
             </div>
 
+            {# איפוס ומחיקה — פעולות סופיות שעושים אולי פעם אחת. מקופלות תחת
+               "אפשרויות מתקדמות", כדי שלא יישבו בהישג יד ליד המייל והסיסמה
+               (מתן, 11.10). כמו "הסרת בן משפחה" ב"המשפחה שלי". #}
             <div class="group-divider"></div>
-
-            <!-- איפוס חשבון: מחיקת כל העסקאות, החשבון נשמר -->
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">איפוס חשבון</p>
-                    <p class="group-row-hint">מחיקת כל העסקאות — החשבון, הקטגוריות וההגדרות נשמרים</p>
-                </div>
-                <button class="btn-sm btn-ghost btn-danger-ghost" id="toggleResetAccountBtn">איפוס החשבון</button>
-            </div>
-
-            <div class="password-form" id="resetAccountForm" data-tx-count="{{ family_tx_count }}">
-                <p class="delete-account-warning">
-                    האיפוס מוחק לצמיתות את כל העסקאות — הכנסות, הוצאות וחיסכון,
-                    כולל עסקאות קבועות. הקטגוריות, הפרויקטים וההגדרות נשמרים.
-                </p>
-                <div class="form-group">
-                    <label class="form-label">מה לאפס?</label>
-                    <div class="type-toggle" style="grid-template-columns: 1fr 1fr;">
-                        {% if user.id == family.get('manager_id') %}
-                        <button type="button" class="toggle-btn active" id="resetScopeFamily" data-scope="family">כל עסקאות המשפחה</button>
-                        <button type="button" class="toggle-btn" id="resetScopeMine" data-scope="mine">רק העסקאות שלי</button>
-                        {% else %}
-                        {# מחיקת ההיסטוריה של כל המשפחה היא של המנהל בלבד. #}
-                        <button type="button" class="toggle-btn active" id="resetScopeMine" data-scope="mine">רק העסקאות שלי</button>
-                        {% endif %}
+            <details class="advanced-options">
+                <summary class="advanced-summary">אפשרויות מתקדמות</summary>
+                <!-- איפוס חשבון: מחיקת כל העסקאות, החשבון נשמר -->
+                <div class="group-row">
+                    <div class="group-row-info">
+                        <p class="group-row-label">איפוס חשבון</p>
+                        <p class="group-row-hint">מחיקת כל העסקאות — החשבון, הקטגוריות וההגדרות נשמרים</p>
                     </div>
-                    <p class="field-hint">"רק העסקאות שלי" מוחק עסקאות שמשויכות אליך אישית — עסקאות משותפות ושל בני משפחה אחרים נשארות</p>
+                    <button class="btn-sm btn-ghost btn-danger-ghost" id="toggleResetAccountBtn">איפוס החשבון</button>
                 </div>
-                <div class="form-group">
-                    <label class="form-label" for="resetAccountPassword">אישור עם הסיסמה הנוכחית</label>
-                    <input class="form-input" type="password" id="resetAccountPassword" placeholder="••••••••" autocomplete="current-password">
-                </div>
-                <p class="form-error" id="resetAccountError" role="alert"></p>
-                <div class="edit-actions">
-                    <button class="btn-sm btn-danger" id="confirmResetAccountBtn">איפוס העסקאות</button>
-                    <button class="btn-sm btn-ghost" id="cancelResetAccountBtn">ביטול</button>
-                </div>
-            </div>
 
-            <div class="group-divider"></div>
+                <div class="password-form" id="resetAccountForm" data-tx-count="{{ family_tx_count }}">
+                    <p class="delete-account-warning">
+                        האיפוס מוחק לצמיתות את כל העסקאות — הכנסות, הוצאות וחיסכון,
+                        כולל עסקאות קבועות. הקטגוריות, הפרויקטים וההגדרות נשמרים.
+                    </p>
+                    <div class="form-group">
+                        <label class="form-label">מה לאפס?</label>
+                        <div class="type-toggle" style="grid-template-columns: 1fr 1fr;">
+                            {% if user.id == family.get('manager_id') %}
+                            <button type="button" class="toggle-btn active" id="resetScopeFamily" data-scope="family">כל עסקאות המשפחה</button>
+                            <button type="button" class="toggle-btn" id="resetScopeMine" data-scope="mine">רק העסקאות שלי</button>
+                            {% else %}
+                            {# מחיקת ההיסטוריה של כל המשפחה היא של המנהל בלבד. #}
+                            <button type="button" class="toggle-btn active" id="resetScopeMine" data-scope="mine">רק העסקאות שלי</button>
+                            {% endif %}
+                        </div>
+                        <p class="field-hint">"רק העסקאות שלי" מוחק עסקאות שמשויכות אליך אישית — עסקאות משותפות ושל בני משפחה אחרים נשארות</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="resetAccountPassword">אישור עם הסיסמה הנוכחית</label>
+                        <input class="form-input" type="password" id="resetAccountPassword" placeholder="••••••••" autocomplete="current-password">
+                    </div>
+                    <p class="form-error" id="resetAccountError" role="alert"></p>
+                    <div class="edit-actions">
+                        <button class="btn-sm btn-danger" id="confirmResetAccountBtn">איפוס העסקאות</button>
+                        <button class="btn-sm btn-ghost" id="cancelResetAccountBtn">ביטול</button>
+                    </div>
+                </div>
 
-            <!-- מחיקת חשבון לצמיתות -->
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">מחיקת חשבון</p>
-                    <p class="group-row-hint">מחיקה לצמיתות של החשבון וכל הנתונים שלו</p>
-                </div>
-                <button class="btn-sm btn-ghost btn-danger-ghost" id="toggleDeleteAccountBtn">מחיקת החשבון</button>
-            </div>
+                <div class="group-divider"></div>
 
-            <div class="password-form" id="deleteAccountForm">
-                <p class="delete-account-warning">
-                    המחיקה סופית ולא ניתנת לביטול. החשבון וכל הנתונים שלו יימחקו לצמיתות.
-                    אם יש בני משפחה נוספים — הנתונים המשפחתיים יישארו אצלם, והעסקאות שלך
-                    יסומנו כמשותפות. אם אין — כל נתוני המשפחה יימחקו גם הם.
-                </p>
-                <div class="form-group">
-                    <label class="form-label" for="deleteAccountPassword">אישור עם הסיסמה הנוכחית</label>
-                    <input class="form-input" type="password" id="deleteAccountPassword" placeholder="••••••••" autocomplete="current-password">
+                <!-- מחיקת חשבון לצמיתות -->
+                <div class="group-row">
+                    <div class="group-row-info">
+                        <p class="group-row-label">מחיקת חשבון</p>
+                        <p class="group-row-hint">מחיקה לצמיתות של החשבון וכל הנתונים שלו</p>
+                    </div>
+                    <button class="btn-sm btn-ghost btn-danger-ghost" id="toggleDeleteAccountBtn">מחיקת החשבון</button>
                 </div>
-                <p class="form-error" id="deleteAccountError" role="alert"></p>
-                <div class="edit-actions">
-                    <button class="btn-sm btn-danger" id="confirmDeleteAccountBtn">מחיקה לצמיתות</button>
-                    <button class="btn-sm btn-ghost" id="cancelDeleteAccountBtn">ביטול</button>
+
+                <div class="password-form" id="deleteAccountForm">
+                    <p class="delete-account-warning">
+                        המחיקה סופית ולא ניתנת לביטול. החשבון וכל הנתונים שלו יימחקו לצמיתות.
+                        אם יש בני משפחה נוספים — הנתונים המשפחתיים יישארו אצלם, והעסקאות שלך
+                        יסומנו כמשותפות. אם אין — כל נתוני המשפחה יימחקו גם הם.
+                    </p>
+                    <div class="form-group">
+                        <label class="form-label" for="deleteAccountPassword">אישור עם הסיסמה הנוכחית</label>
+                        <input class="form-input" type="password" id="deleteAccountPassword" placeholder="••••••••" autocomplete="current-password">
+                    </div>
+                    <p class="form-error" id="deleteAccountError" role="alert"></p>
+                    <div class="edit-actions">
+                        <button class="btn-sm btn-danger" id="confirmDeleteAccountBtn">מחיקה לצמיתות</button>
+                        <button class="btn-sm btn-ghost" id="cancelDeleteAccountBtn">ביטול</button>
+                    </div>
                 </div>
-            </div>
+            </details>
         </div>
     </section>
 

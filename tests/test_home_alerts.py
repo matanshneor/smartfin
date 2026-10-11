@@ -38,23 +38,13 @@ def test_a_budget_alert_leads_to_its_category():
     assert [a["target"] for a in alerts] == [f"cat-{_FOOD}"]
 
 
-def test_an_above_average_category_leads_to_its_category(monkeypatch):
-    monkeypatch.setattr(db, "_category_history_averages", lambda *a: (
-        {_FOOD: 3000.0}, {_FOOD: {"2026-07": 1000, "2026-08": 1000, "2026-09": 1000}},
-        {_FOOD: {"name": "סופר", "icon": "🛒"}}))
-    alerts = db.get_anomalies(_FAM, 2026, 10, _summary(10000, 3000))
-    assert [a["target"] for a in alerts] == [f"cat-{_FOOD}"]
-
-
-def test_expenses_above_income_lead_to_the_expenses(monkeypatch):
-    monkeypatch.setattr(db, "_category_history_averages", lambda *a: ({}, {}, {}))
-    alerts = db.get_anomalies(_FAM, 2026, 10, _summary(1000, 1500))
+def test_expenses_above_income_lead_to_the_expenses():
+    alerts = db.balance_alerts(_summary(1000, 1500))
     assert [a["target"] for a in alerts] == ["expense-breakdown"]
 
 
-def test_a_negative_balance_leads_to_the_balance_at_the_top(monkeypatch):
-    monkeypatch.setattr(db, "_category_history_averages", lambda *a: ({}, {}, {}))
-    alerts = db.get_anomalies(_FAM, 2026, 10, _summary(1000, 800, savings=500))
+def test_a_negative_balance_leads_to_the_balance_at_the_top():
+    alerts = db.balance_alerts(_summary(1000, 800, savings=500))
     assert [a["target"] for a in alerts] == [None]
 
 
@@ -63,14 +53,15 @@ def test_an_uncategorized_alert_falls_back_to_the_expenses():
     assert db.category_anchor(_FOOD) == f"cat-{_FOOD}"
 
 
-def test_budget_categories_skip_the_average_alert(monkeypatch):
-    """אותו כלל כמו קודם בעמוד החודש — עכשיו במקום אחד, לשני המסכים."""
-    seen = {}
-    monkeypatch.setattr(db, "get_anomalies",
-                        lambda *a, skip_categories=None, **k: seen.setdefault("skip", skip_categories) and [])
-    breakdown = [{"category_id": _FOOD, "budget": 2000}, {"category_id": "other"}]
-    db.month_alerts(_FAM, 2026, 10, _summary(1, 0), {}, breakdown)
-    assert seen["skip"] == [_FOOD]
+def test_category_alerts_are_budget_overruns_only():
+    """מתן (11.10): התראת "גבוהה מהממוצע" הוסרה — מי שרוצה התראות קובע
+    תקציב. קטגוריה בלי תקציב לא מתריעה, גם כשהיא גבוהה מאוד."""
+    rows = [{"category_id": _FOOD, "name": "סופר", "icon": "🛒", "total": 99999}]
+    assert db.month_alerts(_summary(200000, 99999), db.apply_budgets(rows, {})) == []
+    assert not hasattr(db, "get_anomalies")
+    import inspect
+    src = inspect.getsource(app_module.update_family_settings_route)
+    assert '"anomaly"' not in src and '"show_workplace"' not in src
 
 
 # ─── דף הבית ─────────────────────────────────────────────────────────────
