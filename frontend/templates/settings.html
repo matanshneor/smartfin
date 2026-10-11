@@ -97,18 +97,21 @@
 
 <div class="settings-groups">
 
-    <!-- ═══ קבוצה 1: המשפחה ═══ -->
-    <section class="settings-group">
+    <!-- ═══ הפרטים שלי ═══ -->
+    {# סדר בהגדרות (מתן, 11.10): כל מה ששייך רק לי — במקום אחד. עד אז השם ומקום
+       העבודה נערכו מעיפרון בשורה שלי ברשימת בני המשפחה, הצבע מכפתור באותה
+       שורה, ומייל, טלפון וסיסמה ב"אבטחה וחשבון". כל שורה כאן: מה רשום, וכפתור
+       עדכון. #}
+    <section class="settings-group" id="my-details">
         <button type="button" class="settings-group-header" aria-expanded="false">
             <span class="group-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
                 </svg>
             </span>
             <span class="group-text">
-                {# רק הכותרת (מתן, 1.10): שם המשפחה כבר בראש העמוד, וחברי
-                   המשפחה רשומים בתוך התיבה #}
-                <span class="group-title">המשפחה שלי</span>
+                {# בלי המייל מתחת: הוא כבר בראש העמוד #}
+                <span class="group-title">הפרטים שלי</span>
             </span>
             <span class="group-chevron">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -116,75 +119,51 @@
         </button>
 
         <div class="settings-group-body">
-            <!-- שם המשפחה -->
             <div class="group-row">
                 <div class="group-row-info">
-                    <p class="group-row-label">שם המשפחה</p>
-                    <p class="group-row-value" id="familyNameDisplay">{{ family.get('name', 'המשפחה שלי') }}</p>
+                    <p class="group-row-label">שם ומקום עבודה</p>
+                    <p class="group-row-value" id="accountNameDisplay">{{ account.full_name }}</p>
+                    <p class="group-row-hint" id="accountWorkplaceDisplay" {% if not account.workplace %}style="display:none;"{% endif %}>{{ account.workplace or '' }}</p>
                 </div>
-                <button class="icon-btn" id="editFamilyNameBtn" aria-label="עריכת שם המשפחה">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                    </svg>
+                <button class="btn-sm btn-ghost" id="editProfileBtn">עדכון</button>
+            </div>
+            <div class="account-edit" id="profileEdit">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="editFirstName">שם פרטי</label>
+                        <input class="form-input" type="text" id="editFirstName" value="{{ account.first_name }}" maxlength="40">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="editLastName">שם משפחה</label>
+                        <input class="form-input" type="text" id="editLastName" value="{{ account.last_name }}" maxlength="40">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="editWorkplace">מקום עבודה</label>
+                    <input class="form-input" type="text" id="editWorkplace" value="{{ account.workplace }}"
+                           placeholder="לדוגמה: אינטל, עצמאי…" maxlength="60" autocomplete="organization">
+                </div>
+                <p class="form-error" id="profileError" role="alert"></p>
+                <div class="edit-actions">
+                    <button class="btn-sm btn-primary" id="saveProfileBtn">שמירה</button>
+                    <button class="btn-sm btn-ghost" id="cancelProfileBtn">ביטול</button>
+                </div>
+            </div>
+
+            {% if member_colors and user.id in member_colors %}
+            {% set mine = member_colors.get(user.id) %}
+            <div class="group-divider"></div>
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">הצבע שלי</p>
+                    <p class="group-row-hint">כך מופיע השם שלך ליד עסקאות ובגרפים</p>
+                </div>
+                <button type="button" class="btn-sm btn-ghost member-color-open" id="memberColorOpen" aria-haspopup="dialog">
+                    <span class="member-color-swatch" style="background: {{ color_hex[mine] }};"></span>
+                    עדכון
                 </button>
             </div>
-
-            <div class="family-name-edit" id="familyNameEdit">
-                {# בלי תווית, קורא מסך מקריא "שדה טקסט" ותו לא. הכותרת
-                   שלצד השדה קיימת חזותית אבל לא מקושרת אליו. #}
-                <label class="sr-only" for="familyNameInput">שם המשפחה</label>
-                <input class="form-input" type="text" id="familyNameInput"
-                       value="{{ family.get('name', 'המשפחה שלי') }}" maxlength="50">
-                <div class="edit-actions">
-                    <button class="btn-sm btn-primary" id="saveFamilyNameBtn">שמירה</button>
-                    <button class="btn-sm btn-ghost"   id="cancelFamilyNameBtn">ביטול</button>
-                </div>
-            </div>
-
-            <!-- חברי המשפחה -->
-            {% if members %}
-            <div class="group-divider"></div>
-            <ul class="members-settings-list">
-                {% for m in members %}
-                <li class="member-settings-row {% if m.id == user.id %}is-me{% endif %}">
-                    <div class="member-avatar-sm">{{ m.avatar_initial or m.name[0] }}</div>
-                    <div class="member-settings-info">
-                        <p class="member-settings-name">
-                            {% if m.id == user.id %}<span id="accountNameDisplay">{{ m.full_name }}</span> <span class="me-badge">אני</span>
-                            {% else %}{{ m.full_name }}{% endif %}
-                            {% if m.id == family.get('manager_id') %}<span class="manager-badge">מנהל המשפחה</span>{% endif %}
-                        </p>
-                        <p class="member-settings-meta">{{ m.email }}</p>
-                        {% if m.id == user.id %}
-                        <p class="member-settings-meta" id="accountPhoneDisplay" {% if not m.phone %}style="display:none;"{% endif %}>{{ m.phone or '' }}</p>
-                        <p class="member-settings-meta" id="accountWorkplaceDisplay" {% if not m.workplace %}style="display:none;"{% endif %}>{{ m.workplace or '' }}</p>
-                        {% else %}
-                        {% if m.phone %}<p class="member-settings-meta">{{ m.phone }}</p>{% endif %}
-                        {% if m.workplace %}<p class="member-settings-meta">{{ m.workplace }}</p>{% endif %}
-                        {% endif %}
-                        {# הצבע שלי בתגי השם ובגרפים — כפתור שפותח חלון עם דוגמה (מתן, 30.9).
-                           כל אחד לעצמו בלבד. #}
-                        {% if member_colors and m.id == user.id %}
-                        {% set mine = member_colors.get(m.id) %}
-                        <button type="button" class="member-color-open" id="memberColorOpen" aria-haspopup="dialog">
-                            <span class="member-color-swatch" style="background: {{ color_hex[mine] }};"></span>
-                            בחירת צבע
-                        </button>
-                        {% endif %}
-                    </div>
-                    {% if m.id == user.id %}
-                    <button class="icon-btn" id="editProfileBtn" aria-label="עריכת הפרטים שלי">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                        </svg>
-                    </button>
-                    {% endif %}
-                </li>
-                {% endfor %}
-            </ul>
-
             {# חלון בחירת הצבע: כל צבע עם דוגמה של תג השם שלי בצבע הזה #}
-            {% if member_colors and user.id in member_colors %}
             {% set me = members | selectattr('id', 'equalto', user.id) | first %}
             {% set mine = member_colors.get(user.id) %}
             <div class="color-sheet" id="memberColorSheet" role="dialog" aria-modal="true" aria-labelledby="memberColorTitle" hidden>
@@ -208,29 +187,183 @@
             </div>
             {% endif %}
 
-            <!-- עריכת הפרטים שלי -->
-            <div class="account-edit" id="profileEdit">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label" for="editFirstName">שם פרטי</label>
-                        <input class="form-input" type="text" id="editFirstName" value="{{ account.first_name }}" maxlength="40">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="editLastName">שם משפחה</label>
-                        <input class="form-input" type="text" id="editLastName" value="{{ account.last_name }}" maxlength="40">
-                    </div>
+            <div class="group-divider"></div>
+
+            {# מייל וטלפון — פרטי ההתחברות, במקום אחד (מתן, 1.10). הטלפון עבר
+               לכאן מעריכת הפרטים ב"המשפחה שלי". #}
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">מייל</p>
+                    <p class="group-row-value" dir="ltr" style="text-align:right;" id="accountEmailValue">{{ account.email }}</p>
+                    <p class="group-row-hint" id="emailPendingNote" {% if not account.pending_email %}hidden{% endif %}>ממתין לאישור: <span dir="ltr" id="emailPendingValue">{{ account.pending_email or '' }}</span> — המייל יתחלף אחרי הלחיצה על הקישור שנשלח אליו. אם הגיע מייל אישור גם לכתובת הנוכחית, צריך ללחוץ גם עליו.</p>
+                </div>
+                <button class="btn-sm btn-ghost" id="toggleEmailBtn">עדכון כתובת מייל</button>
+            </div>
+
+            <div class="password-form" id="emailForm">
+                <div class="form-group">
+                    <label class="form-label" for="newEmail">מייל חדש</label>
+                    <input class="form-input" type="email" id="newEmail" dir="ltr" style="text-align:right;"
+                           placeholder="name@example.com" autocomplete="email" maxlength="254">
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="editWorkplace">מקום עבודה</label>
-                    <input class="form-input" type="text" id="editWorkplace" value="{{ account.workplace }}"
-                           placeholder="לדוגמה: אינטל, עצמאי…" maxlength="60" autocomplete="organization">
+                    <label class="form-label" for="emailCurrentPassword">הסיסמה הנוכחית</label>
+                    <input class="form-input" type="password" id="emailCurrentPassword" placeholder="••••••••" autocomplete="current-password">
                 </div>
-                <p class="form-error" id="profileError" role="alert"></p>
+                <p class="field-hint">נשלח קישור אישור למייל החדש. המייל יתחלף רק אחרי הלחיצה עליו, ועד אז מתחברים עם הנוכחי.</p>
+                <p class="form-error" id="emailError" role="alert"></p>
                 <div class="edit-actions">
-                    <button class="btn-sm btn-primary" id="saveProfileBtn">שמירה</button>
-                    <button class="btn-sm btn-ghost" id="cancelProfileBtn">ביטול</button>
+                    <button class="btn-sm btn-primary" id="saveEmailBtn">שליחת קישור אישור</button>
+                    <button class="btn-sm btn-ghost" id="cancelEmailBtn">ביטול</button>
                 </div>
             </div>
+
+            <div class="group-divider"></div>
+
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">טלפון</p>
+                    <p class="group-row-value" dir="ltr" style="text-align:right;" id="accountPhoneValue">{{ account.phone or 'לא הוזן' }}</p>
+                </div>
+                <button class="btn-sm btn-ghost" id="togglePhoneBtn">עדכון מספר טלפון</button>
+            </div>
+
+            <div class="password-form" id="phoneForm">
+                <div class="form-group">
+                    <label class="form-label" for="newPhone">מספר טלפון</label>
+                    <input class="form-input" type="tel" id="newPhone" value="{{ account.phone }}"
+                           placeholder="050-1234567" dir="ltr" style="text-align:right;" autocomplete="tel">
+                </div>
+                <p class="field-hint">אפשר להתחבר גם עם המספר הזה במקום המייל</p>
+                <p class="form-error" id="phoneError" role="alert"></p>
+                <div class="edit-actions">
+                    <button class="btn-sm btn-primary" id="savePhoneBtn">שמירה</button>
+                    <button class="btn-sm btn-ghost" id="cancelPhoneBtn">ביטול</button>
+                </div>
+            </div>
+
+            <div class="group-divider"></div>
+
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">סיסמה</p>
+                    <p class="group-row-hint">שינוי סיסמת ההתחברות שלך</p>
+                </div>
+                <button class="btn-sm btn-ghost" id="togglePasswordBtn">עדכון סיסמה</button>
+            </div>
+
+            <div class="password-form" id="passwordForm">
+                <div class="form-group">
+                    <label class="form-label" for="currentPassword">סיסמה נוכחית</label>
+                    <input class="form-input" type="password" id="currentPassword" placeholder="••••••••" autocomplete="current-password">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="newPassword">סיסמה חדשה</label>
+                    <input class="form-input" type="password" id="newPassword" placeholder="••••••••" minlength="6" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="newPasswordConfirm">אימות סיסמה חדשה</label>
+                    <input class="form-input" type="password" id="newPasswordConfirm" placeholder="••••••••" minlength="6" autocomplete="new-password">
+                </div>
+                <p class="form-error" id="passwordError" role="alert"></p>
+                <p class="form-success" id="passwordSuccess"></p>
+                <div class="edit-actions">
+                    <button class="btn-sm btn-primary" id="changePasswordBtn">עדכון הסיסמה</button>
+                    <button class="btn-sm btn-ghost" id="cancelPasswordBtn">ביטול</button>
+                </div>
+            </div>
+
+            <div class="group-divider"></div>
+            <details class="advanced-options">
+                <summary class="advanced-summary">אפשרויות מתקדמות</summary>
+                <!-- מחיקת חשבון לצמיתות -->
+                <div class="group-row">
+                    <div class="group-row-info">
+                        <p class="group-row-label">מחיקת חשבון</p>
+                        <p class="group-row-hint">מחיקה לצמיתות של החשבון וכל הנתונים שלו</p>
+                    </div>
+                    <button class="btn-sm btn-ghost btn-danger-ghost" id="toggleDeleteAccountBtn">מחיקת החשבון</button>
+                </div>
+
+                <div class="password-form" id="deleteAccountForm">
+                    <p class="delete-account-warning">
+                        המחיקה סופית ולא ניתנת לביטול. החשבון וכל הנתונים שלו יימחקו לצמיתות.
+                        אם יש בני משפחה נוספים — הנתונים המשפחתיים יישארו אצלם, והעסקאות שלך
+                        יסומנו כמשותפות. אם אין — כל נתוני המשפחה יימחקו גם הם.
+                    </p>
+                    <div class="form-group">
+                        <label class="form-label" for="deleteAccountPassword">אישור עם הסיסמה הנוכחית</label>
+                        <input class="form-input" type="password" id="deleteAccountPassword" placeholder="••••••••" autocomplete="current-password">
+                    </div>
+                    <p class="form-error" id="deleteAccountError" role="alert"></p>
+                    <div class="edit-actions">
+                        <button class="btn-sm btn-danger" id="confirmDeleteAccountBtn">מחיקה לצמיתות</button>
+                        <button class="btn-sm btn-ghost" id="cancelDeleteAccountBtn">ביטול</button>
+                    </div>
+                </div>
+            </details>
+        </div>
+    </section>
+
+    <!-- ═══ המשפחה שלי ═══ -->
+    {# מה שמשותף לכל המשפחה (מתן, 11.10). רשימת בני המשפחה לקריאה בלבד — את
+       הפרטים שלי עורכים ב"הפרטים שלי". #}
+    <section class="settings-group" id="family-settings">
+        <button type="button" class="settings-group-header" aria-expanded="false">
+            <span class="group-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+            </span>
+            <span class="group-text">
+                {# רק הכותרת (מתן, 1.10): שם המשפחה כבר בראש העמוד #}
+                <span class="group-title">המשפחה שלי</span>
+            </span>
+            <span class="group-chevron">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+        </button>
+
+        <div class="settings-group-body">
+            <!-- שם המשפחה -->
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">שם המשפחה</p>
+                    <p class="group-row-value" id="familyNameDisplay">{{ family.get('name', 'המשפחה שלי') }}</p>
+                </div>
+                <button class="btn-sm btn-ghost" id="editFamilyNameBtn">עדכון</button>
+            </div>
+
+            <div class="family-name-edit" id="familyNameEdit">
+                {# בלי תווית, קורא מסך מקריא "שדה טקסט" ותו לא. הכותרת
+                   שלצד השדה קיימת חזותית אבל לא מקושרת אליו. #}
+                <label class="sr-only" for="familyNameInput">שם המשפחה</label>
+                <input class="form-input" type="text" id="familyNameInput"
+                       value="{{ family.get('name', 'המשפחה שלי') }}" maxlength="50">
+                <div class="edit-actions">
+                    <button class="btn-sm btn-primary" id="saveFamilyNameBtn">שמירה</button>
+                    <button class="btn-sm btn-ghost"   id="cancelFamilyNameBtn">ביטול</button>
+                </div>
+            </div>
+
+            {% if members %}
+            <div class="group-divider"></div>
+            <p class="group-row-label members-title">בני המשפחה</p>
+            <ul class="members-settings-list">
+                {% for m in members %}
+                <li class="member-settings-row {% if m.id == user.id %}is-me{% endif %}">
+                    <div class="member-avatar-sm">{{ m.avatar_initial or m.name[0] }}</div>
+                    <div class="member-settings-info">
+                        <p class="member-settings-name">
+                            <span {% if m.id == user.id %}data-my-name{% endif %}>{{ m.full_name }}</span>
+                            {% if m.id == user.id %}<span class="me-badge">אני</span>{% endif %}
+                            {% if m.id == family.get('manager_id') %}<span class="manager-badge">מנהל המשפחה</span>{% endif %}
+                        </p>
+                        <p class="member-settings-meta">{{ m.email }}</p>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
             {% endif %}
 
             <!-- הזמנת בן משפחה -->
@@ -298,13 +431,51 @@
                 {% endif %}
             </div>
 
-            {# הסרת בן משפחה — מוסתרת בכוונה (החלטה של מתן, 30.9). הדרך הרגילה
-               לצאת היא לצאת בעצמך; ההסרה נשארת רק למקרה חירום, למשל קוד
-               הזמנה שהגיע לאדם הלא נכון. מוצגת רק למנהל; הכלל נאכף ב-DB ממילא. #}
-            {% if user.id == family.get('manager_id') and members | length > 1 %}
+            {# פעולות נדירות של המשפחה — מקופלות (מתן, 11.10). איפוס העסקאות עבר
+               לכאן מ"אבטחה וחשבון": הוא מוחק עסקאות של המשפחה, לא את החשבון.
+               הסרת בן משפחה — רק למנהל; הכלל נאכף ב-DB ממילא. #}
             <div class="group-divider"></div>
             <details class="advanced-options">
                 <summary class="advanced-summary">אפשרויות מתקדמות</summary>
+                <!-- איפוס עסקאות: מחיקת כל העסקאות, החשבון נשמר -->
+                <div class="group-row">
+                    <div class="group-row-info">
+                        <p class="group-row-label">איפוס עסקאות</p>
+                        <p class="group-row-hint">מחיקת כל העסקאות — החשבונות, הקטגוריות וההגדרות נשמרים</p>
+                    </div>
+                    <button class="btn-sm btn-ghost btn-danger-ghost" id="toggleResetAccountBtn">איפוס</button>
+                </div>
+
+                <div class="password-form" id="resetAccountForm" data-tx-count="{{ family_tx_count }}">
+                    <p class="delete-account-warning">
+                        האיפוס מוחק לצמיתות את כל העסקאות — הכנסות, הוצאות וחיסכון,
+                        כולל עסקאות קבועות. הקטגוריות, הפרויקטים וההגדרות נשמרים.
+                    </p>
+                    <div class="form-group">
+                        <label class="form-label">מה לאפס?</label>
+                        <div class="type-toggle" style="grid-template-columns: 1fr 1fr;">
+                            {% if user.id == family.get('manager_id') %}
+                            <button type="button" class="toggle-btn active" id="resetScopeFamily" data-scope="family">כל עסקאות המשפחה</button>
+                            <button type="button" class="toggle-btn" id="resetScopeMine" data-scope="mine">רק העסקאות שלי</button>
+                            {% else %}
+                            {# מחיקת ההיסטוריה של כל המשפחה היא של המנהל בלבד. #}
+                            <button type="button" class="toggle-btn active" id="resetScopeMine" data-scope="mine">רק העסקאות שלי</button>
+                            {% endif %}
+                        </div>
+                        <p class="field-hint">"רק העסקאות שלי" מוחק עסקאות שמשויכות אליך אישית — עסקאות משותפות ושל בני משפחה אחרים נשארות</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="resetAccountPassword">אישור עם הסיסמה הנוכחית</label>
+                        <input class="form-input" type="password" id="resetAccountPassword" placeholder="••••••••" autocomplete="current-password">
+                    </div>
+                    <p class="form-error" id="resetAccountError" role="alert"></p>
+                    <div class="edit-actions">
+                        <button class="btn-sm btn-danger" id="confirmResetAccountBtn">איפוס העסקאות</button>
+                        <button class="btn-sm btn-ghost" id="cancelResetAccountBtn">ביטול</button>
+                    </div>
+                </div>
+                {% if user.id == family.get('manager_id') and members | length > 1 %}
+                <div class="group-divider"></div>
                 <div class="group-row group-row-stack">
                     <div class="group-row-info">
                         <p class="group-row-label">הסרת בן משפחה</p>
@@ -320,8 +491,8 @@
                         <button class="btn-sm btn-danger-ghost" id="removeMemberBtn">הסרה</button>
                     </div>
                 </div>
+                {% endif %}
             </details>
-            {% endif %}
         </div>
     </section>
 
@@ -567,184 +738,6 @@
         </div>
     </section>
 
-    <!-- ═══ קבוצה 4: אבטחה וחשבון ═══ -->
-    <section class="settings-group">
-        <button type="button" class="settings-group-header" aria-expanded="false">
-            <span class="group-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                </svg>
-            </span>
-            <span class="group-text">
-                <span class="group-title">אבטחה וחשבון</span>
-                <span class="group-sub">{{ account.email }}</span>
-            </span>
-            <span class="group-chevron">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </span>
-        </button>
-
-        <div class="settings-group-body">
-            {# "ייצוא הנתונים שלי" הוסר מכאן (מתן, 1.10). ‎/account.json‎ נשאר —
-               בקשת עיון בנתונים (מדיניות הפרטיות → פנייה במייל) עדיין נענית ממנו. #}
-            {# מייל וטלפון — פרטי ההתחברות, במקום אחד (מתן, 1.10). הטלפון עבר
-               לכאן מעריכת הפרטים ב"המשפחה שלי". #}
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">מייל</p>
-                    <p class="group-row-value" dir="ltr" style="text-align:right;" id="accountEmailValue">{{ account.email }}</p>
-                    <p class="group-row-hint" id="emailPendingNote" {% if not account.pending_email %}hidden{% endif %}>ממתין לאישור: <span dir="ltr" id="emailPendingValue">{{ account.pending_email or '' }}</span> — המייל יתחלף אחרי הלחיצה על הקישור שנשלח אליו. אם הגיע מייל אישור גם לכתובת הנוכחית, צריך ללחוץ גם עליו.</p>
-                </div>
-                <button class="btn-sm btn-ghost" id="toggleEmailBtn">עדכון כתובת מייל</button>
-            </div>
-
-            <div class="password-form" id="emailForm">
-                <div class="form-group">
-                    <label class="form-label" for="newEmail">מייל חדש</label>
-                    <input class="form-input" type="email" id="newEmail" dir="ltr" style="text-align:right;"
-                           placeholder="name@example.com" autocomplete="email" maxlength="254">
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="emailCurrentPassword">הסיסמה הנוכחית</label>
-                    <input class="form-input" type="password" id="emailCurrentPassword" placeholder="••••••••" autocomplete="current-password">
-                </div>
-                <p class="field-hint">נשלח קישור אישור למייל החדש. המייל יתחלף רק אחרי הלחיצה עליו, ועד אז מתחברים עם הנוכחי.</p>
-                <p class="form-error" id="emailError" role="alert"></p>
-                <div class="edit-actions">
-                    <button class="btn-sm btn-primary" id="saveEmailBtn">שליחת קישור אישור</button>
-                    <button class="btn-sm btn-ghost" id="cancelEmailBtn">ביטול</button>
-                </div>
-            </div>
-
-            <div class="group-divider"></div>
-
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">טלפון</p>
-                    <p class="group-row-value" dir="ltr" style="text-align:right;" id="accountPhoneValue">{{ account.phone or 'לא הוזן' }}</p>
-                </div>
-                <button class="btn-sm btn-ghost" id="togglePhoneBtn">עדכון מספר טלפון</button>
-            </div>
-
-            <div class="password-form" id="phoneForm">
-                <div class="form-group">
-                    <label class="form-label" for="newPhone">מספר טלפון</label>
-                    <input class="form-input" type="tel" id="newPhone" value="{{ account.phone }}"
-                           placeholder="050-1234567" dir="ltr" style="text-align:right;" autocomplete="tel">
-                </div>
-                <p class="field-hint">אפשר להתחבר גם עם המספר הזה במקום המייל</p>
-                <p class="form-error" id="phoneError" role="alert"></p>
-                <div class="edit-actions">
-                    <button class="btn-sm btn-primary" id="savePhoneBtn">שמירה</button>
-                    <button class="btn-sm btn-ghost" id="cancelPhoneBtn">ביטול</button>
-                </div>
-            </div>
-
-            <div class="group-divider"></div>
-
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">סיסמה</p>
-                    <p class="group-row-hint">שינוי סיסמת ההתחברות שלך</p>
-                </div>
-                <button class="btn-sm btn-ghost" id="togglePasswordBtn">שינוי סיסמה</button>
-            </div>
-
-            <div class="password-form" id="passwordForm">
-                <div class="form-group">
-                    <label class="form-label" for="currentPassword">סיסמה נוכחית</label>
-                    <input class="form-input" type="password" id="currentPassword" placeholder="••••••••" autocomplete="current-password">
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="newPassword">סיסמה חדשה</label>
-                    <input class="form-input" type="password" id="newPassword" placeholder="••••••••" minlength="6" autocomplete="new-password">
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="newPasswordConfirm">אימות סיסמה חדשה</label>
-                    <input class="form-input" type="password" id="newPasswordConfirm" placeholder="••••••••" minlength="6" autocomplete="new-password">
-                </div>
-                <p class="form-error" id="passwordError" role="alert"></p>
-                <p class="form-success" id="passwordSuccess"></p>
-                <div class="edit-actions">
-                    <button class="btn-sm btn-primary" id="changePasswordBtn">עדכון הסיסמה</button>
-                    <button class="btn-sm btn-ghost" id="cancelPasswordBtn">ביטול</button>
-                </div>
-            </div>
-
-            {# איפוס ומחיקה — פעולות סופיות שעושים אולי פעם אחת. מקופלות תחת
-               "אפשרויות מתקדמות", כדי שלא יישבו בהישג יד ליד המייל והסיסמה
-               (מתן, 11.10). כמו "הסרת בן משפחה" ב"המשפחה שלי". #}
-            <div class="group-divider"></div>
-            <details class="advanced-options">
-                <summary class="advanced-summary">אפשרויות מתקדמות</summary>
-                <!-- איפוס חשבון: מחיקת כל העסקאות, החשבון נשמר -->
-                <div class="group-row">
-                    <div class="group-row-info">
-                        <p class="group-row-label">איפוס חשבון</p>
-                        <p class="group-row-hint">מחיקת כל העסקאות — החשבון, הקטגוריות וההגדרות נשמרים</p>
-                    </div>
-                    <button class="btn-sm btn-ghost btn-danger-ghost" id="toggleResetAccountBtn">איפוס החשבון</button>
-                </div>
-
-                <div class="password-form" id="resetAccountForm" data-tx-count="{{ family_tx_count }}">
-                    <p class="delete-account-warning">
-                        האיפוס מוחק לצמיתות את כל העסקאות — הכנסות, הוצאות וחיסכון,
-                        כולל עסקאות קבועות. הקטגוריות, הפרויקטים וההגדרות נשמרים.
-                    </p>
-                    <div class="form-group">
-                        <label class="form-label">מה לאפס?</label>
-                        <div class="type-toggle" style="grid-template-columns: 1fr 1fr;">
-                            {% if user.id == family.get('manager_id') %}
-                            <button type="button" class="toggle-btn active" id="resetScopeFamily" data-scope="family">כל עסקאות המשפחה</button>
-                            <button type="button" class="toggle-btn" id="resetScopeMine" data-scope="mine">רק העסקאות שלי</button>
-                            {% else %}
-                            {# מחיקת ההיסטוריה של כל המשפחה היא של המנהל בלבד. #}
-                            <button type="button" class="toggle-btn active" id="resetScopeMine" data-scope="mine">רק העסקאות שלי</button>
-                            {% endif %}
-                        </div>
-                        <p class="field-hint">"רק העסקאות שלי" מוחק עסקאות שמשויכות אליך אישית — עסקאות משותפות ושל בני משפחה אחרים נשארות</p>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="resetAccountPassword">אישור עם הסיסמה הנוכחית</label>
-                        <input class="form-input" type="password" id="resetAccountPassword" placeholder="••••••••" autocomplete="current-password">
-                    </div>
-                    <p class="form-error" id="resetAccountError" role="alert"></p>
-                    <div class="edit-actions">
-                        <button class="btn-sm btn-danger" id="confirmResetAccountBtn">איפוס העסקאות</button>
-                        <button class="btn-sm btn-ghost" id="cancelResetAccountBtn">ביטול</button>
-                    </div>
-                </div>
-
-                <div class="group-divider"></div>
-
-                <!-- מחיקת חשבון לצמיתות -->
-                <div class="group-row">
-                    <div class="group-row-info">
-                        <p class="group-row-label">מחיקת חשבון</p>
-                        <p class="group-row-hint">מחיקה לצמיתות של החשבון וכל הנתונים שלו</p>
-                    </div>
-                    <button class="btn-sm btn-ghost btn-danger-ghost" id="toggleDeleteAccountBtn">מחיקת החשבון</button>
-                </div>
-
-                <div class="password-form" id="deleteAccountForm">
-                    <p class="delete-account-warning">
-                        המחיקה סופית ולא ניתנת לביטול. החשבון וכל הנתונים שלו יימחקו לצמיתות.
-                        אם יש בני משפחה נוספים — הנתונים המשפחתיים יישארו אצלם, והעסקאות שלך
-                        יסומנו כמשותפות. אם אין — כל נתוני המשפחה יימחקו גם הם.
-                    </p>
-                    <div class="form-group">
-                        <label class="form-label" for="deleteAccountPassword">אישור עם הסיסמה הנוכחית</label>
-                        <input class="form-input" type="password" id="deleteAccountPassword" placeholder="••••••••" autocomplete="current-password">
-                    </div>
-                    <p class="form-error" id="deleteAccountError" role="alert"></p>
-                    <div class="edit-actions">
-                        <button class="btn-sm btn-danger" id="confirmDeleteAccountBtn">מחיקה לצמיתות</button>
-                        <button class="btn-sm btn-ghost" id="cancelDeleteAccountBtn">ביטול</button>
-                    </div>
-                </div>
-            </details>
-        </div>
-    </section>
 
     {# התנתקות מתחת לכל התיבות, ולא בתוך "חשבון" (מתן, 1.10).
        טופס POST ולא קישור: GET /logout אפשר להפעיל מאתר אחר עם

@@ -104,9 +104,13 @@ def test_every_color_has_a_pill_in_both_themes():
 def test_the_settings_page_offers_the_colors():
     from pathlib import Path
     tpl = (Path(__file__).resolve().parent.parent / "frontend/templates/settings.html").read_text(encoding="utf-8")
-    # כפתור בשורה שלי בלבד, וחלון עם תג השם בכל צבע — לא עיגולים מתחת לשם
+    # שורה "הצבע שלי" ב"הפרטים שלי" (מתן, 11.10; עד אז כפתור בשורה שלי
+    # ברשימת בני המשפחה), וחלון עם תג השם בכל צבע — לא עיגולים מתחת לשם
     assert 'class="member-colors"' not in tpl
-    assert "{% if member_colors and m.id == user.id %}" in tpl
+    mine = tpl[tpl.index('id="my-details"'):]
+    mine = mine[:mine.index("</section>")]
+    assert "{% if member_colors and user.id in member_colors %}" in mine
+    assert 'id="memberColorOpen"' in mine
     assert 'id="memberColorSheet"' in tpl and 'class="owner-pill owner-{{ idx }}"' in tpl
     assert "{% if taken %}disabled{% endif %}" in tpl
 

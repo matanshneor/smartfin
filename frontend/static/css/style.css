@@ -4710,6 +4710,10 @@ input.emoji-input[data-free-typing] { cursor: text; caret-color: auto; }
     color: var(--color-text-soft); font: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer;
 }
 .member-color-swatch { width: 16px; height: 16px; border-radius: 50%; flex: none; }
+/* "הצבע שלי" — שורה רגילה ב"הפרטים שלי" (מתן, 11.10), בלי המרווח מלמעלה */
+.group-row .member-color-open { margin-top: 0; flex: none; }
+/* כותרת "בני המשפחה" מעל הרשימה ב"המשפחה" */
+.members-title { margin-bottom: 4px; }
 .color-sheet {
     position: fixed; inset: 0; z-index: 180;
     background: rgba(12, 9, 4, 0.45);
