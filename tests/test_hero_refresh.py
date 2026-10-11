@@ -51,11 +51,14 @@ def test_a_partial_swap_falls_back_to_a_full_reload():
     """hero חדש מעל גוף ישן גרוע מרענון מלא. לכן כל האזורים נאספים
     לפני שנוגעים באחד מהם."""
     core = _read(_JS / "core.js")
+    # ההחלפה עצמה ב-‎sfApplyHtml‎, משותפת לרענון ולמעבר בין חודשים (11.10)
+    apply = core[core.index("function sfApplyHtml"):]
+    apply = apply[:apply.index("\n}\n")]
+    assert "if (pairs.some(p => !p[0] || !p[1])) return 'full';" in apply
+    assert apply.index("pairs.some") < apply.index("pairs.forEach")
     block = core[core.index("window.softReload = function"):]
     block = block[:block.index("\n};")]
-
-    assert "pairs.some(p => !p[0] || !p[1])" in block
-    assert block.index("pairs.some") < block.index("pairs.forEach")
+    assert "=== 'full') return fullReload();" in block
     assert "window.location.reload()" in block
 
 

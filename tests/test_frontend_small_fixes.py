@@ -909,15 +909,30 @@ def test_the_compare_page_has_a_range_for_both_charts():
     assert "trend[-12:]" in _read("backend/app.py")
 
 
-def test_swiping_the_balance_changes_month():
-    """מתן (3.10, רעיון 35): החלקה על המאזן והריבועים מחליפה חודש — לא על רצועת
-    החודשים ולא על שאר העמוד. נעילת כיוון כמו בכרטיס "השבוע". בדפדפן: נבדק."""
+def test_swiping_anywhere_on_the_month_changes_month():
+    """מתן (11.10): החלקה בכל מקום בעמוד מדפדפת חודש — עד אז רק על המאזן,
+    ובשאר העמוד הטלפון החזיר לבית. לא מתוך מה שיש לו החלקה משלו (שורות
+    עסקה, הרצועה), ולא מהקצה (של המערכת). בדפדפן: נבדק."""
     js = _strip_comments(_read("frontend/static/js/month.js"))
-    part = js[js.index("const ZONE = '.month-net, .kpi-chips';"):]
-    assert "monthStrip" not in part.split("})();")[0], "הרצועה לא באזור ההחלקה"
-    assert "axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';" in part
+    part = js[js.index("const SLIDE ="):]
+    assert "'.transaction-item, .cat-tx-row, .recurring-row, .month-strip," in part
+    assert "if (t.clientX < EDGE || t.clientX > window.innerWidth - EDGE) return;" in part
     move = part[part.index("document.addEventListener('touchmove'"):]
     move = move[:move.index("}, { passive: false });")]
-    assert move.index("if (axis !== 'x') return;") < move.index("e.preventDefault();")
-    assert "window.location.href = go.href;" in part
-    assert "aria-label=\"' + (older ? 'חודש קודם' : 'חודש הבא') + '\"" in part
+    assert move.index("if (axis !== 'x') { sx = null; return; }") < move.index("e.preventDefault();")
+    assert "aria-label=\"' + (isOlder ? 'חודש קודם' : 'חודש הבא') + '\"" in part
+
+
+def test_changing_month_is_a_smooth_swap_not_a_page_load():
+    """מתן (11.10): "שהדפדוף יהיה חלק". המעבר מחליף את התוכן בלי טעינת
+    עמוד (‎softNavigate‎), עם התוכן החדש שנמשך כבר בזמן ההחלקה."""
+    js = _strip_comments(_read("frontend/static/js/month.js"))
+    part = js[js.index("const SLIDE ="):]
+    assert "window.location.href" not in part
+    assert "window.softNavigate(url, text || undefined)" in part
+    assert "if (target) prefetch(target.href);" in part
+    core = _read("frontend/static/js/core.js")
+    nav = core[core.index("window.softNavigate = function"):]
+    nav = nav[:nav.index("\n};")]
+    assert "history.replaceState(null, '', url)" in nav and "window.location.href = url" in nav
+

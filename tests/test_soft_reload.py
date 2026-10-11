@@ -112,5 +112,5 @@ def test_jinja_stays_the_only_renderer():
     js = _read(_JS / "core.js")
     block = js[js.index("window.softReload ="):]
 
-    assert "fetch(window.location.href" in block
-    assert "DOMParser" in block
+    assert "sfFetchPage(window.location.href)" in block
+    assert "DOMParser" in js[js.index("function sfApplyHtml"):]

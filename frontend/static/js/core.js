@@ -416,6 +416,63 @@ const SF_RELOAD_REGIONS = ['header.page-hero', 'main.main-content'];
 /* ‎pendingToast‎: הודעה שהקורא מתכוון להציג אחרי הרענון. אם הרענון הרך לא
  * מתאפשר ונופלים לרענון מלא, היא נשמרת כדי שתוצג אחרי הטעינה ולא תאבד —
  * ואז ההבטחה מחזירה ‎'reloaded'‎, כדי שהקורא לא יציג אותה פעמיים. */
+/* מחליף את אזורי העמוד בתוכן מ-HTML שכבר נמשך. מחזיר ‎'full'‎ כשאי אפשר
+ * להחליף בבטחה (חסר אזור, או גרפים בלי הספרייה) — והקורא נופל לטעינה מלאה. */
+function sfApplyHtml(html, regions) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+
+    // חודש שהיה ריק לא טוען את ספריית הגרפים (70KB שאין מה לצייר
+    // בהם). אחרי העסקה הראשונה ה-HTML החדש כבר מביא גרפים — ובלי
+    // הספרייה הם נשארו ריבועים ריקים. פעם אחת בחודש: רענון מלא.
+    if (typeof window.Chart === 'undefined' && doc.querySelector('main canvas')) return 'full';
+
+    // כל האזורים נאספים לפני שנוגעים באחד מהם: החלפה חלקית —
+    // hero חדש מעל גוף ישן — גרועה מרענון מלא.
+    const pairs = regions.map(function (sel) {
+        return [document.querySelector(sel), doc.querySelector(sel)];
+    });
+    if (pairs.some(p => !p[0] || !p[1])) return 'full';
+
+    // אלמנטים שמחזיקים מצב משלהם (‎data-sf-keep‎ — באנר ההתקנה) עוברים
+    // כמו שהם אל התוכן החדש, במקום להתחלף בעותק ריק מהשרת
+    const keep = [];
+    pairs.forEach(function (pair) {
+        if (pair[0].querySelectorAll) {
+            pair[0].querySelectorAll('[data-sf-keep][id]').forEach(function (el) { keep.push(el); });
+        }
+    });
+
+    pairs.forEach(function (pair) { pair[0].replaceWith(pair[1]); });
+
+    keep.forEach(function (el) {
+        const fresh = document.getElementById(el.id);
+        if (fresh && fresh !== el) fresh.replaceWith(el);
+    });
+
+    // בלוקי הנתונים של העמוד (‎sf-view-data‎ וכו') יושבים ב-‎{% block
+    // scripts %}‎ — מחוץ לאזורים שהוחלפו. בלי זה הגרפים והמקרא של עמוד
+    // החודש צוירו מחדש מהמספרים הישנים, מתחת לכרטיסים שכבר התעדכנו.
+    doc.querySelectorAll('script[type="application/json"][id]').forEach(function (fresh) {
+        const current = document.getElementById(fresh.id);
+        if (current && current.tagName === 'SCRIPT') current.textContent = fresh.textContent;
+    });
+    if (doc.title) document.title = doc.title;
+    // מודיעים למי שצריך לחבר את עצמו מחדש (אנימציות, גרפים)
+    window.dispatchEvent(new CustomEvent('sf:refreshed'));
+    return 'ok';
+}
+
+function sfFetchPage(url) {
+    return fetch(url, {
+        headers: { 'X-Requested-With': 'sf-soft-reload' },
+        credentials: 'same-origin',
+    }).then(function (r) {
+        // 401 כבר מטופל ב-auth-guard; כל דבר אחר — נופלים לטעינה מלאה
+        if (!r.ok) throw new Error('soft load got ' + r.status);
+        return r.text();
+    });
+}
+
 window.softReload = function (selector, pendingToast) {
     const regions = selector ? [selector] : SF_RELOAD_REGIONS;
     function fullReload() {
@@ -423,60 +480,32 @@ window.softReload = function (selector, pendingToast) {
         window.location.reload();
         return 'reloaded';
     }
-    return fetch(window.location.href, {
-        headers: { 'X-Requested-With': 'sf-soft-reload' },
-        credentials: 'same-origin',
-    })
-        .then(function (r) {
-            // 401 כבר מטופל ב-auth-guard; כל דבר אחר — נופלים לרענון מלא
-            if (!r.ok) throw new Error('soft reload got ' + r.status);
-            return r.text();
-        })
+    return sfFetchPage(window.location.href)
         .then(function (html) {
-            const doc = new DOMParser().parseFromString(html, 'text/html');
-
-            // חודש שהיה ריק לא טוען את ספריית הגרפים (70KB שאין מה לצייר
-            // בהם). אחרי העסקה הראשונה ה-HTML החדש כבר מביא גרפים — ובלי
-            // הספרייה הם נשארו ריבועים ריקים. פעם אחת בחודש: רענון מלא.
-            if (typeof window.Chart === 'undefined' && doc.querySelector('main canvas')) {
-                return fullReload();
-            }
-
-            // כל האזורים נאספים לפני שנוגעים באחד מהם: החלפה חלקית —
-            // hero חדש מעל גוף ישן — גרועה מרענון מלא.
-            const pairs = regions.map(function (sel) {
-                return [document.querySelector(sel), doc.querySelector(sel)];
-            });
-            if (pairs.some(p => !p[0] || !p[1])) throw new Error('missing region');
-
-            // אלמנטים שמחזיקים מצב משלהם (‎data-sf-keep‎ — באנר ההתקנה) עוברים
-            // כמו שהם אל התוכן החדש, במקום להתחלף בעותק ריק מהשרת
-            const keep = [];
-            pairs.forEach(function (pair) {
-                if (pair[0].querySelectorAll) {
-                    pair[0].querySelectorAll('[data-sf-keep][id]').forEach(function (el) { keep.push(el); });
-                }
-            });
-
-            pairs.forEach(function (pair) { pair[0].replaceWith(pair[1]); });
-
-            keep.forEach(function (el) {
-                const fresh = document.getElementById(el.id);
-                if (fresh && fresh !== el) fresh.replaceWith(el);
-            });
-
-            // בלוקי הנתונים של העמוד (‎sf-view-data‎ וכו') יושבים ב-‎{% block
-            // scripts %}‎ — מחוץ לאזורים שהוחלפו. בלי זה הגרפים והמקרא של עמוד
-            // החודש צוירו מחדש מהמספרים הישנים, מתחת לכרטיסים שכבר התעדכנו.
-            doc.querySelectorAll('script[type="application/json"][id]').forEach(function (fresh) {
-                const current = document.getElementById(fresh.id);
-                if (current && current.tagName === 'SCRIPT') current.textContent = fresh.textContent;
-            });
-            // מודיעים למי שצריך לחבר את עצמו מחדש (אנימציות, גרפים)
-            window.dispatchEvent(new CustomEvent('sf:refreshed'));
+            if (sfApplyHtml(html, regions) === 'full') return fullReload();
         })
         .catch(fullReload);
 };
+
+/* מעבר לכתובת אחרת בלי טעינה מלאה — מעבר בין חודשים (מתן, 11.10). אותו
+ * מנגנון כמו הרענון הרך, עם כתובת אחרת. ‎html‎: תוכן שכבר נמשך מראש (בזמן
+ * ההחלקה), כדי לא לחכות לשרת פעם שנייה. הכתובת מוחלפת (‎replaceState‎) ולא
+ * נוספת להיסטוריה: דפדוף בין חודשים הוא לא "עמוד חדש", ו"אחורה" יוצא מהחודש
+ * ולא עובר אחד-אחד על כל החודשים שדפדפו בהם. */
+window.softNavigate = function (url, html) {
+    function fullLoad() {
+        window.location.href = url;
+        return 'navigated';
+    }
+    return Promise.resolve(html || sfFetchPage(url))
+        .then(function (text) {
+            if (sfApplyHtml(text, SF_RELOAD_REGIONS) === 'full') return fullLoad();
+            try { history.replaceState(null, '', url); } catch (e) { /* לא קריטי */ }
+            return 'swapped';
+        })
+        .catch(fullLoad);
+};
+window.sfFetchPage = sfFetchPage;
 
 
 // ── "הפרויקט הסתיים" / "פתיחה מחדש" (מתן, 30.9 — סבב 6, פריט 3) ──
