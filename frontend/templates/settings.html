@@ -464,41 +464,60 @@
 
         <div class="settings-group-body">
             {% if recurring %}
-            <ul class="recurring-list" id="recurringList">
-                {% set freq_labels = {
-                    'monthly_same': 'כל חודש',
-                    'monthly_1':  'כל 1 לחודש',
-                    'monthly_15': 'כל 15 לחודש',
-                    'weekly':     'כל שבוע',
-                    'biweekly':   'כל שבועיים'
-                } %}
-                {% for tx in recurring %}
-                <li class="recurring-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
-                    data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
-                    data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
-                    data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
-                    data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
-                    data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
-                    <div class="recurring-icon">{{ tx.category_icon }}</div>
-                    <div class="recurring-details">
-                        <p class="recurring-name">{{ tx.description or tx.category_name }}</p>
-                        <p class="recurring-freq">
-                            {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}
-                            {% if tx.workplace %} · {{ tx.workplace }}{% elif tx.user_name %} · {{ tx.user_name }}{% endif %}
-                        </p>
-                        {# "₪5,000 ← ₪5,500 מאוקטובר" — השינוי האחרון בסכום (מתן, 3.10 — רעיון 40) #}
-                        {% set change = (price_changes or {}).get(tx.id) %}
-                        {% if change %}
-                        <p class="recurring-price-change">₪{{ change.old | money }} ← ₪{{ tx.amount | money }} מ{{ hebrew_months[change.since[5:7] | int] }}</p>
-                        {% endif %}
-                    </div>
-                    <p class="recurring-amount {{ tx.type }}">
-                        {% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ tx.amount | money }}
-                    </p>
-                    <button class="delete-recurring-btn" data-id="{{ tx.id }}" aria-label="הסרת העסקה הקבועה">✕</button>
-                </li>
+            {# סיכום למעלה ורשימה לפי סוג, בלי ✕ בכל שורה (מתן, 11.10 — חלופה א׳).
+               נגיעה בשורה פותחת עריכה, ושם "הסרת העסקה הקבועה" עוצרת את הסדרה
+               (‎transactions.js‎); החלקה שמאלה עושה אותו דבר. הסכומים בסיכום
+               הם לחודש: שבועי ×52/12, דו-שבועי ×26/12. #}
+            {% set per_month = {'weekly': 52 / 12, 'biweekly': 26 / 12} %}
+            {% set rec_groups = [('income', 'נכנס כל חודש', 'הכנסות'),
+                                 ('expense', 'יוצא כל חודש', 'הוצאות'),
+                                 ('savings', 'נחסך כל חודש', 'חיסכון')] %}
+            <div class="recurring-summary">
+                {% for t, label, _ in rec_groups %}
+                {% set items = recurring | selectattr('type', 'equalto', t) | list %}
+                {% if items %}
+                {% set ns = namespace(total=0) %}
+                {% for tx in items %}{% set ns.total = ns.total + tx.amount * per_month.get(tx.recurring_frequency, 1) %}{% endfor %}
+                <div class="recurring-sum">
+                    <span class="recurring-sum-label">{{ label }}</span>
+                    <span class="recurring-sum-value {{ t }}">₪{{ ns.total | round | int | money }}</span>
+                </div>
+                {% endif %}
                 {% endfor %}
-            </ul>
+            </div>
+            <div id="recurringList">
+                {% for t, _, title in rec_groups %}
+                {% set items = recurring | selectattr('type', 'equalto', t) | list %}
+                {% if items %}
+                <p class="recurring-group-title">{{ title }}</p>
+                <ul class="recurring-list">
+                    {% for tx in items %}
+                    <li class="recurring-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                        data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
+                        data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
+                        data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
+                        data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
+                        data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
+                        <span class="recurring-icon">{{ tx.category_icon }}</span>
+                        <div class="recurring-details">
+                            <p class="recurring-name">{{ tx.description or tx.category_name }}</p>
+                            {# "₪5,000 ← ₪5,500 מאוקטובר" — השינוי האחרון בסכום (מתן, 3.10 — רעיון 40) #}
+                            {% set change = (price_changes or {}).get(tx.id) %}
+                            {% if change %}
+                            <p class="recurring-price-change">₪{{ change.old | money }} ← ₪{{ tx.amount | money }} מ{{ hebrew_months[change.since[5:7] | int] }}</p>
+                            {% endif %}
+                        </div>
+                        <p class="recurring-amount {{ tx.type }}">₪{{ tx.amount | money }}</p>
+                        <span class="recurring-chevron" aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+                {% endfor %}
+            </div>
+            <p class="recurring-hint">נגיעה בשורה — עריכה או הסרה</p>
             {% else %}
             <div class="empty-state">
                 <p class="empty-icon">🔁</p>

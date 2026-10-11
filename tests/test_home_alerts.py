@@ -38,27 +38,17 @@ def test_a_budget_alert_leads_to_its_category():
     assert [a["target"] for a in alerts] == [f"cat-{_FOOD}"]
 
 
-def test_expenses_above_income_lead_to_the_expenses():
-    alerts = db.balance_alerts(_summary(1000, 1500))
-    assert [a["target"] for a in alerts] == ["expense-breakdown"]
-
-
-def test_a_negative_balance_leads_to_the_balance_at_the_top():
-    alerts = db.balance_alerts(_summary(1000, 800, savings=500))
-    assert [a["target"] for a in alerts] == [None]
-
-
 def test_an_uncategorized_alert_falls_back_to_the_expenses():
     assert db.category_anchor(None) == "expense-breakdown"
     assert db.category_anchor(_FOOD) == f"cat-{_FOOD}"
 
 
-def test_category_alerts_are_budget_overruns_only():
-    """מתן (11.10): התראת "גבוהה מהממוצע" הוסרה — מי שרוצה התראות קובע
-    תקציב. קטגוריה בלי תקציב לא מתריעה, גם כשהיא גבוהה מאוד."""
+def test_alerts_are_budget_overruns_only():
+    """מתן (11.10): התראת "גבוהה מהממוצע" והתראות המאזן הוסרו — מי שרוצה
+    התראות קובע תקציב. קטגוריה בלי תקציב לא מתריעה, גם כשהיא גבוהה מאוד."""
     rows = [{"category_id": _FOOD, "name": "סופר", "icon": "🛒", "total": 99999}]
-    assert db.month_alerts(_summary(200000, 99999), db.apply_budgets(rows, {})) == []
-    assert not hasattr(db, "get_anomalies")
+    assert db.month_alerts(db.apply_budgets(rows, {})) == []
+    assert not hasattr(db, "get_anomalies") and not hasattr(db, "balance_alerts")
     import inspect
     src = inspect.getsource(app_module.update_family_settings_route)
     assert '"anomaly"' not in src and '"show_workplace"' not in src
@@ -72,7 +62,8 @@ def home(monkeypatch):
     monkeypatch.setattr(db, "set_auth_token", lambda t: None)
     monkeypatch.setattr(db, "materialize_recurring", lambda fid: (0, True))
     monkeypatch.setattr(app_module, "family_settings", lambda: dict(db.DEFAULT_FAMILY_SETTINGS))
-    for fn, val in (("get_family_settings", dict(db.DEFAULT_FAMILY_SETTINGS)),
+    budgeted = {**db.DEFAULT_FAMILY_SETTINGS, "limits": {_FOOD: {"amount": 2000}}}
+    for fn, val in (("get_family_settings", budgeted),
                     ("get_categories", [{"id": _FOOD, "name": "סופר", "type": "expense"}]),
                     ("family_has_no_transactions", False), ("get_monthly_summary", _summary(9000, 1200)),
                     ("week_spending", None), ("fetch_month_rows", []), ("get_recent_transactions", []),
@@ -89,6 +80,27 @@ def home(monkeypatch):
             assert res.status_code == 200
             return res.get_data(as_text=True)
     return render
+
+
+def test_without_budgets_the_month_is_not_even_fetched(monkeypatch):
+    """בלי תקציבים אין שום התראה אפשרית — ושורות החודש לא נשלפות בכלל."""
+    app.config["TESTING"] = True
+    monkeypatch.setattr(db, "set_auth_token", lambda t: None)
+    monkeypatch.setattr(db, "materialize_recurring", lambda fid: (0, True))
+    monkeypatch.setattr(app_module, "family_settings", lambda: dict(db.DEFAULT_FAMILY_SETTINGS))
+    for fn, val in (("get_family_settings", dict(db.DEFAULT_FAMILY_SETTINGS)),
+                    ("get_categories", [{"id": _FOOD, "name": "סופר", "type": "expense"}]),
+                    ("family_has_no_transactions", False), ("get_monthly_summary", _summary(9000, 1200)),
+                    ("week_spending", None), ("get_recent_transactions", []),
+                    ("get_family_members", [{"id": _ME, "name": "מתן"}])):
+        monkeypatch.setattr(db, fn, lambda *a, _v=val, **k: _v)
+    monkeypatch.setattr(db, "fetch_month_rows", lambda *a, **k: pytest.fail("נשלפו שורות בלי תקציבים"))
+    with app.test_client() as c:
+        with c.session_transaction() as sess:
+            sess["user_id"] = _ME
+            sess["family_id"] = _FAM
+        html = c.get("/").get_data(as_text=True)
+    assert 'class="alerts-section"' not in html
 
 
 def test_no_alerts_no_empty_area(home):

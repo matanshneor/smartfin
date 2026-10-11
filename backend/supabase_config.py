@@ -3351,34 +3351,6 @@ def category_monthly_averages(family_id: str, today=None) -> dict:
 _HISTORY_MONTHS = 3
 
 
-def balance_alerts(summary: dict) -> list:
-    """התראות על המאזן: הוצאות מעל ההכנסות, או מאזן שלילי.
-
-    עד 11.10 כאן הייתה גם "קטגוריה גבוהה מהממוצע שלה", עם הגדרה משלה
-    (אחוז + פער מינימלי). מתן: "מסובך מדי — מי שירצה התראות יפעיל תקציב
-    לקטגוריות". ההתראות על קטגוריה הן מאז רק חריגה מתקציב (‎budget_alerts‎).
-
-    Returns a list of {"severity", "text", "target"}. ‎target‎ — לאן לחיצה
-    על ההתראה מובילה בעמוד החודש: פירוט ההוצאות, או ‎None‎ = ראש העמוד."""
-    alerts = []
-    if summary.get("income", 0) > 0 and summary.get("expense", 0) > summary["income"]:
-        alerts.append({
-            "severity": "danger",
-            "text": f'ההוצאות החודש (₪{format_money(summary["expense"])}) גבוהות מההכנסות (₪{format_money(summary["income"])})',
-            "target": "expense-breakdown",
-        })
-    # רק כשיש הכנסות, ולפי המספר המעוגל — אותו כלל כמו המאזן שמוצג: בלי
-    # הכנסות הוא "—" ולא גירעון (מתן, 30.9), ו-40 אגורות מוצגות ‎₪0‎
-    elif summary.get("income", 0) > 0 and round(summary.get("remaining", 0)) < 0:
-        alerts.append({
-            "severity": "danger",
-            "text": "מאזן החודש שלילי — ההוצאות והחיסכון עברו את ההכנסות",
-            # המאזן עצמו, בראש עמוד החודש
-            "target": None,
-        })
-    return alerts
-
-
 def budget_alerts(breakdown: list) -> list:
     """התראות על קטגוריות שעברו את התקציב.
 
@@ -3407,11 +3379,13 @@ def category_anchor(category_id) -> str:
     return f"cat-{category_id}" if category_id else "expense-breakdown"
 
 
-def month_alerts(summary: dict, expense_breakdown: list) -> list:
-    """כל ההתראות של החודש, לדף הבית: חריגה מתקציב של קטגוריה, ומאזן.
+def month_alerts(expense_breakdown: list) -> list:
+    """ההתראות של החודש, לדף הבית: רק חריגה מתקציב של קטגוריה (מתן,
+    11.10). "גבוה מהממוצע" והתראות המאזן (הוצאות מעל ההכנסות, מאזן שלילי)
+    הוסרו — מי שרוצה התראות קובע תקציב, והמאזן כבר אדום בראש הבית.
 
     ‎expense_breakdown‎ אחרי ‎apply_budgets‎."""
-    return budget_alerts(expense_breakdown) + balance_alerts(summary)
+    return budget_alerts(expense_breakdown)
 
 
 # ─── Family members ───────────────────────────────────────────────────────────
