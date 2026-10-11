@@ -70,6 +70,15 @@
         items.forEach(function (el, i) {
             el.style.animationDelay = Math.min(i * 55, 600) + 'ms';
             el.classList.add('anim-rise');
+            // בסוף הכניסה משחררים את הכרטיס. אנימציה שנגמרה עם ‎forwards‎
+            // ממשיכה "להחזיק" את ‎transform‎, וגוברת על מה שהחלקה כותבת לו —
+            // כרטיס "השבוע" לא זז עם האצבע בהחלקה הראשונה (מתן, 11.10).
+            el.addEventListener('animationend', function done(e) {
+                if (e.target !== el || e.animationName !== 'rise-in') return;
+                el.removeEventListener('animationend', done);
+                el.classList.remove('anim-rise');
+                el.style.animationDelay = '';
+            });
         });
     }
 

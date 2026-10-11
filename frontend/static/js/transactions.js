@@ -1948,7 +1948,11 @@
             drag.content.style.transform = 'translateX(' + drag.deltaX + 'px)';
             drag.samples.push({ t: e.timeStamp, p: touch.clientX });
             if (drag.samples.length > 6) drag.samples.shift();
-        }, { passive: true });
+            // העמוד לא נגלל מתחת לשורה בזמן שמחליקים אותה (מתן, 11.10 —
+            // "החלקות קלות ונוחות"). עד אז המאזין היה פסיבי, והמסך רעד למעלה
+            // ולמטה תוך כדי החלקה הצידה.
+            if (e.cancelable) e.preventDefault();
+        }, { passive: false });
 
         document.addEventListener('touchend', function (e) {
             if (!drag) return;
