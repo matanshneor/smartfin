@@ -622,71 +622,184 @@ window.addEventListener('sf:refreshed', paint);
 })();
 
 
-/* ═══ החלקה בין חודשים (מתן, 3.10 — רעיון 35) ═══
+/* ═══ דפדוף בין חודשים (מתן, 3.10 — רעיון 35; מחדש 11.10) ═══
  *
- * על המאזן והריבועים בלבד — לא על רצועת החודשים (יש לה גלילה משלה) ולא על
- * שאר העמוד (שורות עסקה מחליקים לעריכה ומחיקה, וגרפים). כמו בכרטיס "השבוע":
- * הזמן זורם מימין לשמאל, אז גרירה שמאלה = החודש הקודם, ימינה = הבא.
- * נעילת כיוון אחרי 8px: הצידה — המסך לא זז והאזור זז עם האצבע; גלילה — כרגיל.
- * בהגדרת הכיוון מתחילה כבר טעינת החודש (ראו ‎sw.js‎, רעיון 29). */
+ * החלקה הצידה בכל מקום בעמוד מדפדפת חודש. עד 11.10 זה עבד רק על המאזן
+ * והריבועים, ובשאר העמוד הטלפון פירש את ההחלקה כ"אחורה" — מתן: "הוא חוזר
+ * לעמוד הבית". והמעבר היה טעינת עמוד מלאה, לא חלקה.
+ *
+ * עכשיו התוכן זז עם האצבע; בשחרור החודש הנוכחי יוצא לצד אחד והחדש נכנס
+ * מהצד השני — בלי טעינת עמוד (‎window.softNavigate‎). החודש החדש נמשך כבר
+ * כשההחלקה מתחילה, כך שבשחרור הוא בדרך כלל כבר כאן. גם החצים ורצועת
+ * החודשים עוברים באותה אנימציה.
+ *
+ * כמו בכרטיס "השבוע": הזמן זורם מימין לשמאל, אז גרירה שמאלה = החודש הקודם,
+ * ימינה = הבא. לא מחליקים מתוך מה שיש לו החלקה משלו: שורות עסקה (עריכה
+ * ומחיקה), רצועת החודשים ושורות קטגוריות שנגללות הצידה. נגיעה צמודה לקצה
+ * המסך נשארת של הטלפון ("אחורה" של המערכת). */
 (function () {
-    const ZONE = '.month-net, .kpi-chips';
-    let sx = null, sy = 0, axis = null, target = null;
+    // מה זז עם האצבע: ראש העמוד בלי הרקע הכהה, וכל התוכן
+    const SLIDE = 'header.page-hero .hero-top, header.page-hero .month-strip, '
+                + 'header.page-hero .month-net, header.page-hero .kpi-chips, main.main-content';
+    const OWN_SWIPE = '.transaction-item, .cat-tx-row, .recurring-row, .month-strip, .tx-cat-chips, '
+                    + '.range-chips, input, textarea, select, button.swipe-action, .tx-screen';
+    const OPEN_WINDOWS = '.modal-overlay.open, .confirm-overlay.open, .search-screen:not([hidden]), '
+                       + '.icon-picker:not([hidden]), .color-sheet:not([hidden]), .tx-screen.open';
+    const EDGE = 22;          // ליד הקצה — ההחלקה של המערכת
+    const GO_DIST = 70;       // מרחק שמעבר לו עוברים חודש
+    const GO_SPEED = 0.45;    // או החלקה מהירה (פיקסלים למילישנייה)
+    const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    function parts() { return document.querySelectorAll(ZONE); }
-    function link(older) {
-        return document.querySelector('.stats-nav-btn[aria-label="' + (older ? 'חודש קודם' : 'חודש הבא') + '"]');
+    let sx = null, sy = 0, axis = null, older = null, pending = null, busy = false, samples = [];
+
+    function parts() { return Array.prototype.slice.call(document.querySelectorAll(SLIDE)); }
+    function link(isOlder) {
+        return document.querySelector('.stats-nav-btn[aria-label="' + (isOlder ? 'חודש קודם' : 'חודש הבא') + '"]');
     }
-    function move(px, animate) {
+    function setX(px, fade) {
         parts().forEach(function (el) {
-            el.style.transition = animate ? 'transform 0.2s ease-out' : '';
+            el.style.transition = '';
             el.style.transform = px ? 'translateX(' + px + 'px)' : '';
+            el.style.opacity = fade ? String(fade) : '';
         });
     }
+    function animate(els, frames, ms, easing) {
+        if (calm || !els.length || !els[0].animate) return Promise.resolve();
+        return Promise.all(els.map(function (el) {
+            return el.animate(frames, { duration: ms, easing: easing, fill: 'forwards' }).finished
+                .catch(function () {});
+        }));
+    }
+    function prefetch(url) {
+        if (!pending || pending.url !== url) {
+            pending = { url: url, html: window.sfFetchPage(url).catch(function () { return null; }) };
+        }
+        return pending.html;
+    }
+
+    /* המעבר עצמו — מההחלקה, מהחצים ומהרצועה. ‎fromX‎: איפה התוכן עומד
+     * עכשיו (בהחלקה — איפה שהאצבע עזבה אותו). */
+    function go(url, isOlder, fromX) {
+        if (busy) return;
+        busy = true;
+        const dir = isOlder ? -1 : 1;           // שמאלה = קודם (הזמן זורם מימין לשמאל)
+        const w = window.innerWidth;
+        const html = prefetch(url);
+        const out = parts();
+        out.forEach(function (el) { el.style.transform = ''; el.style.opacity = ''; });
+        animate(out, [{ transform: 'translateX(' + (fromX || 0) + 'px)', opacity: 1 },
+                      { transform: 'translateX(' + (dir * w * 0.5) + 'px)', opacity: 0 }],
+                170, 'cubic-bezier(0.4, 0, 1, 1)')
+            .then(function () { return html; })
+            .then(function (text) {
+                window.scrollTo(0, 0);
+                return window.softNavigate(url, text || undefined);
+            })
+            .then(function (result) {
+                if (result !== 'swapped') return;
+                const inn = parts();
+                inn.forEach(function (el) { el.style.opacity = '0'; });
+                return animate(inn, [{ transform: 'translateX(' + (-dir * w * 0.35) + 'px)', opacity: 0 },
+                                     { transform: 'translateX(0)', opacity: 1 }],
+                               240, 'cubic-bezier(0.22, 1, 0.36, 1)')
+                    .then(function () {
+                        inn.forEach(function (el) {
+                            el.style.opacity = '';
+                            el.getAnimations && el.getAnimations().forEach(function (a) { a.cancel(); });
+                        });
+                    });
+            })
+            .then(function () { busy = false; pending = null; },
+                  function () { busy = false; pending = null; });
+    }
+    // לבדיקות ולמי שרוצה לדפדף מקוד
+    window.sfGoMonth = go;
 
     document.addEventListener('touchstart', function (e) {
-        const zone = e.target.closest && e.target.closest(ZONE);
-        if (!zone || e.touches.length !== 1) { sx = null; return; }
-        sx = e.touches[0].clientX; sy = e.touches[0].clientY; axis = null; target = null;
+        sx = null;
+        if (busy || e.touches.length !== 1) return;
+        const t = e.touches[0];
+        if (t.clientX < EDGE || t.clientX > window.innerWidth - EDGE) return;
+        if (e.target.closest && e.target.closest(OWN_SWIPE)) return;
+        if (document.querySelector(OPEN_WINDOWS)) return;
+        if (!document.querySelector('.stats-nav-btn')) return;   // לא בעמוד החודש
+        sx = t.clientX; sy = t.clientY; axis = null; older = null;
+        samples = [{ t: e.timeStamp, x: sx }];
     }, { passive: true });
 
     document.addEventListener('touchmove', function (e) {
         if (sx === null) return;
-        const dx = e.touches[0].clientX - sx, dy = e.touches[0].clientY - sy;
+        const t = e.touches[0];
+        const dx = t.clientX - sx, dy = t.clientY - sy;
         if (!axis) {
             if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-            axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
-            if (axis === 'x') {
-                target = link(dx < 0);
-                const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
-                if (target && sw) {
-                    const u = new URL(target.href, location.href);
-                    sw.postMessage({ type: 'prefetch', url: u.pathname + u.search });
-                }
-            }
+            axis = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'x' : 'y';
+            if (axis !== 'x') { sx = null; return; }
+            older = dx < 0;
+            const target = link(older);
+            if (target) prefetch(target.href);
         }
-        if (axis !== 'x') return;
-        e.preventDefault();
-        move(Math.round(dx * 0.45));
+        e.preventDefault();                     // המסך לא נגלל כל עוד מדפדפים
+        samples.push({ t: e.timeStamp, x: t.clientX });
+        if (samples.length > 5) samples.shift();
+        setX(Math.round(dx * 0.9), Math.max(0.55, 1 - Math.abs(dx) / (window.innerWidth * 1.4)));
     }, { passive: false });
 
     document.addEventListener('touchend', function (e) {
         if (sx === null) return;
         const dx = e.changedTouches[0].clientX - sx;
-        const wasX = axis === 'x';
-        sx = null; axis = null;
-        if (!wasX) return;
-        const go = Math.abs(dx) >= 50 && link(dx < 0);
-        if (!go) { move(0, true); return; }
-        move(dx < 0 ? -60 : 60, true);
-        window.location.href = go.href;
+        sx = null;
+        if (axis !== 'x') return;
+        const first = samples[0], last = samples[samples.length - 1];
+        const speed = last && first && last.t > first.t ? (last.x - first.x) / (last.t - first.t) : 0;
+        const isOlder = dx < 0;
+        const target = link(isOlder);
+        const far = Math.abs(dx) >= GO_DIST || (Math.abs(speed) >= GO_SPEED && Math.sign(speed) === Math.sign(dx));
+        if (target && far) {
+            go(target.href, isOlder, Math.round(dx * 0.9));
+            return;
+        }
+        // לא מספיק — חוזרים למקום
+        const back = parts();
+        back.forEach(function (el) {
+            el.style.transition = calm ? '' : 'transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s';
+            el.style.transform = '';
+            el.style.opacity = '';
+        });
+        setTimeout(function () { back.forEach(function (el) { el.style.transition = ''; }); }, 240);
     }, { passive: true });
 
     document.addEventListener('touchcancel', function () {
-        if (sx !== null) move(0, true);
+        if (sx !== null && axis === 'x') setX(0);
         sx = null; axis = null;
     }, { passive: true });
 
+    // החצים, רצועת החודשים ו"חזרה לחודש הנוכחי" — אותו מעבר חלק. הכיוון
+    // לפי התאריך שבכתובת: חודש מוקדם יותר נכנס מאותו צד כמו בהחלקה.
+    function ym(href) {
+        try {
+            const u = new URL(href, location.href);
+            const y = parseInt(u.searchParams.get('year'), 10), m = parseInt(u.searchParams.get('month'), 10);
+            return (y && m) ? y * 12 + m : null;
+        } catch (err) { return null; }
+    }
+    document.addEventListener('click', function (e) {
+        const a = e.target.closest && e.target.closest('a.stats-nav-btn, a.month-chip, a.back-to-current');
+        if (!a || e.metaKey || e.ctrlKey || e.shiftKey || busy) return;
+        e.preventDefault();
+        if (a.classList.contains('is-current')) return;          // החודש שכבר מוצג
+        let isOlder;
+        if (a.classList.contains('stats-nav-btn')) isOlder = a.getAttribute('aria-label') === 'חודש קודם';
+        else if (a.classList.contains('back-to-current')) isOlder = a.dataset.older === 'true';
+        else {
+            // ברצועה: מול החודש שמוצג עכשיו (‎/month‎ בלי פרמטרים הוא הנוכחי)
+            const cur = document.querySelector('.month-chip.is-current');
+            const here = cur ? ym(cur.href) : null, there = ym(a.href);
+            isOlder = here !== null && there !== null && there < here;
+        }
+        go(a.href, isOlder);
+    });
+
     // חזרה עם "אחורה" — הדפדפן משחזר את העמוד כמו שהיה, כולל ההזזה
-    window.addEventListener('pageshow', function () { move(0); });
+    window.addEventListener('pageshow', function () { setX(0); busy = false; });
 })();
