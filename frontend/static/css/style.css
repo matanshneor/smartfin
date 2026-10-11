@@ -2566,14 +2566,6 @@ li.zero-cat-row { display: none; }
     font-size: 0.95rem;
 }
 
-.group-sub {
-    font-size: 0.76rem;
-    color: var(--color-text-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
 .group-chevron {
     color: var(--color-text-muted);
     display: flex;
