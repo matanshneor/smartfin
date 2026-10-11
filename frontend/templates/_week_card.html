@@ -20,11 +20,14 @@
     </div>
     <div class="week-total">
         <span class="week-sum">₪{{ week.total | round | int | money }}</span>
-        {% set than = 'משבוע שעבר' if ago == 0 else 'מהשבוע שלפניו' %}
-        {% if week.diff is not none and (week.diff | round | int) != 0 %}
-        <span class="week-cmp {{ 'down' if week.diff < 0 else 'up' }}">₪{{ (week.diff | abs) | round | int | money }} {{ 'פחות' if week.diff < 0 else 'יותר' }} {{ than }}</span>
+        {# השבוע הנוכחי: רק סך השבוע שעבר, כעובדה — "פחות/יותר" באמצע שבוע
+           לא היה מובן (מתן, 11.10). שבוע שהסתיים: שלם מול שלם. #}
+        {% if ago == 0 and week.last_week %}
+        <span class="week-cmp same">שבוע שעבר: ₪{{ week.last_week | round | int | money }}</span>
+        {% elif week.diff is not none and (week.diff | round | int) != 0 %}
+        <span class="week-cmp {{ 'down' if week.diff < 0 else 'up' }}">₪{{ (week.diff | abs) | round | int | money }} {{ 'פחות' if week.diff < 0 else 'יותר' }} מהשבוע שלפניו</span>
         {% elif week.diff is not none %}
-        <span class="week-cmp same">כמו {{ 'שבוע שעבר' if ago == 0 else 'השבוע שלפניו' }}</span>
+        <span class="week-cmp same">כמו השבוע שלפניו</span>
         {% endif %}
         {# עסקאות קבועות לא נספרות בסך ובעמודות — רק מוצגות (מתן, 11.10) #}
         {% if week.recurring_total %}

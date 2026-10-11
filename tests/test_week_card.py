@@ -1,8 +1,8 @@
 """כרטיס "השבוע" בדף הבית (מתן, 30.9).
 
 הוצאות הבית בלבד — בלי פרויקטים ובלי עסקאות קבועות (יום אחד של שכר דירה
-היה מגמד את כל השבוע). ראשון עד שבת. ההשוואה לשבוע שעבר — עד אותו יום
-בשבוע, כדי שיום רביעי לא יושווה לשבוע שלם.
+היה מגמד את כל השבוע). ראשון עד שבת. בשבוע הנוכחי מוצג סך השבוע שעבר,
+שלם, כעובדה — בלי "פחות/יותר" (מתן, 11.10).
 """
 import datetime
 
@@ -102,12 +102,14 @@ def test_a_week_with_only_recurring_still_shows_the_card():
     assert "{% if week and (week.total or week.recurring_total or week.last_week or week.has_older) %}" in tpl
 
 
-def test_compared_with_last_week_up_to_the_same_day(monkeypatch):
-    """רביעי מול ראשון–רביעי של שבוע שעבר; חמישי שעבר לא נספר."""
+def test_this_week_shows_all_of_last_week_without_more_or_less(monkeypatch):
+    """ביום רביעי: כל השבוע שעבר, כולל חמישי עד שבת — ובלי ‎diff‎."""
     w = _week([_tx(300, "2026-10-05"),
                _tx(500, "2026-09-28"), _tx(200, "2026-09-30"),
-               _tx(900, "2026-10-01")], monkeypatch)          # חמישי שעבר — מחוץ להשוואה
-    assert w["last_week"] == 700 and w["diff"] == -400
+               _tx(900, "2026-10-01"), _tx(100, "2026-10-03"),
+               _tx(777, "2026-09-27"),                         # ראשון שעבר — נכנס
+               _tx(666, "2026-09-26")], monkeypatch)           # שבת שלפניו — לא
+    assert w["last_week"] == 2477 and w["diff"] is None
 
 
 def test_no_comparison_without_last_week_data(monkeypatch):
@@ -118,8 +120,8 @@ def test_saturday_closes_the_week_and_sunday_opens_a_new_one(monkeypatch):
     sat = _week([_tx(50, "2026-10-10")], monkeypatch, today=datetime.date(2026, 10, 10))
     assert sat["days"][-1]["today"] and sat["total"] == 50
     sun = _week([_tx(50, "2026-10-10")], monkeypatch, today=datetime.date(2026, 10, 11))
-    # ביום ראשון ההשוואה היא רק לראשון שעבר — השבת שלפניו כבר שבוע שלם אחר
-    assert sun["days"][0]["date"] == "2026-10-11" and sun["total"] == 0 and sun["last_week"] is None
+    # ביום ראשון בבוקר: ₪0, ולצידו כל השבוע שעבר
+    assert sun["days"][0]["date"] == "2026-10-11" and sun["total"] == 0 and sun["last_week"] == 50
 
 
 def test_the_card_is_placed_under_the_three_cards_and_days_can_be_tapped():
@@ -160,12 +162,19 @@ def test_a_transaction_entered_ahead_shows_on_its_day_and_counts(monkeypatch):
     assert w["total"] == 550 and w["max"] == 450
 
 
-def test_the_comparison_stretches_to_the_last_day_counted(monkeypatch):
-    """הוזן מראש לשישי — אז משווים לראשון–שישי של שבוע שעבר, לא רק עד רביעי."""
-    w = _week([_tx(450, "2026-10-09"),
-               _tx(200, "2026-09-30"), _tx(300, "2026-10-02"),       # רביעי, שישי שעבר
-               _tx(999, "2026-10-03")], monkeypatch)                 # שבת שעברה — מחוץ
-    assert w["last_week"] == 500 and w["diff"] == -50
+def test_the_card_states_last_week_as_a_fact_and_a_past_week_compares(monkeypatch):
+    from pathlib import Path
+    from backend.app import app
+    tpl = (Path(__file__).resolve().parent.parent / "frontend/templates/_week_card.html").read_text(encoding="utf-8")
+    rows = [_tx(519, "2026-10-04"), _tx(2313, "2026-10-05"), _tx(2419, "2026-09-28")]
+    sunday = _week(rows, monkeypatch, today=datetime.date(2026, 10, 11))
+    past = db.week_spending(_FAM, today=datetime.date(2026, 10, 11), offset=1)
+    with app.test_request_context():
+        now_html = app.jinja_env.from_string(tpl).render(week=sunday)
+        past_html = app.jinja_env.from_string(tpl).render(week=past)
+    assert '<span class="week-cmp same">שבוע שעבר: ₪2,832</span>' in now_html
+    assert "פחות" not in now_html and "יותר" not in now_html
+    assert '<span class="week-cmp up">₪413 יותר מהשבוע שלפניו</span>' in past_html
 
 
 def test_a_recurring_occurrence_ahead_still_stays_out(monkeypatch):

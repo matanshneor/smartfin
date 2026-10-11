@@ -1190,13 +1190,17 @@ def week_spending(family_id: str, today=None, offset: int = 0) -> dict:
     הוצאות הבית בלבד — בלי פרויקטים, ובלי לספור עסקאות קבועות (תבנית או
     מופע): שכר דירה של ₪5,500 ביום אחד היה מגמד את כל השאר, והשבוע אמור
     להראות את ההוצאות השוטפות. הקבועות כן מופיעות בפירוט היום שלהן, מסומנות,
-    ובשורה נפרדת מתחת לסך (‎recurring_total‎) — מתן, 11.10. ‎last_week‎ — אותו טווח בשבוע שעבר (ראשון עד אותו יום
-    בשבוע), כדי שיום רביעי לא יושווה לשבוע שלם; ‎None‎ כשאין אז נתונים.
+    ובשורה נפרדת מתחת לסך (‎recurring_total‎) — מתן, 11.10.
+
+    ‎last_week‎ — סך השבוע הקודם, שלם; ‎None‎ כשלא היו בו הוצאות. בשבוע
+    הנוכחי הוא מוצג כעובדה ("שבוע שעבר: ₪X") ובלי ‎diff‎: ההשוואה הקודמת,
+    ראשון–רביעי מול ראשון–רביעי, הייתה נכונה אבל לא מובנת — ביום ראשון בבוקר
+    היא הראתה "₪519 פחות משבוע שעבר" אחרי שבוע יקר (מתן, 11.10). בשבוע
+    שהסתיים ‎diff‎ הוא שבוע שלם מול שבוע שלם.
 
     עסקה שהוזנה מראש ליום שעוד לא הגיע מופיעה ביום שלה ונספרת בסך השבוע
-    (מתן, 4.10) — כמו שהיא נספרת בחודש שלה. הטווח שמושווה לשבוע שעבר
-    מתארך בהתאם, עד היום האחרון שנספר."""
-    from datetime import date, timedelta
+    (מתן, 4.10) — כמו שהיא נספרת בחודש שלה."""
+    from datetime import timedelta
     today = today or clock.today()
     # ‎offset‎ — כמה שבועות אחורה (מתן, 2.10: דפדוף לשבועות קודמים). שבוע
     # שעבר מוצג שלם, ומושווה לשבוע השלם שלפניו.
@@ -1243,12 +1247,7 @@ def week_spending(family_id: str, today=None, offset: int = 0) -> dict:
         })
     total = round(sum(d["total"] for d in days), 2)
     recurring_total = round(sum(t["amount"] for d in days for t in d["recurring"]), 2)
-    if offset == 0:
-        last_counted = max([today] + [date.fromisoformat(d["date"]) for d in days if d["total"]])
-        prev_end = last_counted - timedelta(days=7)
-    else:
-        prev_end = start - timedelta(days=1)
-    prev = [r for r in rows if prev_start.isoformat() <= str(r["date"])[:10] <= prev_end.isoformat()]
+    prev = [r for r in rows if prev_start.isoformat() <= str(r["date"])[:10] < start.isoformat()]
     last = round(sum(float(r["amount"]) for r in prev), 2) if prev else None
     # היום שהפירוט שלו פתוח: היום עצמו בשבוע הנוכחי; בשבוע שעבר — היום האחרון
     # שהיו בו הוצאות (ואם לא היו — שבת)
@@ -1265,7 +1264,7 @@ def week_spending(family_id: str, today=None, offset: int = 0) -> dict:
     except Exception as e:
         raise DataUnavailable("week_spending: older") from e
     return {"days": days, "total": total, "recurring_total": recurring_total, "last_week": last,
-            "diff": round(total - last, 2) if last is not None else None,
+            "diff": round(total - last, 2) if last is not None and offset else None,
             "max": max([d["total"] for d in days] + [0]),
             "offset": offset, "has_older": bool(older)}
 
