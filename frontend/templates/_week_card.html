@@ -26,11 +26,15 @@
         {% elif week.diff is not none %}
         <span class="week-cmp same">כמו {{ 'שבוע שעבר' if ago == 0 else 'השבוע שלפניו' }}</span>
         {% endif %}
+        {# עסקאות קבועות לא נספרות בסך ובעמודות — רק מוצגות (מתן, 11.10) #}
+        {% if week.recurring_total %}
+        <span class="week-fixed">+ ₪{{ week.recurring_total | round | int | money }} בעסקאות קבועות</span>
+        {% endif %}
     </div>
     <div class="week-bars" role="group" aria-label="הוצאות לפי יום">
         {% for d in week.days %}
         {# יום שעוד לא הגיע נעול — אלא אם הוזנה אליו עסקה מראש (מתן, 4.10) #}
-        {% set ahead = d.future and not d.total %}
+        {% set ahead = d.future and not d.total and not d.recurring %}
         {% set h = 10 if ahead else ([6, ((d.total / week.max * 84) | round | int) if week.max else 6] | max) %}
         <button type="button" class="week-day{% if d.today %} today{% endif %}{% if d.selected %} is-selected{% endif %}{% if ahead %} future{% endif %}{% if not d.future and not d.total %} zero{% endif %}"
                 data-day="{{ loop.index0 }}" {% if ahead %}disabled{% endif %}
@@ -44,13 +48,16 @@
     </div>
     {# ‎if‎ בתוך הלולאה ולא מסנן עליה: ‎loop.index0‎ חייב להיות מספר היום
        בשבוע, ויום נעול יכול לבוא לפני יום עם עסקה שהוזנה מראש #}
-    {% for d in week.days %}{% if not (d.future and not d.total) %}
+    {% for d in week.days %}{% if not (d.future and not d.total and not d.recurring) %}
     <div class="week-detail" data-day="{{ loop.index0 }}" {% if not d.selected %}hidden{% endif %}>
-        <p class="week-detail-head"><span>{{ 'היום' if d.today else 'יום ' ~ d.label }} · {{ d.day }}.{{ d.month }}</span><span>₪{{ d.total | money }}</span></p>
-        {% if d.transactions %}
+        <p class="week-detail-head"><span>{{ 'היום' if d.today else 'יום ' ~ d.label }} · {{ d.day }}.{{ d.month }}</span>{% if d.total or not d.recurring %}<span>₪{{ d.total | money }}</span>{% endif %}</p>
+        {% if d.transactions or d.recurring %}
         <ul class="week-detail-list">
             {% for t in d.transactions %}
             <li><span>{{ t.icon }} {{ t.description or t.name }}</span><span class="week-detail-amount">-₪{{ t.amount | money }}</span></li>
+            {% endfor %}
+            {% for t in d.recurring %}
+            <li class="is-fixed"><span>{{ t.icon }} {{ t.description or t.name }} <span class="week-fixed-tag">קבועה</span></span><span class="week-detail-amount">-₪{{ t.amount | money }}</span></li>
             {% endfor %}
         </ul>
         {% else %}

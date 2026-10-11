@@ -46,13 +46,60 @@ def test_totals_per_day_and_for_the_week(monkeypatch):
     assert {(t["icon"], t["name"], t["amount"]) for t in monday} == {("🛒", "סופר", 412), ("⛽", "דלק", 250)}
 
 
-def test_recurring_projects_and_income_are_left_out(monkeypatch):
+def test_recurring_projects_and_income_are_not_counted(monkeypatch):
     w = _week([_tx(100, "2026-10-05"),
                _tx(5500, "2026-10-04", "שכר דירה", recurring=True),
                _tx(120, "2026-10-05", "סלולר", parent="tpl-1"),
                _tx(4000, "2026-10-06", "קבלן", project="p1"),
                _tx(9000, "2026-10-04", "משכורת", type_="income")], monkeypatch)
     assert w["total"] == 100
+
+
+# ─── עסקאות קבועות: מוצגות ולא נספרות (מתן, 11.10) ─────────────────────────
+
+
+def test_recurring_shows_on_its_day_but_stays_out_of_bars_total_and_comparison(monkeypatch):
+    w = _week([_tx(100, "2026-10-05"),
+               _tx(5500, "2026-10-04", "שכר דירה", recurring=True),
+               _tx(120, "2026-10-05", "סלולר", parent="tpl-1"),
+               _tx(200, "2026-09-28"), _tx(3000, "2026-09-28", "ביטוח", parent="tpl-2")], monkeypatch)
+    sunday, monday = w["days"][0], w["days"][1]
+    assert sunday["total"] == 0 and [t["description"] for t in sunday["recurring"]] == ["שכר דירה"]
+    assert monday["total"] == 100 and [t["description"] for t in monday["recurring"]] == ["סלולר"]
+    assert [t["amount"] for t in monday["transactions"]] == [100]
+    assert w["total"] == 100 and w["max"] == 100 and w["recurring_total"] == 5620
+    assert w["last_week"] == 200        # הביטוח של שבוע שעבר לא נכנס להשוואה
+
+
+def test_recurring_from_a_project_or_an_income_is_not_shown(monkeypatch):
+    w = _week([_tx(800, "2026-10-05", "שיפוץ", recurring=True, project="p1"),
+               _tx(9000, "2026-10-05", "משכורת", recurring=True, type_="income")], monkeypatch)
+    assert w["recurring_total"] == 0 and w["days"][1]["recurring"] == []
+
+
+def test_the_card_marks_recurring_and_adds_the_line_under_the_total(monkeypatch):
+    from pathlib import Path
+    from backend.app import app
+    tpl = (Path(__file__).resolve().parent.parent / "frontend/templates/_week_card.html").read_text(encoding="utf-8")
+    w = _week([_tx(100, "2026-10-05", "קפה"), _tx(5500, "2026-10-04", "שכר דירה", recurring=True),
+               _tx(120, "2026-10-09", "סלולר", recurring=True)], monkeypatch)
+    with app.test_request_context():
+        html = app.jinja_env.from_string(tpl).render(week=w)
+    assert "+ ₪5,620 בעסקאות קבועות" in html
+    sunday = html.split('class="week-detail" data-day="0"')[1].split("</div>")[0]
+    assert '<li class="is-fixed"><span>🛒 שכר דירה <span class="week-fixed-tag">קבועה</span>' in sunday
+    assert "לא בוצעו עסקאות" not in sunday and "₪0" not in sunday   # יום עם קבועה בלבד
+    monday = html.split('class="week-detail" data-day="1"')[1].split("</div>")[0]
+    assert "is-fixed" not in monday and "קפה" in monday
+    # יום עתידי שיש בו רק עסקה קבועה נפתח, כמו יום עם עסקה שהוזנה מראש
+    bars = {b.split('data-day="')[1][0]: b[:b.index(">")] for b in html.split('<button type="button" class="week-day')[1:]}
+    assert "disabled" in bars["4"] and "disabled" not in bars["5"] and 'class="week-detail" data-day="5"' in html
+
+
+def test_a_week_with_only_recurring_still_shows_the_card():
+    from pathlib import Path
+    tpl = (Path(__file__).resolve().parent.parent / "frontend/templates/index.html").read_text(encoding="utf-8")
+    assert "{% if week and (week.total or week.recurring_total or week.last_week or week.has_older) %}" in tpl
 
 
 def test_compared_with_last_week_up_to_the_same_day(monkeypatch):
@@ -89,7 +136,7 @@ def test_an_empty_day_says_so_in_matans_words():
     from pathlib import Path
     import jinja2
     tpl = (Path(__file__).resolve().parent.parent / "frontend/templates/_week_card.html").read_text(encoding="utf-8")
-    start = tpl.index("{% for d in week.days %}{% if not (d.future and not d.total) %}")
+    start = tpl.index("{% for d in week.days %}{% if not (d.future and not d.total and not d.recurring) %}")
     end = "{% endif %}{% endfor %}"
     snippet = tpl[start:tpl.index(end, tpl.index('class="week-empty"')) + len(end)]
     env = jinja2.Environment()

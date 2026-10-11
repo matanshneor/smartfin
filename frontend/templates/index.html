@@ -139,7 +139,7 @@
 {# השבוע (מתן, 30.9): הוצאות שוטפות מראשון עד שבת — בלי עסקאות קבועות ובלי
    פרויקטים. נגיעה ביום מציגה את העסקאות שלו. מופיע כשיש השבוע או בשבוע
    שעבר משהו להראות. #}
-{% if week and (week.total or week.last_week or week.has_older) %}
+{% if week and (week.total or week.recurring_total or week.last_week or week.has_older) %}
 {% include "_week_card.html" %}
 {% endif %}
 

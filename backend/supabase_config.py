@@ -1187,9 +1187,10 @@ _WEEK_LABELS = ("א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳")
 def week_spending(family_id: str, today=None, offset: int = 0) -> dict:
     """כרטיס "השבוע" בדף הבית (מתן, 30.9): הוצאות מראשון עד שבת, יום-יום.
 
-    הוצאות הבית בלבד — בלי פרויקטים, ובלי עסקאות קבועות (תבנית או מופע):
-    שכר דירה של ₪5,500 ביום אחד היה מגמד את כל השאר, והשבוע אמור להראות
-    את ההוצאות השוטפות. ‎last_week‎ — אותו טווח בשבוע שעבר (ראשון עד אותו יום
+    הוצאות הבית בלבד — בלי פרויקטים, ובלי לספור עסקאות קבועות (תבנית או
+    מופע): שכר דירה של ₪5,500 ביום אחד היה מגמד את כל השאר, והשבוע אמור
+    להראות את ההוצאות השוטפות. הקבועות כן מופיעות בפירוט היום שלהן, מסומנות,
+    ובשורה נפרדת מתחת לסך (‎recurring_total‎) — מתן, 11.10. ‎last_week‎ — אותו טווח בשבוע שעבר (ראשון עד אותו יום
     בשבוע), כדי שיום רביעי לא יושווה לשבוע שלם; ‎None‎ כשאין אז נתונים.
 
     עסקה שהוזנה מראש ליום שעוד לא הגיע מופיעה ביום שלה ונספרת בסך השבוע
@@ -1201,7 +1202,7 @@ def week_spending(family_id: str, today=None, offset: int = 0) -> dict:
     # שעבר מוצג שלם, ומושווה לשבוע השלם שלפניו.
     start = today - timedelta(days=(today.weekday() + 1) % 7) - timedelta(days=7 * offset)
     prev_start = start - timedelta(days=7)
-    empty = {"days": [], "total": 0.0, "last_week": None, "diff": None,
+    empty = {"days": [], "total": 0.0, "recurring_total": 0.0, "last_week": None, "diff": None,
              "offset": offset, "has_older": False}
     client = get_client()
     if not client:
@@ -1216,22 +1217,32 @@ def week_spending(family_id: str, today=None, offset: int = 0) -> dict:
     except Exception as e:
         raise DataUnavailable("week_spending") from e
 
-    rows = [r for r in rows if not r.get("project_id")
-            and not r.get("is_recurring") and not r.get("recurring_parent_id")]
+    rows = [r for r in rows if not r.get("project_id")]
+    # עסקה קבועה (תבנית או מופע) מוצגת ביום שלה, מסומנת, ולא נספרת בעמודות,
+    # בסך ובהשוואה (מתן, 11.10) — כשהיא נעלמה לגמרי זה נראה כמו תקלה
+    fixed = [r for r in rows if r.get("is_recurring") or r.get("recurring_parent_id")]
+    rows = [r for r in rows if not r.get("is_recurring") and not r.get("recurring_parent_id")]
+
+    def _items(txs):
+        return [{"icon": (r.get("categories") or {}).get("icon") or "📦",
+                 "name": (r.get("categories") or {}).get("name") or _NO_CATEGORY,
+                 "description": r.get("description") or "",
+                 "amount": float(r["amount"])} for r in txs]
+
     days = []
     for i in range(7):
         d = start + timedelta(days=i)
         txs = [r for r in rows if str(r["date"])[:10] == d.isoformat()]
+        recurring = [r for r in fixed if str(r["date"])[:10] == d.isoformat()]
         days.append({
             "date": d.isoformat(), "label": _WEEK_LABELS[i], "day": d.day, "month": d.month,
             "today": d == today, "future": d > today,
             "total": round(sum(float(r["amount"]) for r in txs), 2),
-            "transactions": [{"icon": (r.get("categories") or {}).get("icon") or "📦",
-                              "name": (r.get("categories") or {}).get("name") or _NO_CATEGORY,
-                              "description": r.get("description") or "",
-                              "amount": float(r["amount"])} for r in txs],
+            "transactions": _items(txs),
+            "recurring": _items(recurring),
         })
     total = round(sum(d["total"] for d in days), 2)
+    recurring_total = round(sum(t["amount"] for d in days for t in d["recurring"]), 2)
     if offset == 0:
         last_counted = max([today] + [date.fromisoformat(d["date"]) for d in days if d["total"]])
         prev_end = last_counted - timedelta(days=7)
@@ -1253,7 +1264,7 @@ def week_spending(family_id: str, today=None, offset: int = 0) -> dict:
             .lt("date", start.isoformat()).order("date", desc=True).limit(1).execute().data or []
     except Exception as e:
         raise DataUnavailable("week_spending: older") from e
-    return {"days": days, "total": total, "last_week": last,
+    return {"days": days, "total": total, "recurring_total": recurring_total, "last_week": last,
             "diff": round(total - last, 2) if last is not None else None,
             "max": max([d["total"] for d in days] + [0]),
             "offset": offset, "has_older": bool(older)}

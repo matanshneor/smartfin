@@ -4766,9 +4766,13 @@ body > .color-sheet { z-index: 180; }
 }
 .week-detail-list { list-style: none; margin: 0; padding: 0; }
 .week-detail-list li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; font-size: 0.85rem; }
-.week-detail-list li span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.week-detail-list li > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .week-detail-amount { color: var(--color-expense); font-weight: 600; flex: none; font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
 .week-empty { margin: 0; font-size: 0.8rem; color: var(--color-text-muted); }
+.week-fixed { font-size: 0.78rem; color: var(--color-text-muted); }
+.week-detail-list li.is-fixed { color: var(--color-text-muted); }
+.week-detail-list li.is-fixed .week-detail-amount { color: inherit; font-weight: 500; }
+.week-fixed-tag { font-size: 0.7rem; font-weight: 600; padding: 1px 7px; margin-inline-start: 4px; border-radius: 99px; background: var(--color-input); }
 
 /* חלון ההוצאות של קטגוריה בחודש — עמוד ההשוואה (מתן, 30.9) */
 .cat-month-sheet .color-sheet-card { max-height: 80vh; max-height: 80dvh; }
