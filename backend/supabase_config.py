@@ -3411,7 +3411,10 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
       3-previous-months average (percent + minimum gap from settings)
     - expenses exceeding income
     - negative checking-account balance (עו"ש)
-    Returns a list of {"severity": "warning"|"danger", "text": str}."""
+    Returns a list of {"severity": "warning"|"danger", "text": str, "target": str|None}.
+
+    ‎target‎ — לאן לחיצה על ההתראה מובילה בעמוד החודש (מתן, 11.10): עוגן
+    הקטגוריה (‎cat-<id>‎), פירוט ההוצאות, או ‎None‎ = ראש העמוד."""
     cfg = (settings or DEFAULT_FAMILY_SETTINGS).get("anomaly", {})
     if not cfg.get("enabled", True):
         return []
@@ -3424,6 +3427,7 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
         alerts.append({
             "severity": "danger",
             "text": f'ההוצאות החודש (₪{format_money(summary["expense"])}) גבוהות מההכנסות (₪{format_money(summary["income"])})',
+            "target": "expense-breakdown",
         })
     # רק כשיש הכנסות, ולפי המספר המעוגל — אותו כלל כמו המאזן שמוצג: בלי
     # הכנסות הוא "—" ולא גירעון (מתן, 30.9), ו-40 אגורות מוצגות ‎₪0‎
@@ -3431,6 +3435,8 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
         alerts.append({
             "severity": "danger",
             "text": "מאזן החודש שלילי — ההוצאות והחיסכון עברו את ההכנסות",
+            # המאזן עצמו, בראש עמוד החודש
+            "target": None,
         })
 
     try:
@@ -3460,6 +3466,7 @@ def get_anomalies(family_id: str, year: int, month: int, summary: dict,
                 alerts.append({
                     "severity": "warning",
                     "text": f'{label["icon"]} ההוצאה על {label["name"]} (₪{format_money(total)}) גבוהה ב-{pct}% מהממוצע (₪{format_money(avg)})',
+                    "target": category_anchor(cid),
                 })
     except Exception:
         logger.exception("get_anomalies")
@@ -3484,8 +3491,26 @@ def budget_alerts(breakdown: list) -> list:
             "text": (f'{row.get("icon") or "📦"} {row["name"]}: '
                      f'₪{format_money(row["total"])} מתוך תקציב של ₪{format_money(row["budget"])} '
                      f'— חריגה של ₪{format_money(row["budget_excess"])}'),
+            "target": category_anchor(row.get("category_id")),
         })
     return out
+
+
+def category_anchor(category_id) -> str:
+    """העוגן של קטגוריית הוצאה בעמוד החודש. עסקה בלי קטגוריה — אין לה
+    שורה משלה עם מזהה, אז מובילים לפירוט ההוצאות כולו."""
+    return f"cat-{category_id}" if category_id else "expense-breakdown"
+
+
+def month_alerts(family_id: str, year: int, month: int, summary: dict,
+                 settings: dict, expense_breakdown: list) -> list:
+    """כל ההתראות של החודש — לעמוד החודש ולדף הבית, מאותו מקום.
+
+    ‎expense_breakdown‎ אחרי ‎apply_budgets‎. קטגוריה עם תקציב מדלגת על
+    התראת הממוצע — יש לה התראה מדויקת יותר."""
+    skip = [r["category_id"] for r in expense_breakdown if r.get("budget")]
+    return budget_alerts(expense_breakdown) + list(
+        get_anomalies(family_id, year, month, summary, settings, skip_categories=skip))
 
 
 # ─── Family members ───────────────────────────────────────────────────────────

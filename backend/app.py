@@ -1,7 +1,7 @@
 from flask import (Flask, render_template, request, jsonify, session, redirect,
                    url_for, g, make_response, Response)
 from dotenv import load_dotenv
-from functools import wraps, partial
+from functools import wraps
 from datetime import date, datetime, timedelta
 from werkzeug.middleware.proxy_fix import ProxyFix
 import csv
@@ -1233,6 +1233,17 @@ def dashboard():
     # מיחזור תוצאות המקבץ ל-context-processors ו-_member_colors (בלי שליפה חוזרת)
     _prime_request_cache(family_id, settings=batch["settings"], categories=batch["categories"], members=batch["members"])
 
+    # התראות החודש גם בבית, כשיש (מתן, 11.10) — אותן התראות כמו בעמוד
+    # החודש, ולחיצה מובילה ליעד שלהן שם. קישוט: תקלה לא מפילה את דף הבית.
+    try:
+        expense_breakdown = db.apply_budgets(db.category_breakdown_from_rows(
+            db.fetch_month_rows(family_id, now.year, now.month), batch["categories"], "expense"),
+            batch["settings"])
+        alerts = db.month_alerts(family_id, now.year, now.month, batch["summary"],
+                                 batch["settings"], expense_breakdown)
+    except db.DataUnavailable:
+        alerts = []
+
     # "איך מצרפים בן משפחה" (מתן, 5.10) — בכניסה הראשונה, אחרי אשף הפתיחה
     # (‎?welcome=1‎ מכפתור "לאפליקציה"), ורק כשעוד אין במשפחה אף אחד אחר
     welcome_invite = None
@@ -1256,6 +1267,7 @@ def dashboard():
         month=now.month,
         is_new_family=batch["is_new"],
         welcome_invite=welcome_invite,
+        alerts=alerts,
     )
 
 
@@ -1344,15 +1356,7 @@ def month_view():
     # (מתן, 5.10; כמו בעמוד ההשוואה)
     active_types = [t for t in ("expense", "income", "savings")
                     if settings_["owner_attribution"].get(t) and len(p1["members"] or []) > 1]
-    p2_tasks = {
-        # קטגוריה עם תקציב מדלגת על התראת הממוצע — יש לה התראה מדויקת יותר
-        "anomalies":    partial(db.get_anomalies, family_id, year, month, summary, settings_,
-                                skip_categories=[r["category_id"] for r in expense_breakdown
-                                                 if r.get("budget")]),
-    }
-    p2 = _run_queries(p2_tasks)
-
-    anomalies = db.budget_alerts(expense_breakdown) + list(p2["anomalies"])
+    anomalies = db.month_alerts(family_id, year, month, summary, settings_, expense_breakdown)
     month_transactions = db.month_transactions_from_rows(rows, settings_, user["id"])
     # שורת הקטגוריות מתחת ל"הוצאות" וכו׳ ב"כל העסקאות" (מתן, 30.9)
     tx_cat_chips = db.category_filter_chips(month_transactions)

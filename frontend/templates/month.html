@@ -96,10 +96,11 @@
 <!-- Alerts: חריגות -->
 {% if anomalies %}
 <section class="alerts-section" aria-label="התראות">
+    {# לחיצה מובילה ליעד של ההתראה בעמוד הזה (מתן, 11.10) — ‎month.js‎ #}
     {% for alert in anomalies %}
-    <div class="alert-card {{ alert.severity }}">
+    <a class="alert-card {{ alert.severity }}" href="#{{ alert.target or 'top' }}">
         <span class="alert-text">{{ alert.text }}</span>
-    </div>
+    </a>
     {% endfor %}
 </section>
 {% endif %}
@@ -248,7 +249,8 @@
         {% else %}
         {% set cat_txs = month_transactions | selectattr('type', 'equalto', 'expense')
                                             | selectattr('category_name', 'equalto', item.name) | list %}
-        <li class="legend-item-wrap">
+        {# העוגן שאליו התראה על הקטגוריה מובילה (‎db.category_anchor‎) #}
+        <li class="legend-item-wrap"{% if item.category_id %} id="cat-{{ item.category_id }}"{% endif %}>
             <div class="legend-item {% if cat_txs %}clickable{% endif %}" {% if cat_txs %}role="button" tabindex="0" aria-expanded="false"{% endif %}>
                 <span class="legend-dot" style="background: var(--chart-color-{{ loop.index0 % 8 }});"></span>
                 <span class="legend-icon">{{ item.icon }}</span>
