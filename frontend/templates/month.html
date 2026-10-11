@@ -120,12 +120,28 @@
 </section>
 {% else %}
 
+{# סוג בלי שום עסקה החודש — שורה אחת במקום כרטיס ריק בגובה חצי מסך (מתן,
+   11.10). הריבוע למעלה כבר אומר ₪0; השורה מאשרת שזה לא באג, ו"+ הוספה"
+   פותח את חלון ההוספה על הסוג הזה (‎data-add-type‎, ‎transactions.js‎).
+   ה-id נשאר, כדי שלחיצה על הריבוע למעלה תגיע לכאן. #}
+{% macro empty_row(anchor, icon, text, type) %}
+<div class="empty-row" id="{{ anchor }}">
+    <span class="empty-row-icon" aria-hidden="true">{{ icon }}</span>
+    <span class="empty-row-text">{{ text }}</span>
+    <button type="button" class="empty-row-add" data-add-type="{{ type }}" aria-haspopup="dialog">+ הוספה</button>
+</div>
+{% endmacro %}
+
 {# סדר החלקים נקבע על ידי מתן (30.9) — ראו test_month_sections.test_the_sections_come_in_matans_order #}
 <!-- הכנסות — גרף עגול כמו ההוצאות (מתן, 30.9) -->
+{% set income_sources = income_sources | default([]) %}
+{% set income_projects = income_breakdown | selectattr('total', 'gt', 0) | selectattr('is_project') | list %}
+{% if not income_sources and not income_projects %}
+{{ empty_row('income-breakdown', '💼', 'אין הכנסות החודש', 'income') }}
+{% else %}
 <section class="chart-card" id="income-breakdown">
     <h2 class="chart-title">הכנסות</h2>
     {# משכורת לכל אחד, בצבע של בן המשפחה, וכל השאר ביחד באפור (‎income_sources‎) #}
-    {% set income_sources = income_sources | default([]) %}
     {% if income_sources %}
     <div class="doughnut-wrap">
         <canvas id="incomeChart" role="img" aria-label="הכנסות לפי מקור"></canvas>
@@ -170,7 +186,7 @@
             </ul>
         </li>
         {% endfor %}
-        {% for item in income_breakdown | selectattr('total', 'gt', 0) | selectattr('is_project') %}
+        {% for item in income_projects %}
         <li class="legend-item-wrap">
             {% if item.project_id %}<a class="legend-item clickable" href="{{ url_for('project_detail', project_id=item.project_id) }}">{% else %}<div class="legend-item">{% endif %}
                 <span class="legend-dot" style="background: var(--color-income);"></span>
@@ -183,6 +199,7 @@
         {% endfor %}
     </ul>
 </section>
+{% endif %}
 
 <!-- הוצאות לפי קטגוריה -->
 {% set expense_active = expense_breakdown | selectattr('total', 'gt', 0) | list %}
@@ -335,11 +352,15 @@
 </section>
 
 <!-- חיסכון — סך הכול ופירוט, בלי גרף (מתן, 30.9) -->
+{% set savings_home = savings_home | default([]) %}
+{% set savings_projects = savings_breakdown | selectattr('total', 'gt', 0) | selectattr('is_project') | list %}
+{% if not savings_home and not savings_projects %}
+{{ empty_row('savings-breakdown', '💰', 'אין חיסכון החודש', 'savings') }}
+{% else %}
 <section class="chart-card" id="savings-breakdown">
     <h2 class="chart-title">חיסכון</h2>
     {# כמה הופרש, איזה חלק מההכנסות, ולכל יעד — איזה חלק מהחיסכון (‎savings_home‎,
        בלי פרויקטים). צבעי היעדים — גוונים של זהב (‎_SAVINGS_HEX‎). #}
-    {% set savings_home = savings_home | default([]) %}
     {% set savings_total = savings_home | sum(attribute='total') %}
     {# בלי גרף עגול: אין כאן השוואה, רק לאן הלך הכסף (מתן) #}
     {% if savings_home %}
@@ -390,7 +411,7 @@
             {% endif %}
         </li>
         {% endfor %}
-        {% for item in savings_breakdown | selectattr('total', 'gt', 0) | selectattr('is_project') %}
+        {% for item in savings_projects %}
         <li class="legend-item-wrap">
             {% if item.project_id %}<a class="legend-item clickable" href="{{ url_for('project_detail', project_id=item.project_id) }}">{% else %}<div class="legend-item">{% endif %}
                 <span class="legend-dot" style="background: var(--color-savings);"></span>
@@ -403,6 +424,7 @@
         {% endfor %}
     </ul>
 </section>
+{% endif %}
 
 {# "עסקאות קבועות" הוסר מעמוד החודש (מתן, 2.10): העסקאות האלה כבר מופיעות
    בשאר העסקאות של החודש, והניהול שלהן בהגדרות ← עסקאות קבועות. #}

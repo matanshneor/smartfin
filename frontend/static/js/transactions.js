@@ -465,7 +465,10 @@
         }
     }
 
-    function openAddModal() {
+    // ‎presetType‎: סוג שהחלון נפתח עליו — "+ הוספה" בשורה ריקה בעמוד החודש
+    // (מתן, 11.10). מה-FAB מגיע כאן אירוע הלחיצה, ולכן רק מחרוזת נחשבת.
+    function openAddModal(presetType) {
+        const preset = typeof presetType === 'string' ? presetType : null;
         scanSeq++;
         formSeq++;
         setSubmitBusy(false);                   // טופס חדש לא "באמצע שמירה" — ראו ‎finish‎
@@ -488,7 +491,8 @@
                 const here = document.getElementById('sfPageProject');
                 const project = here && (projectsCache || [])
                     .find(function (p) { return p.id === here.dataset.projectId && !p.archived; });
-                const type = !project || project.track_expense ? 'expense'
+                const type = preset ? preset
+                           : !project || project.track_expense ? 'expense'
                            : project.track_income ? 'income' : 'savings';
                 setType(type, undefined, undefined, project ? project.id : undefined);
                 openModal();
@@ -567,6 +571,12 @@
     }
 
     fabBtn.addEventListener('click', openAddModal);
+    // "+ הוספה" בשורה ריקה בעמוד החודש — החלון נפתח על הסוג של השורה. בהאצלה
+    // מ-document: רענון רך מחליף את השורה.
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-add-type]');
+        if (btn) openAddModal(btn.dataset.addType);
+    });
 
     // חימום המטמון בדף הבית: הקטגוריות ובני המשפחה נמשכים ברקע אחרי
     // שהדף התייצב, כדי שגם הפתיחה הראשונה של כרטיסייה תהיה מיידית.

@@ -361,7 +361,7 @@ def test_a_successful_save_releases_the_save_button():
     finish = js[js.index("function finish()"):]
     finish = finish[:finish.index("closeModal();")]
     assert "setSubmitBusy(false)" in finish
-    for opener in ("function openAddModal()", "function openEditModal("):
+    for opener in ("function openAddModal(", "function openEditModal("):
         body = js[js.index(opener):]
         assert "setSubmitBusy(false)" in body[:body.index("formSeq++") + 60], opener
 
