@@ -80,13 +80,13 @@ def test_the_text_size_switch():
 
 
 def test_the_settings_titles_say_what_is_inside():
-    """מתן (30.9): "תצוגה" — מה יש בה, ולא "בטלפון הזה בלבד"; ו"העדפות משפחה"
-    כבר לא כוללות תצוגה."""
+    """מתן (11.10): בלי שורה מתחת לכותרות — הכותרת עצמה אומרת מה יש בפנים.
+    "העדפות משפחה" לא אמרה, ולכן נקראת עכשיו "שיוך עסקאות"."""
     tpl = (_ROOT / "frontend/templates/settings.html").read_text(encoding="utf-8")
-    # בלי "וצליל" ובלי "והתראות" מ-11.10: שתי ההגדרות האלה ירדו
-    assert '<span class="group-sub">מצב כהה וגודל טקסט</span>' in tpl
+    assert 'class="group-sub"' not in tpl
     assert "בטלפון הזה בלבד" not in tpl
-    assert '<span class="group-sub">שיוך עסקאות</span>' in tpl
+    assert '<span class="group-title">שיוך עסקאות</span>' in tpl
+    assert '<span class="group-title">העדפות משפחה</span>' not in tpl
 
 
 def test_there_is_no_sound_and_so_no_sound_toggle():

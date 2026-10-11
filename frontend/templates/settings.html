@@ -97,7 +97,8 @@
 
 <div class="settings-groups">
 
-    {# סדר הקבוצות (מתן, 11.10): המשפחה, ואז לפי כמה נכנסים לכל אחת —
+    {# בלי שורה מתחת לכותרות (מתן, 11.10): כותרת ואייקון בלבד, בכל הקבוצות.
+       סדר הקבוצות: המשפחה, ואז לפי כמה נכנסים לכל אחת —
        קטגוריות ועסקאות קבועות קודם, הגדרות של פעם אחת אחריהן, ו"החשבון שלי"
        אחרון, ממש מעל "התנתקות". #}
     <!-- ═══ המשפחה שלי ═══ -->
@@ -301,7 +302,6 @@
             </span>
             <span class="group-text">
                 <span class="group-title">קטגוריות</span>
-                <span class="group-sub">{{ categories | length | count_of('קטגוריה אחת', 'קטגוריות') }} בשלוש מחלקות</span>
             </span>
             <span class="group-chevron">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -360,7 +360,6 @@
             </span>
             <span class="group-text">
                 <span class="group-title">עסקאות קבועות</span>
-                <span class="group-sub">{{ recurring | length | count_of('עסקה קבועה פעילה אחת', 'עסקאות קבועות פעילות') if recurring else 'אין עסקאות קבועות' }}</span>
             </span>
             <span class="group-chevron">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -433,7 +432,9 @@
         </div>
     </section>
 
-    <!-- ═══ קבוצה: העדפות משפחה ═══ -->
+    <!-- ═══ קבוצה: שיוך עסקאות ═══ -->
+    {# עד 11.10 "העדפות משפחה". אחרי שההתראות ומקום העבודה ירדו, נשארו כאן רק
+       מתגי השיוך — והכותרת אומרת את זה. #}
     <section class="settings-group">
         <button type="button" class="settings-group-header" aria-expanded="false">
             <span class="group-icon">
@@ -445,8 +446,7 @@
                 </svg>
             </span>
             <span class="group-text">
-                <span class="group-title">העדפות משפחה</span>
-                <span class="group-sub">שיוך עסקאות</span>
+                <span class="group-title">שיוך עסקאות</span>
             </span>
             <span class="group-chevron">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -504,7 +504,6 @@
             </span>
             <span class="group-text">
                 <span class="group-title">תצוגה</span>
-                <span class="group-sub">מצב כהה וגודל טקסט</span>
             </span>
             <span class="group-chevron">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
