@@ -47,7 +47,7 @@ def _render(breakdown, is_current):
         summary={"income": 10000, "expense": 5000, "savings": 0, "balance": 5000,
                  "remaining": 5000, "expense_pct": 50},
         expense_breakdown=breakdown, income_breakdown=[], savings_breakdown=[],
-        member_breakdowns=[], anomalies=[], member_colors={},
+        member_breakdowns=[], member_colors={},
         month_label="מרץ 2026", year=2026, month=3, is_current=is_current,
         strip_months=[], hebrew_months=["", "ינואר"],
         project_month={"transactions": [], "expense": 0, "income": 0},

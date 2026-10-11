@@ -55,10 +55,11 @@ SmartFin/
   transaction entry, and recent transactions ordered by insertion. Tapping a
   transaction expands an inline editor in place (amount, category, owner,
   description, date, plus save and delete); project and recurring settings open
-  the full modal via "more options".
+  the full modal via "more options". The month's alerts appear here — and only
+  here — when there are any; tapping one opens its category on the month page.
 - **Month** — doughnut charts (where the money went: expenses vs. savings ·
-  expenses, income and savings by category · split by family member), anomaly
-  alerts, and every transaction of the month. A horizontally scroll-snapped
+  expenses, income and savings by category · split by family member) and every
+  transaction of the month. A horizontally scroll-snapped
   strip at the top jumps between every month that has data. Categories expand
   inline to reveal the transactions behind them.
 - **Comparison** — the monthly balance over time, with a drill-down into any month.

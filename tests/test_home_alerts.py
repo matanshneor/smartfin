@@ -1,7 +1,6 @@
-"""התראות החודש גם בבית (מתן, 11.10).
+"""התראות החודש בדף הבית — ורק שם (מתן, 11.10).
 
-כשיש התראות, הן מופיעות בדף הבית — אותן התראות כמו בעמוד החודש, מאותה
-פונקציה (‎db.month_alerts‎). כשאין, אין שום אזור ריק. לחיצה על התראה
+כשיש התראות, הן מופיעות בדף הבית (‎db.month_alerts‎). כשאין, אין שום אזור ריק. לחיצה על התראה
 מובילה ליעד שלה בעמוד החודש: הקטגוריה שחרגה (‎#cat-<id>‎, נפתחת עם
 העסקאות שלה), פירוט ההוצאות, או ראש העמוד — שם המאזן.
 """
@@ -131,15 +130,24 @@ def test_a_failure_in_the_alerts_does_not_take_the_home_page_down(home, monkeypa
 
 # ─── עמוד החודש ──────────────────────────────────────────────────────────
 
-def test_the_month_page_has_an_anchor_per_category_and_alerts_are_links():
+def test_the_month_page_has_an_anchor_per_category():
     tpl = _read("frontend/templates/month.html")
     assert '<li class="legend-item-wrap"{% if item.category_id %} id="cat-{{ item.category_id }}"{% endif %}>' in tpl
-    assert '<a class="alert-card {{ alert.severity }}" href="#{{ alert.target or \'top\' }}">' in tpl
+
+
+def test_alerts_are_on_the_home_page_only():
+    """מתן (11.10): ההתראות רק בבית. בעמוד החודש חריגה מתקציב כבר כתובה תחת
+    הקטגוריה, ומאזן שלילי באדום בראש העמוד."""
+    import inspect
+    tpl = _read("frontend/templates/month.html")
+    assert "alerts-section" not in tpl and "alert-card" not in tpl
+    assert "month_alerts" not in inspect.getsource(app_module.month_view)
+    assert "a.alert-card" not in _read("frontend/static/js/month.js")
 
 
 def test_arriving_at_a_category_opens_it():
     js = _read("frontend/static/js/month.js")
-    assert "else if (arrived.indexOf('cat-') === 0) showCategory(arrived, false);" in js
+    assert "else if (arrived.indexOf('cat-') === 0) showCategory(arrived);" in js
     body = js[js.index("function showCategory"):]
     body = body[:body.index("\n}\n")]
     assert "toggleExpand(trigger)" in body and "flashBreakdown('expense-breakdown')" in body

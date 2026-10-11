@@ -36,7 +36,7 @@ def _render_month(transactions, is_current=True):
         summary={"income": 0, "expense": 0, "savings": 0, "balance": 0,
                  "remaining": 0, "expense_pct": 0},
         expense_breakdown=[], income_breakdown=[], savings_breakdown=[],
-        member_breakdowns=[], anomalies=[], member_colors={},
+        member_breakdowns=[], member_colors={},
         month_label="ספטמבר 2026", year=2026, month=9, is_current=is_current,
         strip_months=[], hebrew_months=["", "ינואר"],
         project_month={"transactions": [], "expense": 0, "income": 0},
