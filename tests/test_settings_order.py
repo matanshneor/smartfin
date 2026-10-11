@@ -2,8 +2,9 @@
 
 עד אז השם ומקום העבודה נערכו מעיפרון ברשימת בני המשפחה, הצבע מכפתור באותה
 שורה, ומייל, טלפון וסיסמה בקבוצה שלישית, "אבטחה וחשבון". עכשיו:
-"הפרטים שלי" — כל מה ששייך רק לי; "המשפחה שלי" — מה שמשותף, עם רשימת בני
-משפחה לקריאה בלבד.
+"החשבון שלי" — כל מה ששייך רק לי; "המשפחה שלי" — מה שמשותף, עם רשימת בני
+משפחה לקריאה בלבד. הסדר: המשפחה ראשונה, אחריה לפי כמה נכנסים לכל קבוצה,
+ו"החשבון שלי" אחרון, מעל "התנתקות".
 """
 from pathlib import Path
 
@@ -37,8 +38,13 @@ def test_the_family_group_holds_what_is_shared():
     assert "<button" not in members
 
 
-def test_my_details_come_first_and_the_security_group_is_gone():
-    assert _HTML.index('id="my-details"') < _HTML.index('id="family-settings"')
+def test_the_groups_come_in_matans_order():
+    import re
+    titles = re.findall(r'<span class="group-title">([^<]+)</span>', _HTML)
+    assert titles == ["המשפחה שלי", "קטגוריות", "עסקאות קבועות", "העדפות משפחה",
+                      "תצוגה", "החשבון שלי"]
+    # "החשבון שלי" ממש מעל "התנתקות"
+    assert _HTML.index('id="my-details"') < _HTML.index('class="logout-form') 
     assert '<span class="group-title">אבטחה וחשבון</span>' not in _HTML
 
 
