@@ -102,7 +102,49 @@ document.addEventListener('click', function (e) {
 try {
     const arrived = window.location.hash.slice(1);
     if (BREAKDOWNS.includes(arrived)) flashBreakdown(arrived);
+    else if (arrived.indexOf('cat-') === 0) showCategory(arrived, false);
 } catch (err) { /* בלי הבהוב — לא בלי העמוד */ }
+
+// ── מהתראה אל היעד שלה (מתן, 11.10) ──
+// התראה על קטגוריה (‎#cat-<id>‎) פותחת את הקטגוריה בפירוט ההוצאות — עם
+// העסקאות שלה — ומבהבת אותה. ההגעה מהבית היא ניווט רגיל עם ‎#‎, ולחיצה
+// על התראה בעמוד עצמו נתפסת כאן. קטגוריה שלא נמצאה (חודש אחר, נמחקה)
+// נופלת לפירוט ההוצאות כולו.
+function showCategory(id, scroll) {
+    const wrap = document.getElementById(id);
+    if (!wrap) {
+        const box = flashBreakdown('expense-breakdown');
+        if (box && scroll) box.scrollIntoView({ behavior: 'auto', block: 'start' });
+        return box;
+    }
+    const trigger = wrap.querySelector('.legend-item.clickable');
+    if (trigger && trigger.getAttribute('aria-expanded') !== 'true') toggleExpand(trigger);
+    wrap.classList.remove('flash');
+    void wrap.offsetWidth;
+    wrap.classList.add('flash');
+    wrap.addEventListener('animationend', function () { wrap.classList.remove('flash'); }, { once: true });
+    if (scroll) {
+        const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        wrap.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' });
+    }
+    return wrap;
+}
+
+document.addEventListener('click', function (e) {
+    const link = e.target.closest('a.alert-card');
+    if (!link) return;
+    const id = (link.getAttribute('href') || '').slice(1);
+    const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    e.preventDefault();
+    if (id.indexOf('cat-') === 0) showCategory(id, true);
+    else if (BREAKDOWNS.includes(id)) {
+        const el = flashBreakdown(id);
+        if (el) el.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' });
+    } else {
+        window.scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' });
+    }
+    try { history.replaceState(null, '', '#' + id); } catch (err) { /* לא קריטי */ }
+});
 
 // ── חיפוש/סינון ברשימת "כל העסקאות" (client-side) ──
 //

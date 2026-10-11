@@ -136,6 +136,19 @@
     </a>
 </section>
 
+{# התראות החודש (מתן, 11.10) — רק כשיש. אותן התראות כמו בעמוד החודש,
+   ולחיצה מובילה ליעד שלהן שם: הקטגוריה שחרגה, או פירוט ההוצאות. #}
+{% if alerts %}
+<section class="alerts-section" aria-label="התראות">
+    {% for alert in alerts %}
+    <a class="alert-card {{ alert.severity }}"
+       href="{{ url_for('month_view') }}{% if alert.target %}#{{ alert.target }}{% endif %}">
+        <span class="alert-text">{{ alert.text }}</span>
+    </a>
+    {% endfor %}
+</section>
+{% endif %}
+
 {# השבוע (מתן, 30.9): הוצאות שוטפות מראשון עד שבת — בלי עסקאות קבועות ובלי
    פרויקטים. נגיעה ביום מציגה את העסקאות שלו. מופיע כשיש השבוע או בשבוע
    שעבר משהו להראות. #}

@@ -757,6 +757,15 @@ a.kpi-chip:active { transform: scale(0.97); }
     animation: breakdown-flash 1.6s ease-out;
 }
 
+/* הקטגוריה שהתראה הובילה אליה (מתן, 11.10) — אותו מרווח מהכותרת הדביקה
+   כמו הפירוטים */
+.legend-item-wrap[id] { scroll-margin-top: calc(58px + env(safe-area-inset-top, 0px)); }
+
+.legend-item-wrap.flash {
+    border-radius: var(--radius-sm);
+    animation: breakdown-flash 1.6s ease-out;
+}
+
 @keyframes breakdown-flash {
     0%, 30% { box-shadow: 0 0 0 3px var(--color-gold), var(--shadow-card); }
     100%    { box-shadow: 0 0 0 0 transparent, var(--shadow-card); }
@@ -764,7 +773,8 @@ a.kpi-chip:active { transform: scale(0.97); }
 
 @media (prefers-reduced-motion: reduce) {
     .chart-card.flash,
-    .category-grid.flash { animation: none; outline: 3px solid var(--color-gold); outline-offset: 2px; }
+    .category-grid.flash,
+    .legend-item-wrap.flash { animation: none; outline: 3px solid var(--color-gold); outline-offset: 2px; }
 }
 
 /* תא בתוך כרטיס — לחיצה מאירה אותו, לא מזיזה */
@@ -1149,6 +1159,15 @@ a.kpi-chip:active { transform: scale(0.97); }
     border-inline-start-color: var(--color-expense);
     color: var(--alert-danger-ink);
 }
+
+/* התראה היא קישור ליעד שלה (מתן, 11.10) */
+a.alert-card {
+    display: block;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.12s ease;
+}
+a.alert-card:active { transform: scale(0.98); }
 
 /* ─── FAB ─────────────────────────────────────────────────────── */
 
