@@ -279,7 +279,7 @@ def test_a_sideways_swipe_locks_the_page_and_a_scroll_does_not():
     בדפדפן: נבדק עם תנועה אלכסונית, אנכית וקצרה."""
     from pathlib import Path
     js = (Path(__file__).resolve().parent.parent / "frontend/static/js/core.js").read_text(encoding="utf-8")
-    part = js[js.index("let sx = null, sy = 0, axis = null, drag = null;"):]
+    part = js[js.index("let sx = null, sy = 0, axis = null, drag = null, x = 0, stopSpring = null;"):]
     move = part[part.index("document.addEventListener('touchmove'"):]
     move = move[:move.index("}, { passive: false });")]
     assert "axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';" in move

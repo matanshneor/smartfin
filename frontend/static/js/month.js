@@ -646,21 +646,24 @@ window.addEventListener('sf:refreshed', paint);
     const OPEN_WINDOWS = '.modal-overlay.open, .confirm-overlay.open, .search-screen:not([hidden]), '
                        + '.icon-picker:not([hidden]), .color-sheet:not([hidden]), .tx-screen.open';
     const EDGE = 22;          // ליד הקצה — ההחלקה של המערכת
-    const GO_DIST = 70;       // מרחק שמעבר לו עוברים חודש
-    const GO_SPEED = 0.45;    // או החלקה מהירה (פיקסלים למילישנייה)
+    const GO_DIST = 60;       // לאן התנועה מכוונת (מרחק + תנופה) — מעבר לזה עוברים חודש
     const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    let sx = null, sy = 0, axis = null, older = null, pending = null, busy = false, samples = [];
+    let sx = null, sy = 0, axis = null, pending = null, busy = false, samples = [];
+    let x = 0, stopSpring = null;
 
     function parts() { return Array.prototype.slice.call(document.querySelectorAll(SLIDE)); }
     function link(isOlder) {
         return document.querySelector('.stats-nav-btn[aria-label="' + (isOlder ? 'חודש קודם' : 'חודש הבא') + '"]');
     }
-    function setX(px, fade) {
+    // התוכן במרחק ‎v‎ מהמקום, ונחלש מעט ככל שהוא מתרחק — רמז שעוד רגע מתחלף
+    function place(v) {
+        x = v;
+        const fade = v ? String(Math.max(0.6, 1 - Math.abs(v) / (window.innerWidth * 1.6))) : '';
         parts().forEach(function (el) {
             el.style.transition = '';
-            el.style.transform = px ? 'translateX(' + px + 'px)' : '';
-            el.style.opacity = fade ? String(fade) : '';
+            el.style.transform = v ? 'translateX(' + v + 'px)' : '';
+            el.style.opacity = fade;
         });
     }
     function animate(els, frames, ms, easing) {
@@ -676,20 +679,33 @@ window.addEventListener('sf:refreshed', paint);
         }
         return pending.html;
     }
+    // חזרה למקום בקפיץ שממשיך את מהירות האצבע (כמו שורות העסקה והחלון)
+    function settle(v) {
+        if (stopSpring) { stopSpring(); stopSpring = null; }
+        if (calm || !x) { place(0); return; }
+        stopSpring = window.sfSpring(x, 0, v || 0, 0.32, 0.86, place,
+                                     function () { stopSpring = null; place(0); });
+    }
 
-    /* המעבר עצמו — מההחלקה, מהחצים ומהרצועה. ‎fromX‎: איפה התוכן עומד
-     * עכשיו (בהחלקה — איפה שהאצבע עזבה אותו). */
-    function go(url, isOlder, fromX) {
+    /* המעבר עצמו — מההחלקה, מהחצים ומהרצועה. ‎fromX‎/‎v‎: איפה התוכן עומד
+     * ובאיזו מהירות האצבע עזבה — היציאה ממשיכה את התנועה בלי תפר. */
+    function go(url, isOlder, fromX, v) {
         if (busy) return;
         busy = true;
+        if (stopSpring) { stopSpring(); stopSpring = null; }
         const dir = isOlder ? -1 : 1;           // שמאלה = קודם (הזמן זורם מימין לשמאל)
         const w = window.innerWidth;
         const html = prefetch(url);
         const out = parts();
+        const from = fromX || 0;
+        const speed = Math.max(Math.abs(v || 0), 1400);                         // px/s
+        const ms = Math.max(110, Math.min(220, (w * 0.6 - Math.abs(from)) / speed * 1000));
+        const fromOpacity = out[0] ? (parseFloat(out[0].style.opacity) || 1) : 1;
         out.forEach(function (el) { el.style.transform = ''; el.style.opacity = ''; });
-        animate(out, [{ transform: 'translateX(' + (fromX || 0) + 'px)', opacity: 1 },
-                      { transform: 'translateX(' + (dir * w * 0.5) + 'px)', opacity: 0 }],
-                170, 'cubic-bezier(0.4, 0, 1, 1)')
+        x = 0;
+        animate(out, [{ transform: 'translateX(' + from + 'px)', opacity: fromOpacity },
+                      { transform: 'translateX(' + (dir * w * 0.6) + 'px)', opacity: 0 }],
+                ms, 'cubic-bezier(0.3, 0, 0.8, 0.6)')
             .then(function () { return html; })
             .then(function (text) {
                 window.scrollTo(0, 0);
@@ -698,14 +714,12 @@ window.addEventListener('sf:refreshed', paint);
             .then(function (result) {
                 if (result !== 'swapped') return;
                 const inn = parts();
-                inn.forEach(function (el) { el.style.opacity = '0'; });
                 return animate(inn, [{ transform: 'translateX(' + (-dir * w * 0.35) + 'px)', opacity: 0 },
                                      { transform: 'translateX(0)', opacity: 1 }],
-                               240, 'cubic-bezier(0.22, 1, 0.36, 1)')
+                               300, 'cubic-bezier(0.22, 1, 0.36, 1)')
                     .then(function () {
                         inn.forEach(function (el) {
-                            el.style.opacity = '';
-                            el.getAnimations && el.getAnimations().forEach(function (a) { a.cancel(); });
+                            if (el.getAnimations) el.getAnimations().forEach(function (a) { a.cancel(); });
                         });
                     });
             })
@@ -723,8 +737,9 @@ window.addEventListener('sf:refreshed', paint);
         if (e.target.closest && e.target.closest(OWN_SWIPE)) return;
         if (document.querySelector(OPEN_WINDOWS)) return;
         if (!document.querySelector('.stats-nav-btn')) return;   // לא בעמוד החודש
-        sx = t.clientX; sy = t.clientY; axis = null; older = null;
-        samples = [{ t: e.timeStamp, x: sx }];
+        if (stopSpring) { stopSpring(); stopSpring = null; }   // תפיסה באמצע החזרה
+        sx = t.clientX - x; sy = t.clientY; axis = x ? 'x' : null;
+        samples = [{ t: e.timeStamp, p: t.clientX }];
     }, { passive: true });
 
     document.addEventListener('touchmove', function (e) {
@@ -735,42 +750,37 @@ window.addEventListener('sf:refreshed', paint);
             if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
             axis = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'x' : 'y';
             if (axis !== 'x') { sx = null; return; }
-            older = dx < 0;
-            const target = link(older);
+            sx += dx > 0 ? 8 : -8;              // בלי קפיצה של 8 הפיקסלים של ההחלטה
+            const target = link(dx < 0);
             if (target) prefetch(target.href);
         }
         e.preventDefault();                     // המסך לא נגלל כל עוד מדפדפים
-        samples.push({ t: e.timeStamp, x: t.clientX });
-        if (samples.length > 5) samples.shift();
-        setX(Math.round(dx * 0.9), Math.max(0.55, 1 - Math.abs(dx) / (window.innerWidth * 1.4)));
+        samples.push({ t: e.timeStamp, p: t.clientX });
+        if (samples.length > 6) samples.shift();
+        // אחד לאחד עם האצבע — בזמן אמת
+        place(t.clientX - sx);
     }, { passive: false });
 
     document.addEventListener('touchend', function (e) {
         if (sx === null) return;
-        const dx = e.changedTouches[0].clientX - sx;
         sx = null;
         if (axis !== 'x') return;
-        const first = samples[0], last = samples[samples.length - 1];
-        const speed = last && first && last.t > first.t ? (last.x - first.x) / (last.t - first.t) : 0;
-        const isOlder = dx < 0;
+        axis = null;
+        // לפי **לאן התנועה הולכת** (כמו "השבוע"): הנפה קצרה ומהירה מספיקה,
+        // וגרירה לצד אחד שחוזרת בהנפה לצד השני — התחרטות
+        const v = window.sfVelocity(samples, e.timeStamp);
+        const aim = x + window.sfProject(v, 0.99);
+        const isOlder = aim < 0;
         const target = link(isOlder);
-        const far = Math.abs(dx) >= GO_DIST || (Math.abs(speed) >= GO_SPEED && Math.sign(speed) === Math.sign(dx));
-        if (target && far) {
-            go(target.href, isOlder, Math.round(dx * 0.9));
+        if (target && Math.abs(aim) >= GO_DIST && (aim < 0) === (x < 0)) {
+            go(target.href, isOlder, x, v);
             return;
         }
-        // לא מספיק — חוזרים למקום
-        const back = parts();
-        back.forEach(function (el) {
-            el.style.transition = calm ? '' : 'transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s';
-            el.style.transform = '';
-            el.style.opacity = '';
-        });
-        setTimeout(function () { back.forEach(function (el) { el.style.transition = ''; }); }, 240);
+        settle(v);
     }, { passive: true });
 
     document.addEventListener('touchcancel', function () {
-        if (sx !== null && axis === 'x') setX(0);
+        if (sx !== null && axis === 'x') settle(0);
         sx = null; axis = null;
     }, { passive: true });
 
@@ -801,5 +811,5 @@ window.addEventListener('sf:refreshed', paint);
     });
 
     // חזרה עם "אחורה" — הדפדפן משחזר את העמוד כמו שהיה, כולל ההזזה
-    window.addEventListener('pageshow', function () { setX(0); busy = false; });
+    window.addEventListener('pageshow', function () { place(0); busy = false; });
 })();

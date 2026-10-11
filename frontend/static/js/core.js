@@ -574,37 +574,58 @@ document.addEventListener('click', function (e) {
 (function () {
     let loading = false;
 
-    // ‎dir‎: מאיזה צד הכרטיס יוצא בהחלקה (‎-1‎ שמאלה, ‎1‎ ימינה); בחצים — בלי
-    function goToWeek(card, offset, focusSel, dir) {
+    const calmMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // השבוע הבא נמשך כבר כשההחלקה מתחילה (מתן, 11.10 — "בזמן אמת"), אז
+    // בשחרור הוא בדרך כלל כבר כאן. בקשה אחת לכל שבוע.
+    let pending = null;
+    function fetchWeek(offset) {
+        if (!pending || pending.offset !== offset) {
+            const req = fetch('/api/week?offset=' + offset, { credentials: 'same-origin' })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('week ' + r.status);
+                    return r.text();
+                });
+            req.catch(function () { if (pending && pending.req === req) pending = null; });
+            pending = { offset: offset, req: req };
+        }
+        return pending.req;
+    }
+
+    // ‎dir‎: לאיזה צד הכרטיס יוצא בהחלקה (‎-1‎ שמאלה, ‎1‎ ימינה); בחצים — בלי.
+    // ‎fromX‎/‎v‎: איפה הכרטיס עומד ובאיזו מהירות האצבע עזבה — היציאה ממשיכה
+    // את התנועה בלי תפר.
+    function goToWeek(card, offset, focusSel, dir, fromX, v) {
         if (loading || offset < 0) return;
         loading = true;
         card.classList.add('is-loading');
-        if (dir && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) dir = 0;
-        if (dir) {
-            card.style.transition = 'transform 0.18s ease-in';
-            card.style.transform = 'translateX(' + (dir * 40) + 'px)';
+        if (dir && calmMotion) dir = 0;
+        let out = Promise.resolve();
+        if (dir && card.animate) {
+            const w = card.offsetWidth;
+            const speed = Math.max(Math.abs(v || 0), 1400);                 // px/s
+            const ms = Math.max(110, Math.min(220, (w * 0.7 - Math.abs(fromX || 0)) / speed * 1000));
+            card.style.transform = '';
+            out = card.animate([{ transform: 'translateX(' + (fromX || 0) + 'px)', opacity: 1 },
+                                { transform: 'translateX(' + (dir * w * 0.7) + 'px)', opacity: 0 }],
+                               { duration: ms, easing: 'cubic-bezier(0.3, 0, 0.8, 0.6)', fill: 'forwards' })
+                .finished.catch(function () {});
         }
-        fetch('/api/week?offset=' + offset, { credentials: 'same-origin' })
-            .then(function (r) {
-                if (!r.ok) throw new Error('week ' + r.status);
-                return r.text();
-            })
+        Promise.all([fetchWeek(offset), out])
+            .then(function (res) { return res[0]; })
             .then(function (html) {
                 const tpl = document.createElement('template');
                 tpl.innerHTML = html.trim();
                 const fresh = tpl.content.querySelector('.week-card');
                 if (!fresh) throw new Error('no card');
                 card.replaceWith(fresh);
-                if (dir) {
-                    // הכרטיס החדש נכנס מהצד השני
-                    fresh.style.transform = 'translateX(' + (-dir * 40) + 'px)';
-                    fresh.style.opacity = '0.6';
-                    requestAnimationFrame(function () {
-                        fresh.style.transition = 'transform 0.2s ease-out, opacity 0.2s';
-                        fresh.style.transform = '';
-                        fresh.style.opacity = '';
-                        setTimeout(function () { fresh.style.transition = ''; }, 220);
-                    });
+                pending = null;
+                if (dir && fresh.animate) {
+                    // הכרטיס החדש נכנס מהצד השני ונעצר בקפיץ רך
+                    const w = fresh.offsetWidth;
+                    fresh.animate([{ transform: 'translateX(' + (-dir * w * 0.35) + 'px)', opacity: 0 },
+                                   { transform: 'translateX(0)', opacity: 1 }],
+                                  { duration: 280, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
                 }
                 // המיקוד נשאר על החץ שנלחץ — מקלדת וקורא מסך לא "נופלים" לראש העמוד
                 const again = focusSel && fresh.querySelector(focusSel);
@@ -612,7 +633,8 @@ document.addEventListener('click', function (e) {
             })
             .catch(function () {
                 card.classList.remove('is-loading');
-                settle(card);
+                if (card.getAnimations) card.getAnimations().forEach(function (a) { a.cancel(); });
+                settle(card, 0);
                 window.showToast(window.sfNetError(), 'error');
             })
             .then(function () { loading = false; });
@@ -633,25 +655,30 @@ document.addEventListener('click', function (e) {
     // נעילת כיוון (מתן, 2.10: "שאם אני גולל שם, זה לא יגלול לי את המסך"):
     // אחרי 8px מחליטים פעם אחת אם זו תנועה הצידה או גלילה. הצידה — המסך
     // ננעל עד שהאצבע עוזבת, והכרטיס זז איתה. גלילה — לא נוגעים בכלום.
-    let sx = null, sy = 0, axis = null, drag = null;
+    let sx = null, sy = 0, axis = null, drag = null, x = 0, stopSpring = null;
     let samples = [];                  // מיקום וזמן, למהירות בעזיבה
 
     function canGo(card, older) {
         const b = card.querySelector('.week-nav-btn[aria-label="' + (older ? 'שבוע קודם' : 'שבוע הבא') + '"]');
         return !!(b && !b.disabled);
     }
-    function settle(card) {
-        card.style.transition = 'transform 0.2s ease-out';
-        card.style.transform = '';
-        setTimeout(function () { card.style.transition = ''; }, 220);
+    function placeCard(card, v) { x = v; card.style.transform = v ? 'translateX(' + v + 'px)' : ''; }
+    // חזרה למקום בקפיץ שממשיך את מהירות האצבע — לא מעבר קבוע של 0.2 שניות
+    function settle(card, v) {
+        if (stopSpring) { stopSpring(); stopSpring = null; }
+        card.style.transition = '';
+        if (calmMotion || !x) { placeCard(card, 0); return; }
+        stopSpring = window.sfSpring(x, 0, v || 0, 0.32, 0.86, function (p) { placeCard(card, p); },
+                                     function () { stopSpring = null; placeCard(card, 0); });
     }
 
     document.addEventListener('touchstart', function (e) {
         const card = e.target.closest && e.target.closest('.week-card');
         if (!card || loading || e.touches.length !== 1) { sx = null; return; }
-        sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+        if (stopSpring) { stopSpring(); stopSpring = null; }   // תפיסה באמצע החזרה
+        sx = e.touches[0].clientX - x; sy = e.touches[0].clientY;
         axis = null; drag = card;
-        samples = [{ t: e.timeStamp, p: sx }];
+        samples = [{ t: e.timeStamp, p: e.touches[0].clientX }];
     }, { passive: true });
 
     document.addEventListener('touchmove', function (e) {
@@ -660,13 +687,20 @@ document.addEventListener('click', function (e) {
         if (!axis) {
             if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
             axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+            if (axis === 'x') {
+                sx += dx > 0 ? 8 : -8;            // בלי קפיצה של 8 הפיקסלים של ההחלטה
+                // השבוע שלשם מושכים כבר נטען
+                const older = dx < 0;
+                if (canGo(drag, older)) fetchWeek(Number(drag.dataset.offset) + (older ? 1 : -1));
+            }
         }
         if (axis !== 'x') return;
         e.preventDefault();                       // המסך לא זז כל עוד מחליקים הצידה
-        // מעבר שאי אפשר לעשות (אין שבוע הבא / אין ישן יותר) — התנגדות חזקה
-        const allowed = canGo(drag, dx < 0);
+        // הכרטיס זז עם האצבע אחד לאחד (מתן, 11.10 — עד אז בחצי מהמהירות).
+        // לכיוון שאי אפשר ללכת אליו (אין שבוע הבא) — התנגדות שגדלה בהדרגה.
+        const raw = e.touches[0].clientX - sx;
         drag.style.transition = '';
-        drag.style.transform = 'translateX(' + Math.round(dx * (allowed ? 0.45 : 0.12)) + 'px)';
+        placeCard(drag, canGo(drag, raw < 0) ? raw : window.sfRubber(raw, drag.offsetWidth));
         samples.push({ t: e.timeStamp, p: e.touches[0].clientX });
         if (samples.length > 6) samples.shift();
     }, { passive: false });
@@ -674,18 +708,20 @@ document.addEventListener('click', function (e) {
     document.addEventListener('touchend', function (e) {
         if (sx === null || !drag) return;
         const card = drag;
-        const dx = e.changedTouches[0].clientX - sx;
+        const dx = x;
         const wasX = axis === 'x';
         sx = null; drag = null; axis = null;
         if (!wasX) return;
         // לפי **לאן התנועה הולכת** ולא רק כמה זזה (מתן, 7.10 — בנוסח אפל):
         // הנפה קצרה ומהירה מעבירה שבוע, וגרירה ארוכה שחוזרת לאחור — לא
-        const aim = dx + window.sfProject(window.sfVelocity(samples, e.timeStamp), 0.99);
+        const v = window.sfVelocity(samples, e.timeStamp);
+        const aim = dx + window.sfProject(v, 0.99);
         const older = aim < 0;
         // גרירה לצד אחד והנפה חזרה לצד השני — התחרטות, לא בקשה לשבוע ההפוך
-        if (Math.abs(aim) < 50 || (aim < 0) !== (dx < 0) || !canGo(card, older)) { settle(card); return; }
+        if (Math.abs(aim) < 50 || (aim < 0) !== (dx < 0) || !canGo(card, older)) { settle(card, v); return; }
         const offset = Number(card.dataset.offset);
-        goToWeek(card, older ? offset + 1 : offset - 1, null, older ? -1 : 1);
+        x = 0;
+        goToWeek(card, older ? offset + 1 : offset - 1, null, older ? -1 : 1, dx, v);
     }, { passive: true });
 
     document.addEventListener('touchcancel', function () {

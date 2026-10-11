@@ -5176,3 +5176,8 @@ body.tx-screen-open { overflow: hidden; }
         bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     }
 }
+
+/* החלקה הצידה על אלה שייכת לעמוד (עריכה/מחיקה, דפדוף שבוע), וגלילה למעלה
+   ולמטה — לדפדפן. כשהדפדפן יודע את זה מראש הוא לא מחכה לבדוק, וההחלקה
+   מגיבה מהמגע הראשון (מתן, 11.10). */
+.transaction-item, .cat-tx-row, .recurring-row, .week-card { touch-action: pan-y; }
