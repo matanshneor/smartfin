@@ -97,217 +97,12 @@
 
 <div class="settings-groups">
 
-    <!-- ═══ הפרטים שלי ═══ -->
-    {# סדר בהגדרות (מתן, 11.10): כל מה ששייך רק לי — במקום אחד. עד אז השם ומקום
-       העבודה נערכו מעיפרון בשורה שלי ברשימת בני המשפחה, הצבע מכפתור באותה
-       שורה, ומייל, טלפון וסיסמה ב"אבטחה וחשבון". כל שורה כאן: מה רשום, וכפתור
-       עדכון. #}
-    <section class="settings-group" id="my-details">
-        <button type="button" class="settings-group-header" aria-expanded="false">
-            <span class="group-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-                </svg>
-            </span>
-            <span class="group-text">
-                {# בלי המייל מתחת: הוא כבר בראש העמוד #}
-                <span class="group-title">הפרטים שלי</span>
-            </span>
-            <span class="group-chevron">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </span>
-        </button>
-
-        <div class="settings-group-body">
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">שם ומקום עבודה</p>
-                    <p class="group-row-value" id="accountNameDisplay">{{ account.full_name }}</p>
-                    <p class="group-row-hint" id="accountWorkplaceDisplay" {% if not account.workplace %}style="display:none;"{% endif %}>{{ account.workplace or '' }}</p>
-                </div>
-                <button class="btn-sm btn-ghost" id="editProfileBtn">עדכון</button>
-            </div>
-            <div class="account-edit" id="profileEdit">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label" for="editFirstName">שם פרטי</label>
-                        <input class="form-input" type="text" id="editFirstName" value="{{ account.first_name }}" maxlength="40">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="editLastName">שם משפחה</label>
-                        <input class="form-input" type="text" id="editLastName" value="{{ account.last_name }}" maxlength="40">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="editWorkplace">מקום עבודה</label>
-                    <input class="form-input" type="text" id="editWorkplace" value="{{ account.workplace }}"
-                           placeholder="לדוגמה: אינטל, עצמאי…" maxlength="60" autocomplete="organization">
-                </div>
-                <p class="form-error" id="profileError" role="alert"></p>
-                <div class="edit-actions">
-                    <button class="btn-sm btn-primary" id="saveProfileBtn">שמירה</button>
-                    <button class="btn-sm btn-ghost" id="cancelProfileBtn">ביטול</button>
-                </div>
-            </div>
-
-            {% if member_colors and user.id in member_colors %}
-            {% set mine = member_colors.get(user.id) %}
-            <div class="group-divider"></div>
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">הצבע שלי</p>
-                    <p class="group-row-hint">כך מופיע השם שלך ליד עסקאות ובגרפים</p>
-                </div>
-                <button type="button" class="btn-sm btn-ghost member-color-open" id="memberColorOpen" aria-haspopup="dialog">
-                    <span class="member-color-swatch" style="background: {{ color_hex[mine] }};"></span>
-                    עדכון
-                </button>
-            </div>
-            {# חלון בחירת הצבע: כל צבע עם דוגמה של תג השם שלי בצבע הזה #}
-            {% set me = members | selectattr('id', 'equalto', user.id) | first %}
-            {% set mine = member_colors.get(user.id) %}
-            <div class="color-sheet" id="memberColorSheet" role="dialog" aria-modal="true" aria-labelledby="memberColorTitle" hidden>
-                <div class="color-sheet-card">
-                    <p class="color-sheet-title" id="memberColorTitle">הצבע שלך</p>
-                    <p class="color-sheet-hint">כך יופיע השם שלך ליד עסקאות ובגרפים</p>
-                    <div class="color-sheet-grid">
-                        {% for idx, hex in color_hex | dictsort %}
-                        {% set taken = idx != mine and idx in member_colors.values() | list %}
-                        <button type="button" class="color-option{% if idx == mine %} is-current{% endif %}"
-                                data-member="{{ user.id }}" data-color="{{ idx }}"
-                                aria-pressed="{{ 'true' if idx == mine else 'false' }}"
-                                {% if taken %}disabled{% endif %}>
-                            <span class="owner-pill owner-{{ idx }}">{{ me.name if me else user.name }}</span>
-                            <span class="color-option-note">{% if idx == mine %}הצבע שלך{% elif taken %}תפוס{% endif %}</span>
-                        </button>
-                        {% endfor %}
-                    </div>
-                    <button type="button" class="btn-sm btn-ghost color-sheet-close" id="memberColorClose">סגירה</button>
-                </div>
-            </div>
-            {% endif %}
-
-            <div class="group-divider"></div>
-
-            {# מייל וטלפון — פרטי ההתחברות, במקום אחד (מתן, 1.10). הטלפון עבר
-               לכאן מעריכת הפרטים ב"המשפחה שלי". #}
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">מייל</p>
-                    <p class="group-row-value" dir="ltr" style="text-align:right;" id="accountEmailValue">{{ account.email }}</p>
-                    <p class="group-row-hint" id="emailPendingNote" {% if not account.pending_email %}hidden{% endif %}>ממתין לאישור: <span dir="ltr" id="emailPendingValue">{{ account.pending_email or '' }}</span> — המייל יתחלף אחרי הלחיצה על הקישור שנשלח אליו. אם הגיע מייל אישור גם לכתובת הנוכחית, צריך ללחוץ גם עליו.</p>
-                </div>
-                <button class="btn-sm btn-ghost" id="toggleEmailBtn">עדכון כתובת מייל</button>
-            </div>
-
-            <div class="password-form" id="emailForm">
-                <div class="form-group">
-                    <label class="form-label" for="newEmail">מייל חדש</label>
-                    <input class="form-input" type="email" id="newEmail" dir="ltr" style="text-align:right;"
-                           placeholder="name@example.com" autocomplete="email" maxlength="254">
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="emailCurrentPassword">הסיסמה הנוכחית</label>
-                    <input class="form-input" type="password" id="emailCurrentPassword" placeholder="••••••••" autocomplete="current-password">
-                </div>
-                <p class="field-hint">נשלח קישור אישור למייל החדש. המייל יתחלף רק אחרי הלחיצה עליו, ועד אז מתחברים עם הנוכחי.</p>
-                <p class="form-error" id="emailError" role="alert"></p>
-                <div class="edit-actions">
-                    <button class="btn-sm btn-primary" id="saveEmailBtn">שליחת קישור אישור</button>
-                    <button class="btn-sm btn-ghost" id="cancelEmailBtn">ביטול</button>
-                </div>
-            </div>
-
-            <div class="group-divider"></div>
-
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">טלפון</p>
-                    <p class="group-row-value" dir="ltr" style="text-align:right;" id="accountPhoneValue">{{ account.phone or 'לא הוזן' }}</p>
-                </div>
-                <button class="btn-sm btn-ghost" id="togglePhoneBtn">עדכון מספר טלפון</button>
-            </div>
-
-            <div class="password-form" id="phoneForm">
-                <div class="form-group">
-                    <label class="form-label" for="newPhone">מספר טלפון</label>
-                    <input class="form-input" type="tel" id="newPhone" value="{{ account.phone }}"
-                           placeholder="050-1234567" dir="ltr" style="text-align:right;" autocomplete="tel">
-                </div>
-                <p class="field-hint">אפשר להתחבר גם עם המספר הזה במקום המייל</p>
-                <p class="form-error" id="phoneError" role="alert"></p>
-                <div class="edit-actions">
-                    <button class="btn-sm btn-primary" id="savePhoneBtn">שמירה</button>
-                    <button class="btn-sm btn-ghost" id="cancelPhoneBtn">ביטול</button>
-                </div>
-            </div>
-
-            <div class="group-divider"></div>
-
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">סיסמה</p>
-                    <p class="group-row-hint">שינוי סיסמת ההתחברות שלך</p>
-                </div>
-                <button class="btn-sm btn-ghost" id="togglePasswordBtn">עדכון סיסמה</button>
-            </div>
-
-            <div class="password-form" id="passwordForm">
-                <div class="form-group">
-                    <label class="form-label" for="currentPassword">סיסמה נוכחית</label>
-                    <input class="form-input" type="password" id="currentPassword" placeholder="••••••••" autocomplete="current-password">
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="newPassword">סיסמה חדשה</label>
-                    <input class="form-input" type="password" id="newPassword" placeholder="••••••••" minlength="6" autocomplete="new-password">
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="newPasswordConfirm">אימות סיסמה חדשה</label>
-                    <input class="form-input" type="password" id="newPasswordConfirm" placeholder="••••••••" minlength="6" autocomplete="new-password">
-                </div>
-                <p class="form-error" id="passwordError" role="alert"></p>
-                <p class="form-success" id="passwordSuccess"></p>
-                <div class="edit-actions">
-                    <button class="btn-sm btn-primary" id="changePasswordBtn">עדכון הסיסמה</button>
-                    <button class="btn-sm btn-ghost" id="cancelPasswordBtn">ביטול</button>
-                </div>
-            </div>
-
-            <div class="group-divider"></div>
-            <details class="advanced-options">
-                <summary class="advanced-summary">אפשרויות מתקדמות</summary>
-                <!-- מחיקת חשבון לצמיתות -->
-                <div class="group-row">
-                    <div class="group-row-info">
-                        <p class="group-row-label">מחיקת חשבון</p>
-                        <p class="group-row-hint">מחיקה לצמיתות של החשבון וכל הנתונים שלו</p>
-                    </div>
-                    <button class="btn-sm btn-ghost btn-danger-ghost" id="toggleDeleteAccountBtn">מחיקת החשבון</button>
-                </div>
-
-                <div class="password-form" id="deleteAccountForm">
-                    <p class="delete-account-warning">
-                        המחיקה סופית ולא ניתנת לביטול. החשבון וכל הנתונים שלו יימחקו לצמיתות.
-                        אם יש בני משפחה נוספים — הנתונים המשפחתיים יישארו אצלם, והעסקאות שלך
-                        יסומנו כמשותפות. אם אין — כל נתוני המשפחה יימחקו גם הם.
-                    </p>
-                    <div class="form-group">
-                        <label class="form-label" for="deleteAccountPassword">אישור עם הסיסמה הנוכחית</label>
-                        <input class="form-input" type="password" id="deleteAccountPassword" placeholder="••••••••" autocomplete="current-password">
-                    </div>
-                    <p class="form-error" id="deleteAccountError" role="alert"></p>
-                    <div class="edit-actions">
-                        <button class="btn-sm btn-danger" id="confirmDeleteAccountBtn">מחיקה לצמיתות</button>
-                        <button class="btn-sm btn-ghost" id="cancelDeleteAccountBtn">ביטול</button>
-                    </div>
-                </div>
-            </details>
-        </div>
-    </section>
-
+    {# סדר הקבוצות (מתן, 11.10): המשפחה, ואז לפי כמה נכנסים לכל אחת —
+       קטגוריות ועסקאות קבועות קודם, הגדרות של פעם אחת אחריהן, ו"החשבון שלי"
+       אחרון, ממש מעל "התנתקות". #}
     <!-- ═══ המשפחה שלי ═══ -->
     {# מה שמשותף לכל המשפחה (מתן, 11.10). רשימת בני המשפחה לקריאה בלבד — את
-       הפרטים שלי עורכים ב"הפרטים שלי". #}
+       הפרטים שלי עורכים ב"החשבון שלי". #}
     <section class="settings-group" id="family-settings">
         <button type="button" class="settings-group-header" aria-expanded="false">
             <span class="group-icon">
@@ -554,67 +349,6 @@
         </div>
     </section>
 
-    <!-- ═══ קבוצה: העדפות משפחה ═══ -->
-    <section class="settings-group">
-        <button type="button" class="settings-group-header" aria-expanded="false">
-            <span class="group-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
-                    <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
-                    <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
-                    <line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>
-                </svg>
-            </span>
-            <span class="group-text">
-                <span class="group-title">העדפות משפחה</span>
-                <span class="group-sub">שיוך עסקאות</span>
-            </span>
-            <span class="group-chevron">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </span>
-        </button>
-
-        <div class="settings-group-body">
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">שיוך הוצאות</p>
-                    <p class="group-row-hint">בוחרים "של מי" כל הוצאה, ובעמוד החודש מופיע גרף חלוקה</p>
-                </div>
-                <label class="pref-switch">
-                    <input type="checkbox" aria-label="שיוך הוצאות" data-pref-type="expense"
-                           {% if family_settings.owner_attribution.expense %}checked{% endif %}>
-                    <span class="pref-slider"></span>
-                </label>
-            </div>
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">שיוך הכנסות</p>
-                    <p class="group-row-hint">בוחרים "של מי" כל הכנסה, ובעמוד החודש מופיע גרף חלוקה</p>
-                </div>
-                <label class="pref-switch">
-                    <input type="checkbox" aria-label="שיוך הכנסות" data-pref-type="income"
-                           {% if family_settings.owner_attribution.income %}checked{% endif %}>
-                    <span class="pref-slider"></span>
-                </label>
-            </div>
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">שיוך חיסכון</p>
-                    <p class="group-row-hint">בוחרים "של מי" כל חיסכון, ובעמוד החודש מופיע גרף חלוקה</p>
-                </div>
-                <label class="pref-switch">
-                    <input type="checkbox" aria-label="שיוך חיסכון" data-pref-type="savings"
-                           {% if family_settings.owner_attribution.savings %}checked{% endif %}>
-                    <span class="pref-slider"></span>
-                </label>
-            </div>
-
-            {# "התראות על חריגות" ו"מקום עבודה על שורות משכורת" ירדו (מתן,
-               11.10). מי שרוצה התראות קובע תקציב לקטגוריה — חריגה ממנו מופיעה
-               בבית. מקום העבודה מוצג תמיד מתחת למשכורת. #}
-        </div>
-    </section>
-
     <!-- ═══ קבוצה 3: עסקאות קבועות ═══ -->
     <section class="settings-group">
         <button type="button" class="settings-group-header" aria-expanded="false">
@@ -699,6 +433,67 @@
         </div>
     </section>
 
+    <!-- ═══ קבוצה: העדפות משפחה ═══ -->
+    <section class="settings-group">
+        <button type="button" class="settings-group-header" aria-expanded="false">
+            <span class="group-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
+                    <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
+                    <line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>
+                </svg>
+            </span>
+            <span class="group-text">
+                <span class="group-title">העדפות משפחה</span>
+                <span class="group-sub">שיוך עסקאות</span>
+            </span>
+            <span class="group-chevron">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+        </button>
+
+        <div class="settings-group-body">
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">שיוך הוצאות</p>
+                    <p class="group-row-hint">בוחרים "של מי" כל הוצאה, ובעמוד החודש מופיע גרף חלוקה</p>
+                </div>
+                <label class="pref-switch">
+                    <input type="checkbox" aria-label="שיוך הוצאות" data-pref-type="expense"
+                           {% if family_settings.owner_attribution.expense %}checked{% endif %}>
+                    <span class="pref-slider"></span>
+                </label>
+            </div>
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">שיוך הכנסות</p>
+                    <p class="group-row-hint">בוחרים "של מי" כל הכנסה, ובעמוד החודש מופיע גרף חלוקה</p>
+                </div>
+                <label class="pref-switch">
+                    <input type="checkbox" aria-label="שיוך הכנסות" data-pref-type="income"
+                           {% if family_settings.owner_attribution.income %}checked{% endif %}>
+                    <span class="pref-slider"></span>
+                </label>
+            </div>
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">שיוך חיסכון</p>
+                    <p class="group-row-hint">בוחרים "של מי" כל חיסכון, ובעמוד החודש מופיע גרף חלוקה</p>
+                </div>
+                <label class="pref-switch">
+                    <input type="checkbox" aria-label="שיוך חיסכון" data-pref-type="savings"
+                           {% if family_settings.owner_attribution.savings %}checked{% endif %}>
+                    <span class="pref-slider"></span>
+                </label>
+            </div>
+
+            {# "התראות על חריגות" ו"מקום עבודה על שורות משכורת" ירדו (מתן,
+               11.10). מי שרוצה התראות קובע תקציב לקטגוריה — חריגה ממנו מופיעה
+               בבית. מקום העבודה מוצג תמיד מתחת למשכורת. #}
+        </div>
+    </section>
+
     <!-- ═══ תצוגה — לכל טלפון בנפרד (מתן, 30.9 — סבב 6) ═══ -->
     <section class="settings-group" id="display-settings">
         <button type="button" class="settings-group-header" aria-expanded="false">
@@ -738,6 +533,214 @@
         </div>
     </section>
 
+
+    <!-- ═══ החשבון שלי ═══ -->
+    {# סדר בהגדרות (מתן, 11.10): כל מה ששייך רק לי — במקום אחד. עד אז השם ומקום
+       העבודה נערכו מעיפרון בשורה שלי ברשימת בני המשפחה, הצבע מכפתור באותה
+       שורה, ומייל, טלפון וסיסמה ב"אבטחה וחשבון". כל שורה כאן: מה רשום, וכפתור
+       עדכון. #}
+    <section class="settings-group" id="my-details">
+        <button type="button" class="settings-group-header" aria-expanded="false">
+            <span class="group-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+            </span>
+            <span class="group-text">
+                {# בלי המייל מתחת: הוא כבר בראש העמוד #}
+                <span class="group-title">החשבון שלי</span>
+            </span>
+            <span class="group-chevron">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+        </button>
+
+        <div class="settings-group-body">
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">שם ומקום עבודה</p>
+                    <p class="group-row-value" id="accountNameDisplay">{{ account.full_name }}</p>
+                    <p class="group-row-hint" id="accountWorkplaceDisplay" {% if not account.workplace %}style="display:none;"{% endif %}>{{ account.workplace or '' }}</p>
+                </div>
+                <button class="btn-sm btn-ghost" id="editProfileBtn">עדכון</button>
+            </div>
+            <div class="account-edit" id="profileEdit">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="editFirstName">שם פרטי</label>
+                        <input class="form-input" type="text" id="editFirstName" value="{{ account.first_name }}" maxlength="40">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="editLastName">שם משפחה</label>
+                        <input class="form-input" type="text" id="editLastName" value="{{ account.last_name }}" maxlength="40">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="editWorkplace">מקום עבודה</label>
+                    <input class="form-input" type="text" id="editWorkplace" value="{{ account.workplace }}"
+                           placeholder="לדוגמה: אינטל, עצמאי…" maxlength="60" autocomplete="organization">
+                </div>
+                <p class="form-error" id="profileError" role="alert"></p>
+                <div class="edit-actions">
+                    <button class="btn-sm btn-primary" id="saveProfileBtn">שמירה</button>
+                    <button class="btn-sm btn-ghost" id="cancelProfileBtn">ביטול</button>
+                </div>
+            </div>
+
+            {% if member_colors and user.id in member_colors %}
+            {% set mine = member_colors.get(user.id) %}
+            <div class="group-divider"></div>
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">הצבע שלי</p>
+                    <p class="group-row-hint">כך מופיע השם שלך ליד עסקאות ובגרפים</p>
+                </div>
+                <button type="button" class="btn-sm btn-ghost member-color-open" id="memberColorOpen" aria-haspopup="dialog">
+                    <span class="member-color-swatch" style="background: {{ color_hex[mine] }};"></span>
+                    עדכון
+                </button>
+            </div>
+            {# חלון בחירת הצבע: כל צבע עם דוגמה של תג השם שלי בצבע הזה #}
+            {% set me = members | selectattr('id', 'equalto', user.id) | first %}
+            {% set mine = member_colors.get(user.id) %}
+            <div class="color-sheet" id="memberColorSheet" role="dialog" aria-modal="true" aria-labelledby="memberColorTitle" hidden>
+                <div class="color-sheet-card">
+                    <p class="color-sheet-title" id="memberColorTitle">הצבע שלך</p>
+                    <p class="color-sheet-hint">כך יופיע השם שלך ליד עסקאות ובגרפים</p>
+                    <div class="color-sheet-grid">
+                        {% for idx, hex in color_hex | dictsort %}
+                        {% set taken = idx != mine and idx in member_colors.values() | list %}
+                        <button type="button" class="color-option{% if idx == mine %} is-current{% endif %}"
+                                data-member="{{ user.id }}" data-color="{{ idx }}"
+                                aria-pressed="{{ 'true' if idx == mine else 'false' }}"
+                                {% if taken %}disabled{% endif %}>
+                            <span class="owner-pill owner-{{ idx }}">{{ me.name if me else user.name }}</span>
+                            <span class="color-option-note">{% if idx == mine %}הצבע שלך{% elif taken %}תפוס{% endif %}</span>
+                        </button>
+                        {% endfor %}
+                    </div>
+                    <button type="button" class="btn-sm btn-ghost color-sheet-close" id="memberColorClose">סגירה</button>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="group-divider"></div>
+
+            {# מייל וטלפון — פרטי ההתחברות, במקום אחד (מתן, 1.10). הטלפון עבר
+               לכאן מעריכת הפרטים ב"המשפחה שלי". #}
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">מייל</p>
+                    <p class="group-row-value" dir="ltr" style="text-align:right;" id="accountEmailValue">{{ account.email }}</p>
+                    <p class="group-row-hint" id="emailPendingNote" {% if not account.pending_email %}hidden{% endif %}>ממתין לאישור: <span dir="ltr" id="emailPendingValue">{{ account.pending_email or '' }}</span> — המייל יתחלף אחרי הלחיצה על הקישור שנשלח אליו. אם הגיע מייל אישור גם לכתובת הנוכחית, צריך ללחוץ גם עליו.</p>
+                </div>
+                <button class="btn-sm btn-ghost" id="toggleEmailBtn">עדכון כתובת מייל</button>
+            </div>
+
+            <div class="password-form" id="emailForm">
+                <div class="form-group">
+                    <label class="form-label" for="newEmail">מייל חדש</label>
+                    <input class="form-input" type="email" id="newEmail" dir="ltr" style="text-align:right;"
+                           placeholder="name@example.com" autocomplete="email" maxlength="254">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="emailCurrentPassword">הסיסמה הנוכחית</label>
+                    <input class="form-input" type="password" id="emailCurrentPassword" placeholder="••••••••" autocomplete="current-password">
+                </div>
+                <p class="field-hint">נשלח קישור אישור למייל החדש. המייל יתחלף רק אחרי הלחיצה עליו, ועד אז מתחברים עם הנוכחי.</p>
+                <p class="form-error" id="emailError" role="alert"></p>
+                <div class="edit-actions">
+                    <button class="btn-sm btn-primary" id="saveEmailBtn">שליחת קישור אישור</button>
+                    <button class="btn-sm btn-ghost" id="cancelEmailBtn">ביטול</button>
+                </div>
+            </div>
+
+            <div class="group-divider"></div>
+
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">טלפון</p>
+                    <p class="group-row-value" dir="ltr" style="text-align:right;" id="accountPhoneValue">{{ account.phone or 'לא הוזן' }}</p>
+                </div>
+                <button class="btn-sm btn-ghost" id="togglePhoneBtn">עדכון מספר טלפון</button>
+            </div>
+
+            <div class="password-form" id="phoneForm">
+                <div class="form-group">
+                    <label class="form-label" for="newPhone">מספר טלפון</label>
+                    <input class="form-input" type="tel" id="newPhone" value="{{ account.phone }}"
+                           placeholder="050-1234567" dir="ltr" style="text-align:right;" autocomplete="tel">
+                </div>
+                <p class="field-hint">אפשר להתחבר גם עם המספר הזה במקום המייל</p>
+                <p class="form-error" id="phoneError" role="alert"></p>
+                <div class="edit-actions">
+                    <button class="btn-sm btn-primary" id="savePhoneBtn">שמירה</button>
+                    <button class="btn-sm btn-ghost" id="cancelPhoneBtn">ביטול</button>
+                </div>
+            </div>
+
+            <div class="group-divider"></div>
+
+            <div class="group-row">
+                <div class="group-row-info">
+                    <p class="group-row-label">סיסמה</p>
+                    <p class="group-row-hint">שינוי סיסמת ההתחברות שלך</p>
+                </div>
+                <button class="btn-sm btn-ghost" id="togglePasswordBtn">עדכון סיסמה</button>
+            </div>
+
+            <div class="password-form" id="passwordForm">
+                <div class="form-group">
+                    <label class="form-label" for="currentPassword">סיסמה נוכחית</label>
+                    <input class="form-input" type="password" id="currentPassword" placeholder="••••••••" autocomplete="current-password">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="newPassword">סיסמה חדשה</label>
+                    <input class="form-input" type="password" id="newPassword" placeholder="••••••••" minlength="6" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="newPasswordConfirm">אימות סיסמה חדשה</label>
+                    <input class="form-input" type="password" id="newPasswordConfirm" placeholder="••••••••" minlength="6" autocomplete="new-password">
+                </div>
+                <p class="form-error" id="passwordError" role="alert"></p>
+                <p class="form-success" id="passwordSuccess"></p>
+                <div class="edit-actions">
+                    <button class="btn-sm btn-primary" id="changePasswordBtn">עדכון הסיסמה</button>
+                    <button class="btn-sm btn-ghost" id="cancelPasswordBtn">ביטול</button>
+                </div>
+            </div>
+
+            <div class="group-divider"></div>
+            <details class="advanced-options">
+                <summary class="advanced-summary">אפשרויות מתקדמות</summary>
+                <!-- מחיקת חשבון לצמיתות -->
+                <div class="group-row">
+                    <div class="group-row-info">
+                        <p class="group-row-label">מחיקת חשבון</p>
+                        <p class="group-row-hint">מחיקה לצמיתות של החשבון וכל הנתונים שלו</p>
+                    </div>
+                    <button class="btn-sm btn-ghost btn-danger-ghost" id="toggleDeleteAccountBtn">מחיקת החשבון</button>
+                </div>
+
+                <div class="password-form" id="deleteAccountForm">
+                    <p class="delete-account-warning">
+                        המחיקה סופית ולא ניתנת לביטול. החשבון וכל הנתונים שלו יימחקו לצמיתות.
+                        אם יש בני משפחה נוספים — הנתונים המשפחתיים יישארו אצלם, והעסקאות שלך
+                        יסומנו כמשותפות. אם אין — כל נתוני המשפחה יימחקו גם הם.
+                    </p>
+                    <div class="form-group">
+                        <label class="form-label" for="deleteAccountPassword">אישור עם הסיסמה הנוכחית</label>
+                        <input class="form-input" type="password" id="deleteAccountPassword" placeholder="••••••••" autocomplete="current-password">
+                    </div>
+                    <p class="form-error" id="deleteAccountError" role="alert"></p>
+                    <div class="edit-actions">
+                        <button class="btn-sm btn-danger" id="confirmDeleteAccountBtn">מחיקה לצמיתות</button>
+                        <button class="btn-sm btn-ghost" id="cancelDeleteAccountBtn">ביטול</button>
+                    </div>
+                </div>
+            </details>
+        </div>
+    </section>
 
     {# התנתקות מתחת לכל התיבות, ולא בתוך "חשבון" (מתן, 1.10).
        טופס POST ולא קישור: GET /logout אפשר להפעיל מאתר אחר עם
