@@ -60,3 +60,28 @@ def test_swiping_a_row_does_not_scroll_the_page_under_it():
 
 def test_the_browser_knows_sideways_belongs_to_the_page():
     assert re.search(r"\.transaction-item, \.cat-tx-row, \.recurring-row, \.week-card \{ touch-action: pan-y; \}", _CSS)
+
+
+# ─── ההגדרות נכנסות במסך אחד; חלון ההוספה נמתח למעלה (מתן, 11.10) ─────────
+
+_SETTINGS = (Path(__file__).resolve().parent.parent / "frontend/templates/settings.html").read_text(encoding="utf-8")
+
+
+def test_settings_does_not_keep_room_for_a_plus_button_it_does_not_have():
+    """96 פיקסלים בתחתית בשביל כפתור + שלא קיים בהגדרות — אחרי החלקה לתחתית
+    הקפיץ נעצר שם והכותרת "הגדרות" נשארה מחוץ למסך. בדפדפן: נמדד, הדף לא
+    גבוה מהמסך כשהכול סגור (גם עם אזורי האייפון של האפליקציה המותקנת)."""
+    assert "{% block body_class %}no-fab settings-page{% endblock %}" in _SETTINGS
+    rule = _CSS[_CSS.index("body.settings-page .main-content {"):]
+    rule = rule[:rule.index("}")]
+    assert "96px" not in rule and "env(safe-area-inset-bottom, 0px)" in rule
+
+
+def test_the_add_window_stretches_up_and_springs_back():
+    tx = _read("transactions.js")
+    move = tx[tx.index("overlay.addEventListener('touchmove'"):]
+    move = move[:move.index("}, { passive: false });")]
+    assert "(dy < 0 && !atEnd)" in move                     # רק כשהתוכן כבר בסופו
+    assert "paint(raw >= 0 ? raw : sfRubber(raw, sheet.offsetHeight));" in move
+    # ובלי רווח ריק מתחת לחלון כשהוא נמתח
+    assert "box-shadow: 0 160px 0 0 var(--color-bg-elevated)" in _CSS
