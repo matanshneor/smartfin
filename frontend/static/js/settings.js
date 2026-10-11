@@ -472,7 +472,7 @@ const accountNameDisplay = document.getElementById('accountNameDisplay');
 
 if (editProfileBtn) {
     editProfileBtn.addEventListener('click', function () {
-        profileEdit.classList.add('visible');
+        profileEdit.classList.toggle('visible');
     });
 }
 
@@ -502,6 +502,8 @@ function submitProfile(workplaceScope) {
         saveProfileBtn.disabled = false;
         if (d.error) { profileError.textContent = d.error; return; }
         accountNameDisplay.textContent = d.full_name;
+        // והשורה שלי ברשימת בני המשפחה
+        document.querySelectorAll('[data-my-name]').forEach(function (el) { el.textContent = d.full_name; });
         // גם בראש העמוד — בלי זה הוא נשאר הישן עד רענון (מתן, 1.10)
         const heroName = document.getElementById('heroProfileName');
         if (heroName) heroName.textContent = d.full_name;
