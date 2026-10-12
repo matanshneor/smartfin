@@ -210,9 +210,9 @@
             li.appendChild(rm);
             list.appendChild(li);
         });
-        // נעילה ולא כניסה (מתן, 13.10): בלי Face ID האפליקציה לא ננעלת בכלל
-        hint.textContent = items.length ? 'מופעל — אחרי 5 דקות בלי שימוש, האפליקציה נפתחת רק בסריקת פנים'
-                                        : 'אם לא השתמשתם באפליקציה 5 דקות — היא תיפתח רק בסריקת פנים';
+        // "נעילת האפליקציה" — בלי פירוט (מתן, 13.10). מתחת לשם: "מופעל", או כלום
+        hint.textContent = items.length ? 'מופעל' : '';
+        hint.hidden = !items.length;
         // אחרי ההפעלה — בלי כפתור (מתן, 12.10: "מה זה הוספת מכשיר?"). המפתח
         // עובר לבד בין מכשירי האפל דרך iCloud; מכשיר אחר — הסרה והפעלה ממנו.
         enableBtn.hidden = items.length > 0;
@@ -240,7 +240,7 @@
             })
             .then(function () {
                 setFlag(true);
-                if (window.showToast) window.showToast('הנעילה עם ' + NAME + ' הופעלה', 'success');
+                if (window.showToast) window.showToast('נעילת האפליקציה באמצעות ' + NAME + ' הופעלה', 'success');
                 return load();
             })
             .catch(function (e) {
