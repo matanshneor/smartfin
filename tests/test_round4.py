@@ -25,3 +25,12 @@ def test_member_joined_skips_me_and_the_first_visit_on_a_phone():
     assert "m.id !== page.dataset.me" in _JS
     assert "if (known === null) return;" in _JS
     assert "textContent" in _JS and "innerHTML" not in _JS      # שם בן משפחה — טקסט בלבד
+
+
+def test_home_and_month_log_how_long_each_query_took():
+    """מהירות הטעינה (מתן, 12.10): קודם מודדים, ורק אחר כך מתקנים."""
+    app = (_ROOT / "backend/app.py").read_text(encoding="utf-8")
+    assert 'logger.info("timing %s total=%.0fms %s"' in app
+    assert "return {name: _timed(name, fn) for name, fn in tasks.items()}" in app
+    for label in ('"recurring"', '"recent"', '"week"', '"alerts"', '"month_page"'):
+        assert f"_timed({label}" in app, label

@@ -595,7 +595,35 @@ def _run_queries(tasks: dict) -> dict:
     שהעברנו את השרת ל-EU (אזור europe-west4) כל שליפה עולה ~30ms, אז הרצה
     רצופה מהירה לגמרי (~7 שליפות = ~0.2ש') ובטוחה. רץ ב-thread הראשי, אז גם
     flask.g/_request_cache עובד כרגיל."""
-    return {name: fn() for name, fn in tasks.items()}
+    return {name: _timed(name, fn) for name, fn in tasks.items()}
+
+
+def _timed(name, fn):
+    """מריץ ‎fn‎ ורושם כמה זמן לקח — לשורת "timing" שבסוף הבקשה.
+
+    מהירות הטעינה (מתן, 12.10): קודם למדוד איזו שליפה איטית, ורק אז לתקן."""
+    start = time.perf_counter()
+    try:
+        return fn()
+    finally:
+        timings = g.setdefault("sf_timings", [])
+        timings.append((name, (time.perf_counter() - start) * 1000))
+
+
+@app.before_request
+def _start_request_clock():
+    g.sf_request_start = time.perf_counter()
+
+
+@app.after_request
+def _log_query_timings(response):
+    """שורה אחת לבקשה שנמדדה: סך הכל, וכל שליפה לפי הסדר."""
+    timings = g.get("sf_timings")
+    if timings and g.get("sf_request_start") is not None:
+        total = (time.perf_counter() - g.sf_request_start) * 1000
+        logger.info("timing %s total=%.0fms %s", request.path, total,
+                    " ".join(f"{name}={ms:.0f}" for name, ms in timings))
+    return response
 
 
 def _prime_request_cache(family_id, settings=None, categories=None, members=None, family=None):
@@ -1307,7 +1335,7 @@ def dashboard():
         )
 
     # עלול לכתוב שורות, אז לפני מקבץ השליפות
-    _sync_recurring(family_id)
+    _timed("recurring", lambda: _sync_recurring(family_id))
 
     # מקבץ השליפות הבלתי-תלויות (רצות בזו אחר זו — ראו _run_queries)
     batch = _run_queries({
@@ -1326,11 +1354,11 @@ def dashboard():
     # עשר האחרונות **שהוזנו**, בסדר ההזנה — החדשה למעלה (מתן, 30.9). היום
     # כתוב בתוך כל שורה ("היום · רמי לוי"), כי בסדר הזנה כותרות לפי יום היו
     # חוזרות על עצמן.
-    transactions = db.get_recent_transactions(family_id, limit=10, settings=batch["settings"],
-                                               viewer_user_id=user["id"])
+    transactions = _timed("recent", lambda: db.get_recent_transactions(family_id, limit=10,
+                          settings=batch["settings"], viewer_user_id=user["id"]))
     # "השבוע" (מתן, 30.9) — קישוט: תקלה בו לא מפילה את דף הבית
     try:
-        week = db.week_spending(family_id)
+        week = _timed("week", lambda: db.week_spending(family_id))
     except db.DataUnavailable:
         week = None
 
@@ -1344,7 +1372,8 @@ def dashboard():
     if (batch["settings"] or {}).get("limits"):
         try:
             alerts = db.month_alerts(db.apply_budgets(db.category_breakdown_from_rows(
-                db.fetch_month_rows(family_id, now.year, now.month), batch["categories"], "expense"),
+                _timed("alerts", lambda: db.fetch_month_rows(family_id, now.year, now.month)),
+                batch["categories"], "expense"),
                 batch["settings"]))
         except db.DataUnavailable:
             pass
@@ -1356,7 +1385,7 @@ def dashboard():
     pinned_id = ((batch["settings"] or {}).get("pinned_projects") or {}).get(user["id"])
     if pinned_id:
         try:
-            pinned_project = next((p for p in db.get_projects(family_id, user["id"])
+            pinned_project = next((p for p in _timed("pinned", lambda: db.get_projects(family_id, user["id"]))
                                    if p["id"] == pinned_id), None)
         except db.DataUnavailable:
             pinned_project = None
@@ -1411,7 +1440,7 @@ def month_view():
 
     # לפני השליפות: בלי זה חודש שנפתח ישירות (סימנייה, תפריט, קישור)
     # מוצג בלי המשכורת ובלי ההוראות הקבועות
-    _sync_recurring(family_id)
+    _timed("recurring", lambda: _sync_recurring(family_id))
 
     is_current = (year == now.year and month == now.month)
     # כיוון החץ של "חזרה לחודש הנוכחי": מחודש עתידי החודש הנוכחי הוא אחורה
@@ -1445,7 +1474,7 @@ def month_view():
     # אז החמש שילמו זו אחרי זו ~30ms כל אחת. ‎get_month_page‎ מחזירה את
     # חמשתן יחד; ההרכבה נשארה ב-Python ולא ירדה ל-SQL, כדי שלא יהיו שני
     # מקורות אמת ל-‎_merge_settings‎ ולקיצור השמות.
-    p1 = db.fetch_month_page(family_id, year, month)
+    p1 = _timed("month_page", lambda: db.fetch_month_page(family_id, year, month))
     settings_ = p1["settings"]
     rows      = p1["rows"]
     # עסקה קבועה מופיעה בחודש רק מהיום שהיא יורדת, כשהמנוע יוצר אותה
