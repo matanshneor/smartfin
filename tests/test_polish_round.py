@@ -79,21 +79,17 @@ def test_the_months_page_says_it_in_words():
     assert '<b class="deficit">8% יותר</b> מהממוצע של 3 החודשים שלפניו' in line and "(₪11,500)" in line
 
 
-# ─── 12 · המקלדת עולה מיד באייפון ────────────────────────────────────────
+# ─── 12 · בלי מקלדת בפתיחה בטלפון ───────────────────────────────────────
 
-def test_adding_summons_the_keyboard_inside_the_tap():
-    body = _TX[_TX.index("function openAddModal(presetType) {"):]
-    head = body[:body.index("withLoadingTrigger(")]
-    assert "summonKeyboard();" in head                    # לפני ההמתנה לטעינה
-    fn = _TX[_TX.index("function summonKeyboard() {"):]
-    fn = fn[:fn.index("\n    }\n")]
-    assert "'(pointer: coarse)'" in fn and "setAttribute('inputmode', 'decimal')" in fn
-    assert "font-size: 1rem" in _CSS[_CSS.index(".keyboard-proxy {"):]
-
-
-def test_closing_does_not_bring_the_keyboard_back():
+def test_the_phone_opens_the_window_without_the_keyboard():
+    """מתן (12.10) ניסה מקלדת מיידית ו"לא אהבתי — המקלדת מסתירה את כל החלון".
+    בטלפון המיקוד עובר לחלון עצמו; במחשב — לסכום, כמו תמיד."""
+    assert "summonKeyboard" not in _TX and "keyboard-proxy" not in _CSS
     open_ = _TX[_TX.index("function openModal() {"):]
-    assert "document.activeElement === keyboardProxy\n            ? proxyReturnTo" in open_[:open_.index("\n    }\n")]
+    open_ = open_[:open_.index("\n    }\n")]
+    assert "matchMedia('(pointer: coarse)').matches" in open_
+    assert "modalSheetEl.focus({ preventScroll: true });" in open_ and "txAmount.focus();" in open_
+    assert '<div class="modal-sheet" tabindex="-1">' in _read("base.html")
 
 
 # ─── 13 · אייקוני קו ─────────────────────────────────────────────────────
