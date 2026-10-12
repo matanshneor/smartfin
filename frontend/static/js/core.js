@@ -469,6 +469,8 @@ function sfFetchPage(url) {
     }).then(function (r) {
         // 401 כבר מטופל ב-auth-guard; כל דבר אחר — נופלים לטעינה מלאה
         if (!r.ok) throw new Error('soft load got ' + r.status);
+        // הופנה (למשל למסך הנעילה, מתן 13.10) — לא להדביק אותו בתוך העמוד
+        if (r.redirected) throw new Error('soft load redirected');
         return r.text();
     });
 }

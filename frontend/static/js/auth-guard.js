@@ -24,6 +24,12 @@
 
     window.fetch = function (input, init) {
         return nativeFetch(input, init).then(function (response) {
+            // נעול ב-Face ID (‎423‎, מתן 13.10) — למסך הנעילה, וחזרה לכאן אחריו
+            if (response.status === 423 && isOurs(input) && !handling) {
+                handling = true;
+                window.location.replace('/unlock?next=' + encodeURIComponent(location.pathname + location.search));
+                return response;
+            }
             if (response.status === 401 && isOurs(input) && !handling) {
                 handling = true;
                 if (window.showToast) {
