@@ -34,3 +34,19 @@ def test_home_and_month_log_how_long_each_query_took():
     assert "return {name: _timed(name, fn) for name, fn in tasks.items()}" in app
     for label in ('"recurring"', '"recent"', '"week"', '"alerts"', '"month_page"'):
         assert f"_timed({label}" in app, label
+
+
+def test_a_slice_tap_opens_the_row_through_its_own_click():
+    """‏‎toggleExpand‎ מוגדרת בבלוק האינטראקטיביות; מבלוק הגרפים היא לא קיימת,
+    והנגיעה בפלח זרקה ‎ReferenceError‎ ולא פתחה כלום (נמצא בצילום, 12.10)."""
+    js = (_ROOT / "frontend/static/js/month.js").read_text(encoding="utf-8")
+    body = js[js.index("function openSlice"):]
+    body = body[:body.index("\n}\n")]
+    assert "toggleExpand(" not in body and "trigger.click();" in body
+
+
+def test_the_quiet_project_banner_is_readable_over_the_hero():
+    css = (_ROOT / "frontend/static/css/style.css").read_text(encoding="utf-8")
+    rule = css[css.index(".project-quiet-banner {"):]
+    rule = rule[:rule.index("}")]
+    assert "background: var(--color-card)" in rule

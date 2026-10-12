@@ -340,7 +340,7 @@ function openSlice(cardId, els) {
     if (!wrap) return;
     const trigger = wrap.querySelector('.legend-item.clickable');
     if (trigger && trigger.tagName === 'A') { window.location.href = trigger.href; return; }
-    if (trigger && trigger.getAttribute('aria-expanded') !== 'true') toggleExpand(trigger);
+    if (trigger && trigger.getAttribute('aria-expanded') !== 'true') trigger.click();   // toggleExpand בבלוק אחר — כאן לא מוגדרת
     wrap.classList.remove('flash');
     void wrap.offsetWidth;
     wrap.classList.add('flash');
