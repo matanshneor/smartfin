@@ -11,6 +11,7 @@
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <link rel="icon" href="{{ url_for('static', filename='icons/icon-192.svg') }}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-180.png') }}">
+    {% include "_splash.html" %}
     <meta name="description" content="SmartFin – ניהול תקציב משפחתי חכם: מעקב הוצאות, הכנסות וחיסכון">
     <meta name="apple-mobile-web-app-title" content="SmartFin">
     <link rel="stylesheet" href="{{ url_for('static', filename='fonts/rubik.css') }}">
@@ -336,5 +337,6 @@
     <script src="{{ url_for('static', filename='js/motion.js') }}"></script>
 
     <script src="{{ url_for('static', filename='js/transactions.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/receipt-viewer.js') }}"></script>
 </body>
 </html>

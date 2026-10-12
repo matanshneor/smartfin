@@ -395,6 +395,32 @@
         txAmount.style.width = (text.length + 0.3) + 'ch';
     }
 
+    function markFromReceipt(fields) {
+        clearFromReceipt();
+        fields.forEach(function (el) { if (el) el.classList.add('from-receipt'); });
+        const wrap = txAmount.closest('.amount-input-wrap');
+        if (wrap && !wrap.querySelector('.from-receipt-tag')) {
+            const tag = document.createElement('span');
+            tag.className = 'from-receipt-tag';
+            tag.textContent = 'מהקבלה';
+            wrap.appendChild(tag);
+        }
+    }
+    function clearFromReceipt(el) {
+        const scope = el ? [el] : document.querySelectorAll('#modalOverlay .from-receipt');
+        Array.prototype.forEach.call(scope, function (x) { x.classList.remove('from-receipt'); });
+        if (!el || el === txAmount) {
+            const tag = document.querySelector('#modalOverlay .from-receipt-tag');
+            if (tag) tag.remove();
+        }
+    }
+    ['input', 'change'].forEach(function (ev) {
+        txForm.addEventListener(ev, function (e) {
+            const t = e.target.closest && (e.target.closest('.date-pick') || e.target);
+            if (t && t.classList && t.classList.contains('from-receipt')) clearFromReceipt(t);
+        });
+    });
+
     function resetScanUI() {
         // ‎txReceiptPath‎ **חייב** להתאפס כאן ולא רק ב-‎resetForm‎.
         // ‎closeModal‎ קורא לכאן בלבד, ו-‎resetForm‎ רץ רק מ-‎openAddModal‎ —
@@ -413,6 +439,7 @@
         }
         txAmount.placeholder = AMOUNT_PLACEHOLDER_DEFAULT;
         txDescription.placeholder = DESCRIPTION_PLACEHOLDER_DEFAULT;
+        clearFromReceipt();
         fitAmount();
     }
 
@@ -962,7 +989,10 @@
                 }
             }
             scanBtn.querySelector('.scan-btn-text').textContent = '✓ סריקה הושלמה';
-            window.showToast('הנתונים פוענחו, נא לוודא לפני שמירה');
+            // "מהקבלה" (מתן, 12.10): מסגרת זהב לרגע על מה שהסריקה מילאה, ותווית
+            // ליד הסכום — כך ברור מה לבדוק. נעלם כשמשנים את השדה.
+            markFromReceipt([txAmount, data.merchant && txDescription, data.date && document.querySelector('#modalOverlay .date-pick')]);
+            window.showToast('הנתונים פוענחו מהקבלה — בדקו את מה שמסומן');
         })
         .catch(function () {
             if (mySeq !== scanSeq) return;

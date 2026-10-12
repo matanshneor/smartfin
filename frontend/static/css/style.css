@@ -5323,3 +5323,50 @@ body.tx-screen-open { overflow: hidden; }
    ולמטה — לדפדפן. כשהדפדפן יודע את זה מראש הוא לא מחכה לבדוק, וההחלקה
    מגיבה מהמגע הראשון (מתן, 11.10). */
 .transaction-item, .cat-tx-row, .recurring-row, .week-card { touch-action: pan-y; }
+
+
+/* ─── מעבר רך בין עמודים (מתן, 12.10) ───────────────────────────────────
+   View Transitions בין מסמכים: העמוד הישן דוהה והחדש עולה, בתוך כרבע שנייה.
+   הסרגל התחתון וה-+ נשארים במקום (שם משלהם — לא חלק מהמעבר של הדף).
+   ספארי 18.2+ וכרום; דפדפן ישן — כמו קודם, בלי שום שינוי. מעבר חודש בהחלקה
+   והרענון הרך הם בתוך אותו מסמך, ולא נוגעים בזה. */
+@view-transition { navigation: auto; }
+::view-transition-old(root) { animation: 240ms cubic-bezier(0.4, 0, 0.2, 1) both sf-vt-out; }
+::view-transition-new(root) { animation: 300ms cubic-bezier(0.2, 0, 0, 1) both sf-vt-in; }
+@keyframes sf-vt-out { to { opacity: 0; } }
+@keyframes sf-vt-in { from { opacity: 0; transform: translateY(10px); } }
+.bottom-nav { view-transition-name: sf-dock; }
+.fab { view-transition-name: sf-fab; }
+@media (prefers-reduced-motion: reduce) {
+    @view-transition { navigation: none; }
+}
+
+
+/* ─── צפייה בקבלה בתוך האפליקציה (‎js/receipt-viewer.js‎, מתן 12.10) ─── */
+.receipt-viewer {
+    position: fixed; inset: 0; z-index: 400; background: rgba(8, 6, 3, 0.94);
+    display: flex; align-items: center; justify-content: center;
+    padding: calc(56px + env(safe-area-inset-top, 0px)) 12px calc(20px + env(safe-area-inset-bottom, 0px));
+}
+.receipt-viewer[hidden] { display: none; }
+.receipt-viewer-stage { max-width: 100%; max-height: 100%; overflow: auto; -webkit-overflow-scrolling: touch; }
+.receipt-viewer-stage img { display: block; max-width: 100%; max-height: calc(100dvh - 90px); border-radius: 8px; cursor: zoom-in; }
+.receipt-viewer.zoomed .receipt-viewer-stage { width: 100%; height: 100%; }
+.receipt-viewer.zoomed .receipt-viewer-stage img { max-width: none; max-height: none; width: 220%; cursor: zoom-out; }
+.receipt-viewer-close {
+    position: absolute; top: calc(10px + env(safe-area-inset-top, 0px)); inset-inline-start: 12px;
+    width: 40px; height: 40px; border-radius: 50%; border: 0;
+    background: rgba(255, 255, 255, 0.14); color: #fff; font-size: 1.1rem; cursor: pointer;
+}
+.receipt-viewer-fail { color: #E7E0D2; text-align: center; }
+.receipt-viewer-fail a { color: #E3BE55; }
+
+
+/* "מהקבלה" — מה שסריקת הקבלה מילאה (מתן, 12.10) */
+#modalOverlay .from-receipt { box-shadow: 0 0 0 2px var(--color-gold); border-radius: 10px; animation: sf-receipt-pulse 1.2s ease-out 1; }
+@keyframes sf-receipt-pulse { from { box-shadow: 0 0 0 6px rgba(166, 124, 0, 0.35); } }
+.amount-input-wrap { position: relative; }
+.from-receipt-tag {
+    position: absolute; top: -18px; inset-inline-end: -6px; padding: 1px 8px; border-radius: 99px;
+    background: var(--color-gold-dim); color: var(--color-gold-text); font-size: 0.7rem; font-weight: 700;
+}

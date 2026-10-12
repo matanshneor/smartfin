@@ -327,6 +327,26 @@ const COLORS    = window.sfCharts.colors;
 const GRID_LINE = window.sfCharts.grid;
 
 let drawn = [];
+const calmMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* נגיעה בפלח (מתן, 12.10): אותה שורה שמתחת לעיגול — נפתחת עם העסקאות שלה,
+ * מהבהבת וגוללת לאמצע המסך. פרויקט — כניסה לעמוד שלו. הסדר של הפלחים הוא
+ * סדר השורות (אותה רשימה מהשרת). */
+function openSlice(cardId, els) {
+    if (!els || !els.length) return;
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    const wrap = card.querySelectorAll('.legend-list > .legend-item-wrap')[els[0].index];
+    if (!wrap) return;
+    const trigger = wrap.querySelector('.legend-item.clickable');
+    if (trigger && trigger.tagName === 'A') { window.location.href = trigger.href; return; }
+    if (trigger && trigger.getAttribute('aria-expanded') !== 'true') toggleExpand(trigger);
+    wrap.classList.remove('flash');
+    void wrap.offsetWidth;
+    wrap.classList.add('flash');
+    wrap.addEventListener('animationend', function () { wrap.classList.remove('flash'); }, { once: true });
+    wrap.scrollIntoView({ behavior: calmMotion ? 'auto' : 'smooth', block: 'center' });
+}
 
 function paint() {
 // מופעים קודמים נהרסים לפני הציור: ‎new Chart‎ על canvas תפוס זורק.
@@ -339,17 +359,25 @@ const view = window.sfData('sf-view-data');
 const SF_VIEW = view;
 
 // ── 2. הוצאות לפי קטגוריה ──
+// צבע קבוע לכל קטגוריה (‎color_idx‎ מהשרת — המקום שלה ברשימת הקטגוריות, מתן
+// 12.10), ובמעבר חודש העיגול "זורם": נוצר עם הערכים של החודש הקודם לכל
+// קטגוריה, ואז מתעדכן לחדשים — הפלחים גדלים וקטנים במקום להצטייר מאפס.
 const expenseData = SF_VIEW.expense;
 if (expenseData.length > 0) {
     const ctx = document.getElementById('expenseChart');
     if (ctx) {
-        drawn.push(new Chart(ctx, {
+        const keyOf = d => d.category_id || d.project_id || d.name;
+        const target = expenseData.map(d => d.total);
+        const prev = window.__sfLastDonut;
+        const morph = !!prev && !calmMotion;
+        const start = morph ? expenseData.map(d => prev[keyOf(d)] || 0) : target;
+        const chart = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: expenseData.map(d => d.name),
                 datasets: [{
-                    data:            expenseData.map(d => d.total),
-                    backgroundColor: COLORS.slice(0, expenseData.length),
+                    data:            start,
+                    backgroundColor: expenseData.map((d, i) => COLORS[(d.color_idx != null ? d.color_idx : i) % COLORS.length]),
                     borderColor:     window.sfCharts.surface,
                     borderWidth:     2,
                     borderRadius:    4,
@@ -359,15 +387,21 @@ if (expenseData.length > 0) {
             },
             options: {
                 cutout: '70%',
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: c => ` ₪${window.sfMoney(c.parsed)} (${expenseData[c.dataIndex].pct}%)`
-                        }
-                    }
-                }
+                animation: morph ? false : undefined,
+                // במקום הבועה השחורה — הנגיעה פותחת את השורה של הקטגוריה (מתן, 12.10)
+                plugins: { tooltip: { enabled: false } },
+                onClick: (evt, els) => openSlice('expense-breakdown', els),
             }
-        }));
+        });
+        drawn.push(chart);
+        if (morph) {
+            chart.options.animation = { duration: 650, easing: 'easeOutCubic' };
+            chart.data.datasets[0].data = target;
+            chart.update();
+        }
+        const remember = {};
+        expenseData.forEach(d => { remember[keyOf(d)] = d.total; });
+        window.__sfLastDonut = remember;
     }
 }
 
@@ -394,13 +428,8 @@ if (expenseData.length > 0) {
         },
         options: {
             cutout: '70%',
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: c => ` ₪${window.sfMoney(c.parsed)} (${data[c.dataIndex].pct}%)`
-                    }
-                }
-            }
+            plugins: { tooltip: { enabled: false } },
+            onClick: (evt, els) => openSlice('income-breakdown', els),
         }
     }));
 });

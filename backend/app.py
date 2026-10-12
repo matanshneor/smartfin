@@ -1448,6 +1448,16 @@ def month_view():
         db.category_breakdown_from_rows(rows, p1["categories"], "expense"), settings_)
     income_breakdown  = db.category_breakdown_from_rows(rows, p1["categories"], "income")
     savings_breakdown = db.category_breakdown_from_rows(rows, p1["categories"], "savings")
+    # צבע קבוע לכל קטגוריה (מתן, 12.10): לפי המקום שלה ברשימת הקטגוריות של
+    # המשפחה, ולא לפי המקום בפילוח החודש — "סופר" זהב בכל החודשים, והעיגול
+    # יכול "לזרום" בין חודשים. פרויקט — לפי המזהה, יציב גם הוא.
+    _cat_order = {c["id"]: i for i, c in enumerate(c for c in (p1["categories"] or [])
+                                                   if c.get("type") == "expense")}
+    for c in expense_breakdown:
+        if c.get("is_project"):
+            c["color_idx"] = sum(map(ord, str(c.get("project_id") or c.get("name") or ""))) % 8
+        else:
+            c["color_idx"] = _cat_order.get(c.get("category_id"), len(_cat_order)) % 8
 
     # רצועת החודשים: מהישן לחדש (ה-RPC מחזיר מהחדש לישן), ותמיד כוללת את
     # החודש הנצפה — גם אם אין בו עסקאות ולכן הוא לא חוזר מה-RPC
@@ -3840,7 +3850,11 @@ _CSP = "; ".join([
     # בשימוש היא רק משטח תקיפה מיותר.
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
-    "img-src 'self' data: blob:",
+    # + האחסון של Supabase: הקבלה נפתחת בתוך האפליקציה (‎receipt-viewer.js‎,
+    # מתן 12.10), ו-‎/receipts/<id>‎ מפנה לכתובת חתומה שם. רק תמונות — לא סקריפטים.
+    "img-src 'self' data: blob:" + (
+        " " + re.match(r"https?://[^/]+", os.environ.get("SUPABASE_URL", "")).group(0)
+        if re.match(r"https?://[^/]+", os.environ.get("SUPABASE_URL", "")) else ""),
     "connect-src 'self'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
