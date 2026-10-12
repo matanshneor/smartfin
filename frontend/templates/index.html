@@ -156,6 +156,12 @@
 </section>
 {% endif %}
 
+{# בן משפחה שהצטרף מאז הביקור הקודם — ממלא ‎js/whats-new.js‎ #}
+<div class="member-joined" id="memberJoined" role="status" hidden>
+    <span class="member-joined-text"></span>
+    <button type="button" class="member-joined-close" aria-label="סגירה">✕</button>
+</div>
+
 {# פרויקט מוצמד (מתן, 12.10) — מהעמוד של הפרויקט, "הצמדה לבית". אותו חישוב
    כמו "כמה נשאר" ברשימת הפרויקטים. #}
 {% if pinned_project %}
@@ -261,6 +267,11 @@
 {# מסך החיפוש — מחוץ ל-‎main‎, כדי שרענון רך (אחרי עריכה מתוך התוצאות) לא
    יסגור אותו באמצע #}
 {% include "_search_screen.html" %}
+{# "מה חדש" ובן משפחה שהצטרף (‎js/whats-new.js‎, מתן 12.10) #}
+<span id="sfHomeInfo" hidden data-new-family="{{ 'true' if is_new_family else 'false' }}"
+      data-me="{{ user.id }}" data-family="{{ user.family_id }}"
+      data-members='{{ (home_members or []) | tojson }}'></span>
+<script src="{{ url_for('static', filename='js/whats-new.js') }}"></script>
 
 {# "איך מצרפים בן משפחה" — פעם אחת, אחרי אשף הפתיחה (מתן, 5.10) #}
 {% if welcome_invite %}

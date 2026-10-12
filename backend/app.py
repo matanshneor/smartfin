@@ -1386,6 +1386,10 @@ def dashboard():
         welcome_invite=welcome_invite,
         alerts=alerts,
         pinned_project=pinned_project,
+        # ל"בן משפחה הצטרף" (‎whats-new.js‎): מזהה, שם פרטי וצבע — בלי פרטים נוספים
+        home_members=[{"id": m["id"], "name": m.get("name") or "",
+                       "color": _member_colors(family_id).get(m["id"])}
+                      for m in (batch["members"] or [])],
     )
 
 
