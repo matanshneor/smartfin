@@ -1124,11 +1124,14 @@ a.kpi-chip:active { transform: scale(0.97); }
     border-radius: var(--radius);
 }
 
-.empty-icon {
-    font-size: 1.7rem;
-    margin-bottom: 8px;
-    opacity: 0.8;
+/* איור למסך ריק (‎icons.empty_illus‎, מתן 12.10): אייקון קו בזהב בעיגול
+   עדין — באותו סגנון כמו הסרגל והכפתורים, במקום אימוג'י גדול */
+.empty-illus {
+    width: 64px; height: 64px; margin: 0 auto 12px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; background: var(--color-gold-dim); color: var(--color-gold-text);
 }
+.empty-illus .ui-icon { width: 30px; height: 30px; stroke-width: 1.7; vertical-align: 0; }
 
 .empty-text {
     font-weight: 600;
@@ -2035,7 +2038,7 @@ a.submit-btn {
 }
 
 .error-card { text-align: center; }
-.error-card .empty-icon { margin-bottom: 4px; }
+.error-card .empty-illus { margin-bottom: 8px; }
 .error-message { text-align: center; margin-bottom: 20px; }
 
 .modal-sheet.income-mode .submit-btn {
@@ -2267,10 +2270,6 @@ a.submit-btn {
     font-size: 0.9rem;
 }
 
-.chart-empty p:first-child {
-    font-size: 2rem;
-    margin-bottom: 6px;
-}
 
 /* Doughnut */
 .doughnut-wrap {

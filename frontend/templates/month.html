@@ -105,7 +105,7 @@
 {% if not month_transactions and not project_month.transactions %}
 <section class="chart-card">
     <div class="empty-state">
-        <p class="empty-icon">📅</p>
+        {{ empty_illus("calendar") }}
         <p class="empty-text">{{ 'אין עדיין עסקאות החודש' if is_current else 'לא נרשמו עסקאות ב' ~ month_label }}</p>
         <p class="empty-sub">
             {% if is_current %}
@@ -161,7 +161,7 @@
         </div>
     </div>
     {% else %}
-    <div class="chart-empty"><p>📊</p><p>אין הוצאות רשומות החודש</p></div>
+    <div class="chart-empty">{{ empty_illus("pie") }}<p>אין הוצאות רשומות החודש</p></div>
     {% endif %}
     <ul class="legend-list">
         {% for item in expense_active %}
@@ -303,7 +303,7 @@
         </div>
     </div>
     {% else %}
-    <div class="chart-empty"><p>💼</p><p>אין הכנסות רשומות החודש</p></div>
+    <div class="chart-empty">{{ empty_illus("wallet") }}<p>אין הכנסות רשומות החודש</p></div>
     {% endif %}
     <ul class="legend-list">
         {% for src in income_sources %}
@@ -374,7 +374,7 @@
         {% endif %}
     </div>
     {% else %}
-    <div class="chart-empty"><p>💰</p><p>אין הפרשות לחיסכון החודש</p></div>
+    <div class="chart-empty">{{ empty_illus("coins") }}<p>אין הפרשות לחיסכון החודש</p></div>
     {% endif %}
     <ul class="legend-list">
         {% for item in savings_home %}
