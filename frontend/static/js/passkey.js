@@ -204,13 +204,15 @@
             const rm = document.createElement('button');
             rm.type = 'button';
             rm.className = 'btn-sm btn-ghost';
-            rm.textContent = 'הסרה';
+            rm.textContent = 'כיבוי';
             rm.dataset.passkeyId = p.id;
             li.appendChild(text);
             li.appendChild(rm);
             list.appendChild(li);
         });
-        hint.textContent = items.length ? 'מופעל — נכנסים בלי סיסמה' : 'בלי להקליד סיסמה';
+        // נעילה ולא כניסה (מתן, 13.10): בלי Face ID האפליקציה לא ננעלת בכלל
+        hint.textContent = items.length ? 'מופעל — האפליקציה ננעלת אחרי 5 דקות ברקע'
+                                        : 'האפליקציה ננעלת אחרי 5 דקות ברקע, ונפתחת בסריקה';
         // אחרי ההפעלה — בלי כפתור (מתן, 12.10: "מה זה הוספת מכשיר?"). המפתח
         // עובר לבד בין מכשירי האפל דרך iCloud; מכשיר אחר — הסרה והפעלה ממנו.
         enableBtn.hidden = items.length > 0;
@@ -238,7 +240,7 @@
             })
             .then(function () {
                 setFlag(true);
-                if (window.showToast) window.showToast(NAME + ' הופעל — בפעם הבאה נכנסים בלי סיסמה', 'success');
+                if (window.showToast) window.showToast('הנעילה עם ' + NAME + ' הופעלה', 'success');
                 return load();
             })
             .catch(function (e) {
