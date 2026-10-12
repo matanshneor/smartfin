@@ -728,6 +728,45 @@ def _looks_like_phone(normalized: str) -> bool:
     return bool(_PHONE_RE.match(normalized or ""))
 
 
+def _begin_session(user_id, email, access_token, refresh_token, expires_at):
+    """פותח את הסשן של Flask אחרי התחברות — בסיסמה או ב-Face ID. מחזיר
+    הודעת שגיאה, או ‎None‎ כשהכול הצליח."""
+    # Set JWT before querying profiles (RLS requires auth.uid())
+    db.set_auth_token(access_token)
+    db.log_login_event()  # תיעוד כניסה פנימי (לבעל האתר)
+    profile, profile_ok = db.fetch_profile(user_id)
+
+    if not profile_ok:
+        # הסיסמה נכונה, אבל הפרופיל לא נקרא. לא נכנסים: המשך מכאן היה
+        # מתחיל session בלי family_id, ומשם ensure_family היה יוצר
+        # משפחה חדשה ודורס את השיוך הקיים — ניתוק לצמיתות מכל
+        # ההיסטוריה בגלל תקלה של שתי שניות. כישלון שאפשר לנסות שוב
+        # אחריו הוא התוצאה הנכונה.
+        return "לא הצלחנו לטעון את הפרטים שלך — נסו שוב בעוד רגע"
+
+    session.permanent = True  # stay signed in until explicit logout
+    session["user_id"]          = user_id
+    session["user_email"]       = email
+    session["access_token"]     = access_token
+    session["refresh_token"]    = refresh_token
+    session["token_expires_at"] = expires_at
+    session["user_name"]      = db.first_name(profile.get("name", "משתמש")) if profile else "משתמש"
+    session["avatar_initial"] = (profile.get("avatar_initial") or "מ") if profile else "מ"
+    session["family_id"]      = profile.get("family_id") if profile else None
+
+    # Auto-create family if user doesn't have one
+    if not session["family_id"]:
+        session["family_id"] = db.ensure_family(user_id)
+
+    if not session["family_id"]:
+        # גם היצירה נכשלה. session בלי משפחה הוא אפליקציה שאי אפשר
+        # לעשות בה כלום, ובניסיון הבא הוא ינסה ליצור משפחה שוב —
+        # אז עדיף לא להיכנס מאשר להיכנס למצב תקוע.
+        session.clear()
+        return "לא הצלחנו לטעון את הפרטים שלך — נסו שוב בעוד רגע"
+    return None
+
+
 @app.route("/login", methods=["GET", "POST"])
 @limiter.limit("10 per minute", methods=["POST"])
 def login():
@@ -752,43 +791,10 @@ def login():
         if err:
             error = _login_error(err)
         else:
-            user = response.user
-            # Set JWT before querying profiles (RLS requires auth.uid())
-            db.set_auth_token(response.session.access_token)
-            db.log_login_event()  # תיעוד כניסה פנימי (לבעל האתר)
-            profile, profile_ok = db.fetch_profile(user.id)
-
-        if not err and not profile_ok:
-            # הסיסמה נכונה, אבל הפרופיל לא נקרא. לא נכנסים: המשך מכאן היה
-            # מתחיל session בלי family_id, ומשם ensure_family היה יוצר
-            # משפחה חדשה ודורס את השיוך הקיים — ניתוק לצמיתות מכל
-            # ההיסטוריה בגלל תקלה של שתי שניות. כישלון שאפשר לנסות שוב
-            # אחריו הוא התוצאה הנכונה.
-            error = "לא הצלחנו לטעון את הפרטים שלך — נסו שוב בעוד רגע"
-
-        elif not err:
-            session.permanent = True  # stay signed in until explicit logout
-            session["user_id"]          = user.id
-            session["user_email"]       = user.email
-            session["access_token"]     = response.session.access_token
-            session["refresh_token"]    = response.session.refresh_token
-            session["token_expires_at"] = response.session.expires_at
-            session["user_name"]      = db.first_name(profile.get("name", "משתמש")) if profile else "משתמש"
-            session["avatar_initial"] = (profile.get("avatar_initial") or "מ") if profile else "מ"
-            session["family_id"]      = profile.get("family_id") if profile else None
-
-            # Auto-create family if user doesn't have one
-            if not session["family_id"]:
-                session["family_id"] = db.ensure_family(user.id)
-
-            if not session["family_id"]:
-                # גם היצירה נכשלה. session בלי משפחה הוא אפליקציה שאי אפשר
-                # לעשות בה כלום, ובניסיון הבא הוא ינסה ליצור משפחה שוב —
-                # אז עדיף לא להיכנס מאשר להיכנס למצב תקוע.
-                session.clear()
-                error = "לא הצלחנו לטעון את הפרטים שלך — נסו שוב בעוד רגע"
-
-            else:
+            error = _begin_session(response.user.id, response.user.email,
+                                   response.session.access_token, response.session.refresh_token,
+                                   response.session.expires_at)
+            if not error:
                 # מכאן והלאה המכשיר מוכר: גם אם ה-session ייגמר יום אחד,
                 # השורש יביא אותו לטופס ההתחברות ולא חזרה לדף השיווק.
                 return _remember_device(redirect(url_for("dashboard")), identifier)
@@ -801,6 +807,100 @@ def login():
     response.headers["Cache-Control"] = "no-store"
     response.headers["Vary"] = "Cookie"
     return response
+
+
+# ─── כניסה עם Face ID (מתן, 12.10) ───────────────────────────────────────────
+# ראו ‎db.passkey_*‎. הדפדפן עושה את החתימה (‎js/passkey.js‎); כאן רק מעבירים
+# ל-Supabase, ובכניסה פותחים את אותו סשן כמו בסיסמה (‎_begin_session‎).
+
+_PASSKEY_ERRORS = {
+    "passkey_disabled": "הכניסה עם Face ID עוד לא הופעלה באתר",
+    "webauthn_credential_exists": "Face ID כבר מופעל במכשיר הזה",
+    "webauthn_credential_not_found": "לא מצאנו כניסה עם Face ID במכשיר הזה — היכנסו בסיסמה והפעילו אותה בהגדרות",
+    "webauthn_challenge_expired": "עבר יותר מדי זמן — נסו שוב",
+    "webauthn_challenge_not_found": "עבר יותר מדי זמן — נסו שוב",
+    "too_many_passkeys": "הגעתם למספר המכשירים המרבי — הסירו אחד בהגדרות",
+    "email_not_confirmed": "צריך לאשר קודם את כתובת המייל",
+}
+
+
+def _passkey_error(code, status=400):
+    return jsonify({"error": _PASSKEY_ERRORS.get(code, "Face ID לא הצליח — נסו שוב, או היכנסו בסיסמה"),
+                    "code": code}), status
+
+
+def _passkey_body():
+    body = request.get_json(silent=True) or {}
+    challenge_id = body.get("challenge_id")
+    credential = body.get("credential")
+    if not isinstance(challenge_id, str) or not challenge_id or len(challenge_id) > 200 \
+            or not isinstance(credential, dict):
+        return None, None
+    return challenge_id, credential
+
+
+@app.route("/api/passkey/login/options", methods=["POST"])
+@limiter.limit("20 per minute")
+def passkey_login_options_route():
+    data, err = db.passkey_login_options()
+    return _passkey_error(err) if err else jsonify(data)
+
+
+@app.route("/api/passkey/login/verify", methods=["POST"])
+@limiter.limit("10 per minute")
+def passkey_login_verify_route():
+    challenge_id, credential = _passkey_body()
+    if not challenge_id:
+        return _passkey_error("bad_request")
+    sess, err = db.passkey_login_verify(challenge_id, credential)
+    if err:
+        return _passkey_error(err, 401)
+    session.clear()
+    error = _begin_session(sess["user"]["id"], sess["user"].get("email"), sess["access_token"],
+                           sess.get("refresh_token"), sess.get("expires_at"))
+    if error:
+        return jsonify({"error": error}), 503
+    return _remember_device(jsonify({"ok": True, "redirect": url_for("dashboard")}))
+
+
+@app.route("/api/passkey/register/options", methods=["POST"])
+@limiter.limit("10 per minute")
+@login_required
+def passkey_register_options_route():
+    data, err = db.passkey_register_options(session.get("access_token"))
+    return _passkey_error(err) if err else jsonify(data)
+
+
+@app.route("/api/passkey/register/verify", methods=["POST"])
+@limiter.limit("10 per minute")
+@login_required
+def passkey_register_verify_route():
+    challenge_id, credential = _passkey_body()
+    if not challenge_id:
+        return _passkey_error("bad_request")
+    data, err = db.passkey_register_verify(session.get("access_token"), challenge_id, credential)
+    return _passkey_error(err) if err else jsonify({"ok": True, "id": (data or {}).get("id")})
+
+
+@app.route("/api/passkeys", methods=["GET"])
+@login_required
+def passkeys_list_route():
+    items, err = db.passkey_list(session.get("access_token"))
+    if err:
+        return _passkey_error(err, 503)
+    return jsonify([{"id": p.get("id"), "name": p.get("friendly_name") or "מכשיר",
+                     "created_at": p.get("created_at"), "last_used_at": p.get("last_used_at")}
+                    for p in items])
+
+
+@app.route("/api/passkeys/<passkey_id>", methods=["DELETE"])
+@limiter.limit("10 per minute")
+@login_required
+def passkey_delete_route(passkey_id):
+    if not re.fullmatch(r"[0-9a-fA-F-]{36}", passkey_id):
+        return _passkey_error("bad_request", 404)
+    err = db.passkey_delete(session.get("access_token"), passkey_id)
+    return _passkey_error(err) if err else jsonify({"ok": True})
 
 
 @app.route("/join/<code>")

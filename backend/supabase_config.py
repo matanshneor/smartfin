@@ -432,6 +432,83 @@ def update_phone(user_id: str, phone: str):
         return False, None
 
 
+# ─── כניסה עם Face ID (מתן, 12.10) ───────────────────────────────────────────
+#
+# Passkeys של Supabase Auth (ניסיוני): המפתח הפרטי נשמר במכשיר — במחזיק
+# המפתחות של iCloud או של Google — ונפתח רק בפנים או באצבע. השרת שלנו רק
+# מעביר: מבקש מ-Supabase "אתגר", הדפדפן חותם עליו (‎navigator.credentials‎),
+# ו-Supabase בודק את החתימה ומחזיר סשן — אותו סשן כמו כניסה בסיסמה.
+#
+# כל הפניות ישירות ל-REST ולא דרך הלקוח המשותף, מאותה סיבה כמו
+# ‎_auth_user_request‎: הסשן "הנוכחי" שלו לא בטוח בין משתמשים.
+
+def _passkey_request(path: str, body: dict, access_token: str = None, method: str = "post"):
+    """מחזירה ‎(data, error_code)‎. ‎error_code‎ — הקוד של Supabase
+    (‎passkey_disabled‎, ‎webauthn_verification_failed‎ ...) או ‎"unavailable"‎."""
+    import httpx
+
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    if not url or not key:
+        return None, "unavailable"
+    headers = {"apikey": key, "Content-Type": "application/json"}
+    if access_token:
+        headers["Authorization"] = f"Bearer {access_token}"
+    try:
+        kwargs = {"headers": headers, "timeout": 10}
+        if method in ("post", "patch"):
+            kwargs["json"] = body
+        r = getattr(httpx, method)(f"{url}/auth/v1{path}", **kwargs)
+        data = r.json() if r.content else {}
+    except (httpx.HTTPError, ValueError):
+        logger.exception("passkey %s", path)
+        return None, "unavailable"
+    if r.status_code >= 400:
+        code = (data or {}).get("error_code") or (data or {}).get("code") or "unavailable"
+        logger.warning("passkey %s → %s %s", path, r.status_code, code)
+        return None, str(code)
+    return data, None
+
+
+def passkey_login_options():
+    return _passkey_request("/passkeys/authentication/options", {})
+
+
+def passkey_login_verify(challenge_id: str, credential: dict):
+    """הסשן — ‎access_token‎, ‎refresh_token‎, ‎expires_at‎, ‎user‎ — או שגיאה."""
+    data, err = _passkey_request("/passkeys/authentication/verify",
+                                 {"challenge_id": challenge_id, "credential": credential})
+    if err:
+        return None, err
+    # התשובה היא סשן; בגרסאות מסוימות הוא עטוף ב-‎session‎
+    sess = data.get("session") if isinstance(data.get("session"), dict) else data
+    if not sess.get("access_token") or not (sess.get("user") or {}).get("id"):
+        return None, "unavailable"
+    if not sess.get("expires_at") and sess.get("expires_in"):
+        import time
+        sess["expires_at"] = int(time.time()) + int(sess["expires_in"])
+    return sess, None
+
+
+def passkey_register_options(access_token: str):
+    return _passkey_request("/passkeys/registration/options", {}, access_token)
+
+
+def passkey_register_verify(access_token: str, challenge_id: str, credential: dict):
+    return _passkey_request("/passkeys/registration/verify",
+                            {"challenge_id": challenge_id, "credential": credential}, access_token)
+
+
+def passkey_list(access_token: str):
+    data, err = _passkey_request("/passkeys", {}, access_token, method="get")
+    return (data if isinstance(data, list) else []), err
+
+
+def passkey_delete(access_token: str, passkey_id: str):
+    _, err = _passkey_request(f"/passkeys/{passkey_id}", {}, access_token, method="delete")
+    return err
+
+
 def _auth_user_request(method: str, access_token: str, **kwargs):
     """פנייה ל-‎/auth/v1/user‎ עם הטוקן של המשתמש עצמו — כמו ‎update_password‎,
     ולא דרך הלקוח המשותף, שה"סשן הנוכחי" שלו אינו בטוח בין משתמשים."""

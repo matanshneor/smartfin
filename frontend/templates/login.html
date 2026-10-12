@@ -107,6 +107,11 @@
                 </div>
 
                 <button type="submit" class="submit-btn">התחברות</button>
+                {# כניסה עם Face ID (מתן, 12.10) — רק בטלפון שכבר הופעל בו (‎js/passkey.js‎) #}
+                <button type="button" class="passkey-btn" id="passkeyLogin" hidden>
+                    {{ ui_icon("face") }}<span>כניסה עם <span data-passkey-name>Face ID</span></span>
+                </button>
+                <p class="form-error" id="passkeyError" role="alert"></p>
 
                 <p class="auth-forgot">
                     <a href="#" id="forgotLink" class="auth-link">שכחתי סיסמה</a>
@@ -198,6 +203,7 @@
 
 <script src="{{ url_for('static', filename='js/net.js') }}"></script>
 <script src="{{ url_for('static', filename='js/login.js') }}"></script>
+<script src="{{ url_for('static', filename='js/passkey.js') }}"></script>
 
 
 
