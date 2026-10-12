@@ -1052,12 +1052,8 @@ a.kpi-chip:active { transform: scale(0.97); }
 .passkey-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 0; }
 .passkey-item-name { font-size: 0.85rem; color: var(--color-text-muted); }
 
-/* שדה שקוף שמעלה את המקלדת באייפון ברגע הלחיצה על + (‎transactions.js
-   summonKeyboard‎). ‎1rem‎ = 16px לפחות — פחות מזה ו-iOS מגדיל את העמוד במיקוד. */
-.keyboard-proxy {
-    position: fixed; top: 0; left: 0; width: 1px; height: 1px;
-    opacity: 0; border: 0; padding: 0; font-size: 1rem; pointer-events: none;
-}
+/* החלון מקבל מיקוד בפתיחה בטלפון (במקום הסכום) — בלי מסגרת סביבו */
+.modal-sheet:focus { outline: none; }
 
 /* אייקוני קו בכפתורים ובסימנים (‎backend/icons.py‎, מתן 12.10): בגודל
    הטקסט ובצבע שלו, כמו האות שהם מחליפים */
