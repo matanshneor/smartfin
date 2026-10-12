@@ -147,7 +147,7 @@
             {% endif %}
             <li class="legend-item-wrap">
                 <div class="legend-item {% if cat_txs %}clickable{% endif %}" {% if cat_txs %}role="button" tabindex="0" aria-expanded="false"{% endif %}>
-                    <span class="legend-dot" style="background: var(--chart-color-{{ loop.index0 % 8 }});"></span>
+                    <span class="legend-dot" style="background: var(--chart-color-{{ loop.index0 % 12 }});"></span>
                     <span class="legend-icon">{{ item.icon }}</span>
                     <span class="legend-name">{{ item.name }}</span>
                     <span class="legend-pct">{{ item.pct }}%</span>

@@ -598,6 +598,26 @@ def _run_queries(tasks: dict) -> dict:
     return {name: _timed(name, fn) for name, fn in tasks.items()}
 
 
+CHART_COLORS = 12   # ‎COLORS‎ ב-‎chart-setup.js‎ — חייב להישאר מסונכרן
+
+
+def _distinct_colors(items):
+    """אין שתי קטגוריות באותו צבע בעיגול של החודש (מתן, 12.10).
+
+    כל אחת מבקשת את הצבע הקבוע שלה (‎color_idx‎ — המקום ברשימת הקטגוריות).
+    הגדולה קודם מקבלת את מה שביקשה; מי שהצבע שלה כבר תפוס — הצבע הפנוי
+    הבא. כך "סופר" נשאר זהב בכל החודשים, והקטגוריה התשיעית לא יוצאת זהב
+    גם היא. רק כשיש יותר קטגוריות מצבעים בחודש אחד — צבע חוזר."""
+    taken = set()
+    for c in sorted(items, key=lambda c: -(c.get("total") or 0)):
+        want = (c.get("color_idx") or 0) % CHART_COLORS
+        if len(taken) < CHART_COLORS:
+            while want in taken:
+                want = (want + 1) % CHART_COLORS
+        taken.add(want)
+        c["color_idx"] = want
+
+
 def _timed(name, fn):
     """מריץ ‎fn‎ ורושם כמה זמן לקח — לשורת "timing" שבסוף הבקשה.
 
@@ -1501,9 +1521,10 @@ def month_view():
                                                    if c.get("type") == "expense")}
     for c in expense_breakdown:
         if c.get("is_project"):
-            c["color_idx"] = sum(map(ord, str(c.get("project_id") or c.get("name") or ""))) % 8
+            c["color_idx"] = sum(map(ord, str(c.get("project_id") or c.get("name") or "")))
         else:
-            c["color_idx"] = _cat_order.get(c.get("category_id"), len(_cat_order)) % 8
+            c["color_idx"] = _cat_order.get(c.get("category_id"), len(_cat_order))
+    _distinct_colors(expense_breakdown)
 
     # רצועת החודשים: מהישן לחדש (ה-RPC מחזיר מהחדש לישן), ותמיד כוללת את
     # החודש הנצפה — גם אם אין בו עסקאות ולכן הוא לא חוזר מה-RPC
