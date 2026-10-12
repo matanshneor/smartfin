@@ -5428,3 +5428,18 @@ body.tx-screen-open { overflow: hidden; }
 .installments-fields[hidden] { display: none; }
 .installments-count { width: 72px; text-align: center; font-weight: 700; }
 .installments-hint { font-size: 0.86rem; color: var(--color-text-muted); }
+
+
+/* "מה חדש" (מתן, 12.10) */
+.whats-new-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.whats-new-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.92rem; line-height: 1.45; }
+.whats-new-icon { flex-shrink: 0; width: 28px; text-align: center; }
+
+/* בן משפחה הצטרף (מתן, 12.10) — בצבע שלו (‎owner-N‎) */
+.member-joined {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding: 12px 14px;
+    border-radius: var(--radius-sm); font-size: 0.9rem; font-weight: 600; background: var(--color-gold-dim);
+}
+.member-joined[hidden] { display: none; }
+.member-joined-text { flex: 1; }
+.member-joined-close { width: 32px; height: 32px; border: 0; border-radius: 50%; background: none; color: inherit; opacity: 0.6; cursor: pointer; }

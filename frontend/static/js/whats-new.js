@@ -1,0 +1,91 @@
+/* "מה חדש" אחרי עדכון, ו"אור במשפחה!" (מתן, 12.10).
+ *
+ * מה חדש: חלון קטן, פעם אחת לכל גרסה, בכניסה הראשונה לבית אחרי העדכון. את
+ * השורות כותבים כאן, בכל עדכון שמשתמשים ירגישו — ומעלים את ‎VERSION‎. משפחה
+ * חדשה לגמרי לא רואה (אין לה "לפני") — רק נרשם שראתה.
+ *
+ * בן משפחה הצטרף: כרטיס בבית, פעם אחת, למי שכבר היה במשפחה. בפעם הראשונה
+ * בטלפון הזה רק זוכרים מי במשפחה, בלי כרטיס — אחרת כולם "חדשים". */
+(function () {
+    'use strict';
+    const VERSION = '2026-10-12';
+    const NEWS = [
+        ['🙂', 'כניסה עם Face ID — בלי להקליד סיסמה. הגדרות ← החשבון שלי'],
+        ['💳', 'עסקה בתשלומים: מזינים את המחיר המלא ומסמנים "תשלומים"'],
+        ['📊', 'בעמוד החודש: כמה מההוצאות קבועות וכמה משתנות'],
+        ['📌', 'מצמידים פרויקט לבית — ורואים כמה נשאר, מתחת למאזן'],
+    ];
+
+    function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+    function set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* אין אחסון */ } }
+
+    const page = document.getElementById('sfHomeInfo');
+    if (!page) return;
+
+    function sheet(title, lines, button) {
+        const box = document.createElement('div');
+        box.className = 'color-sheet whats-new';
+        box.setAttribute('role', 'dialog');
+        box.setAttribute('aria-modal', 'true');
+        box.setAttribute('aria-label', title);
+        const card = document.createElement('div');
+        card.className = 'color-sheet-card';
+        const h = document.createElement('p');
+        h.className = 'color-sheet-title';
+        h.textContent = title;
+        card.appendChild(h);
+        const ul = document.createElement('ul');
+        ul.className = 'whats-new-list';
+        lines.forEach(function (l) {
+            const li = document.createElement('li');
+            const icon = document.createElement('span');
+            icon.className = 'whats-new-icon';
+            icon.textContent = l[0];
+            const text = document.createElement('span');
+            text.textContent = l[1];
+            li.appendChild(icon);
+            li.appendChild(text);
+            ul.appendChild(li);
+        });
+        card.appendChild(ul);
+        const ok = document.createElement('button');
+        ok.type = 'button';
+        ok.className = 'submit-btn';
+        ok.textContent = button;
+        card.appendChild(ok);
+        box.appendChild(card);
+        document.body.appendChild(box);
+        const close = function () { box.remove(); };
+        ok.addEventListener('click', close);
+        box.addEventListener('click', function (e) { if (e.target === box) close(); });
+        requestAnimationFrame(function () { ok.focus(); });
+    }
+
+    // ── מה חדש ──
+    const seen = get('sf_whats_new');
+    if (page.dataset.newFamily === 'true') set('sf_whats_new', VERSION);
+    else if (seen !== VERSION) {
+        set('sf_whats_new', VERSION);
+        sheet('מה חדש ב-SmartFin', NEWS, 'יופי, הבנתי');
+    }
+
+    // ── בן משפחה הצטרף ──
+    let members = [];
+    try { members = JSON.parse(page.dataset.members || '[]'); } catch (e) { members = []; }
+    const key = 'sf_known_members_' + (page.dataset.family || '');
+    const known = get(key);
+    const ids = members.map(function (m) { return m.id; });
+    set(key, JSON.stringify(ids));
+    if (known === null) return;                      // פעם ראשונה בטלפון הזה
+    let before = [];
+    try { before = JSON.parse(known) || []; } catch (e) { before = []; }
+    const joined = members.filter(function (m) { return m.id !== page.dataset.me && before.indexOf(m.id) === -1; });
+    const slot = document.getElementById('memberJoined');
+    if (!joined.length || !slot) return;
+    const m = joined[0];
+    slot.querySelector('.member-joined-text').textContent =
+        '🎉 ' + m.name + ' במשפחה! מעכשיו גם ההוצאות של ' + m.name + ' כאן';
+    if (m.color != null) slot.classList.add('owner-' + m.color);
+    slot.hidden = false;
+    slot.querySelector('.member-joined-close').addEventListener('click', function () { slot.hidden = true; });
+})();
