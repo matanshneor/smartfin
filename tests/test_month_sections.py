@@ -196,9 +196,10 @@ def test_removing_a_row_on_the_month_page_refreshes_the_totals():
 
 
 def test_the_sections_come_in_matans_order():
-    """מתן (30.9): מאזן חודשי במלבן רחב, שלושה מלבנים שווים, ואז הכנסות, הוצאות,
-    חיסכון, לפי בן משפחה, כל העסקאות, פרויקטים החודש. (עסקאות קבועות הוסר, 2.10.)"""
-    order = ['id="income-breakdown"', 'id="expense-breakdown"', 'id="savings-breakdown"',
+    """מתן (30.9): מאזן חודשי במלבן רחב, שלושה מלבנים שווים, ואז הוצאות, הכנסות,
+    חיסכון, לפי בן משפחה, כל העסקאות, פרויקטים החודש. (עסקאות קבועות הוסר, 2.10;
+    הוצאות לפני הכנסות, 12.10.)"""
+    order = ['id="expense-breakdown"', 'id="income-breakdown"', 'id="savings-breakdown"',
              "{{ mb.label }} לפי בן משפחה",
              '<h2 class="chart-title">כל העסקאות</h2>', '<h2 class="chart-title">פרויקטים החודש</h2>']
     where = [_HTML.index(m) for m in order]

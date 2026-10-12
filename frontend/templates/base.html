@@ -143,7 +143,7 @@
                     {# סריקת קבלה בשורת הכותרת ולא ברוחב מלא מעליה (מתן, 11.10) —
                        חוסך שורה שלמה. הוצאות בלבד, ולא בעריכה (‎setType‎) #}
                     <button class="scan-btn" id="scanBtn" type="button">
-                        <span class="scan-btn-icon" aria-hidden="true">📷</span>
+                        <span class="scan-btn-icon" aria-hidden="true">{{ ui_icon("camera") }}</span>
                         <span class="scan-btn-text">סריקת קבלה</span>
                     </button>
                 </div>
@@ -207,7 +207,7 @@
                             {# "שלשום" הוסר (מתן, 11.10) — "תאריך אחר" מכסה אותו #}
                         </div>
                         <div class="date-pick">
-                            <span class="date-pick-icon" aria-hidden="true">📅</span>
+                            <span class="date-pick-icon" aria-hidden="true">{{ ui_icon("calendar") }}</span>
                             <span class="date-pick-text" id="datePickText" aria-hidden="true">תאריך אחר</span>
                             <span class="date-pick-change" aria-hidden="true">שינוי ›</span>
                             <input class="date-pick-input" type="date" id="txDate" required>

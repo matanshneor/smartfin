@@ -14,6 +14,7 @@ import re
 import time
 from . import supabase_config as db
 from .money import format_money
+from .icons import ui_icon
 from .wording import count_of, day_label, share_map, HEBREW_MONTHS as _HEBREW_MONTHS
 from . import clock
 from . import logs
@@ -239,6 +240,7 @@ def _asset_version(filename: str) -> str:
 
 # סכום כסף בתבניות: ‎{{ x | money }}‎ — אגורות רק כשיש (ראו backend/money.py)
 app.jinja_env.filters["money"] = format_money
+app.jinja_env.globals["ui_icon"] = ui_icon
 app.jinja_env.filters["count_of"] = count_of
 # "היום" / "אתמול" / "ראשון, 27.9" — מול היום של השעון המוזרק (בדיקות)
 app.jinja_env.filters["day_label"] = lambda d: day_label(d, clock.today())
@@ -1570,6 +1572,7 @@ def months():
         member_series = series if len(series) > 1 else None
     return render_template("months.html", active_page="months", user=user,
                            archive=archive, trend_data=trend, cat_trend=cat_trend,
+                           verdict=db.trend_verdict(trend),
                            member_series=member_series,
                            today_year=now.year, today_month=now.month,
                            _HEBREW_MONTHS=_HEBREW_MONTHS)

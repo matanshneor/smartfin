@@ -22,12 +22,35 @@
    מוצג עם כל ההקשר. ומחיקה — גם היא רק בתוך הפרויקט. #}
 {# ארבעה גוונים, תמיד באותו סדר — כחול, אפרסק, ורוד, ירוק — כך ששניים
    זהים אף פעם לא נוגעים זה בזה (מתן, 5.10) #}
+{# כמה נשאר — במשפט אחד, בלי לפתוח את הפרויקט (מתן, 12.10; הפך את ההחלטה
+   מ-5.10). עם יעד: נשארו מתוך היעד, ופס. בלי יעד: כמה יצא (או נחסך, בפרויקט
+   חיסכון). פרויקט שעוד אין בו כלום — בלי שורה. #}
+{% macro tile_progress(p) %}
+{% if p.budget_target %}
+{% set left = p.budget_target - p.spent %}
+{% set used_pct = ((p.spent / p.budget_target) * 100) | round | int %}
+<span class="project-tile-sub project-tile-progress">
+    {%- if left >= 0 -%}
+    נשארו <b>₪{{ left | money }}</b> מתוך ₪{{ p.budget_target | money }}
+    {%- else -%}
+    <span class="deficit">חריגה של <b>₪{{ (left | abs) | money }}</b></span> מתוך ₪{{ p.budget_target | money }}
+    {%- endif -%}
+</span>
+<span class="project-tile-bar" aria-hidden="true"><span class="{% if left < 0 %}danger{% endif %}" style="width: {{ [used_pct, 100] | min }}%;"></span></span>
+{% elif p.track_expense and p.spent > 0 %}
+<span class="project-tile-sub project-tile-progress">יצאו <b>₪{{ p.spent | money }}</b> עד עכשיו</span>
+{% elif p.track_savings and p.saved > 0 %}
+<span class="project-tile-sub project-tile-progress">נחסכו <b>₪{{ p.saved | money }}</b> עד עכשיו</span>
+{% endif %}
+{% endmacro %}
+
 {% macro tile(p, i) %}
 <a class="project-tile tint-{{ i % 4 }}" href="{{ url_for('project_detail', project_id=p.id) }}" data-id="{{ p.id }}">
     <span class="project-tile-icon" aria-hidden="true">{{ p.icon or '🎯' }}</span>
     <span class="project-tile-body">
         <span class="project-tile-name">{{ p.name }}</span>
         {% if p.description %}<span class="project-tile-sub">{{ p.description }}</span>{% endif %}
+        {{ tile_progress(p) }}
     </span>
     {% if p.is_personal %}<span class="project-tile-tag">🔒 אישי</span>{% endif %}
 </a>

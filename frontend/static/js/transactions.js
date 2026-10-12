@@ -322,7 +322,10 @@
         resetSheetDrag();
         loadDescriptions();
         hideSuggest();
-        modalLastFocused = document.activeElement;
+        // השדה השקוף לא חוזר לקבל מיקוד בסגירה — זה היה מקפיץ את המקלדת שוב.
+        // חוזרים למה שהיה ממוקד לפניו (+, או "+ הוספה" בשורה).
+        modalLastFocused = keyboardProxy && document.activeElement === keyboardProxy
+            ? proxyReturnTo : document.activeElement;
         overlay.classList.add('open');
         document.body.style.overflow = 'hidden';
         // בפריים הבא: המודאל מוסתר ב-visibility כשהוא סגור (כדי שלא יהיה
@@ -467,8 +470,34 @@
 
     // ‎presetType‎: סוג שהחלון נפתח עליו — "+ הוספה" בשורה ריקה בעמוד החודש
     // (מתן, 11.10). מה-FAB מגיע כאן אירוע הלחיצה, ולכן רק מחרוזת נחשבת.
+    // ── המקלדת עולה מיד באייפון (מתן, 12.10: "המקלדת לא עולה מיד") ──
+    // iOS פותח מקלדת רק למיקוד שקורה *בתוך* הלחיצה עצמה. השדה האמיתי
+    // מתמקד מאוחר יותר — אחרי טעינת הקטגוריות ובפריים הבא (‎openModal‎) —
+    // ולכן נשאר בלי מקלדת. אז בלחיצה ממקדים שדה מספרים שקוף מחוץ לחלון,
+    // והמקלדת עולה; כשהחלון נפתח המיקוד עובר לסכום, והמקלדת נשארת פתוחה.
+    // רק במגע, ורק בהוספה: בעריכה לא קופצת מקלדת על הטופס.
+    let keyboardProxy = null, proxyReturnTo = null;
+    function summonKeyboard() {
+        if (!window.matchMedia || !window.matchMedia('(pointer: coarse)').matches) return;
+        proxyReturnTo = document.activeElement;
+        if (!keyboardProxy) {
+            keyboardProxy = document.createElement('input');
+            keyboardProxy.type = 'text';
+            keyboardProxy.setAttribute('inputmode', 'decimal');
+            keyboardProxy.setAttribute('aria-hidden', 'true');
+            keyboardProxy.tabIndex = -1;
+            keyboardProxy.className = 'keyboard-proxy';
+            document.body.appendChild(keyboardProxy);
+        }
+        keyboardProxy.focus({ preventScroll: true });
+    }
+    function dismissKeyboardProxy() {
+        if (keyboardProxy && document.activeElement === keyboardProxy) keyboardProxy.blur();
+    }
+
     function openAddModal(presetType) {
         const preset = typeof presetType === 'string' ? presetType : null;
+        summonKeyboard();
         scanSeq++;
         formSeq++;
         setSubmitBusy(false);                   // טופס חדש לא "באמצע שמירה" — ראו ‎finish‎
@@ -498,6 +527,7 @@
                 openModal();
             })
             .catch(function () {
+                dismissKeyboardProxy();
                 if (mySeq === formSeq) window.showToast(window.sfNetError(), 'error');
             });
     }
