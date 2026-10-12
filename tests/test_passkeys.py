@@ -166,3 +166,11 @@ def test_settings_offers_it_under_my_account():
 def test_cancelling_the_system_prompt_is_not_an_error():
     js = (_ROOT / "frontend/static/js/passkey.js").read_text(encoding="utf-8")
     assert "e.name === 'NotAllowedError' || e.name === 'AbortError'" in js
+
+
+def test_once_enabled_there_is_no_add_device_button():
+    """מתן (12.10): "מה זה הוספת מכשיר?" — לחץ, ביטל, ומחק בטעות את מה שהפעיל.
+    המפתח עובר בין מכשירי האפל לבד; אחרי ההפעלה נשארים "מופעל" ו"הסרה"."""
+    js = (_ROOT / "frontend/static/js/passkey.js").read_text(encoding="utf-8")
+    assert "enableBtn.hidden = items.length > 0;" in js
+    assert "'הוספת מכשיר'" not in js          # הכיתוב עצמו, לא ההערה
