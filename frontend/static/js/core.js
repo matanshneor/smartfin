@@ -551,6 +551,31 @@ document.addEventListener('click', function (e) {
 });
 
 
+// ── מעבר בין הלשוניות לא נכנס להיסטוריה (מתן, 11.10) ──
+// "כשאני גולל את כל העמוד, הוא מעביר לי בין עמודים". באייפון החלקה מהקצה
+// היא "אחורה" של המערכת, ואי אפשר לכבות אותה מהאתר — וכל לחיצה על הסרגל
+// הוסיפה עמוד להיסטוריה, אז גלילה שהתחילה ליד הקצה החזירה לעמוד הקודם.
+// הלשוניות מחליפות זו את זו (‎location.replace‎) כמו באפליקציה: אין לאן
+// לחזור. כניסה לפרויקט מהרשימה כן נכנסת להיסטוריה — "אחורה" ממנו לרשימה.
+// על ‎window‎ ולא על ‎document‎: רץ אחרי מי שכבר טיפל בלחיצה (מעבר חודש
+// חלק ב-‎month.js‎ עוצר אותה בעצמו).
+(function () {
+    const TABS = ['/', '/month', '/months', '/projects', '/settings'];
+    window.addEventListener('click', function (e) {
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        const a = e.target.closest && e.target.closest('a[href]');
+        if (!a || (a.target && a.target !== '_self') || a.hasAttribute('download')) return;
+        let url;
+        try { url = new URL(a.href, location.href); } catch (err) { return; }
+        if (url.origin !== location.origin || TABS.indexOf(url.pathname) === -1) return;
+        // קישור לעוגן באותו עמוד — הדפדפן יגלול; לא טוענים מחדש
+        if (url.pathname === location.pathname && url.search === location.search && url.hash) return;
+        e.preventDefault();
+        location.replace(url.href);
+    });
+})();
+
+
 // ── "השבוע" בדף הבית: נגיעה ביום מציגה את העסקאות שלו (מתן, 30.9) ──
 // בהאצלה — הכרטיס מתחלף ברענון רך
 document.addEventListener('click', function (e) {
