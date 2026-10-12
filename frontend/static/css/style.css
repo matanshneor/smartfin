@@ -1270,6 +1270,36 @@ a.alert-card:active { transform: scale(0.98); }
     animation: rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+/* ─── כניסה עם הגלילה (מתן, 11.10) ─────────────────────────────────
+   כרטיס שמתחת למסך נכנס כשגוללים אליו, וצמוד לגלילה: עולה ומתבהר בדיוק
+   בקצב האצבע, לאורך 140 הפיקסלים הראשונים שלו על המסך — אותו מרחק לשורה
+   קצרה ולכרטיס גבוה. ‎translate‎ ולא ‎transform‎ — כדי לא לדרוס את
+   ההחלקות, שכותבות ‎transform‎ (כרטיס "השבוע"). החלק הראשון של הכניסה
+   קורה מאחורי הסרגל השקוף; בסוף העמוד גם השורה האחרונה כבר שלמה (התחתית
+   של ‎main‎ גבוהה מ-140 פחות גובה שורה). */
+@keyframes reveal-in {
+    from { opacity: 0; translate: 0 28px; }
+    to   { opacity: 1; translate: 0 0; }
+}
+@supports (animation-timeline: view()) {
+    .reveal-scroll {
+        animation: reveal-in linear both;
+        animation-timeline: view(block);
+        animation-range: entry 0% entry 140px;
+    }
+}
+/* דפדפן בלי גלילה-כציר-זמן: כניסה רכה ברגע שהכרטיס מופיע */
+.reveal-fallback {
+    opacity: 0;
+    translate: 0 26px;
+    transition: opacity 0.5s ease-out, translate 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-fallback.is-in { opacity: 1; translate: 0 0; }
+@media (prefers-reduced-motion: reduce) {
+    .reveal-scroll { animation: none; }
+    .reveal-fallback { opacity: 1; translate: none; transition: none; }
+}
+
 /* ─── Toast + דיאלוג אישור ────────────────────────────────────── */
 
 /* תיבת "עסקה קבועה" נעולה — מופע ששייך כבר לסדרה */
