@@ -163,7 +163,9 @@
             list.appendChild(li);
         });
         hint.textContent = items.length ? 'מופעל — נכנסים בלי סיסמה' : 'בלי להקליד סיסמה';
-        enableBtn.textContent = items.length ? 'הוספת מכשיר' : 'הפעלה';
+        // אחרי ההפעלה — בלי כפתור (מתן, 12.10: "מה זה הוספת מכשיר?"). המפתח
+        // עובר לבד בין מכשירי האפל דרך iCloud; מכשיר אחר — הסרה והפעלה ממנו.
+        enableBtn.hidden = items.length > 0;
         // יש כניסה כזאת בחשבון — הכפתור במסך ההתחברות יופיע בטלפון הזה
         if (items.length) setFlag(true);
     }
