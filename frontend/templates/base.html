@@ -147,6 +147,11 @@
                         <span class="scan-btn-text">סריקת קבלה</span>
                     </button>
                 </div>
+                {# "חלק מעסקה קבועה" (מתן, 12.10) — במופע של עסקה קבועה: מה זה, ואיך
+                   מגיעים לתבנית עצמה. הקישור לעסקאות הקבועות בהגדרות, שם היא נפתחת לעריכה. #}
+                <a class="tx-series-link" id="txSeriesLink" href="{{ url_for('settings') }}" hidden>
+                    {{ ui_icon("repeat") }}<span>חלק מעסקה קבועה · עריכה לכל החודשים</span>
+                </a>
                 <div class="type-toggle type-toggle-3" role="group" aria-label="מחלקת העסקה">
                     <button class="toggle-btn active" id="toggleExpense" data-type="expense" aria-pressed="true">הוצאה</button>
                     <button class="toggle-btn" id="toggleIncome" data-type="income" aria-pressed="false">הכנסה</button>
@@ -162,8 +167,13 @@
                     <label class="form-label" for="txAmount">סכום</label>
                     <div class="amount-input-wrap">
                         <span class="amount-currency">₪</span>
-                        <input class="form-input amount-input" type="number" id="txAmount"
-                               placeholder="0.00" min="0" step="0.01" inputmode="decimal" enterkeyhint="next" required>
+                        {# ‎type="text"‎ ולא ‎number‎: פסיקים בזמן ההקלדה ("48,000", מתן 12.10) —
+                           שדה מספר לא מקבל אותם. ‎inputmode="decimal"‎ שומר על מקלדת
+                           המספרים עם נקודה. ‎placeholder="0"‎ ולא "0.00" — אגורות רק
+                           כשמקלידים אותן, כמו בשאר האתר. #}
+                        <input class="form-input amount-input" type="text" id="txAmount"
+                               placeholder="0" inputmode="decimal" enterkeyhint="next"
+                               autocomplete="off" spellcheck="false" required>
                     </div>
                 </div>
 

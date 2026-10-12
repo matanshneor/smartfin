@@ -2019,6 +2019,38 @@ label.submit-btn {
 }
 
 label.submit-btn.is-busy { cursor: default; }
+/* עין להצגת הסיסמה (‎js/password-eye.js‎, מתן 12.10). השדה מקבל מקום לכפתור
+   בצד שמאל (RTL — סוף השדה), והכפתור יושב עליו. */
+.pw-wrap { position: relative; display: block; }
+.pw-wrap > .form-input { padding-inline-end: 46px; }
+.pw-eye {
+    position: absolute; inset-inline-end: 4px; top: 50%; translate: 0 -50%;
+    width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+    background: none; border: 0; border-radius: 10px; color: var(--color-text-muted); cursor: pointer;
+}
+.pw-eye svg { width: 20px; height: 20px; }
+.pw-eye[aria-pressed="true"] { color: var(--color-gold-text); }
+
+/* מיון "כל העסקאות" (מתן, 12.10) */
+.tx-sort-chips { display: flex; align-items: center; gap: 6px; margin: 2px 0 8px; }
+.tx-sort-label { font-size: 0.8rem; color: var(--color-text-muted); }
+
+/* "הבא: 1.11" ברשימת העסקאות הקבועות (מתן, 12.10) */
+.recurring-next { margin: 1px 0 0; font-size: 0.74rem; color: var(--color-text-muted); }
+
+/* "חלק מעסקה קבועה" בראש חלון העריכה (מתן, 12.10) */
+.tx-series-link {
+    display: flex; align-items: center; gap: 6px; margin: -4px 0 10px;
+    font-size: 0.82rem; font-weight: 600; color: var(--color-gold-text); text-decoration: none;
+}
+.tx-series-link[hidden] { display: none; }
+
+/* עריכה בלי שינוי — "אין שינויים", אפור (מתן, 12.10) */
+label.submit-btn.is-unchanged,
+#modalOverlay label.submit-btn.is-unchanged,
+:root[data-theme="dark"] #modalOverlay label.submit-btn.is-unchanged {
+    background: var(--color-input); color: var(--color-text-muted); box-shadow: none; cursor: default;
+}
 
 /* פקד ה-submit האמיתי, מוסתר: קיים רק כדי ש-Enter בתוך שדה ישלח את הטופס */
 .submit-fallback {

@@ -172,6 +172,29 @@ function filterAllTx() {
 // חיפוש ריק. אז הוא נפתח מחדש עם מה שהיה בו (‎txState‎).
 let txState = null;
 
+// ── מיון "כל העסקאות": תאריך / סכום (מתן, 12.10) ──
+// הסדר המקורי (לפי תאריך, מהשרת) נשמר על כל שורה בפעם הראשונה, וחוזרים אליו.
+// הסינון והחיפוש ממשיכים לעבוד — הם מסתירים שורות, לא מזיזים.
+function sortAllTx(by) {
+    const list = document.querySelector('#txScreen .tx-screen-list');
+    if (!list) return;
+    const rows = Array.prototype.slice.call(list.querySelectorAll(':scope > .cat-tx-row'));
+    rows.forEach(function (r, i) { if (r.dataset.order === undefined) r.dataset.order = i; });
+    rows.sort(by === 'amount'
+        ? function (a, b) { return Number(b.dataset.amount) - Number(a.dataset.amount) || a.dataset.order - b.dataset.order; }
+        : function (a, b) { return a.dataset.order - b.dataset.order; });
+    rows.forEach(function (r) { list.appendChild(r); });
+    document.querySelectorAll('#txScreen .tx-sort-chip').forEach(function (c) {
+        const on = c.dataset.sort === by;
+        c.classList.toggle('active', on);
+        c.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+}
+document.addEventListener('click', function (e) {
+    const chip = e.target.closest('#txScreen .tx-sort-chip');
+    if (chip) sortAllTx(chip.dataset.sort);
+});
+
 function txScreen() { return document.getElementById('txScreen'); }
 
 // המסך עובר אל ‎body‎ ברגע הפתיחה. בתוך הכרטיס ‎position: fixed‎ לא מכסה את
@@ -193,6 +216,7 @@ function hideTxScreen() {
     if (screen) screen.hidden = true;
     document.body.classList.remove('tx-screen-open');
     txState = null;
+    sortAllTx('date');                  // המיון לא נשמר — בפתיחה הבאה שוב לפי תאריך
 }
 
 function closeTxScreen() {
