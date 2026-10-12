@@ -1349,6 +1349,18 @@ def dashboard():
         except db.DataUnavailable:
             pass
 
+    # פרויקט מוצמד (מתן, 12.10): "טיול ליוון: נשארו ₪7,800 מתוך ₪12,000" מתחת
+    # למאזן. רק כשמישהו הצמיד — אחרת אין שליפה. פרויקט שהסתיים או שנמחק —
+    # הכרטיס לא מופיע. קישוט: תקלה לא מפילה את דף הבית.
+    pinned_project = None
+    pinned_id = ((batch["settings"] or {}).get("pinned_projects") or {}).get(user["id"])
+    if pinned_id:
+        try:
+            pinned_project = next((p for p in db.get_projects(family_id, user["id"])
+                                   if p["id"] == pinned_id), None)
+        except db.DataUnavailable:
+            pinned_project = None
+
     # "איך מצרפים בן משפחה" (מתן, 5.10) — בכניסה הראשונה, אחרי אשף הפתיחה
     # (‎?welcome=1‎ מכפתור "לאפליקציה"), ורק כשעוד אין במשפחה אף אחד אחר
     welcome_invite = None
@@ -1373,6 +1385,7 @@ def dashboard():
         is_new_family=batch["is_new"],
         welcome_invite=welcome_invite,
         alerts=alerts,
+        pinned_project=pinned_project,
     )
 
 
@@ -1493,6 +1506,23 @@ def month_view():
     # גרמה לעסקת הפרויקט להופיע בתוך הקטגוריה החודשית — בלי להיספר בסכום שלה.
     month_transactions = [t for t in month_transactions if not t.get("project_id")]
 
+    # קבועות מול משתנות (מתן, 12.10): מה שהיה יוצא בכל מקרה (עסקה קבועה —
+    # תבנית או מופע, כולל תשלומים) ומה שתלוי בכם. רק כשיש קבועות — בלי, אין מה לחלק.
+    _exp = [t for t in month_transactions if t["type"] == "expense"]
+    _fixed = [t for t in _exp if t.get("is_recurring") or t.get("recurring_parent_id")]
+    fixed_split = None
+    if _fixed:
+        fixed_total = round(sum(t["amount"] for t in _fixed), 2)
+        exp_total = round(sum(t["amount"] for t in _exp), 2)
+        names = []
+        for t in sorted(_fixed, key=lambda t: -t["amount"]):
+            n = t.get("description") or t.get("category_name") or ""
+            if n and n not in names:
+                names.append(n)
+        fixed_split = {"fixed": fixed_total, "variable": round(exp_total - fixed_total, 2),
+                       "pct": round(fixed_total / exp_total * 100) if exp_total else 0,
+                       "names": names[:3], "items": sorted(_fixed, key=lambda t: -t["amount"])}
+
     # גרף חלוקה בין בני משפחה לכל סוג עסקה שהמשפחה הפעילה בו שיוך
     _type_labels = {"expense": "הוצאות", "income": "הכנסות", "savings": "חיסכון"}
     mcolors = _member_colors(family_id)
@@ -1536,6 +1566,7 @@ def month_view():
         savings_home=savings_home,
         savings_breakdown=savings_breakdown,
         member_breakdowns=member_breakdowns,
+        fixed_split=fixed_split,
         month_transactions=month_transactions,
         tx_cat_chips=tx_cat_chips,
         project_month=project_month,
@@ -1699,6 +1730,11 @@ def projects():
     user      = get_current_user()
     family_id = user["family_id"]
     project_list = db.get_projects(family_id, user["id"]) if family_id else []
+    # הפרויקט שנוספה לו עסקה לאחרונה — ראשון (מתן, 12.10). בלי עסקאות — אחריהם,
+    # בסדר שהגיע (החדש קודם). ‎sorted‎ יציב, אז שני הסדרים נשמרים.
+    if len(project_list) > 1:
+        last = db.project_last_activity(family_id)
+        project_list = sorted(project_list, key=lambda p: last.get(p["id"]) or "", reverse=True)
     # "פרויקטים שהסתיימו" — חלק סגור בתחתית (מתן, 30.9)
     finished = db.get_projects(family_id, user["id"], archived=True) if family_id else []
     return render_template("projects.html", active_page="projects", user=user,
@@ -1744,8 +1780,20 @@ def project_detail(project_id):
     project = db.get_project_detail(project_id, family_id, user["id"]) if family_id else None
     if not project:
         return _project_gone()
+    # "הפרויקט הסתיים?" (מתן, 12.10): פרויקט פעיל שלא נוספה לו עסקה חודשיים
+    quiet_since = None
+    if not project.get("archived") and project.get("transactions"):
+        last = max(str(t.get("date") or "")[:10] for t in project["transactions"])
+        try:
+            last_d = date.fromisoformat(last)
+            if (clock.today() - last_d).days >= 60:
+                quiet_since = _HEBREW_MONTHS[last_d.month] + (f" {last_d.year}" if last_d.year != clock.today().year else "")
+        except ValueError:
+            logger.warning("project_detail: bad transaction date %r", last)
+    pinned_id = ((family_settings().get("pinned_projects") or {}).get(user["id"]))
     return render_template("project_detail.html", active_page="projects", user=user,
-                           project=project,
+                           project=project, quiet_since=quiet_since,
+                           is_pinned=(pinned_id == project["id"]),
                            member_colors=_member_colors(family_id),
                            member_names=_member_names(family_id))
 
@@ -2036,6 +2084,24 @@ def archive_project_route(project_id):
     if not db.set_project_archived(project_id, user["family_id"], archived):
         return jsonify({"error": "הפרויקט לא נמצא — ייתכן שנמחק בינתיים"}), 404
     return jsonify({"status": "ok", "archived": archived})
+
+
+@app.route("/api/projects/<project_id>/pin", methods=["PUT"])
+@limiter.limit("30 per minute")
+@login_required
+@project_access_required
+def pin_project_route(project_id):
+    """"הצמדה לבית" (מתן, 12.10): פרויקט אחד לכל בן משפחה, בהגדרות המשפחה
+    תחת ‎pinned_projects[user_id]‎ — ממוזג לפי מפתח, אז שני בני משפחה שמצמידים
+    באותו רגע לא דורסים זה את זה. ‎null‎ — בלי הצמדה."""
+    user = get_current_user()
+    pinned = (request.get_json(silent=True) or {}).get("pinned")
+    if not isinstance(pinned, bool):
+        return jsonify({"error": "ערך לא תקין"}), 422
+    patch = {"pinned_projects": {user["id"]: project_id if pinned else None}}
+    if not db.update_family_settings(user["family_id"], patch):
+        return jsonify({"error": "השמירה נכשלה — נסו שוב"}), 500
+    return jsonify({"status": "ok", "pinned": pinned})
 
 
 @app.route("/api/projects/<project_id>/categories", methods=["GET"])
@@ -2721,6 +2787,22 @@ def add_transaction():
             return jsonify({"error": "תאריך הסיום של העסקה הקבועה מוקדם מתאריך ההתחלה"}), 422
 
 
+    # תשלומים (מתן, 12.10): הסכום הוא המחיר המלא, והשרת מחלק — עסקה קבועה
+    # חודשית עם תאריך סיום. ראו ‎db.installment_plan‎.
+    installments = body.get("installments")
+    plan = None
+    if installments not in (None, "", 0, False):
+        if tx_type != "expense":
+            return jsonify({"error": "תשלומים — רק בהוצאות"}), 422
+        if isinstance(installments, bool) or not isinstance(installments, int) or not 2 <= installments <= 60:
+            return jsonify({"error": "מספר התשלומים — בין 2 ל-60"}), 422
+        plan = db.installment_plan(amount, installments, tx_date)
+        if not plan:
+            return jsonify({"error": "הסכום קטן מדי לחלוקה לתשלומים"}), 422
+        body = dict(body, is_recurring=True, recurring_frequency="monthly_same",
+                    recurring_end_date=plan["end_date"])
+        recurring_end = plan["end_date"]
+
     recurring_frequency, freq_err = _validated_frequency(body)
     if freq_err:
         return jsonify({"error": freq_err}), 422
@@ -2765,6 +2847,9 @@ def add_transaction():
         "project_category_id":  project_category_id,
         "workplace":            workplace_snapshot,
     }
+    if plan:
+        payload.update(amount=plan["first"], installments=plan["count"],
+                       installment_no=1, installment_total=plan["total"])
     # קבלה מצורפת אפשרית רק בהוצאות; ריק = לא נוגעים בעמודה (לא מוחקים קבלה קיימת בעריכה)
     if tx_type == "expense" and body.get("receipt_path"):
         if not _receipt_path_ok(body["receipt_path"], user["family_id"]):

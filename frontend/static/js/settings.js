@@ -1411,6 +1411,8 @@ attrSwitches.forEach(function (sw) {
         }).then(function (ok) {
             if (!ok) return;
             confirmed = true;
+            // במסך ההתחברות — בלי לפתוח לבד את Face ID (‎passkey.js‎)
+            try { sessionStorage.setItem('sf_logged_out', '1'); } catch (err) { /* אין אחסון */ }
             form.submit();
         });
     });

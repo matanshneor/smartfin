@@ -252,6 +252,21 @@
                     </div>
                 </div>
 
+                {# תשלומים (מתן, 12.10): הסכום למעלה הוא המחיר המלא; השרת מחלק
+                   לתשלום בכל חודש עד הסוף. הוצאות בלבד, ולא בעריכה (‎transactions.js‎) #}
+                <div class="form-group detail-row recurring-group installments-group" id="installmentsGroup">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="txInstallments" class="checkbox-input">
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">תשלומים</span>
+                    </label>
+                    <div class="installments-fields" id="installmentsFields" hidden>
+                        <input class="form-input installments-count" type="number" id="txInstallmentCount"
+                               inputmode="numeric" min="2" max="60" value="12" aria-label="מספר התשלומים">
+                        <span class="installments-hint" id="installmentsHint" aria-live="polite"></span>
+                    </div>
+                </div>
+
                 </div>{# ‎.tx-details‎ #}
 
                 {# בתחתית ולא אחרי הסכום (מתן, 30.9): רוב העסקאות לא בפרויקט.

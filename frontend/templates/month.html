@@ -24,6 +24,10 @@
         </p>
     </div>
     <div class="stats-month-nav">
+        {# חיפוש בכל החודשים — גם מכאן (מתן, 12.10): כאן נזכרים "מתי שילמנו את זה?" #}
+        <button type="button" class="stats-nav-btn" id="searchOpen" aria-label="חיפוש בכל העסקאות" aria-haspopup="dialog">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+        </button>
         <a href="{{ url_for('month_view', year=prev_year, month=prev_month) }}" class="stats-nav-btn" aria-label="חודש קודם">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </a>
@@ -160,6 +164,24 @@
             <p class="doughnut-label">הוצאות</p>
         </div>
     </div>
+    {# קבועות מול משתנות (מתן, 12.10). נגיעה פותחת את רשימת הקבועות #}
+    {% if fixed_split %}
+    <details class="fixed-split">
+        <summary>
+            <span class="fixed-split-row">
+                <span><b>₪{{ fixed_split.fixed | money }}</b> קבועות</span>
+                <span><b>₪{{ fixed_split.variable | money }}</b> משתנות</span>
+            </span>
+            <span class="fixed-split-bar" aria-hidden="true"><i style="width: {{ fixed_split.pct }}%"></i></span>
+            <span class="fixed-split-hint">קבועות: {{ fixed_split.names | join(', ') }} · לפירוט</span>
+        </summary>
+        <ul class="fixed-split-list">
+            {% for t in fixed_split['items'] %}
+            <li><span>{{ t.category_icon }} {{ t.description or t.category_name }}</span><b>₪{{ t.amount | money }}</b></li>
+            {% endfor %}
+        </ul>
+    </details>
+    {% endif %}
     {% else %}
     <div class="chart-empty">{{ empty_illus("pie") }}<p>אין הוצאות רשומות החודש</p></div>
     {% endif %}
@@ -238,7 +260,7 @@
                     data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
                     data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
                     <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
-                    <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.is_recurring or tx.recurring_parent_id %} · {{ ui_icon("repeat") }} {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
+                    <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.installments and tx.installment_no %} · <span class="installment-tag">תשלום {{ tx.installment_no }} מתוך {{ tx.installments }}</span>{% elif tx.is_recurring or tx.recurring_parent_id %} · {{ ui_icon("repeat") }} {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
                     {% if (show_owner or {}).get('expense') %}
                     {% set color = member_colors.get(tx.user_id) %}
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
@@ -455,7 +477,7 @@
         data-cat-key="{{ tx.get('cat_key', '') }}"
         data-search="{{ tx.category_name or '' }} {{ tx.project_name or '' }}">
         <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
-        <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.is_recurring or tx.recurring_parent_id %} · {{ ui_icon("repeat") }} {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
+        <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.installments and tx.installment_no %} · <span class="installment-tag">תשלום {{ tx.installment_no }} מתוך {{ tx.installments }}</span>{% elif tx.is_recurring or tx.recurring_parent_id %} · {{ ui_icon("repeat") }} {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
         {% if tx.project_id %}<span class="project-tag">{{ tx.project_icon or '🎯' }} {{ tx.project_name or 'פרויקט' }}</span>{% endif %}
         {% if (show_owner or {}).get(tx.type) %}
         {% set color = member_colors.get(tx.user_id) %}
@@ -603,6 +625,7 @@
 {% endblock %}
 
 {% block scripts %}
+{% include "_search_screen.html" %}
 {# Chart.js נטען רק כשיש מה לצייר — 70KB דחוסים שאין טעם להוריד לחודש ריק #}
 {% if month_transactions %}
 <script src="{{ url_for('static', filename='js/vendor/chart.umd.min.js') }}"></script>

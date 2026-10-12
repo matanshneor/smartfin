@@ -323,6 +323,7 @@
         loadDescriptions();
         hideSuggest();
         modalLastFocused = document.activeElement;
+        if (typeof syncInstallments === 'function') syncInstallments();   // תשלומים — רק בהוספת הוצאה
         overlay.classList.add('open');
         document.body.style.overflow = 'hidden';
         // בפריים הבא: המודאל מוסתר ב-visibility כשהוא סגור (כדי שלא יהיה
@@ -463,6 +464,7 @@
         recurFields.classList.remove('visible');
         resetScanUI();
         syncDateChips();
+        if (typeof syncInstallments === 'function') requestAnimationFrame(syncInstallments);
     }
 
     /* ── "שמירת השינויים" רק כשמשהו השתנה (מתן, 12.10) ──
@@ -894,7 +896,50 @@
     // Recurring
     recurringCb.addEventListener('change', function () {
         recurFields.classList.toggle('visible', this.checked);
+        if (this.checked && instCb && instCb.checked) { instCb.checked = false; syncInstallments(); }
     });
+
+    // ── תשלומים (מתן, 12.10) ──
+    // הסכום הוא המחיר המלא; השרת מחלק (‎db.installment_plan‎) — אותו חישוב
+    // כאן רק כדי להראות מראש: "₪400 בחודש · עד ספטמבר 2027". תשלומים ועסקה
+    // קבועה לא יחד — תשלומים הם כבר עסקה קבועה עם סוף.
+    const instGroup = document.getElementById('installmentsGroup');
+    const instCb    = document.getElementById('txInstallments');
+    const instCount = document.getElementById('txInstallmentCount');
+    const instHint  = document.getElementById('installmentsHint');
+    const instFields = document.getElementById('installmentsFields');
+    const MONTH_NAMES = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי',
+                         'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+    function installmentCount() {
+        const n = parseInt(instCount.value, 10);
+        return n >= 2 && n <= 60 ? n : null;
+    }
+    function syncInstallments() {
+        if (!instGroup) return;
+        // רק בהוספת הוצאה
+        instGroup.hidden = !!editId || currentType !== 'expense';
+        if (instGroup.hidden && instCb.checked) instCb.checked = false;
+        instFields.hidden = !instCb.checked;
+        if (!instCb.checked) { instHint.textContent = ''; return; }
+        if (recurringCb.checked) { recurringCb.checked = false; recurFields.classList.remove('visible'); }
+        const n = installmentCount(), total = amountValue();
+        if (!n || !total) { instHint.textContent = n ? '' : 'בין 2 ל-60 תשלומים'; return; }
+        const cents = Math.round(total * 100), base = Math.floor(cents / n), first = cents - base * (n - 1);
+        if (base <= 0) { instHint.textContent = 'הסכום קטן מדי לחלוקה'; return; }
+        const start = txDate.value ? new Date(txDate.value + 'T00:00:00') : new Date();
+        const end = new Date(start.getFullYear(), start.getMonth() + n - 1, 1);
+        const money = c => '₪' + window.sfMoney(c / 100);
+        instHint.textContent = (first !== base ? money(first) + ' ואז ' : '') + money(base) + ' בחודש · עד '
+            + MONTH_NAMES[end.getMonth()] + ' ' + end.getFullYear();
+    }
+    if (instGroup) {
+        [instCb, instCount].forEach(el => el.addEventListener('input', syncInstallments));
+        instCb.addEventListener('change', syncInstallments);
+        txDate.addEventListener('change', syncInstallments);
+        txForm.addEventListener('click', function (e) {
+            if (e.target.closest('.type-toggle, .date-chip')) requestAnimationFrame(syncInstallments);
+        });
+    }
 
     // ── סריקת קבלה: לחיצה פותחת מצלמה/בחירת קובץ ──
     scanBtn.addEventListener('click', function () {
@@ -1045,6 +1090,7 @@
         txAmount.removeAttribute('aria-invalid');
         formatAmount(true);
         fitAmount();
+        if (typeof syncInstallments === 'function') syncInstallments();   // "₪400 בחודש"
     });
 
     // כפתור השמירה הוא <label>, לא <button> — ראה ההערה ליד הסימון.
@@ -1248,6 +1294,14 @@
             receipt_path:        currentType === 'expense' ? (txReceiptPath.value || null) : null,
             project_id:          txProject.value || null,
         };
+        if (!editId && instCb && instCb.checked && currentType === 'expense') {
+            const n = installmentCount();
+            if (!n) { formError.textContent = 'מספר התשלומים — בין 2 ל-60'; instCount.focus(); return; }
+            payload.installments = n;
+            payload.is_recurring = false;          // השרת הופך לקבועה עם סוף
+            payload.recurring_frequency = null;
+            payload.recurring_end_date = null;
+        }
 
         if (!editId && precheckPassed !== precheckKey(payload)) {
             const key = precheckKey(payload);

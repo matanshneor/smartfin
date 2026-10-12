@@ -58,7 +58,9 @@ def test_the_details_are_one_block():
     for field in ('id="txDescription"', 'id="ownerGroup"', 'id="txDate"', 'id="txRecurring"', 'id="recurringFields"'):
         assert field in block, field
     assert 'id="projectGroup"' not in block and 'id="categoryGrid"' not in block
-    assert block.count('class="form-group detail-row') == 4
+    # תיאור, של מי, תאריך, עסקה קבועה — ותשלומים (מתן, 12.10)
+    assert block.count('class="form-group detail-row') == 5
+    assert 'id="txInstallments"' in block
     assert "border-top" in _rule("#modalOverlay .tx-details .detail-row + .detail-row")
 
 
