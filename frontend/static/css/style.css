@@ -639,9 +639,10 @@ ul { list-style: none; }
     -webkit-backdrop-filter: blur(20px) saturate(180%);
     backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid rgba(var(--ink-rgb), 0.08);
-    border-radius: 16px;
+    /* קפסולה — קצוות עגולים כמו ה-+ שלידה (מתן, 11.10) */
+    border-radius: calc(var(--dock-height) / 2);
     box-shadow: var(--shadow-dock);
-    padding: 0 6px;
+    padding: 0 12px;
 }
 
 /* מי שביקש בטלפון פחות שקיפות, או ניגודיות גבוהה — סרגל אטום כמו פעם */
@@ -672,7 +673,7 @@ ul { list-style: none; }
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 9px;
+    border-radius: 999px;          /* כמו הסרגל וה-+ (מתן, 11.10) */
     transition: background 0.3s cubic-bezier(0.22, 1, 0.36, 1), color 0.25s, transform 120ms ease-out;
 }
 
