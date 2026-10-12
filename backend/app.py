@@ -11,6 +11,7 @@ import json
 import math
 import os
 import re
+import secrets
 import time
 from . import supabase_config as db
 from .money import format_money
@@ -343,13 +344,26 @@ def inject_auth():
     # long-lived Flask session keeps working without re-login.
     expires_at = session.get("token_expires_at") or 0
     if session.get("refresh_token") and time.time() > expires_at - 120:
-        response, err, fatal = db.refresh_session(session["refresh_token"])
+        sid = session.get("sid")
+        # התשובה עם הטוקן הקודם אולי לא הגיעה לטלפון (האפליקציה ירדה לרקע
+        # באמצע) — אז העוגייה ישנה, והטוקן העדכני מחכה במסד (מתן, 13.10)
+        if sid and _adopt_newer_tokens(sid):
+            token, expires_at = session["access_token"], session["token_expires_at"]
+    if session.get("refresh_token") and time.time() > expires_at - 120:
+        old_refresh = session["refresh_token"]
+        response, err, fatal = db.refresh_session(old_refresh)
         if not err and response and response.session:
             token = response.session.access_token
             session["access_token"]     = token
             session["refresh_token"]    = response.session.refresh_token
             session["token_expires_at"] = response.session.expires_at
             session.permanent = True     # כל שימוש מאריך את חלון העוגייה
+            if sid:
+                db.web_session_rotate(sid, old_refresh, token, response.session.refresh_token,
+                                      response.session.expires_at)
+        elif fatal and sid and _adopt_newer_tokens(sid):
+            # בקשה מקבילה (worker אחר) רעננה רגע לפנינו ושמרה במסד
+            token = session["access_token"]
         elif fatal and time.time() >= expires_at:
             # הטוקן נדחה וגם טוקן הגישה כבר פג — ההתחברות מתה באמת ואין
             # מה לשחזר. רק כאן מנתקים.
@@ -365,6 +379,22 @@ def inject_auth():
             _do_not_rewrite_session_cookie()
 
     db.set_auth_token(token)
+
+
+def _adopt_newer_tokens(sid) -> bool:
+    """מחליף את הטוקנים שבעוגייה בעדכניים מהמסד, אם שם יש חדשים יותר.
+
+    "חדשים יותר" = refresh token אחר מזה שבעוגייה: רק רענון מצליח משנה
+    אותו במסד, אז אחר פירושו שהרענון קרה בבקשה שהתשובה שלה לא הגיעה."""
+    newer = db.web_session_get(sid)
+    if not newer or not newer.get("refresh_token") or newer["refresh_token"] == session.get("refresh_token"):
+        return False
+    logger.info("session tokens recovered from web_sessions")
+    session["access_token"]     = newer["access_token"]
+    session["refresh_token"]    = newer["refresh_token"]
+    session["token_expires_at"] = newer["expires_at"]
+    session.permanent = True
+    return True
 
 
 # ─── זיכרון המכשיר ────────────────────────────────────────────────────────────
@@ -814,6 +844,11 @@ def _begin_session(user_id, email, access_token, refresh_token, expires_at):
         # אז עדיף לא להיכנס מאשר להיכנס למצב תקוע.
         session.clear()
         return "לא הצלחנו לטעון את הפרטים שלך — נסו שוב בעוד רגע"
+
+    # עותק של הטוקנים במסד, לפי מזהה אקראי בעוגייה (ראו ‎inject_auth‎)
+    session["sid"] = secrets.token_urlsafe(32)
+    db.web_session_open(session["sid"], user_id, access_token, refresh_token, expires_at)
+    db.set_auth_token(access_token)     # הקריאה למסד רצה בלי טוקן משתמש
     return None
 
 
@@ -1078,6 +1113,8 @@ def logout():
     זה גם מה שהופך את סימון המכשיר לאמין: מכאן והלאה, מכשיר שמסומן מוכר
     אבל אין לו session הוא בהכרח מקרה שבו ההתחברות נגמרה מעצמה — וזה
     בדיוק המקרה שבו דף שיווק הוא התשובה הלא נכונה."""
+    if session.get("sid"):
+        db.web_session_close(session["sid"])
     session.clear()
     response = redirect(url_for("dashboard"))
     response.delete_cookie(_LAST_ID_COOKIE, samesite="Lax", secure=not _IS_DEV)

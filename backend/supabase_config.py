@@ -1,3 +1,4 @@
+import hashlib
 import os
 import re
 
@@ -286,6 +287,68 @@ def refresh_session(refresh_token: str):
     except Exception as e:
         # לא מזוהה — מניחים זמני. ניתוק שגוי גרוע יותר מבקשה אחת מנוונת.
         return None, str(e), False
+
+
+# ─── עותק הטוקנים במסד (‎web_sessions‎, מתן 13.10) ─────────────────────────────
+#
+# ה-refresh token מתחלף בכל רענון. כשהתשובה עם הטוקן החדש לא מגיעה לטלפון
+# (האפליקציה ירדה לרקע באמצע), העוגייה נשארת עם טוקן פסול — וזה היה ניתוק.
+# עכשיו הטוקן העדכני נשמר גם כאן, לפי ‎sha256‎ של מזהה הסשן שבעוגייה.
+#
+# הקריאות נעשות בלי טוקן משתמש (‎anon‎): ברגע הזה טוקן הגישה של המשתמש
+# בדרך כלל כבר פג, ו-PostgREST דוחה טוקן פג עוד לפני הפונקציה.
+# כל כשל כאן נבלע עם רישום — זו רשת ביטחון, לא תנאי לכניסה.
+
+def _sid_hash(sid: str) -> str:
+    return hashlib.sha256(sid.encode("utf-8")).hexdigest()
+
+
+def _anon_rpc(name: str, params: dict):
+    client = get_client()
+    if not client:
+        logger.warning("%s: no client", name)
+        return None
+    client.postgrest.auth(os.environ.get("SUPABASE_KEY", ""))
+    return client.rpc(name, params).execute()
+
+
+def web_session_open(sid, user_id, access_token, refresh_token, expires_at):
+    try:
+        _anon_rpc("web_session_open", {
+            "p_sid_hash": _sid_hash(sid), "p_user_id": user_id, "p_access": access_token,
+            "p_refresh": refresh_token, "p_expires": int(expires_at or 0)})
+    except Exception:
+        logger.exception("web_session_open")
+
+
+def web_session_get(sid):
+    """הטוקנים העדכניים של הסשן, או ‎None‎ (אין שורה, או תקלה)."""
+    try:
+        result = _anon_rpc("web_session_get", {"p_sid_hash": _sid_hash(sid)})
+    except Exception:
+        logger.exception("web_session_get")
+        return None
+    rows = (result.data if result else None) or []
+    if not rows:
+        logger.info("web_session_get: no row")
+        return None
+    return rows[0]
+
+
+def web_session_rotate(sid, old_refresh, access_token, refresh_token, expires_at):
+    try:
+        _anon_rpc("web_session_rotate", {
+            "p_sid_hash": _sid_hash(sid), "p_old_refresh": old_refresh, "p_access": access_token,
+            "p_refresh": refresh_token, "p_expires": int(expires_at or 0)})
+    except Exception:
+        logger.exception("web_session_rotate")
+
+
+def web_session_close(sid):
+    try:
+        _anon_rpc("web_session_close", {"p_sid_hash": _sid_hash(sid)})
+    except Exception:
+        logger.exception("web_session_close")
 
 
 # ─── Profile ──────────────────────────────────────────────────────────────────
