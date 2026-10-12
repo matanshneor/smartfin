@@ -21,6 +21,20 @@
 <!-- Comparison chart -->
 <section class="chart-card">
     <h2 class="chart-title">הכנסות · הוצאות · חיסכון</h2>
+    {# במשפט אחד — בלי להשוות גבהים בעין (מתן, 12.10). ‎db.trend_verdict‎ #}
+    {% if verdict %}
+    {% set than = {3: 'מהממוצע של 3 החודשים שלפניו', 2: 'מהממוצע של החודשיים שלפניו', 1: 'מהחודש שלפניו'}[verdict.count] %}
+    {% set like = {3: 'כמו הממוצע של 3 החודשים שלפניו', 2: 'כמו הממוצע של החודשיים שלפניו', 1: 'כמו בחודש שלפניו'}[verdict.count] %}
+    <p class="trend-verdict">
+        ב{{ verdict.month_name }} הוצאתם <b>₪{{ verdict.expense | money }}</b> —
+        {% if verdict.direction == 'same' -%}
+        בערך {{ like }}
+        {%- else -%}
+        <b class="{{ 'deficit' if verdict.direction == 'up' else 'surplus' }}">{{ verdict.pct }}% {{ 'יותר' if verdict.direction == 'up' else 'פחות' }}</b> {{ than }}
+        {%- endif %}
+        (₪{{ verdict.avg | money }})
+    </p>
+    {% endif %}
     {# טווח לשני הגרפים (מתן, 3.10 — רעיון 24). לא נשמר: בכניסה הבאה — חצי שנה #}
     <div class="range-chips" role="group" aria-label="טווח הגרפים" {% if trend_data | length <= 3 %}hidden{% endif %}>
         <button type="button" class="date-chip range-chip" data-range="3" aria-pressed="false">3 חודשים</button>

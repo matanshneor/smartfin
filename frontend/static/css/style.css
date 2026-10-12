@@ -220,6 +220,9 @@ ul { list-style: none; }
     border-bottom: 1px solid rgba(212, 175, 55, 0.18);
     position: relative;
 }
+/* בכהה הרקע מתחת לרצועה כהה כמוה, ונשאר רק הקו — חוצה את הכרטיס הראשון
+   באמצע ונראה כמו שריטה (מתן, 12.10). בבהיר הוא הגבול בין כהה לקרם. */
+:root[data-theme="dark"] .page-hero { border-bottom-color: transparent; }
 
 .hero-inner {
     max-width: 560px;
@@ -1033,6 +1036,18 @@ a.kpi-chip:active { transform: scale(0.97); }
 .owner-7 { background: rgba(47, 115, 133, 0.12); color: #2F7385; }  /* כחול-פטרול */
 .owner-shared { background: rgba(var(--ink-rgb), 0.07); color: var(--color-text-muted); }
 
+/* שדה שקוף שמעלה את המקלדת באייפון ברגע הלחיצה על + (‎transactions.js
+   summonKeyboard‎). ‎1rem‎ = 16px לפחות — פחות מזה ו-iOS מגדיל את העמוד במיקוד. */
+.keyboard-proxy {
+    position: fixed; top: 0; left: 0; width: 1px; height: 1px;
+    opacity: 0; border: 0; padding: 0; font-size: 1rem; pointer-events: none;
+}
+
+/* אייקוני קו בכפתורים ובסימנים (‎backend/icons.py‎, מתן 12.10): בגודל
+   הטקסט ובצבע שלו, כמו האות שהם מחליפים */
+.ui-icon { width: 1em; height: 1em; flex-shrink: 0; vertical-align: -0.14em; }
+.scan-btn-icon { display: inline-flex; }
+
 /* תג קבלה מצורפת — לחיצה פותחת את התמונה, לא את עריכת העסקה */
 .receipt-badge {
     position: relative;
@@ -1052,7 +1067,7 @@ a.kpi-chip:active { transform: scale(0.97); }
     /* הסמל הפך מ-<button> ל-<a> (פתיחת קבלה ב-iOS), אז צריך את מה
        שכפתור קיבל בחינם */
     text-decoration: none;
-    color: inherit;
+    color: var(--color-gold-text);
 }
 
 /* אזור נגיעה אמיתי: הסמל עצמו 22px, מתחת למינימום הנגישות, והוא יושב
@@ -3752,6 +3767,10 @@ a.btn-sm { display: inline-flex; align-items: center; justify-content: center; t
         transition-duration: 0.01ms !important;
     }
     .anim-rise { opacity: 1; }
+    /* ה-0.01ms שלמעלה חל גם על ‎visibility‎ — של החלון ושל כל מה שבתוכו
+       (‎visibility‎ עובר בירושה, וכל צאצא "מתעכב" בעצמו). בפריים של המיקוד
+       שדה הסכום עוד ‎hidden‎, והסמן נשאר על +. נמצא 12.10. */
+    .modal-overlay.open, .modal-overlay.open * { transition: none !important; }
 }
 
 /* ═══ העדפות משפחה (עמוד ההגדרות + שלב באונבורדינג) ═══ */
@@ -4986,6 +5005,15 @@ body > .color-sheet { z-index: 180; }
 .project-tile-body { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .project-tile-name { font-weight: 700; font-size: 1rem; line-height: 1.3; overflow-wrap: anywhere; }
 .project-tile-sub { margin-top: 2px; font-size: 0.78rem; color: var(--color-text-muted); line-height: 1.4; }
+.trend-verdict { margin: 4px 0 14px; font-size: 0.95rem; line-height: 1.55; color: var(--color-text-muted); }
+.trend-verdict b { color: var(--color-text); }
+.trend-verdict b.deficit { color: var(--color-expense); }
+.trend-verdict b.surplus { color: var(--color-income); }
+.project-tile-progress b { color: var(--color-text); font-weight: 700; }
+.project-tile-progress .deficit, .project-tile-progress .deficit b { color: var(--color-expense); }
+.project-tile-bar { display: block; height: 5px; margin-top: 7px; border-radius: 99px; background: rgba(var(--ink-rgb), 0.08); overflow: hidden; }
+.project-tile-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--color-gold); }
+.project-tile-bar > span.danger { background: var(--color-expense); }
 .project-tile-tag { flex-shrink: 0; font-size: 0.7rem; color: var(--color-text-soft); background: rgba(var(--ink-rgb), 0.06); border-radius: 99px; padding: 1px 8px; }
 
 /* "פרויקט חדש": לבן עם מסגרת מקווקוות — רקע זהבהב התמזג עם רקע העמוד,

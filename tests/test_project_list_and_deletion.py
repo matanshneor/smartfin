@@ -33,16 +33,48 @@ _FAM, _ME = "f" * 8, "m" * 8
 
 # ─── הרשימה: שמות בלבד ───────────────────────────────────────────────────────
 
-def test_the_list_shows_no_amounts():
-    """סכום בלי הקשר הוא מספר שאי אפשר לעשות איתו כלום. וגם לא התקדמות:
-    סכומים וקצב — רק בתוך הפרויקט (מתן, 5.10)."""
-    tiles = _LIST[_LIST.index("{% macro tile(p, i) %}"):_LIST.index("{% endmacro %}", _LIST.index("{% macro tile(p, i) %}"))]
+def test_finished_projects_show_no_amounts():
+    """פרויקט שהסתיים — רק השם. (בפעילים: "כמה נשאר", מתן 12.10 — למטה.)"""
     finished = _LIST[_LIST.index('id="finishedProjects"'):]
-
-    for part in (tiles, finished):
-        assert "₪" not in part and "money" not in part
-        assert "spent" not in part and "budget" not in part and "amount" not in part
+    assert "₪" not in finished and "money" not in finished
     assert "hero-totals" not in _LIST and "הוצאתם" not in _LIST
+
+
+def _render_tiles(projects):
+    from backend.app import app
+    with app.test_request_context("/projects"):
+        return app.jinja_env.get_template("projects.html").render(
+            active_page="projects", user={"id": "x", "name": "מתן", "avatar_initial": "מ"},
+            projects=projects, finished_projects=[])
+
+
+def _proj(**kw):
+    base = {"id": "p1", "name": "טיול", "description": None, "icon": "✈️", "is_personal": False,
+            "budget_target": None, "spent": 0.0, "saved": 0.0, "amount": 0.0,
+            "track_expense": True, "track_income": False, "track_savings": False}
+    return {**base, **kw}
+
+
+def test_a_tile_with_a_target_says_how_much_is_left():
+    """מתן (12.10), הפך את 5.10: "נשארו ₪7,800 מתוך ₪12,000", ופס — כמו בעמוד הפרויקט."""
+    html = _render_tiles([_proj(budget_target=12000.0, spent=4200.0)])
+    assert "נשארו <b>₪7,800</b> מתוך ₪12,000" in html
+    assert 'class="project-tile-bar"' in html and "width: 35%;" in html
+
+
+def test_a_tile_over_its_target_says_so():
+    html = _render_tiles([_proj(budget_target=1000.0, spent=1250.0)])
+    assert "חריגה של <b>₪250</b>" in html and "width: 100%;" in html and 'class="danger"' in html
+
+
+def test_a_tile_without_a_target_says_what_went_out():
+    assert "יצאו <b>₪18,350</b> עד עכשיו" in _render_tiles([_proj(spent=18350.0)])
+    assert "נחסכו <b>₪900</b> עד עכשיו" in _render_tiles(
+        [_proj(track_expense=False, track_savings=True, saved=900.0)])
+
+
+def test_an_empty_project_gets_no_line():
+    assert "project-tile-progress" not in _render_tiles([_proj()])
 
 
 def test_the_list_has_no_delete_button():

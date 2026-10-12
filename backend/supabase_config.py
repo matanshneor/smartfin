@@ -2444,6 +2444,10 @@ def get_projects(family_id: str, viewer_user_id: str, archived=False) -> list:
                 "owner_id": p.get("owner_id"),
                 "budget_target": float(budget) if budget is not None else None,
                 "amount": round(net, 2),
+                # למלבן ברשימה (מתן, 12.10): "נשארו ₪X מתוך ₪Y" — אותו חישוב
+                # כמו בעמוד הפרויקט (‎spent‎ = הוצאות בלבד)
+                "spent": round(t["expense"], 2),
+                "saved": round(t["savings"], 2),
                 "track_expense": p.get("track_expense", True),
                 "track_income": p.get("track_income", False),
                 "track_savings": p.get("track_savings", False),
@@ -3205,6 +3209,28 @@ def monthly_trend(archive: list, num_months: int = 12, today=None) -> list:
         })
     trend.sort(key=lambda t: t["key"])
     return trend
+
+
+def trend_verdict(trend: list, today=None):
+    """שורת המסקנה מעל גרף ההשוואה (מתן, 12.10): החודש האחרון שנגמר מול
+    הממוצע של עד 3 החודשים שלפניו — במילים, בלי לפענח עמודות.
+
+    החודש הנוכחי לא נבחן: באמצע החודש כל חודש נראה "חסכוני". אין חודש
+    קודם להשוות אליו, או שלא יצא בו כלום — ‎None‎, ואין שורה."""
+    today = today or clock.today()
+    done = [t for t in trend or [] if (t["year"], t["month"]) < (today.year, today.month)]
+    if len(done) < 2 or done[-1]["expense"] <= 0:
+        return None
+    last = done[-1]
+    before = [t["expense"] for t in done[-4:-1] if t["expense"] > 0]
+    if not before:
+        return None
+    avg = sum(before) / len(before)
+    pct = round((last["expense"] - avg) / avg * 100)
+    # בשקלים שלמים: "ממוצע ₪11,066.67" הוא דיוק שאף אחד לא צריך במשפט
+    return {"month_name": last["month_name"], "expense": round(last["expense"]), "avg": round(avg),
+            "count": len(before), "pct": abs(pct),
+            "direction": "same" if abs(pct) < 3 else ("up" if pct > 0 else "down")}
 
 
 _SHORT_MONTHS = ["", "ינו׳", "פבר׳", "מרץ", "אפר׳", "מאי", "יוני",
