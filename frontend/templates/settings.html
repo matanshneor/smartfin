@@ -709,6 +709,21 @@
                 </div>
             </div>
 
+            {# כניסה עם Face ID (מתן, 12.10). מוסתר עד ש-‎js/passkey.js‎ מוודא שהטלפון
+               תומך ושהאפשרות פעילה באתר — אחרת אין כאן כלום ללחוץ עליו #}
+            <div class="passkey-settings" id="passkeySettings" hidden>
+                <div class="group-divider"></div>
+                <div class="group-row">
+                    <div class="group-row-info">
+                        <p class="group-row-label">כניסה עם <span data-passkey-name>Face ID</span></p>
+                        <p class="group-row-hint" id="passkeyHint">בלי להקליד סיסמה</p>
+                    </div>
+                    <button type="button" class="btn-sm btn-ghost" id="passkeyEnableBtn">הפעלה</button>
+                </div>
+                <ul class="passkey-list" id="passkeyList"></ul>
+                <p class="form-error" id="passkeySettingsError" role="alert"></p>
+            </div>
+
             <div class="group-divider"></div>
             <details class="advanced-options">
                 <summary class="advanced-summary">אפשרויות מתקדמות</summary>
@@ -768,4 +783,5 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+<script src="{{ url_for('static', filename='js/passkey.js') }}"></script>
 {% endblock %}
