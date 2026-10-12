@@ -210,9 +210,8 @@
             li.appendChild(rm);
             list.appendChild(li);
         });
-        // "נעילת האפליקציה" — בלי פירוט (מתן, 13.10). מתחת לשם: "מופעל", או כלום
-        hint.textContent = items.length ? 'מופעל' : '';
-        hint.hidden = !items.length;
+        // כותרת "Face ID", ומתחת המשפט — בלי פירוט של דקות (מתן, 13.10)
+        hint.textContent = items.length ? 'נעילת האפליקציה מופעלת' : 'נעילת האפליקציה באמצעות ' + NAME;
         // אחרי ההפעלה — בלי כפתור (מתן, 12.10: "מה זה הוספת מכשיר?"). המפתח
         // עובר לבד בין מכשירי האפל דרך iCloud; מכשיר אחר — הסרה והפעלה ממנו.
         enableBtn.hidden = items.length > 0;
