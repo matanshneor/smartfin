@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#141007">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="robots" content="noindex">
+    <title>SmartFin – נעול</title>
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-180.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='fonts/rubik.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+</head>
+{# מסך הנעילה (מתן, 13.10): אחרי 5 דקות ברקע, בטלפון שהגדיר Face ID. הסריקה
+   נפתחת לבד (‎js/passkey.js‎); אם נכשלה — "נסו שוב" או "כניסה עם סיסמה". #}
+<body class="auth-body unlock-body">
+    <main class="unlock-screen" id="unlockScreen" data-next="{{ next }}">
+        <div class="auth-logo-icon unlock-logo">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                <path d="M5 21L12.5 13.5L17.5 18.5L27 9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M20 9H27V16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <h1 class="unlock-title">{% if user_name %}שלום, {{ user_name }}{% else %}SmartFin{% endif %}</h1>
+        <p class="unlock-sub">האפליקציה נעולה</p>
+
+        <button type="button" class="passkey-btn unlock-btn" id="unlockBtn">
+            {{ ui_icon("face") }}<span>פתיחה עם <span data-passkey-name>Face ID</span></span>
+        </button>
+        <p class="form-error" id="unlockError" role="alert"></p>
+
+        <form method="POST" action="{{ url_for('unlock_with_password') }}" class="unlock-password" id="unlockPassword">
+            <button type="submit" class="link-btn">כניסה עם סיסמה</button>
+        </form>
+    </main>
+    <script src="{{ url_for('static', filename='js/passkey.js') }}"></script>
+</body>
+</html>

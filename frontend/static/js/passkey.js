@@ -141,6 +141,44 @@
         if (!justOut && !failedLogin && onLogin) setTimeout(function () { loginBtn.click(); }, 350);
     }
 
+    // ── מסך הנעילה (‎/unlock‎, מתן 13.10) ─────────────────────────────────
+    const unlockBtn = document.getElementById('unlockBtn');
+    if (unlockBtn) {
+        const screen = document.getElementById('unlockScreen');
+        const uerr = document.getElementById('unlockError');
+        unlockBtn.querySelector('[data-passkey-name]').textContent = NAME;
+        // "כניסה עם סיסמה" — בטופס ההתחברות לא להקפיץ שוב את ה-Face ID
+        document.getElementById('unlockPassword').addEventListener('submit', function () {
+            try { sessionStorage.setItem('sf_logged_out', '1'); } catch (e) { /* אין אחסון */ }
+        });
+        if (!supported) {
+            unlockBtn.hidden = true;
+            uerr.textContent = 'הטלפון הזה לא תומך ב-' + NAME + ' — היכנסו עם סיסמה';
+        } else {
+            unlockBtn.addEventListener('click', function () {
+                if (unlockBtn.disabled) return;
+                unlockBtn.disabled = true;
+                uerr.textContent = '';
+                post('/api/passkey/login/options')
+                    .then(function (o) {
+                        return navigator.credentials.get({ publicKey: requestOptions(o.options) })
+                            .then(function (c) {
+                                return post('/api/unlock/verify',
+                                            { challenge_id: o.challenge_id, credential: credentialJSON(c) });
+                            });
+                    })
+                    .then(function () { window.location.replace(screen.dataset.next || '/'); })
+                    .catch(function (e) {
+                        unlockBtn.disabled = false;
+                        unlockBtn.querySelector('span').firstChild.textContent = 'נסו שוב עם ';
+                        uerr.textContent = cancelled(e) ? '' : (e.message || FAILED);
+                    });
+            });
+            setTimeout(function () { unlockBtn.click(); }, 350);
+        }
+        return;
+    }
+
     // ── הגדרות → החשבון שלי ──────────────────────────────────────────────
     const box = document.getElementById('passkeySettings');
     if (!box || !supported) return;
