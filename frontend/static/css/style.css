@@ -149,6 +149,11 @@
 
 html {
     -webkit-text-size-adjust: 100%;
+    /* החלקה הצידה לא מעבירה עמוד (מתן, 11.10 — "כשאני גולל הוא מעביר לי
+       בין עמודים"): באנדרואיד זה מכבה את "אחורה" של הדפדפן בהחלקה. באייפון
+       המחווה של המערכת נשארת, ולכן מעבר בין הלשוניות לא נכנס להיסטוריה
+       (‎core.js‎) — אין לאן לחזור. */
+    overscroll-behavior-x: none;
     /* בלי הריבוע האפור שהטלפון צובע על כל נגיעה — הסימן הכי בולט ש"זה אתר".
        לכפתורים יש ‎:active‎ משלהם (מתן, 7.10 — סבב מגע, סעיף 1) */
     -webkit-tap-highlight-color: transparent;
@@ -229,7 +234,8 @@ ul { list-style: none; }
     z-index: 2;
     max-width: 560px;
     margin: -30px auto 0;
-    padding: 0 16px calc(var(--dock-height) + var(--dock-gap) + 96px);
+    /* מקום לסרגל בלבד — ה-+ יושב בשורה שלו ולא מעל התוכן (מתן, 11.10) */
+    padding: 0 16px calc(var(--dock-height) + var(--dock-gap) + env(safe-area-inset-bottom, 0px) + 24px);
 }
 
 /* ─── Hero typography & header ────────────────────────────────── */
@@ -609,15 +615,21 @@ ul { list-style: none; }
 
 /* ─── Floating navigation dock ────────────────────────────────── */
 
+/* הסרגל וה-+ הם קבוצה אחת ממורכזת (מתן, 11.10): ה-+ יושב משמאל לסרגל,
+   באותה שורה, ולא צף מעל התוכן — שם הוא נראה כאילו הוא שייך למה שמעליו
+   ("לכל החודש"). ‎--dock-w‎ — רוחב הקבוצה; ‎--dock-side‎ — השוליים מכל צד. */
+:root {
+    --fab-size: 52px;
+    --dock-w: min(calc(100vw - 2 * var(--dock-gap)), 560px);
+    --dock-side: calc((100vw - var(--dock-w)) / 2);
+}
 .bottom-nav {
     position: fixed;
     bottom: calc(var(--dock-gap) + env(safe-area-inset-bottom, 0px));
-    left: var(--dock-gap);
-    right: var(--dock-gap);
+    left: calc(var(--dock-side) + var(--fab-size) + 14px);
+    right: var(--dock-side);
     z-index: 50;
     height: var(--dock-height);
-    max-width: 560px;
-    margin: 0 auto;
     display: flex;
     justify-content: space-around;
     align-items: center;
@@ -1211,20 +1223,22 @@ a.alert-card:active { transform: scale(0.98); }
 
 /* ─── FAB ─────────────────────────────────────────────────────── */
 
+/* עיגול זהב משמאל לסרגל, באמצע הגובה שלו (מתן, 11.10). עד אז ריבוע זהב
+   צף מעל התוכן — "גס מדי", ונראה שייך למה שמעליו. */
 .fab {
     position: fixed;
-    bottom: calc(var(--dock-height) + var(--dock-gap) + env(safe-area-inset-bottom, 0px) + 16px);
-    inset-inline-end: 20px;
-    width: 54px;
-    height: 54px;
-    border-radius: 16px;
+    bottom: calc(var(--dock-gap) + env(safe-area-inset-bottom, 0px) + (var(--dock-height) - var(--fab-size)) / 2);
+    left: calc(var(--dock-side) + 5px);
+    width: var(--fab-size);
+    height: var(--fab-size);
+    border-radius: 50%;
     background: var(--gradient-gold);
     color: #FFFFFF;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: var(--shadow-gold);
-    z-index: 40;
+    box-shadow: 0 6px 16px rgba(166, 124, 0, 0.30);
+    z-index: 51;
     transition: transform 0.2s;
 }
 
@@ -4535,6 +4549,7 @@ li.transaction-item.swipe-ready > .swipe-content {
    בפינה השמאלית התחתונה — בדיוק על "מחק פרויקט". הפעולה הבלתי הפיכה
    בעמוד הייתה חצי מוסתרת מאחורי כפתור שלא שייך לשם. */
 body.no-fab .fab { display: none; }
+body.no-fab .bottom-nav { left: var(--dock-side); }    /* בלי + — הסרגל ברוחב מלא */
 /* בהגדרות אין כפתור +, אז אין צורך במקום בשבילו בתחתית (מתן, 11.10). 96
    הפיקסלים של ה-+ הפכו את ההגדרות לגבוהות מהמסך גם כשהכול סגור — אחרי
    החלקה לתחתית הקפיץ נעצר שם, והכותרת "הגדרות" נשארה מחוץ למסך. מרווח
