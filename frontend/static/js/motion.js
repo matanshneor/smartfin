@@ -60,13 +60,55 @@
         });
     }
 
-    // 2. Stagger: כרטיסים נכנסים בהדרגה
+    /* 2. כניסה של כרטיסים.
+     *
+     * מה שעל המסך בטעינה — נכנס בהדרגה (stagger), כמו תמיד. מה שמתחתיו נכנס
+     * **עם הגלילה** (מתן, 11.10 — "שמה שנכנס יתחיל להיכנס לאט עם הגלילה"):
+     * עד אז גם הכרטיסים שמתחת למסך "נכנסו" בטעינה, כשאיש לא ראה, ובגלילה
+     * אליהם הם פשוט עמדו שם.
+     *
+     * הכניסה צמודה למיקום הגלילה ולא לזמן: מהיר — מהר, איטי — לאט, עצירה —
+     * עוצרת, וגלילה חזרה מחזירה. בדפדפן שתומך (‎animation-timeline: view()‎,
+     * ספארי 26 וכרום) זה CSS בלבד, בלי JS בזמן הגלילה. בדפדפן ישן — כניסה
+     * רכה ברגע שהכרטיס מופיע (‎IntersectionObserver‎). */
+    const REVEAL = '.summary-cards, .chart-card, .transaction-item, .settings-card, ' +
+                   '.month-item, .alert-card, .kpi-card, .empty-state, .settings-group, ' +
+                   '.empty-row, .project-tile';
+    const scrollTimeline = !!(window.CSS && CSS.supports && CSS.supports('animation-timeline: view()'));
+    let revealObserver = null;
+
+    function belowTheFold(el) { return el.getBoundingClientRect().top > window.innerHeight - 40; }
+
+    function setupReveal(els) {
+        if (reduceMotion) return;
+        els.forEach(function (el) {
+            if (el.classList.contains('reveal-scroll') || el.classList.contains('reveal-fallback')) return;
+            if (!belowTheFold(el)) return;
+            if (scrollTimeline) { el.classList.add('reveal-scroll'); return; }
+            if (!('IntersectionObserver' in window)) return;
+            if (!revealObserver) {
+                revealObserver = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (en) {
+                        if (!en.isIntersecting) return;
+                        en.target.classList.add('is-in');
+                        revealObserver.unobserve(en.target);
+                    });
+                }, { rootMargin: '0px 0px -60px 0px', threshold: 0.05 });
+            }
+            el.classList.add('reveal-fallback');
+            revealObserver.observe(el);
+        });
+    }
+
     function runStagger() {
         if (reduceMotion) return;
-        const items = document.querySelectorAll(
-            '.summary-cards, .chart-card, .transaction-item, .settings-card, ' +
-            '.month-item, .alert-card, .kpi-card, .empty-state'
-        );
+        const all = Array.prototype.slice.call(document.querySelectorAll(REVEAL));
+        const below = all.filter(belowTheFold);
+        // רק מה שהיה ברשימת הכניסה המקורית ונראה עכשיו — כמו קודם
+        const items = all.filter(function (el) {
+            return below.indexOf(el) === -1 && !el.matches('.settings-group, .empty-row, .project-tile');
+        });
+        setupReveal(below);
         items.forEach(function (el, i) {
             el.style.animationDelay = Math.min(i * 55, 600) + 'ms';
             el.classList.add('anim-rise');
@@ -113,5 +155,7 @@
     window.addEventListener('sf:refreshed', function () {
         runCountUps();
         runBars();
+        // תוכן חדש (רענון רך, מעבר חודש) — מה שמתחת למסך נכנס עם הגלילה
+        setupReveal(Array.prototype.slice.call(document.querySelectorAll(REVEAL)));
     });
 })();
