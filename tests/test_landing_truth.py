@@ -51,16 +51,15 @@ def test_the_landing_page_shows_the_current_month(anon):
 # מהמוצר). המוקאפ חייב להראות התראה שהמוצר באמת יורה — עם המספרים שלו.
 
 def _demo_numbers():
-    """המספרים שמוצגים במוקאפ: ההוצאה על מזון, והתקציב והחריגה שבהתראה."""
-    spend = int(re.search(r"מזון</span><b>₪([\d,]+)</b>", _HTML).group(1).replace(",", ""))
+    """המספרים שבהתראה במוקאפ: ההוצאה, התקציב והחריגה. (עד 12.10 היה במוקאפ
+    גם פס "מזון" עם אותו סכום; הוא הוחלף בכרטיס "השבוע", כמו בדף הבית.)"""
     m = re.search(r"₪([\d,]+) מתוך תקציב של ₪([\d,]+) — חריגה של ₪([\d,]+)", _HTML)
-    alert_spend, budget, excess = (int(g.replace(",", "")) for g in m.groups())
-    return spend, alert_spend, budget, excess
+    spend, budget, excess = (int(g.replace(",", "")) for g in m.groups())
+    return spend, spend, budget, excess
 
 
 def test_the_example_would_actually_fire():
-    spend, alert_spend, budget, excess = _demo_numbers()
-    assert alert_spend == spend, "ההתראה מדברת על סכום אחר מזה שבמוקאפ"
+    spend, _, budget, excess = _demo_numbers()
     assert spend > budget and excess == spend - budget
 
 

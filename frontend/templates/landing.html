@@ -75,19 +75,16 @@
                         <div class="lp-app-card"><span>הוצאות</span><strong>₪11,580</strong></div>
                         <div class="lp-app-card"><span>חיסכון</span><strong>₪2,000</strong></div>
                     </div>
-                    <div class="lp-app-cats">
-                        <div class="lp-cat">
-                            <span class="lp-cat-top"><span>🏠 דיור</span><b>₪5,400</b></span>
-                            <span class="lp-cat-track"><i style="width:78%"></i></span>
+                    {# כרטיס "השבוע" כמו בדף הבית (מתן, 12.10): הפסים לכל קטגוריה
+                       תיארו מסך בית ישן. ימים שעוד לא הגיעו — ריקים, כמו במוצר. #}
+                    <div class="lp-week">
+                        <div class="lp-week-top"><span>השבוע</span><b>₪1,240</b></div>
+                        <div class="lp-week-bars">
+                            {% for h in [38, 64, 22, 80, 47, 0, 0] %}
+                            <span class="lp-week-day{% if loop.index0 == 4 %} today{% endif %}{% if not h %} future{% endif %}"><i style="height: {{ h or 6 }}%"></i></span>
+                            {% endfor %}
                         </div>
-                        <div class="lp-cat">
-                            <span class="lp-cat-top"><span>🛒 מזון</span><b>₪2,910</b></span>
-                            <span class="lp-cat-track"><i style="width:46%"></i></span>
-                        </div>
-                        <div class="lp-cat">
-                            <span class="lp-cat-top"><span>🚗 תחבורה</span><b>₪1,340</b></span>
-                            <span class="lp-cat-track"><i style="width:24%"></i></span>
-                        </div>
+                        <div class="lp-week-labels">{% for d in ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'] %}<span>{{ d }}</span>{% endfor %}</div>
                     </div>
                 </div>
             </div>
@@ -181,7 +178,7 @@
         <div class="lp-features">
             <article class="lp-feature">
                 <h3>פרויקטים בנפרד</h3>
-                <p>טיול או שיפוץ מנוהלים לחוד, כדי שהוצאה חד־פעמית גדולה לא תעוות את החודש הרגיל.</p>
+                <p>טיול או שיפוץ מנוהלים לחוד, עם "כמה נשאר" מול היעד — כדי שהוצאה חד־פעמית גדולה לא תעוות את החודש הרגיל.</p>
             </article>
             <article class="lp-feature">
                 <h3>השוואה בין חודשים</h3>
@@ -190,6 +187,11 @@
             <article class="lp-feature">
                 <h3>מותקן כאפליקציה</h3>
                 <p>נוסף למסך הבית ישירות מהדפדפן. בלי חנות אפליקציות ובלי התקנה.</p>
+            </article>
+            {# Face ID (מתן, 12.10) #}
+            <article class="lp-feature">
+                <h3>כניסה עם Face ID</h3>
+                <p>מבט אחד לטלפון ואתם בפנים — בלי להקליד סיסמה. אפשר גם טביעת אצבע.</p>
             </article>
         </div>
     </section>
