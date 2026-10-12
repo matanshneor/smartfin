@@ -212,7 +212,7 @@
     {% endif %}
     {% else %}
     <div class="empty-state">
-        <p class="empty-icon">🎯</p>
+        {{ empty_illus("target") }}
         <p class="empty-text">עדיין אין עסקאות בפרויקט הזה</p>
         <p class="empty-sub">בהוספת עסקה, בחרו "שייך לפרויקט" ← {{ project.name }}</p>
     </div>

@@ -37,7 +37,10 @@ function offlinePage() {
         '<link rel="stylesheet" href="/static/css/style.css"></head>' +
         '<body class="auth-body"><div class="auth-container">' +
         '<div class="empty-state">' +
-        '<p class="empty-icon">📡</p>' +
+        '<div class="empty-illus" aria-hidden="true"><svg class="ui-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M12 20h.01"/><path d="M8.5 16.43a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.18-2.65"/>' +
+        '<path d="M19 12.86a10 10 0 0 0-1.86-1.42"/><path d="M22 8.82a15 15 0 0 0-11.29-3.76"/>' +
+        '<path d="M5 12.86a10 10 0 0 1 5.17-2.69"/><path d="m2 2 20 20"/></svg></div>' +
         '<p class="empty-text">אין חיבור לאינטרנט</p>' +
         '<p class="empty-sub">המספרים שלכם מחכים ברגע שהחיבור יחזור. ' +
         'לא מוצגים כאן נתונים ישנים, כדי שלא תסתמכו על מספר שכבר לא נכון.</p>' +

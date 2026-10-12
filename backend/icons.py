@@ -16,9 +16,26 @@ _PATHS = {
     "face":     '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/>'
                 '<path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/>'
                 '<path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01"/><path d="M15 9h.01"/>',
+    # מסכים ריקים (מתן, 12.10) — במקום 📭 📅 🎯 🔁 🔍 ⚠️ 📊 💼 💰
+    "inbox":    '<path d="M22 12h-6l-2 3h-4l-2-3H2"/>'
+                '<path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+    "target":   '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+    "search":   '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+    "alert":    '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/>'
+                '<path d="M12 9v4"/><path d="M12 17h.01"/>',
+    "pie":      '<path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/>',
+    "wallet":   '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/>'
+                '<path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+    "coins":    '<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/>'
+                '<path d="m16.71 13.88.7.71-2.82 2.82"/>',
     "repeat":   '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/>'
                 '<path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
 }
+
+
+def empty_illus(name: str) -> Markup:
+    """איור למסך ריק: האייקון בגדול, בעיגול זהב עדין."""
+    return Markup(f'<div class="empty-illus" aria-hidden="true">{ui_icon(name)}</div>')
 
 
 def ui_icon(name: str) -> Markup:

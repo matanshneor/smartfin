@@ -121,3 +121,18 @@ def test_reduced_motion_still_focuses_the_amount():
     block = _CSS[_CSS.index("/* ─── Reduced motion"):]
     block = block[:block.index("\n}\n")]
     assert ".modal-overlay.open, .modal-overlay.open * { transition: none !important; }" in block
+
+
+# ─── איורים במסכים ריקים (מתן, 12.10) ───────────────────────────────────
+
+def test_empty_states_are_line_illustrations():
+    """במקום 📭 📅 🎯 🔁 🔍 ⚠️ 📊 💼 💰 📡 — אייקון קו בזהב בעיגול עדין."""
+    import glob
+    for f in glob.glob(str(_T / "*.html")):
+        code = re.sub(r"\{#.*?#\}", "", Path(f).read_text(encoding="utf-8"), flags=re.S)
+        assert 'class="empty-icon"' not in code, f
+        assert '<div class="chart-empty"><p>' not in code, f
+    sw = (_ROOT / "frontend/static/sw.js").read_text(encoding="utf-8")
+    assert "📡" not in sw and 'class="empty-illus"' in sw
+    from backend.icons import empty_illus
+    assert 'class="empty-illus"' in str(empty_illus("inbox")) and 'class="ui-icon"' in str(empty_illus("inbox"))
