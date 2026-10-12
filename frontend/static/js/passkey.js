@@ -129,6 +129,16 @@
                     err.textContent = e.message || FAILED;
                 });
         });
+        // נפתח לבד (מתן, 12.10): בטלפון שהופעל בו — חלון ה-Face ID קופץ מיד, בלי
+        // לחיצה. לא אחרי "התנתקות" יזומה באותה לשונית (מי שהתנתק אולי רוצה
+        // חשבון אחר), ולא אחרי ניסיון כושל בסיסמה (יש שגיאה במסך). ספארי עלול
+        // לסרב בלי לחיצה — אז נשאר הכפתור, בלי הודעה (‎cancelled‎).
+        let justOut = false;
+        try { justOut = sessionStorage.getItem('sf_logged_out') === '1'; sessionStorage.removeItem('sf_logged_out'); } catch (e) { /* אין אחסון */ }
+        const failedLogin = !!document.querySelector('.alert-error');
+        const panel = document.getElementById('loginPanel');
+        const onLogin = !panel || panel.style.display !== 'none';      // לא בלשונית ההרשמה
+        if (!justOut && !failedLogin && onLogin) setTimeout(function () { loginBtn.click(); }, 350);
     }
 
     // ── הגדרות → החשבון שלי ──────────────────────────────────────────────

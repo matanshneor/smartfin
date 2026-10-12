@@ -143,12 +143,42 @@
 {% if alerts %}
 <section class="alerts-section" aria-label="התראות">
     {% for alert in alerts %}
+    {# "הבנתי" (מתן, 12.10): ✕ מסתיר את ההתראה עד סוף החודש, בטלפון הזה. המפתח
+       כולל את הטקסט — חריגה שגדלה (₪350 → ₪800) היא התראה חדשה, וחוזרת. #}
+    <div class="alert-wrap" data-alert-key="{{ month_label }}|{{ alert.target or '' }}|{{ alert.text }}">
     <a class="alert-card {{ alert.severity }}"
        href="{{ url_for('month_view') }}{% if alert.target %}#{{ alert.target }}{% endif %}">
         <span class="alert-text">{{ alert.text }}</span>
     </a>
+    <button type="button" class="alert-dismiss" aria-label="הבנתי — להסתיר עד סוף החודש">✕</button>
+    </div>
     {% endfor %}
 </section>
+{% endif %}
+
+{# פרויקט מוצמד (מתן, 12.10) — מהעמוד של הפרויקט, "הצמדה לבית". אותו חישוב
+   כמו "כמה נשאר" ברשימת הפרויקטים. #}
+{% if pinned_project %}
+{% set p = pinned_project %}
+<a class="pinned-project" href="{{ url_for('project_detail', project_id=p.id) }}">
+    <span class="pinned-project-icon" aria-hidden="true">{{ p.icon or '🎯' }}</span>
+    <span class="pinned-project-body">
+        <span class="pinned-project-name">{{ p.name }}</span>
+        {% if p.budget_target %}
+        {% set left = p.budget_target - p.spent %}
+        {% set pinned_pct = ((p.spent / p.budget_target) * 100) | round | int %}
+        <span class="pinned-project-sub">
+            {%- if left >= 0 -%}נשארו <b>₪{{ left | money }}</b> מתוך ₪{{ p.budget_target | money }}
+            {%- else -%}<span class="deficit">חריגה של <b>₪{{ (left | abs) | money }}</b></span> מתוך ₪{{ p.budget_target | money }}{%- endif -%}
+        </span>
+        <span class="project-tile-bar" aria-hidden="true"><span class="{% if left < 0 %}danger{% endif %}" style="width: {{ [pinned_pct, 100] | min }}%;"></span></span>
+        {% elif p.track_expense and p.spent > 0 %}
+        <span class="pinned-project-sub">יצאו <b>₪{{ p.spent | money }}</b> עד עכשיו</span>
+        {% elif p.track_savings and p.saved > 0 %}
+        <span class="pinned-project-sub">נחסכו <b>₪{{ p.saved | money }}</b> עד עכשיו</span>
+        {% endif %}
+    </span>
+</a>
 {% endif %}
 
 {# השבוע (מתן, 30.9): הוצאות שוטפות מראשון עד שבת — בלי עסקאות קבועות ובלי
@@ -189,7 +219,7 @@
                     <p class="tx-name">{{ tx.category_name }}</p>
                     {# היום בתוך השורה — "היום · רמי לוי", "אתמול", "ראשון, 27.9" (מתן, 30.9) #}
                     <p class="tx-meta">
-                        {{- tx.date | day_label }}{% if tx.workplace or tx.description %} · {{ tx.workplace or tx.description }}{% endif -%}
+                        {{- tx.date | day_label }}{% if tx.workplace or tx.description %} · {{ tx.workplace or tx.description }}{% endif %}{% if tx.installments and tx.installment_no %} · תשלום {{ tx.installment_no }} מתוך {{ tx.installments }}{% endif -%}
                     </p>
                 </div>
                 <div class="tx-side">
@@ -230,17 +260,7 @@
 {% block scripts %}
 {# מסך החיפוש — מחוץ ל-‎main‎, כדי שרענון רך (אחרי עריכה מתוך התוצאות) לא
    יסגור אותו באמצע #}
-<div class="search-screen" id="searchScreen" role="dialog" aria-modal="true" aria-label="חיפוש בכל העסקאות" hidden>
-    <div class="search-bar">
-        <svg class="search-bar-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
-        <input type="search" class="search-input" id="searchInput" placeholder="חיפוש בכל החודשים…"
-               aria-label="מה לחפש" autocomplete="off" enterkeyhint="search" maxlength="80">
-        <button type="button" class="search-close" id="searchClose" aria-label="סגירת החיפוש">✕</button>
-    </div>
-    <p class="search-summary" id="searchSummary" aria-live="polite">תיאור, קטגוריה, מקום עבודה, פרויקט או סכום</p>
-    <div class="search-results" id="searchResults"></div>
-</div>
-<script src="{{ url_for('static', filename='js/search.js') }}"></script>
+{% include "_search_screen.html" %}
 
 {# "איך מצרפים בן משפחה" — פעם אחת, אחרי אשף הפתיחה (מתן, 5.10) #}
 {% if welcome_invite %}

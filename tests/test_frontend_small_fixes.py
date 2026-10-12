@@ -640,9 +640,13 @@ def test_the_category_card_draws_the_average_and_this_month_lighter():
 def test_the_search_screen_sits_outside_main_and_rows_open_for_editing():
     """מתן (30.9, סבב 6 פריט 2): מחוץ ל-‎main‎ כדי שרענון רך לא יסגור אותו,
     ומתחת לחלון העריכה כדי שנגיעה בתוצאה תפתח אותו מעליו."""
-    tpl = _read("frontend/templates/index.html")
-    assert tpl.index('id="searchScreen"') > tpl.index("{% block scripts %}")
-    assert 'id="searchOpen"' in tpl
+    # המסך עבר ל-‎_search_screen.html‎ (מתן, 12.10 — גם בעמוד החודש); בשני
+    # העמודים הוא נכלל בבלוק הסקריפטים, מחוץ ל-‎main‎
+    assert 'id="searchScreen"' in _read("frontend/templates/_search_screen.html")
+    for page in ("index.html", "month.html"):
+        tpl = _read("frontend/templates/" + page)
+        assert tpl.index('{% include "_search_screen.html" %}') > tpl.index("{% block scripts %}"), page
+        assert 'id="searchOpen"' in tpl, page
     js = _strip_comments(_read("frontend/static/js/search.js"))
     assert "li.className = 'cat-tx-row'" in js and "d.id = tx.id" in js
     assert "window.addEventListener('sf:refreshed'" in js

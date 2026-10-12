@@ -101,7 +101,24 @@
             data-archived="false" data-name="{{ project.name }}">פתיחה מחדש</button>
 </div>
 {% endif %}
-<div style="display:flex; justify-content:flex-end; margin-bottom:2px;">
+{# "הפרויקט הסתיים?" (מתן, 12.10) — אותה פעולה כמו "הפרויקט הסתיים" למטה.
+   "לא עכשיו" — מסתיר לחודש, בטלפון הזה (‎core.js‎). #}
+{% if quiet_since %}
+<div class="project-quiet-banner" role="status" data-project-quiet="{{ project.id }}">
+    <span>לא נוספו כאן עסקאות מאז {{ quiet_since }}. לסמן שהפרויקט הסתיים?</span>
+    <span class="project-quiet-actions">
+        <button type="button" class="btn-sm btn-primary" data-archive-project="{{ project.id }}"
+                data-archived="true" data-name="{{ project.name }}">הסתיים</button>
+        <button type="button" class="btn-sm btn-ghost" data-quiet-later>לא עכשיו</button>
+    </span>
+</div>
+{% endif %}
+<div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:2px;">
+    {# הצמדה לבית (מתן, 12.10) — לא לפרויקט שהסתיים #}
+    {% if not project.archived %}
+    <button type="button" class="btn-sm btn-ghost" data-pin-project="{{ project.id }}"
+            data-pinned="{{ 'true' if is_pinned else 'false' }}">{{ '📌 מוצמד לבית' if is_pinned else '📌 הצמדה לבית' }}</button>
+    {% endif %}
     <a href="{{ url_for('project_edit', project_id=project.id) }}" class="btn-sm btn-ghost">עריכת פרויקט</a>
 </div>
 
@@ -151,7 +168,7 @@
                         data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
                         data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}">
                         <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
-                        <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.is_recurring or tx.recurring_parent_id %} · {{ ui_icon("repeat") }} {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}{% if project.is_personal and tx.created_by and tx.created_by != project.owner_id %} · <span class="tx-entered-by">נרשמה ע״י {{ member_names.get(tx.created_by, 'בן משפחה לשעבר') }}</span>{% endif %}</span>
+                        <span class="cat-tx-desc">{{ tx.description or item.name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.installments and tx.installment_no %} · <span class="installment-tag">תשלום {{ tx.installment_no }} מתוך {{ tx.installments }}</span>{% elif tx.is_recurring or tx.recurring_parent_id %} · {{ ui_icon("repeat") }} {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}{% if project.is_personal and tx.created_by and tx.created_by != project.owner_id %} · <span class="tx-entered-by">נרשמה ע״י {{ member_names.get(tx.created_by, 'בן משפחה לשעבר') }}</span>{% endif %}</span>
                         {% if (show_owner or {}).get(typ) %}
                         {% set color = member_colors.get(tx.user_id) %}
                         <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>

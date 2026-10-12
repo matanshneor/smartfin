@@ -5370,3 +5370,61 @@ body.tx-screen-open { overflow: hidden; }
     position: absolute; top: -18px; inset-inline-end: -6px; padding: 1px 8px; border-radius: 99px;
     background: var(--color-gold-dim); color: var(--color-gold-text); font-size: 0.7rem; font-weight: 700;
 }
+
+
+/* "הבנתי" על התראה (מתן, 12.10) */
+.alert-wrap { position: relative; }
+.alert-wrap[hidden], .alerts-section[hidden] { display: none; }
+.alert-wrap .alert-card { padding-inline-end: 44px; }
+.alert-dismiss {
+    position: absolute; top: 50%; inset-inline-end: 6px; translate: 0 -50%;
+    width: 34px; height: 34px; border: 0; border-radius: 50%; background: none;
+    color: currentColor; opacity: 0.55; font-size: 0.85rem; cursor: pointer;
+}
+
+
+/* "הפרויקט הסתיים?" (מתן, 12.10) */
+.project-quiet-banner {
+    display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; padding: 12px 14px;
+    border-radius: var(--radius-sm); background: var(--color-gold-dim); color: var(--color-text); font-size: 0.88rem;
+}
+.project-quiet-banner[hidden] { display: none; }
+.project-quiet-actions { display: flex; gap: 8px; }
+
+
+/* קבועות מול משתנות (מתן, 12.10) */
+.fixed-split { margin: 12px 0 6px; padding-top: 12px; border-top: 1px solid var(--color-border, rgba(0,0,0,.08)); }
+.fixed-split > summary { list-style: none; cursor: pointer; display: block; }
+.fixed-split > summary::-webkit-details-marker { display: none; }
+.fixed-split-row { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--color-text-muted); }
+.fixed-split-row b { color: var(--color-text); font-weight: 700; }
+.fixed-split-bar { display: flex; height: 8px; margin: 8px 0 6px; border-radius: 99px; overflow: hidden; background: var(--color-gold); }
+.fixed-split-bar i { display: block; height: 100%; background: #8A7A5C; }
+.fixed-split-hint { display: block; font-size: 0.76rem; color: var(--color-text-muted); }
+.fixed-split[open] .fixed-split-hint { color: var(--color-gold-text); }
+.fixed-split-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.fixed-split-list li { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.86rem; border-top: 1px solid var(--color-border, rgba(0,0,0,.06)); }
+
+
+/* פרויקט מוצמד בבית (מתן, 12.10) */
+.pinned-project {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 12px 14px;
+    border-radius: var(--radius); background: var(--color-card); box-shadow: var(--shadow-card);
+    color: var(--color-text); text-decoration: none;
+}
+.pinned-project-icon { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: var(--color-gold-dim); font-size: 1.3rem; flex-shrink: 0; }
+.pinned-project-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pinned-project-name { font-weight: 700; font-size: 0.95rem; }
+.pinned-project-sub { font-size: 0.8rem; color: var(--color-text-muted); margin-top: 2px; }
+.pinned-project-sub b { color: var(--color-text); }
+.pinned-project-sub .deficit, .pinned-project-sub .deficit b { color: var(--color-expense); }
+
+
+/* "תשלום 3 מתוך 12" בשורה (מתן, 12.10) */
+.installment-tag { color: var(--color-gold-text); font-weight: 600; }
+
+.installments-group[hidden] { display: none; }
+.installments-fields { display: flex; align-items: center; gap: 10px; flex: 1 1 100%; margin-top: 8px; }
+.installments-fields[hidden] { display: none; }
+.installments-count { width: 72px; text-align: center; font-weight: 700; }
+.installments-hint { font-size: 0.86rem; color: var(--color-text-muted); }

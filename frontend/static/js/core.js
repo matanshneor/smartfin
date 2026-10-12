@@ -754,3 +754,82 @@ document.addEventListener('click', function (e) {
         sx = null; drag = null; axis = null;
     }, { passive: true });
 })();
+
+
+// ── "הבנתי" על התראה בבית (מתן, 12.10) ──
+// ✕ מסתיר עד סוף החודש, בטלפון הזה. נשמר לפי מפתח שכולל את החודש ואת הטקסט:
+// חודש חדש — הכל חוזר; חריגה שגדלה — טקסט אחר, אז היא חוזרת. בהאצלה, ואחרי
+// כל רענון רך — ההתראות מתחלפות.
+(function () {
+    const KEY = 'sf_dismissed_alerts';
+    function loadDismissed() { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } }
+    function saveDismissed(list) { try { localStorage.setItem(KEY, JSON.stringify(list.slice(-40))); } catch (e) { /* אין אחסון */ } }
+    function applyDismissed() {
+        const gone = loadDismissed();
+        document.querySelectorAll('.alert-wrap[data-alert-key]').forEach(function (w) {
+            w.hidden = gone.indexOf(w.dataset.alertKey) !== -1;
+        });
+        document.querySelectorAll('.alerts-section').forEach(function (sec) {
+            sec.hidden = !sec.querySelector('.alert-wrap:not([hidden])');
+        });
+    }
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest && e.target.closest('.alert-dismiss');
+        if (!btn) return;
+        const w = btn.closest('.alert-wrap');
+        const list = loadDismissed();
+        if (list.indexOf(w.dataset.alertKey) === -1) list.push(w.dataset.alertKey);
+        saveDismissed(list);
+        applyDismissed();
+    });
+    applyDismissed();
+    window.addEventListener('sf:refreshed', applyDismissed);
+})();
+
+
+// ── "הפרויקט הסתיים?" — "לא עכשיו" מסתיר לחודש (מתן, 12.10) ──
+(function () {
+    const KEY = 'sf_quiet_later';
+    const MONTH = 30 * 24 * 3600 * 1000;
+    function loadQuiet() { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { return {}; } }
+    function applyQuiet() {
+        const later = loadQuiet();
+        document.querySelectorAll('[data-project-quiet]').forEach(function (b) {
+            const at = later[b.dataset.projectQuiet];
+            b.hidden = !!(at && Date.now() - at < MONTH);
+        });
+    }
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest && e.target.closest('[data-quiet-later]');
+        if (!btn) return;
+        const banner = btn.closest('[data-project-quiet]');
+        const later = loadQuiet();
+        later[banner.dataset.projectQuiet] = Date.now();
+        try { localStorage.setItem(KEY, JSON.stringify(later)); } catch (err) { /* אין אחסון */ }
+        applyQuiet();
+    });
+    applyQuiet();
+    window.addEventListener('sf:refreshed', applyQuiet);
+})();
+
+
+// ── "הצמדה לבית" בעמוד הפרויקט (מתן, 12.10) ──
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest && e.target.closest('[data-pin-project]');
+    if (!btn || btn.disabled) return;
+    const pin = btn.dataset.pinned !== 'true';
+    btn.disabled = true;
+    fetch('/api/projects/' + btn.dataset.pinProject + '/pin', {
+        method: 'PUT', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ pinned: pin }),
+    })
+        .then(function (r) { if (!r.ok) throw new Error(); })
+        .then(function () {
+            btn.dataset.pinned = pin ? 'true' : 'false';
+            btn.textContent = pin ? '📌 מוצמד לבית' : '📌 הצמדה לבית';
+            window.showToast(pin ? 'הפרויקט יופיע בבית, מתחת למאזן' : 'הפרויקט הוסר מהבית');
+        })
+        .catch(function () { window.showToast(window.sfNetError(), 'error'); })
+        .then(function () { btn.disabled = false; });
+});

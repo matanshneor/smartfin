@@ -1730,8 +1730,18 @@ def materialize_recurring(family_id: str) -> int:
                 # המופע שנוצר עכשיו תופס את התקופה שלו, כדי ששני מופעים
                 # מאותה תבנית באותה תקופה לא ייווצרו באותה ריצה
                 seen.add(d)
+                # תשלומים: התבנית היא הראשון (עם העיגול); כל השאר — התשלום
+                # הרגיל, ומספר התשלום לפי מרחק החודשים מהראשון
+                inst = {}
+                if t.get("installments") and t.get("installment_total"):
+                    plan = installment_plan(t["installment_total"], int(t["installments"]), str(t["date"]))
+                    start = date.fromisoformat(str(t["date"])[:10])
+                    if plan:
+                        inst = {"amount": plan["base"], "installments": plan["count"],
+                                "installment_total": plan["total"],
+                                "installment_no": (d.year - start.year) * 12 + d.month - start.month + 1}
                 new_rows.append({
-                    "amount":              t["amount"],
+                    "amount":              inst.pop("amount", t["amount"]),
                     "type":                t["type"],
                     "date":                d.isoformat(),
                     "description":         t.get("description") or "",
@@ -1751,6 +1761,7 @@ def materialize_recurring(family_id: str) -> int:
                     # לציין "עסקה קבועה — כל X" בלי לשלוף את התבנית בנפרד
                     "recurring_frequency": t.get("recurring_frequency"),
                     "workplace":           _owner_workplace(t.get("user_id")) if is_salary else None,
+                    **inst,
                 })
 
         created = 0
@@ -1873,6 +1884,38 @@ def _recurring_occurrences(template: dict, until) -> list:
             out.append(d)
             d += step
     return out
+
+
+def _add_months(d, n: int):
+    """אותו יום בחודש, ‎n‎ חודשים קדימה — מקוצץ לסוף חודש קצר (31 → 28/30)."""
+    import calendar
+    from datetime import date
+    y, m = divmod(d.month - 1 + n, 12)
+    y, m = d.year + y, m + 1
+    return date(y, m, min(d.day, calendar.monthrange(y, m)[1]))
+
+
+def installment_plan(total: float, count: int, start):
+    """חלוקה לתשלומים (מתן, 12.10): תשלום רגיל באגורות שלמות, והשארית בתשלום
+    הראשון — כמו בחברות האשראי. ₪1,000 / 3 → 333.34, 333.33, 333.33.
+    ‎start‎ — תאריך התשלום הראשון (‎date‎ או מחרוזת). ‎None‎ — סכום קטן מדי."""
+    from datetime import date
+    if isinstance(start, str):
+        start = date.fromisoformat(start[:10])
+    cents = round(float(total) * 100)
+    base = cents // count
+    if base <= 0:
+        logger.warning("installment_plan: %s in %s payments is too small", total, count)
+        return None
+    first = cents - base * (count - 1)
+    return {"total": round(cents / 100, 2), "count": count, "base": round(base / 100, 2),
+            "first": round(first / 100, 2), "end_date": _add_months(start, count - 1).isoformat()}
+
+
+def installment_label(row: dict) -> str:
+    """"תשלום 3 מתוך 12" — לשורה בסדרת תשלומים, אחרת ריק."""
+    n, k = row.get("installments"), row.get("installment_no")
+    return f"תשלום {k} מתוך {n}" if n and k else ""
 
 
 def next_recurring_date(template: dict, today=None):
@@ -2507,6 +2550,26 @@ def reorder_categories(family_id: str, type_: str, ordered_ids: list) -> bool:
 
 
 # ─── Projects (תקציבי פרויקטים — משותפים או אישיים לבן משפחה אחד) ─────────────
+
+def project_last_activity(family_id: str) -> dict:
+    """פרויקט ← תאריך העסקה האחרונה בו (מתן, 12.10: הפרויקט שבאמצע — למעלה).
+    שאילתה אחת, מהחדש לישן; הראשון לכל פרויקט הוא האחרון. תקלה — ריק (הסדר
+    חוזר לסדר היצירה, לא נופלים בגלל סדר)."""
+    client = get_client()
+    if not client or not family_id:
+        return {}
+    try:
+        rows = client.table("transactions").select("project_id, date") \
+            .eq("family_id", family_id).not_.is_("project_id", "null") \
+            .order("date", desc=True).limit(1000).execute().data or []
+    except Exception:
+        logger.exception("project_last_activity")
+        return {}
+    out = {}
+    for r in rows:
+        out.setdefault(r["project_id"], str(r.get("date") or "")[:10])
+    return out
+
 
 def get_projects(family_id: str, viewer_user_id: str, archived=False) -> list:
     """פרויקטים גלויים לצופה הנוכחי: כל הפרויקטים המשותפים + הפרויקטים
@@ -3695,6 +3758,9 @@ def _format_transactions(rows: list, settings: dict = None) -> list:
                                      else None),
             "is_recurring":         row.get("is_recurring", False),
             "recurring_frequency":  row.get("recurring_frequency"),
+            # "תשלום 3 מתוך 12" (מתן, 12.10)
+            "installments":         row.get("installments"),
+            "installment_no":       row.get("installment_no"),
             "recurring_end_date":   str(row["recurring_end_date"]) if row.get("recurring_end_date") else None,
             # מזהה התבנית הקבועה שיצרה את המופע הזה (None אם זו עסקה רגילה
             # או תבנית בעצמה) — משמש לסנכרון חכם: הצעה לעדכן גם את התבנית
