@@ -1047,7 +1047,7 @@ a.kpi-chip:active { transform: scale(0.97); }
 .passkey-btn[hidden] { display: none; }
 .passkey-btn .ui-icon { width: 1.3em; height: 1.3em; }
 .passkey-btn:disabled { opacity: 0.6; }
-.passkey-settings[hidden], #passkeyEnableBtn[hidden] { display: none; }
+.passkey-settings[hidden], #passkeyEnableBtn[hidden], #passkeyHint[hidden] { display: none; }
 .passkey-list { list-style: none; margin: 0; padding: 0; }
 .passkey-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 0; }
 .passkey-item-name { font-size: 0.85rem; color: var(--color-text-muted); }
