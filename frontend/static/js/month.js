@@ -319,12 +319,16 @@ const expenseData = SF_VIEW.expense;
 if (expenseData.length > 0) {
     const ctx = document.getElementById('expenseChart');
     if (ctx) {
-        drawn.push(new Chart(ctx, {
+        // הדמיה: העיגול "זורם" מהחודש הקודם לחדש במקום להצטייר מאפס
+        const target = expenseData.map(d => d.total);
+        const from = window.__sfLastDonut;
+        const start = from ? target.map((_, i) => from[i] || 0) : target;
+        const chart = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: expenseData.map(d => d.name),
                 datasets: [{
-                    data:            expenseData.map(d => d.total),
+                    data:            start,
                     backgroundColor: COLORS.slice(0, expenseData.length),
                     borderColor:     window.sfCharts.surface,
                     borderWidth:     2,
@@ -335,6 +339,7 @@ if (expenseData.length > 0) {
             },
             options: {
                 cutout: '70%',
+                animation: from ? false : undefined,
                 plugins: {
                     tooltip: {
                         callbacks: {
@@ -343,7 +348,14 @@ if (expenseData.length > 0) {
                     }
                 }
             }
-        }));
+        });
+        drawn.push(chart);
+        if (from) {
+            chart.options.animation = { duration: 650, easing: 'easeOutCubic' };
+            chart.data.datasets[0].data = target;
+            chart.update();
+        }
+        window.__sfLastDonut = target;
     }
 }
 
