@@ -529,6 +529,12 @@
                 </div>
                 {% endif %}
                 {% endfor %}
+                {# מיון (מתן, 12.10): "סכום" — הגדולות קודם. לא נשמר: בכל פתיחה — לפי תאריך #}
+                <div class="tx-sort-chips" role="group" aria-label="סדר העסקאות">
+                    <span class="tx-sort-label">סדר:</span>
+                    <button type="button" class="date-chip tx-sort-chip active" data-sort="date" aria-pressed="true">תאריך</button>
+                    <button type="button" class="date-chip tx-sort-chip" data-sort="amount" aria-pressed="false">סכום</button>
+                </div>
                 <input type="search" class="form-input tx-search-input" id="txSearch"
                        placeholder="חיפוש עסקה…" aria-label="חיפוש בעסקאות החודש"
                        autocomplete="off" enterkeyhint="search">

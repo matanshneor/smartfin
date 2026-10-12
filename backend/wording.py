@@ -53,3 +53,29 @@ def day_label(date_str, today) -> str:
         return "אתמול"
     label = f"{_WEEKDAYS[d.weekday()]}, {d.day}.{d.month}"
     return label if d.year == today.year else f"{label}.{d.year}"
+
+
+def greeting(hour: int) -> str:
+    """הברכה בראש מסך הבית, לפי השעה בישראל (מתן, 12.10 — במקום "שלום")."""
+    if 5 <= hour < 12:
+        return "בוקר טוב"
+    if 12 <= hour < 17:
+        return "צהריים טובים"
+    if 17 <= hour < 22:
+        return "ערב טוב"
+    return "לילה טוב"
+
+
+def next_charge_label(d, today) -> str:
+    """"הבא: היום" / "הבא: מחר" / "הבא: 1.11" — בלי שנה, אלא אם היא אחרת."""
+    if d is None:
+        return ""
+    days = (d - today).days
+    if days == 0:
+        return "הבא: היום"
+    if days == 1:
+        return "הבא: מחר"
+    text = f"{d.day}.{d.month}"
+    if d.year != today.year:
+        text += f".{str(d.year)[2:]}"
+    return "הבא: " + text

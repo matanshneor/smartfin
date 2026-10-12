@@ -1875,6 +1875,25 @@ def _recurring_occurrences(template: dict, until) -> list:
     return out
 
 
+def next_recurring_date(template: dict, today=None):
+    """החיוב הבא של עסקה קבועה — היום או אחריו (מתן, 12.10: "הבא: 1.11" ברשימת
+    הקבועות בהגדרות). התבנית עצמה היא המופע הראשון, אז תבנית שתאריכה עוד לא
+    הגיע — היא הבאה. הסתיימה (‎recurring_end_date‎ עבר) — ‎None‎."""
+    from datetime import date, timedelta
+    today = today or clock.today()
+    try:
+        start = date.fromisoformat(str(template["date"])[:10])
+    except (KeyError, ValueError):
+        logger.warning("next_recurring_date: bad template date %r", template.get("date"))
+        return None
+    if start >= today:
+        return start
+    for d in _recurring_occurrences(template, today + timedelta(days=400)):
+        if d >= today:
+            return d
+    return None
+
+
 def update_transaction(transaction_id: str, family_id: str, data: dict):
     """Updates a transaction. Returns (updated_row, error)."""
     client = get_client()

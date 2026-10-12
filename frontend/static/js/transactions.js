@@ -8,7 +8,7 @@
     const receiptInput = document.getElementById('receiptInput');
     const txReceiptPath = document.getElementById('txReceiptPath');
     const scannerThumbnail = document.getElementById('scannerThumbnail');
-    const AMOUNT_PLACEHOLDER_DEFAULT = '0.00';
+    const AMOUNT_PLACEHOLDER_DEFAULT = '0';
     const DESCRIPTION_PLACEHOLDER_DEFAULT = 'למשל: שופרסל, משכורת…';
     const toggleExp    = document.getElementById('toggleExpense');
     const toggleInc    = document.getElementById('toggleIncome');
@@ -359,7 +359,38 @@
     /* הסכום במרכז, וה-₪ צמוד אליו (מתן, 11.10): השדה ברוחב של מה שכתוב בו.
      * ‎field-sizing‎ עוד לא בכל הדפדפנים — אז ברוחב בתווים, אחרי כל שינוי. הטקסט
      * מיושר לצד ה-₪, כך שהמקום העודף (הנקודה צרה מתו) נשאר בצד השני. */
+    /* ── פסיקים בסכום בזמן ההקלדה (מתן, 12.10: "48000" — קל לפספס אפס) ──
+     * השדה טקסט; הערך המספרי תמיד דרך ‎amountValue()‎. ‎formatAmount‎ משאיר
+     * ספרות ונקודה אחת, עד שתי ספרות
+     * אחרי הנקודה, ומכניס פסיקי אלפים — ושומר את הסמן אחרי אותה ספרה. */
+    function amountValue() {
+        return parseFloat(String(txAmount.value).replace(/,/g, ''));
+    }
+    function groupThousands(intPart) {
+        return intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+    function formatAmount(keepCaret) {
+        const raw = String(txAmount.value);
+        const caret = keepCaret ? txAmount.selectionStart : null;
+        // כמה "תווים משמעותיים" (ספרה / נקודה) יש לפני הסמן
+        const before = caret == null ? 0 : raw.slice(0, caret).replace(/[^\d.]/g, '').length;
+        let clean = raw.replace(/[^\d.]/g, '');
+        const dot = clean.indexOf('.');
+        if (dot !== -1) clean = clean.slice(0, dot + 1) + clean.slice(dot + 1).replace(/\./g, '').slice(0, 2);
+        let [intPart, dec] = clean.split('.');
+        intPart = intPart.replace(/^0+(?=\d)/, '');
+        const out = groupThousands(intPart) + (dec !== undefined ? '.' + dec : '');
+        if (out === raw) return;
+        txAmount.value = out;
+        if (caret != null) {
+            let seen = 0, pos = 0;
+            while (pos < out.length && seen < before) { if (/[\d.]/.test(out[pos])) seen++; pos++; }
+            try { txAmount.setSelectionRange(pos, pos); } catch (e) { /* לא ממוקד */ }
+        }
+    }
+
     function fitAmount() {
+        formatAmount(false);        // ערך שנכתב מקוד (עריכה, סריקה) — גם הוא עם פסיקים
         const text = txAmount.value || txAmount.placeholder || '0';
         txAmount.style.width = (text.length + 0.3) + 'ch';
     }
@@ -407,8 +438,26 @@
         syncDateChips();
     }
 
+    /* ── "שמירת השינויים" רק כשמשהו השתנה (מתן, 12.10) ──
+     * צילום של הטופס ברגע שהעריכה נפתחה; כל עוד הטופס זהה לו — הכפתור אפור,
+     * "אין שינויים", ולחיצה לא שומרת. חזרה לערך המקורי — שוב אפור. */
+    let editSnapshot = null;
+    function formSnapshot() {
+        return JSON.stringify([amountValue() || 0, currentType, txCategory.value, txProjectCategory.value,
+            txDescription.value.trim(), txDate.value, txOwner ? txOwner.value : '', recurringCb.checked,
+            recurringCb.checked ? txFrequency.value : '', recurringCb.checked ? txEndDate.value : '',
+            txReceiptPath.value, txProject.value]);
+    }
+    function isUnchanged() {
+        return !!editId && editSnapshot !== null && formSnapshot() === editSnapshot;
+    }
+
     function updateSubmitLabel() {
-        if (editId) { submitLabel.textContent = 'שמירת השינויים'; return; }
+        const same = isUnchanged();
+        submitBtn.classList.toggle('is-unchanged', same);
+        if (same) submitBtn.setAttribute('aria-disabled', 'true');
+        else submitBtn.removeAttribute('aria-disabled');
+        if (editId) { submitLabel.textContent = same ? 'אין שינויים' : 'שמירת השינויים'; return; }
         submitLabel.textContent = TYPE_LABELS[currentType];
     }
 
@@ -478,6 +527,9 @@
     // (מתן, 11.10). מה-FAB מגיע כאן אירוע הלחיצה, ולכן רק מחרוזת נחשבת.
     function openAddModal(presetType) {
         const preset = typeof presetType === 'string' ? presetType : null;
+        editSnapshot = null;
+        const seriesLink = document.getElementById('txSeriesLink');
+        if (seriesLink) seriesLink.hidden = true;
         scanSeq++;
         formSeq++;
         setSubmitBusy(false);                   // טופס חדש לא "באמצע שמירה" — ראו ‎finish‎
@@ -540,6 +592,15 @@
         // מתוך "עסקאות קבועות" הכפתור עוצר את הסדרה ולא מוחק שורה — ראו
         // ‎deleteBtn‎ למטה. השם אומר מה הוא עושה.
         deleteBtn.textContent = editingSeries ? 'הסרת העסקה הקבועה' : 'מחיקת העסקה';
+        // עסקה קבועה — בלי "שכפול" (מתן, 12.10): היא כבר נרשמת מעצמה כל חודש.
+        // גם התבנית (מההגדרות) וגם מופע של סדרה.
+        duplicateBtn.hidden = !!(tx.isRecurring || tx.recurringParentId || editingSeries);
+        // "חלק מסדרה" — במופע בלבד, לא בתבנית עצמה
+        const seriesLink = document.getElementById('txSeriesLink');
+        if (seriesLink) {
+            seriesLink.hidden = !(tx.recurringParentId && !editingSeries);
+            if (tx.recurringParentId) seriesLink.href = '/settings?series=' + encodeURIComponent(tx.recurringParentId);
+        }
         editingOriginal = tx;
         originalAmount = parseFloat(tx.amount);
         modalTitle.textContent = 'עריכת עסקה';
@@ -574,6 +635,7 @@
                 // תבנית שנייה שרצה במקביל לראשונה. השרת חוסם את זה
                 // ממילא — כאן פשוט לא מציעים פעולה שתיכשל.
                 setRecurringLock(!!tx.recurringParentId);
+                editSnapshot = formSnapshot();
                 updateSubmitLabel();
                 openModal();
             })
@@ -951,6 +1013,7 @@
     // ניקוי סימון-שגיאה של שדה הסכום ברגע שמתקנים אותו (נגישות)
     txAmount.addEventListener('input', function () {
         txAmount.removeAttribute('aria-invalid');
+        formatAmount(true);
         fitAmount();
     });
 
@@ -1111,13 +1174,22 @@
             });
     }
 
+    // כל שינוי בטופס — גם בכפתורים (סוג, קטגוריה, תאריך, של מי) שמעדכנים שדה
+    // נסתר בלחיצה — מעדכן את הכפתור. בפריים הבא: אחרי שהמטפל של הכפתור רץ.
+    ['input', 'change', 'click'].forEach(function (ev) {
+        txForm.addEventListener(ev, function () {
+            if (editId) requestAnimationFrame(updateSubmitLabel);
+        });
+    });
+
     txForm.addEventListener('submit', function (e) {
         e.preventDefault();
         if (isSubmitting) return;
+        if (isUnchanged()) return;              // "אין שינויים" — אין מה לשמור
         formError.textContent = '';
         txAmount.removeAttribute('aria-invalid');
 
-        const amount = parseFloat(txAmount.value);
+        const amount = amountValue();
         if (!amount || amount <= 0 || !isFinite(amount)) {
             formError.textContent = 'נא להזין סכום תקין';
             txAmount.setAttribute('aria-invalid', 'true');

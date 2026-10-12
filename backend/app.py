@@ -15,7 +15,7 @@ import time
 from . import supabase_config as db
 from .money import format_money
 from .icons import ui_icon, empty_illus
-from .wording import count_of, day_label, share_map, HEBREW_MONTHS as _HEBREW_MONTHS
+from .wording import count_of, day_label, share_map, greeting, next_charge_label, HEBREW_MONTHS as _HEBREW_MONTHS
 from . import clock
 from . import logs
 from . import notify
@@ -242,6 +242,7 @@ def _asset_version(filename: str) -> str:
 app.jinja_env.filters["money"] = format_money
 app.jinja_env.globals["ui_icon"] = ui_icon
 app.jinja_env.globals["empty_illus"] = empty_illus
+app.jinja_env.globals["greeting"] = lambda: greeting(clock.now().hour)
 app.jinja_env.filters["count_of"] = count_of
 # "היום" / "אתמול" / "ראשון, 27.9" — מול היום של השעון המוזרק (בדיקות)
 app.jinja_env.filters["day_label"] = lambda d: day_label(d, clock.today())
@@ -1509,7 +1510,9 @@ def month_view():
         for r in mb:
             idx = mcolors.get(r.get("user_id"))
             r["color"] = _OWNER_HEX.get(idx, _SHARED_HEX) if idx is not None else _SHARED_HEX
-        if mb:
+        # עמודה אחת לא משווה כלום — בתחילת חודש, כשרק אחד הזין, זה היה גרף
+        # בגובה חצי מסך עם עמודה יחידה (מתן, 12.10). "משותפת" נחשבת עמודה.
+        if len(mb) >= 2:
             member_breakdowns.append({"type": t, "label": _type_labels[t], "rows": mb})
 
     return render_template(
@@ -2182,6 +2185,10 @@ def settings():
                   if db.is_active_template(r)] if family_id else []
     # "₪5,000 ← ₪5,500 מאוקטובר" (רעיון 40)
     price_changes = db.recurring_price_changes(family_id, recurring) if recurring else {}
+    # "הבא: 1.11" לכל עסקה קבועה (מתן, 12.10)
+    today = clock.today()
+    next_charges = {t["id"]: next_charge_label(db.next_recurring_date(t, today), today)
+                    for t in (recurring or [])}
     # הפרופיל שלי כבר נמצא ברשימת החברים שנשלפה למעלה — היא מחזירה שם
     # מלא, אימייל, טלפון ומקום עבודה לכל חבר. שליפה נוספת כאן הייתה
     # פנייה שלמה למסד בשביל נתון שכבר ביד.
@@ -2223,6 +2230,7 @@ def settings():
         family=family,
         recurring=recurring,
         price_changes=price_changes,
+        next_charges=next_charges,
         hebrew_months=_HEBREW_MONTHS,
         account=account,
         # בחירת צבע לבן משפחה (סבב 6, פריט 13)

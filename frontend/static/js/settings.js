@@ -111,17 +111,32 @@ if (saveBtn) {
 const copyBtn    = document.getElementById('copyCodeBtn');
 const inviteCode = document.getElementById('inviteCode');
 
+// "שליחה" כשאפשר לשתף, "העתקה" כשלא (מחשב)
+const SHARE_LABEL = navigator.share ? 'שליחה' : 'העתקה';
 if (copyBtn && inviteCode) {
+    copyBtn.textContent = SHARE_LABEL;
     copyBtn.addEventListener('click', function () {
         const famEl = document.getElementById('familyNameInput');
         const msg = window.sfInviteMessage(inviteCode.textContent.trim(),
                                            famEl && famEl.value.trim());
-        window.copyToClipboard(msg, inviteCode)
-            .then(function (copied) {
-                if (!copied) return;      // הודעה כבר הוצגה, והקוד מסומן
-                copyBtn.textContent = '✓ הועתקה הזמנה';
-                setTimeout(function () { copyBtn.textContent = 'העתקה'; }, 2000);
+        // בטלפון — חלון השיתוף של המערכת (וואטסאפ ישירות), כמו בכניסה הראשונה
+        // (‎welcome-invite.js‎; מתן, 12.10). במחשב, או אם השיתוף נכשל — העתקה.
+        const copy = function () {
+            window.copyToClipboard(msg, inviteCode)
+                .then(function (copied) {
+                    if (!copied) return;      // הודעה כבר הוצגה, והקוד מסומן
+                    copyBtn.textContent = '✓ הועתקה הזמנה';
+                    setTimeout(function () { copyBtn.textContent = SHARE_LABEL; }, 2000);
+                });
+        };
+        if (navigator.share) {
+            navigator.share({ text: msg }).catch(function (err) {
+                if (err && err.name === 'AbortError') return;     // סגרו את חלון השיתוף
+                copy();
             });
+            return;
+        }
+        copy();
     });
 }
 
@@ -1349,5 +1364,54 @@ attrSwitches.forEach(function (sw) {
         const row = document.getElementById('join-family');
         if (row) row.scrollIntoView({ block: 'center' });
         input.focus({ preventScroll: true });
+    });
+})();
+
+// ── "/settings?series=<id>" — מ"חלק מעסקה קבועה" בחלון העריכה (מתן, 12.10) ──
+// פותחים את "עסקאות קבועות", גוללים לסדרה, ופותחים אותה לעריכה — אותה לחיצה
+// כמו על השורה עצמה (‎transactions.js‎). הפרמטר יורד מהכתובת: רענון לא פותח שוב.
+(function () {
+    let id;
+    try { id = new URLSearchParams(location.search).get('series'); } catch (e) { return; }
+    if (!id) return;
+    history.replaceState(null, '', location.pathname + location.hash);
+    const row = Array.prototype.find.call(document.querySelectorAll('#recurringList .recurring-row'),
+                                          function (r) { return r.dataset.id === id; });
+    if (!row) return;
+    const group = row.closest('.settings-group');
+    if (group && !group.classList.contains('open')) {
+        const header = group.querySelector('.settings-group-header');
+        if (header) header.click();
+    }
+    // אחרי ‎load‎: ‎transactions.js‎ (שפותח את חלון העריכה) נטען אחרי הקובץ הזה
+    const open = function () {
+        row.scrollIntoView({ block: 'center' });
+        row.click();
+    };
+    if (document.readyState === 'complete') requestAnimationFrame(open);
+    else window.addEventListener('load', function () { requestAnimationFrame(open); });
+})();
+
+// ── אישור לפני התנתקות (מתן, 12.10) ──
+// "התנתקות" בתחתית ההגדרות ניתקה בנגיעה אחת. הטופס נשאר POST (הגנה מאתר אחר
+// — ראו ההערה בתבנית); רק השליחה מחכה לאישור.
+(function () {
+    const form = document.querySelector('form.logout-form');
+    if (!form) return;
+    let confirmed = false;
+    form.addEventListener('submit', function (e) {
+        if (confirmed) return;
+        e.preventDefault();
+        window.appConfirm({
+            title: 'להתנתק?',
+            message: 'להתנתק מ-SmartFin בטלפון הזה?',
+            confirmText: 'התנתקות',
+            cancelText: 'ביטול',
+            danger: false,
+        }).then(function (ok) {
+            if (!ok) return;
+            confirmed = true;
+            form.submit();
+        });
     });
 })();

@@ -405,6 +405,9 @@
                         <span class="recurring-icon">{{ tx.category_icon }}</span>
                         <div class="recurring-details">
                             <p class="recurring-name">{{ tx.description or tx.category_name }}</p>
+                            {# "הבא: 1.11" — מתי זה יורד שוב (מתן, 12.10) #}
+                            {% set next_label = (next_charges or {}).get(tx.id) %}
+                            {% if next_label %}<p class="recurring-next">{{ next_label }}</p>{% endif %}
                             {# "₪5,000 ← ₪5,500 מאוקטובר" — השינוי האחרון בסכום (מתן, 3.10 — רעיון 40) #}
                             {% set change = (price_changes or {}).get(tx.id) %}
                             {% if change %}
@@ -783,5 +786,6 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+<script src="{{ url_for('static', filename='js/password-eye.js') }}"></script>
 <script src="{{ url_for('static', filename='js/passkey.js') }}"></script>
 {% endblock %}
