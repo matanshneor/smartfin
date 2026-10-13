@@ -26,7 +26,7 @@ def _section(html):
 def test_the_latest_five_show_right_away():
     section = _section(_render_month(_txs(12)))
     preview = section[section.index('class="cat-tx-list cat-tx-list-standalone tx-preview"'):]
-    preview = preview[:preview.index("</ul>")]
+    preview = preview[:preview.index('id="txScreenOpen"')] if 'id="txScreenOpen"' in preview else preview
 
     assert preview.count('class="cat-tx-row"') == 5
     assert "עסקה 0" in preview and "עסקה 4" in preview and "עסקה 5" not in preview

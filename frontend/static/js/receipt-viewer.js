@@ -61,10 +61,13 @@
     }
 
     document.addEventListener('click', function (e) {
-        const a = e.target.closest && e.target.closest('a.receipt-badge');
+        // הסמל בשורה הוא ‎<span data-href>‎ ולא קישור (מתן, 13.10): הוא יושב בתוך כפתור
+        // העריכה, וקישור בתוך כפתור הוא מקום ש-VoiceOver לא מגיע אליו. לקורא המסך
+        // יש את "צפייה בקבלה" בחלון העריכה.
+        const a = e.target.closest && e.target.closest('.receipt-badge, a.tx-receipt-link');
         if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
         e.preventDefault();
-        open(a.href);
+        open(a.dataset.href || a.href);
     });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
 })();

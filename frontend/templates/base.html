@@ -159,6 +159,11 @@
                 <a class="tx-series-link" id="txSeriesLink" href="{{ url_for('settings') }}" hidden>
                     {{ ui_icon("repeat") }}<span>חלק מעסקה קבועה · עריכה לכל החודשים</span>
                 </a>
+                {# "צפייה בקבלה" (מתן, 13.10): הסמל הקטן בשורה יושב בתוך כפתור העריכה,
+                   ו-VoiceOver לא מגיע אליו — מכאן כן. ‎receipt-viewer.js‎ פותח אותו. #}
+                <a class="tx-series-link tx-receipt-link" id="txReceiptLink" href="#" target="_blank" rel="noopener" hidden>
+                    {{ ui_icon("receipt") }}<span>צפייה בקבלה</span>
+                </a>
                 <div class="type-toggle type-toggle-3" role="group" aria-label="מחלקת העסקה">
                     <button class="toggle-btn active" id="toggleExpense" data-type="expense" aria-pressed="true">הוצאה</button>
                     <button class="toggle-btn" id="toggleIncome" data-type="income" aria-pressed="false">הכנסה</button>

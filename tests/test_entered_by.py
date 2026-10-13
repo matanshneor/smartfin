@@ -88,7 +88,8 @@ def page(monkeypatch):
 
 def _row(html, description):
     i = html.index(description)
-    return html[html.rindex("<li", 0, i):html.index("</li>", i)]
+    # השורות הן ‎<div class="cat-tx-row">‎ (לא ‎<li>‎ — VoiceOver, 13.10)
+    return html[html.rindex('class="cat-tx-row', 0, i):html.index("</div>", i)]
 
 
 def test_a_personal_project_marks_what_someone_else_entered(page):
