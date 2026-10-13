@@ -602,6 +602,28 @@ def inject_family_settings():
     return {"family_settings": settings, "single_member": single, "show_owner": _ShowOwner(settings, single)}
 
 
+@app.context_processor
+def _client_lists():
+    """הקטגוריות ובני המשפחה לחלון "הוספת עסקה", בתוך העמוד (מתן, 13.10).
+
+    עד עכשיו כל עמוד שלח אחריו עוד שתי בקשות (‎/api/categories‎,
+    ‎/api/family/members‎) רק כדי לחמם את החלון — ובלוגים רבות מהן נקטעו
+    באמצע כשעברו לעמוד הבא. רוב העמודים כבר שלפו בדיוק את זה, אז לוקחים
+    ממטמון הבקשה בלבד: מה שלא נשלף — לא נשלף בשבילנו, והחלון יבקש כרגיל."""
+    def client_lists() -> dict:
+        fid = session.get("family_id")
+        cache = g.get("_sf_cache") or {}
+        out = {}
+        cats = cache.get(f"categories:{fid}") if fid else None
+        if cats is not None:
+            out["categories"] = cats
+        members = cache.get(f"members:{fid}") if fid else None
+        if members is not None:
+            out["members"] = [{"id": m["id"], "name": m["name"]} for m in members]
+        return out
+    return {"client_lists": client_lists}
+
+
 class _LazySingleMember:
     """‎single_member()‎ בתבנית — האם במשפחה אדם אחד. בספק (שליפה נכשלה) — לא."""
     def __init__(self):
@@ -3970,6 +3992,25 @@ def privacy():
 @app.route("/terms")
 def terms():
     return render_template("terms.html")
+
+
+# וואטסאפ, האייפון ומנועי חיפוש מבקשים את אלה בכתובת קבועה, בלי לקרוא את
+# ה-HTML — ובלעדיהם קישור לאפליקציה הופיע בלי הלוגו (‎404‎ ביומנים, 13.10).
+@app.route("/favicon.ico")
+@app.route("/apple-touch-icon.png")
+@app.route("/apple-touch-icon-precomposed.png")
+def touch_icon():
+    response = app.send_static_file("icons/icon-180.png")
+    response.headers["Cache-Control"] = "public, max-age=604800"
+    return response
+
+
+@app.route("/robots.txt")
+def robots_txt():
+    """רק ה-API והקבלות סגורים לסורקים. דפי האפליקציה ממילא דורשים התחברות,
+    ודף הנחיתה וקישורי ההזמנה צריכים תצוגה מקדימה בשיתוף."""
+    return app.response_class("User-agent: *\nDisallow: /api/\nDisallow: /receipts/\n",
+                              mimetype="text/plain")
 
 
 @app.route("/sw.js")
