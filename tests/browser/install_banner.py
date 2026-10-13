@@ -48,8 +48,9 @@ try:
             {"amount": "10", "type": "expense", "date": datetime.date.today().isoformat(), "description": "BANNER-SEED"}),
             headers={"Content-Type": "application/json"})
         page.goto(BASE + "/")
-        shown = lambda: page.evaluate("""() => { const b = document.getElementById('installBanner');
-            return b && b.style.display !== 'none' ? document.getElementById('installBannerText').textContent : null; }""")
+        # מאז 13.10 — פס קבוע מעל התפריט (‎#installBar‎), מחוץ ל-‎main‎
+        shown = lambda: page.evaluate("""() => { const b = document.getElementById('installBar');
+            return b && !b.hidden ? document.getElementById('installBarTitle').textContent : null; }""")
         before = shown()
         page.click("#fabBtn"); page.wait_for_selector("#modalOverlay.open")
         page.fill("#txAmount", "11"); page.fill("#txDescription", "BANNER-ADD")

@@ -6,57 +6,122 @@ if ('serviceWorker' in navigator) {
     });
 }
 
+// ── "הוסיפו למסך הבית" (מתן, 13.10) ──
+//
+// פס קבוע מעל התפריט התחתון, עד שנכנסים פעם אחת מהאייקון. אז השרת זוכר
+// (‎/api/app-installed‎ → ‎data-installed‎) — והפס לא חוזר גם בכניסה מהדפדפן.
+// ✕ מסתיר עד הכניסה הבאה (‎sessionStorage‎). עד אז הייתה הודעה צהובה שנסגרה
+// לתמיד בנגיעה אחת, וטקסט בלי הדרכה.
+//
+// באייפון אין התקנה בלחיצה — "איך?" פותח שלושה צעדים, בלי שם של דפדפן: מי
+// שנכנס מכרום או מפיירפוקס גם מוסיף מכפתור השיתוף. מתוך וואטסאפ, אינסטגרם
+// או פייסבוק אי אפשר בכלל — שם הצעד הראשון הוא לפתוח בדפדפן. באנדרואיד
+// "התקנה" פותח את חלון ההתקנה של הטלפון; בלעדיו — שלושה צעדים מהתפריט.
 (function () {
-    const DISMISS_KEY = 'sf_install_dismissed';
-    // ‎try/catch‎: זו הגישה האחרונה בריפו ל-‎localStorage‎ שלא הייתה
-    // מוגנת. ב-Safari עם עוגיות חסומות, בגלישה פרטית או ב-Lockdown
-    // Mode הקריאה **זורקת** — וכאן, בשורה הראשונה של ה-IIFE, היא
-    // הורגת את כל הקובץ. אותה נפילה בדיוק שקרתה ל-core.js.
-    try {
-        if (localStorage.getItem(DISMISS_KEY)) return;
-    } catch (e) { /* אין אחסון — מציגים את ההצעה, במקום לא כלום */ }
-
+    const bar = typeof document.getElementById === 'function' && document.getElementById('installBar');
+    if (!bar) return;
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches
         || window.navigator.standalone === true;
-    if (isStandalone) return;
+    if (isStandalone) {
+        // נכנסו מהאייקון — פעם בכניסה מספיק; השרת מתעלם מכפילויות
+        let told = false;
+        try { told = sessionStorage.getItem('sf_app_marked') === '1'; } catch (e) { /* אין אחסון */ }
+        if (!told && !bar.hasAttribute('data-installed')) {
+            fetch('/api/app-installed', { method: 'POST', credentials: 'same-origin',
+                                          headers: { 'Accept': 'application/json' } })
+                .then(function (r) { if (r.ok) try { sessionStorage.setItem('sf_app_marked', '1'); } catch (e) { /* */ } })
+                .catch(function () { /* בפעם הבאה */ });
+        }
+        return;
+    }
+    if (bar.hasAttribute('data-installed')) return;
+    try { if (sessionStorage.getItem('sf_install_hidden') === '1') return; } catch (e) { /* מציגים */ }
 
-    const banner  = document.getElementById('installBanner');
-    const text    = document.getElementById('installBannerText');
-    const actionBtn = document.getElementById('installBannerAction');
-    const closeBtn  = document.getElementById('installBannerClose');
+    const ua = window.navigator.userAgent;
+    const isIOS = /iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    const inApp = /FBAN|FBAV|Instagram|Line\/|LinkedInApp|TikTok|Snapchat|WhatsApp/i.test(ua);
+    const go = document.getElementById('installBarGo');
     let deferredPrompt = null;
 
-    function dismiss() {
-        banner.style.display = 'none';
-        try {
-            localStorage.setItem(DISMISS_KEY, '1');
-        } catch (e) { /* לא נזכר — הבאנר יחזור, וזה עדיף על קריסה */ }
+    function show() {
+        bar.hidden = false;
+        document.body.classList.add('has-install-bar');
     }
-    closeBtn.addEventListener('click', dismiss);
-
-    const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+    function hide() {
+        bar.hidden = true;
+        document.body.classList.remove('has-install-bar');
+    }
+    document.getElementById('installBarClose').addEventListener('click', function () {
+        hide();
+        try { sessionStorage.setItem('sf_install_hidden', '1'); } catch (e) { /* יחזור בעמוד הבא */ }
+    });
 
     window.addEventListener('beforeinstallprompt', function (e) {
         e.preventDefault();
         deferredPrompt = e;
-        text.textContent = 'התקינו את SmartFin למסך הבית לגישה מהירה יותר';
-        actionBtn.style.display = '';
-        banner.style.display = '';
+        document.getElementById('installBarTitle').textContent = 'התקינו את SmartFin';
+        document.getElementById('installBarSub').textContent = 'אייקון במסך הבית, כמו אפליקציה';
+        go.textContent = 'התקנה';
     });
+    window.addEventListener('appinstalled', hide);
 
-    actionBtn.addEventListener('click', function () {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.finally(dismiss);
-    });
+    const SHARE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-2"/><path d="M12 15V3M8 7l4-4 4 4"/></svg>';
+    const PLUS  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
+    const DOTS  = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>';
+    const ICON  = '<img src="/static/icons/icon-180.png" alt="">';
 
-    window.addEventListener('appinstalled', dismiss);
-
-    // ל-iOS אין beforeinstallprompt בכלל — מציגים הנחיה סטטית בלבד
-    if (isIOS) {
-        text.textContent = 'להתקנת SmartFin: הקישו על שיתוף ← הוסף למסך הבית';
-        banner.style.display = '';
+    function steps() {
+        if (inApp) return [
+            [DOTS, 'פתחו את הקישור <b>בדפדפן</b>', 'מהתפריט של האפליקציה שבה אתם נמצאים — "פתיחה בדפדפן"'],
+            [isIOS ? SHARE : DOTS, isIOS ? 'שם — <b>שיתוף</b>, ואז <b>הוסף למסך הבית</b>' : 'שם — התפריט, ואז <b>הוסף למסך הבית</b>', ''],
+            [ICON, 'ופתחו את SmartFin <b>מהאייקון</b>', ''],
+        ];
+        if (isIOS) return [
+            [SHARE, 'הקישו על כפתור <b>השיתוף</b> של הדפדפן', 'הריבוע עם החץ למעלה'],
+            [PLUS, 'בחרו <b>הוסף למסך הבית</b>', 'לא רואים? גללו למטה, או תחת "עוד"'],
+            [ICON, 'הקישו <b>"הוסף"</b> — ופתחו את SmartFin מהאייקון', ''],
+        ];
+        return [
+            [DOTS, 'פתחו את <b>התפריט</b> של הדפדפן', 'שלוש הנקודות'],
+            [PLUS, 'בחרו <b>הוסף למסך הבית</b> או <b>התקנת אפליקציה</b>', ''],
+            [ICON, 'אשרו — ופתחו את SmartFin מהאייקון', ''],
+        ];
     }
+    function guide() {
+        const sheet = document.createElement('div');
+        sheet.className = 'color-sheet install-guide';
+        sheet.setAttribute('role', 'dialog');
+        sheet.setAttribute('aria-modal', 'true');
+        sheet.setAttribute('aria-label', 'הוספה למסך הבית');
+        let html = '<div class="color-sheet-card"><p class="color-sheet-title">הוספה למסך הבית</p>'
+                 + '<p class="color-sheet-hint">שלושה צעדים, פעם אחת — ומאז SmartFin נפתחת מהאייקון</p><ol class="install-steps">';
+        steps().forEach(function (s, k) {
+            html += '<li><span class="install-step-num">' + (k + 1) + '</span><span class="install-step-text">' + s[1]
+                  + (s[2] ? '<span class="install-step-hint">' + s[2] + '</span>' : '')
+                  + '</span><span class="install-step-pic">' + s[0] + '</span></li>';
+        });
+        html += '</ol><button type="button" class="btn-sm btn-ghost color-sheet-close">הבנתי</button></div>';
+        sheet.innerHTML = html;      // טקסט קבוע מהקובץ הזה בלבד — אין כאן קלט של משתמש
+        document.body.appendChild(sheet);
+        bar.hidden = true;                      // הפס לא מעל ההדרכה
+        function close() { sheet.remove(); bar.hidden = false; go.focus({ preventScroll: true }); }
+        sheet.addEventListener('click', function (e) {
+            if (e.target === sheet || e.target.closest('.color-sheet-close')) close();
+        });
+        document.addEventListener('keydown', function esc(e) {
+            if (e.key === 'Escape') { document.removeEventListener('keydown', esc); close(); }
+        });
+        requestAnimationFrame(function () { sheet.querySelector('.color-sheet-close').focus(); });
+    }
+    go.addEventListener('click', function () {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.finally(function () { deferredPrompt = null; });
+            return;
+        }
+        guide();
+    });
+    show();
 })();
 
 
