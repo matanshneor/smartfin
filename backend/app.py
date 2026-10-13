@@ -165,6 +165,17 @@ app.config.update(
 # ש-הלקוח דוחף בעצמו נדחק שמאלה ולעולם לא נבחר.
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=1, x_host=1)
 
+
+# ראשון מכל ‎before_request‎: פניית חימום לא תרוץ במקביל לבקשה (‎db.request_started‎)
+@app.before_request
+def _db_request_started():
+    db.request_started()
+
+
+@app.teardown_request
+def _db_request_finished(exc):
+    db.request_finished()
+
 # הגבלת קצב על מסלולי האימות — מונע ניחוש סיסמאות וסריקת מספרי טלפון.
 #
 # האחסון חייב להיות משותף בפרודקשן. עם "memory://" כל worker של gunicorn
@@ -2426,7 +2437,7 @@ def settings():
         profile = db.get_profile(user["id"]) or {}
     full_name = profile.get("full_name") or profile.get("name") or user["name"]
     name_parts = full_name.split(" ", 1)
-    email, pending_email = _current_email()
+    email, pending_email = _current_email(cached=True)
     account = {
         "full_name":  full_name,
         "first_name": name_parts[0] if name_parts else "",
@@ -2532,12 +2543,28 @@ def update_password():
     return jsonify({"status": "ok"})
 
 
-def _current_email():
+_EMAIL_FRESH_SECONDS = 600
+
+
+def _current_email(cached=False):
     """‎(email, pending_email)‎ מ-Supabase, ומעדכן את הסשן. בלי חיבור — המייל
-    שבסשן, ובלי "ממתין". ראו ‎db.get_auth_email‎."""
+    שבסשן, ובלי "ממתין". ראו ‎db.get_auth_email‎.
+
+    ‎cached‎ — לעמוד ההגדרות (מתן, 13.10): הבדיקה מול שירות ההתחברות לקחה
+    ‎100-230ms‎ מכל טעינה, אז היא נעשית לכל היותר פעם ב-10 דקות. אבל לא כשיש
+    מייל שממתין לאישור — אז בודקים כל פעם, כדי שהאישור מהקישור יופיע מיד.
+    פעולות שבודקות סיסמה מול המייל תמיד בודקות טרי."""
+    if (cached and session.get("user_email") and not session.get("pending_email")
+            and time.time() - (session.get("email_checked_at") or 0) < _EMAIL_FRESH_SECONDS):
+        return session["user_email"], None
     email, pending = db.get_auth_email(session.get("access_token"))
     if email:
         session["user_email"] = email
+        session["email_checked_at"] = time.time()
+        if pending:
+            session["pending_email"] = pending
+        else:
+            session.pop("pending_email", None)
     return email or session.get("user_email", ""), pending
 
 
@@ -2585,6 +2612,7 @@ def update_email():
                                       url_for("settings", _external=True))
     if not ok:
         return jsonify({"error": _user_message(err, "שליחת מייל האישור נכשלה")}), 500
+    session["pending_email"] = new_email     # מכאן ההגדרות בודקות טרי עד האישור
     return jsonify({"status": "ok", "pending_email": new_email})
 
 
@@ -3278,7 +3306,11 @@ def transaction_meta(tx_id):
         return jsonify({"error": "לא הצלחנו לטעון — נסו שוב"}), 503
     if meta is None:
         return jsonify({"error": "העסקה לא נמצאה"}), 404
-    text = _entered_text(meta, user["id"], _member_names(user["family_id"]))
+    # שמות בני המשפחה רק כשמישהו אחר הזין — ברוב הפעמים זו עסקה שלך
+    by = meta.get("created_by")
+    names = _member_names(user["family_id"]) \
+        if by and by != user["id"] and not meta.get("recurring_parent_id") else {}
+    text = _entered_text(meta, user["id"], names)
     return jsonify({"text": text})
 
 

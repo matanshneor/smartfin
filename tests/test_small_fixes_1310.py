@@ -75,3 +75,76 @@ def test_the_js_takes_them_from_the_page():
     js = (Path(__file__).resolve().parent.parent / "frontend/static/js/transactions.js").read_text(encoding="utf-8")
     assert "if (Array.isArray(pageLists.categories)) categoriesCache = pageLists.categories;" in js
     assert "if (Array.isArray(pageLists.members)) membersCache = pageLists.members;" in js
+
+
+# ─── חיבור חם אחרי הפסקה ─────────────────────────────────────────────────────
+
+class _Session:
+    def __init__(self):
+        self.calls = []
+
+    def get(self, path, **kw):
+        self.calls.append((path, kw.get("params")))
+
+
+class _Client:
+    def __init__(self):
+        self.postgrest = type("P", (), {})()
+        self.postgrest.session = _Session()
+
+
+@pytest.fixture
+def warm(monkeypatch):
+    clock = {"t": 1000.0}
+    monkeypatch.setattr(db.time, "monotonic", lambda: clock["t"])
+    monkeypatch.setitem(db._warm_state, "busy", False)
+    monkeypatch.setitem(db._warm_state, "last", 1000.0)
+    return clock
+
+
+def test_a_quiet_worker_pings_and_a_busy_one_does_not(warm):
+    c = _Client()
+    assert db._warm_ping_once(c) is False, "רק עכשיו הייתה פעילות"
+    warm["t"] += db.WARM_IDLE_SECONDS + 1
+    db.request_started()
+    assert db._warm_ping_once(c) is False, "באמצע בקשה — אסור"
+    db.request_finished()
+    warm["t"] += db.WARM_IDLE_SECONDS + 1
+    assert db._warm_ping_once(c) is True
+    # שורה אחת לכל היותר — לא שורש ה-API (כל תיאור הסכמה)
+    assert c.postgrest.session.calls == [("families", {"select": "id", "limit": "1"})]
+
+
+def test_a_failed_ping_is_harmless(warm):
+    c = _Client()
+    c.postgrest.session.get = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
+    warm["t"] += db.WARM_IDLE_SECONDS + 1
+    assert db._warm_ping_once(c) is True
+
+
+def test_every_request_marks_the_worker_busy():
+    from pathlib import Path
+    src = (Path(__file__).resolve().parent.parent / "backend/app.py").read_text(encoding="utf-8")
+    first_hook = src.index("@app.before_request")
+    assert src[first_hook:first_hook + 80].count("_db_request_started") == 1, \
+        "חייב להיות ה-before_request הראשון — לפני כל שליפה"
+    assert "@app.teardown_request\ndef _db_request_finished" in src
+
+
+# ─── המייל בהגדרות — לכל היותר פעם ב-10 דקות ─────────────────────────────────
+
+def test_the_settings_email_check_is_cached_unless_a_change_is_pending(monkeypatch):
+    calls = []
+    monkeypatch.setattr(db, "get_auth_email", lambda t: (calls.append(1) or ("a@x.com", None)))
+    with app.test_request_context("/settings"):
+        from flask import session
+        session["user_email"] = "a@x.com"
+        assert app_module._current_email(cached=True) == ("a@x.com", None)
+        assert app_module._current_email(cached=True) == ("a@x.com", None)
+        assert len(calls) == 1, "בדיקה שנייה בתוך 10 דקות — מהסשן"
+        session["pending_email"] = "b@x.com"
+        app_module._current_email(cached=True)
+        assert len(calls) == 2, "מייל ממתין — בודקים כל פעם, כדי שהאישור יופיע מיד"
+        assert "pending_email" not in session
+        app_module._current_email()
+        assert len(calls) == 3, "פעולות שבודקות סיסמה — תמיד טרי"
