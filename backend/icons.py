@@ -30,6 +30,13 @@ _PATHS = {
                 '<path d="m16.71 13.88.7.71-2.82 2.82"/>',
     "repeat":   '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/>'
                 '<path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
+    # "החשבון שלי" (מתן, 13.10) — שורה לכל פרט, כמו "עסקאות קבועות"
+    "user":     '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    "palette":  '<circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1"/><circle cx="12" cy="7.5" r="1"/>'
+                '<circle cx="15.5" cy="10" r="1"/>',
+    "mail":     '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+    "phone":    '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
+    "lock":     '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
 }
 
 

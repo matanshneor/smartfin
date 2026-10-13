@@ -179,44 +179,24 @@
         return;
     }
 
-    // ── הגדרות → החשבון שלי ──────────────────────────────────────────────
+    // ── הגדרות → החשבון שלי: מתג (מתן, 13.10) ──────────────────────────
+    // דולק = יש מפתח בחשבון. הדלקה — יצירת מפתח בטלפון הזה; כיבוי — אישור,
+    // והסרת המפתחות (כמו "כיבוי" שהיה ליד כל מפתח). בלי רשימת מכשירים:
+    // המפתח עובר לבד בין מכשירי האפל דרך iCloud.
     const box = document.getElementById('passkeySettings');
     if (!box || !supported) return;
-    const enableBtn = document.getElementById('passkeyEnableBtn');
-    const list = document.getElementById('passkeyList');
+    const toggle = document.getElementById('passkeyToggle');
     const hint = document.getElementById('passkeyHint');
     const err = document.getElementById('passkeySettingsError');
     box.querySelectorAll('[data-passkey-name]').forEach(function (el) { el.textContent = NAME; });
+    let ids = [];
 
-    function when(iso) {
-        if (!iso) return '';
-        const d = new Date(iso);
-        return isNaN(d) ? '' : d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric', year: 'numeric' });
-    }
     function render(items) {
-        list.innerHTML = '';
-        items.forEach(function (p) {
-            const li = document.createElement('li');
-            li.className = 'passkey-item';
-            const text = document.createElement('span');
-            text.className = 'passkey-item-name';
-            text.textContent = p.name + (p.created_at ? ' · הופעל ' + when(p.created_at) : '');
-            const rm = document.createElement('button');
-            rm.type = 'button';
-            rm.className = 'btn-sm btn-ghost';
-            rm.textContent = 'כיבוי';
-            rm.dataset.passkeyId = p.id;
-            li.appendChild(text);
-            li.appendChild(rm);
-            list.appendChild(li);
-        });
-        // כותרת "Face ID", ומתחת המשפט — בלי פירוט של דקות (מתן, 13.10)
-        hint.textContent = items.length ? 'נעילת האפליקציה מופעלת' : 'נעילת האפליקציה באמצעות ' + NAME;
-        // אחרי ההפעלה — בלי כפתור (מתן, 12.10: "מה זה הוספת מכשיר?"). המפתח
-        // עובר לבד בין מכשירי האפל דרך iCloud; מכשיר אחר — הסרה והפעלה ממנו.
-        enableBtn.hidden = items.length > 0;
+        ids = items.map(function (p) { return p.id; });
+        toggle.checked = ids.length > 0;
+        hint.textContent = ids.length ? 'נעילת האפליקציה מופעלת' : 'נעילת האפליקציה באמצעות ' + NAME;
         // יש כניסה כזאת בחשבון — הכפתור במסך ההתחברות יופיע בטלפון הזה
-        if (items.length) setFlag(true);
+        if (ids.length) setFlag(true);
     }
     function load() {
         return fetch('/api/passkeys', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
@@ -225,11 +205,8 @@
             .catch(function () { /* לא הופעל באתר או לא זמין — השורה לא מופיעה */ });
     }
 
-    enableBtn.addEventListener('click', function () {
-        if (enableBtn.disabled) return;
-        enableBtn.disabled = true;
-        err.textContent = '';
-        post('/api/passkey/register/options')
+    function turnOn() {
+        return post('/api/passkey/register/options')
             .then(function (o) {
                 return navigator.credentials.create({ publicKey: creationOptions(o.options) })
                     .then(function (c) {
@@ -240,24 +217,34 @@
             .then(function () {
                 setFlag(true);
                 if (window.showToast) window.showToast('נעילת האפליקציה באמצעות ' + NAME + ' הופעלה', 'success');
-                return load();
             })
-            .catch(function (e) {
-                if (!cancelled(e)) err.textContent = e.message || FAILED;
-            })
-            .then(function () { enableBtn.disabled = false; });
-    });
+            .catch(function (e) { if (!cancelled(e)) err.textContent = e.message || FAILED; });
+    }
+    function turnOff() {
+        const ask = window.appConfirm ? window.appConfirm({
+            title: 'לכבות את נעילת האפליקציה?',
+            message: 'האפליקציה תיפתח בלי ' + NAME + '.',
+            confirmText: 'כיבוי', cancelText: 'ביטול', danger: false,
+        }) : Promise.resolve(true);
+        return ask.then(function (yes) {
+            if (!yes) return;
+            return Promise.all(ids.map(function (id) {
+                return fetch('/api/passkeys/' + encodeURIComponent(id), {
+                    method: 'DELETE', credentials: 'same-origin', headers: { 'Accept': 'application/json' },
+                }).then(function (r) { if (!r.ok) throw new Error(); });
+            })).then(function () { setFlag(false); })
+              .catch(function () { err.textContent = 'הכיבוי נכשל — נסו שוב'; });
+        });
+    }
 
-    list.addEventListener('click', function (e) {
-        const btn = e.target.closest('[data-passkey-id]');
-        if (!btn || btn.disabled) return;
-        btn.disabled = true;
-        fetch('/api/passkeys/' + encodeURIComponent(btn.dataset.passkeyId), {
-            method: 'DELETE', credentials: 'same-origin', headers: { 'Accept': 'application/json' },
-        })
-            .then(function (r) { if (!r.ok) throw new Error(); return load(); })
-            .then(function () { if (!list.children.length) setFlag(false); })
-            .catch(function () { btn.disabled = false; err.textContent = 'ההסרה נכשלה — נסו שוב'; });
+    toggle.addEventListener('change', function () {
+        const wantOn = toggle.checked;
+        toggle.checked = !wantOn;          // המצב מתעדכן רק אחרי שזה באמת קרה
+        toggle.disabled = true;
+        err.textContent = '';
+        (wantOn ? turnOn() : turnOff())
+            .then(load)
+            .then(function () { toggle.disabled = false; });
     });
 
     load();

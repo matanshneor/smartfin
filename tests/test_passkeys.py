@@ -159,7 +159,8 @@ def test_settings_offers_it_under_my_account():
     html = (_ROOT / "frontend/templates/settings.html").read_text(encoding="utf-8")
     mine = html[html.index('id="my-details"'):]
     mine = mine[:mine.index("</section>")]
-    assert 'id="passkeySettings" hidden' in mine and 'id="passkeyEnableBtn"' in mine
+    # מתג (מתן, 13.10) במקום כפתור "הפעלה"
+    assert 'id="passkeySettings" hidden' in mine and 'id="passkeyToggle"' in mine and 'role="switch"' in mine
     assert "js/passkey.js" in html
 
 
@@ -172,5 +173,6 @@ def test_once_enabled_there_is_no_add_device_button():
     """מתן (12.10): "מה זה הוספת מכשיר?" — לחץ, ביטל, ומחק בטעות את מה שהפעיל.
     המפתח עובר בין מכשירי האפל לבד; אחרי ההפעלה נשארים "מופעל" ו"הסרה"."""
     js = (_ROOT / "frontend/static/js/passkey.js").read_text(encoding="utf-8")
-    assert "enableBtn.hidden = items.length > 0;" in js
+    # מאז 13.10 — מתג אחד, בלי רשימת מכשירים ובלי כפתור הוספה
+    assert "toggle.checked = ids.length > 0;" in js and "passkeyList" not in js
     assert "'הוספת מכשיר'" not in js          # הכיתוב עצמו, לא ההערה
