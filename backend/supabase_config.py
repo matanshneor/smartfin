@@ -58,7 +58,19 @@ def get_client():
 
     try:
         from supabase import create_client
-        _client = create_client(url, key)
+        from supabase.lib.client_options import ClientOptions
+        # בלי חידוש אוטומטי ובלי לשמור את הסשן בזיכרון (מתן, 13.10 — "למה הוא
+        # שוב מכניס אותי למסך ההתחברות?"). ברירת המחדל של הספרייה: אחרי כל
+        # התחברות/רענון על הלקוח המשותף, טיימר ברקע מחדש את הטוקן של **מי שהתחבר
+        # אחרון** עשר שניות לפני שהוא פג — ושוב, ושוב, כל עוד ה-worker חי. כל
+        # חידוש כזה "צורך" את ה-refresh token שבעוגייה של המשתמש, וכשהוא חוזר
+        # אחרי שעה: "Invalid Refresh Token: Already Used" → מסך ההתחברות.
+        # הטוקנים החדשים נשארו בזיכרון השרת בלבד, ו-‎web_sessions‎ לא ידע עליהם.
+        # הרענון שלנו נעשה רק ב-‎inject_auth‎. ‎ClientOptions(...)‎ ישירות ולא
+        # ‎.replace‎ — שם ‎False or True‎ מחזיר ‎True‎.
+        _client = create_client(url, key, options=ClientOptions(
+            auto_refresh_token=False, persist_session=False))
+        _client.auth._auto_refresh_token = False
         _keep_connection_warm(_client)
         _start_warm_pings(_client)
         return _client
@@ -297,6 +309,15 @@ def get_email_by_phone(normalized_phone: str):
         return None
 
 
+def _forget_auth_session(client):
+    """מוחק מהלקוח המשותף את הסשן שהפעולה האחרונה השאירה עליו, ומבטל טיימר.
+    הטוקנים חוזרים לקורא ונשמרים בעוגייה וב-‎web_sessions‎ — לא כאן."""
+    try:
+        client.auth._remove_session()
+    except Exception:
+        logger.exception("_forget_auth_session")
+
+
 def sign_in(email: str, password: str):
     """Returns (user_data, error_message)."""
     client = get_client()
@@ -307,6 +328,8 @@ def sign_in(email: str, password: str):
         return response, None
     except Exception as e:
         return None, str(e)
+    finally:
+        _forget_auth_session(client)
 
 
 def log_login_event(event: str = "login"):
@@ -368,6 +391,8 @@ def sign_up(email: str, password: str, name: str, phone: str = None):
         return response, None
     except Exception as e:
         return None, str(e)
+    finally:
+        _forget_auth_session(client)
 
 
 def refresh_session(refresh_token: str):
@@ -381,6 +406,7 @@ def refresh_session(refresh_token: str):
         return None, "Database not configured", False
     try:
         response = client.auth.refresh_session(refresh_token)
+        _forget_auth_session(client)
         return response, None, False
     except AuthRetryableError as e:
         # תקלה זמנית (רשת, timeout) — שומרים על ההתחברות ומנסים שוב בבקשה הבאה
