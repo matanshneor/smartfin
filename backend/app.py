@@ -1423,6 +1423,13 @@ def dashboard():
         except db.DataUnavailable:
             pass
 
+    # "ספטמבר נסגר" (מתן, 13.10) — רק ביום הראשון של החודש. קישוט: תקלה לא
+    # מפילה את דף הבית.
+    try:
+        recap = db.month_recap(family_id, clock.today(), batch["categories"])
+    except db.DataUnavailable:
+        recap = None
+
     # פרויקט מוצמד (מתן, 12.10): "טיול ליוון: נשארו ₪7,800 מתוך ₪12,000" מתחת
     # למאזן. רק כשמישהו הצמיד — אחרת אין שליפה. פרויקט שהסתיים או שנמחק —
     # הכרטיס לא מופיע. קישוט: תקלה לא מפילה את דף הבית.
@@ -1459,6 +1466,8 @@ def dashboard():
         is_new_family=batch["is_new"],
         welcome_invite=welcome_invite,
         alerts=alerts,
+        recap=recap,
+        hebrew_months=_HEBREW_MONTHS,
         pinned_project=pinned_project,
         # ל"בן משפחה הצטרף" (‎whats-new.js‎): מזהה, שם פרטי וצבע — בלי פרטים נוספים
         home_members=[{"id": m["id"], "name": m.get("name") or "",

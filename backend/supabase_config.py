@@ -3351,6 +3351,39 @@ def category_breakdown_from_rows(rows: list, categories: list, type_: str) -> li
     return out
 
 
+def _month_before(year: int, month: int) -> tuple:
+    return (year - 1, 12) if month == 1 else (year, month - 1)
+
+
+def month_recap(family_id: str, today, categories: list):
+    """כרטיס "ספטמבר נסגר" בדף הבית (מתן, 13.10).
+
+    רק ביום הראשון של החודש — "יום למחרת זה נעלם לבד". מחזיר ‎None‎ בכל יום
+    אחר, ובחודש שעבר בלי אף עסקה (אין מה לסכם). הוצאות הבית בלבד, בלי
+    פרויקטים — כמו כל סיכום חודשי. זורק ‎DataUnavailable‎.
+
+    ‎diff‎ — הוצאות החודש שעבר פחות החודש שלפניו (שלילי = הוצאתם פחות);
+    ‎None‎ כשבחודש שלפניו לא היו הוצאות, כי "₪14,950 יותר מאוגוסט" על
+    אוגוסט ריק אינו השוואה."""
+    if today.day != 1:
+        return None
+    year, month = _month_before(today.year, today.month)
+    rows = fetch_month_rows(family_id, year, month)
+    if not _household_rows(rows):
+        return None
+    summary = summary_from_rows(rows)
+    before = get_monthly_summary(family_id, *_month_before(year, month))
+    top = next((c for c in category_breakdown_from_rows(rows, categories, "expense")
+                if c["total"] > 0), None)
+    return {
+        "year": year, "month": month,
+        "income": summary["income"], "expense": summary["expense"],
+        "balance": summary["balance"], "savings": summary["savings"],
+        "diff": round(summary["expense"] - before["expense"], 2) if before["expense"] else None,
+        "top": top,
+    }
+
+
 # קטגוריית משכורת מזוהה לפי השם — כמו בחירת ברירת המחדל בטופס (‎transactions.js‎)
 _SALARY_WORD = "משכורת"
 
