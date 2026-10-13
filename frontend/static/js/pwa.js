@@ -66,40 +66,79 @@ if ('serviceWorker' in navigator) {
 // ואין משיכה, ואין שום דרך לרענן — מי שחיכה לעסקה שבן הזוג הזין נאלץ
 // לסגור ולפתוח. מתחילים רק בראש העמוד, רק בגרירה אנכית (החלקה הצידה על
 // שורה היא עריכה/מחיקה), ולא כשחלון או עורך פתוחים.
+//
+// כמו באייפון (מתן, 13.10): העמוד עצמו יורד עם האצבע, בהתנגדות של קפיץ
+// (כמה שמושכים יותר — זז פחות), ובפס הכהה שנחשף מעליו — גלגל הטעינה של
+// iOS, שהשפיצים שלו מופיעים אחד-אחד עם המשיכה. בשחרור מעבר לסף העמוד נעצר
+// מעט למטה והגלגל מסתובב עד שהרענון נגמר; ואז הכול חוזר למעלה בקפיצה רכה.
 (function () {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches
         || window.navigator.standalone === true;
     if (!isStandalone || !('ontouchstart' in window)) return;
 
     const START = 8;        // עד כאן זו עוד לא גרירה
-    const TRIGGER = 70;     // משיכה מעבר לזה מרעננת בשחרור
-    const MAX = 110;
+    const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const ind = document.createElement('div');
-    ind.className = 'ptr';
-    ind.setAttribute('aria-hidden', 'true');
-    const SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
-        + ' stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">';
-    const ARROW = SVG + '<line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>';
-    const SPIN  = SVG + '<path d="M21 12a9 9 0 1 1-6.2-8.55"/></svg>';
-    ind.innerHTML = ARROW;
-    document.body.appendChild(ind);
+    // הפס העליון של המסך מתחת לשעון ולסוללה — הגלגל מופיע מתחתיו
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;top:0;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none';
+    document.body.appendChild(probe);
+    const SAFE = probe.getBoundingClientRect().height || 0;
+    probe.remove();
+    const TRIGGER = SAFE + 58;    // משיכה מעבר לזה מרעננת בשחרור
+    const HOLD = SAFE + 50;       // כאן העמוד מחכה בזמן הרענון
+    const RANGE = 320;            // הקפיץ: ככל שמתקרבים לזה — זז פחות
+
+    const layer = document.createElement('div');
+    layer.className = 'ptr-layer';
+    layer.setAttribute('aria-hidden', 'true');
+    let spokes = '';
+    for (let k = 0; k < 8; k++) {
+        spokes += '<line x1="12" y1="2.5" x2="12" y2="7" transform="rotate(' + (k * 45) + ' 12 12)"'
+                + ' style="opacity:' + (1 - k * 0.11).toFixed(2) + '"/>';
+    }
+    layer.innerHTML = '<svg class="ptr-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+                    + ' stroke-width="2.4" stroke-linecap="round">' + spokes + '</svg>';
+    document.body.appendChild(layer);
+    const spinner = layer.firstChild;
+    const lines = spinner.querySelectorAll('line');
+
+    // מה זז: הכותרת הכהה והתוכן (‎body > .page-hero, body > .main-content‎ —
+    // ב-CSS, לפי משתנה על ‎body‎). לא ‎style‎ על האלמנטים עצמם: הרענון הרך
+    // מחליף אותם באמצע, והעמוד היה קופץ למעלה לפני שהגלגל סיים. התפריט התחתון
+    // וכפתור ה-+ נשארים במקום.
+    const root = document.body;
 
     let startX = 0, startY = null, pulling = false, pull = 0, busy = false;
 
-    function show(dist) {
+    function place(dist, animate) {
         pull = dist;
-        ind.style.transform = 'translate(-50%, ' + (dist - 50) + 'px)';
-        ind.style.opacity = Math.min(1, dist / TRIGGER);
-        ind.classList.toggle('ready', dist >= TRIGGER);
+        const t = animate ? (calm ? 'transform .15s ease' : 'transform .45s cubic-bezier(.2, 1.1, .3, 1)') : 'none';
+        root.classList.add('ptr-active');
+        root.style.setProperty('--ptr-t', t);
+        root.style.setProperty('--ptr-y', dist + 'px');
+        layer.style.transition = animate ? t.replace('transform', 'height') : 'none';
+        layer.style.height = dist + 'px';
+        // הגלגל באמצע החלק הנראה של הפס, מתחת לשעון
+        const visible = Math.max(0, dist - SAFE);
+        spinner.style.top = (SAFE + Math.max(0, visible / 2 - 12)) + 'px';
+        spinner.style.opacity = Math.min(1, visible / 28);
     }
-    function reset() {
+    function progress(dist) {
+        // השפיצים מופיעים אחד-אחד עד הסף — כמו באייפון
+        const n = busy ? 8 : Math.max(0, Math.min(8, Math.round((dist - SAFE) / (TRIGGER - SAFE) * 8)));
+        lines.forEach(function (l, k) { l.style.visibility = k < n ? 'visible' : 'hidden'; });
+    }
+    function springBack() {
         startY = null; pulling = false;
-        ind.classList.remove('ready', 'spinning');
-        ind.innerHTML = ARROW;
-        ind.style.transition = 'transform .2s, opacity .2s';
-        show(0);
-        setTimeout(function () { ind.style.transition = ''; }, 220);
+        layer.classList.remove('spinning');
+        place(0, true);
+        setTimeout(function () {
+            if (busy || pulling) return;
+            // בלי ‎transform‎ בכלל במנוחה — אחרת חלונות ‎fixed‎ בתוך העמוד נכלאים בו
+            root.classList.remove('ptr-active');
+            layer.style.height = '0px';
+        }, 480);
     }
     // חלון פתוח — חיפוש, תקציבים, אייקונים, צבעים, אישור. בתוכו גרירה למטה
     // היא גלילה של הרשימה שלו; קודם היא נתפסה כמשיכה, הרשימה לא זזה למעלה
@@ -132,25 +171,28 @@ if ('serviceWorker' in navigator) {
             if (dy < START) return;
             pulling = true;
         }
-        if (window.scrollY > 0) { reset(); return; }
+        if (window.scrollY > 0) { springBack(); return; }
         e.preventDefault();
-        show(Math.min(MAX, (dy - START) * 0.55));
+        const x = Math.max(0, dy - START);
+        const dist = (1 - 1 / (x * 0.55 / RANGE + 1)) * RANGE;     // קפיץ
+        place(dist, false);
+        progress(dist);
     }, { passive: false });
 
     document.addEventListener('touchend', function () {
         if (!pulling) { startY = null; return; }
-        if (pull < TRIGGER) { reset(); return; }
+        if (pull < TRIGGER) { springBack(); return; }
         busy = true;
-        ind.classList.add('spinning');
-        ind.innerHTML = SPIN;
-        show(TRIGGER);
+        pulling = false;
+        progress(HOLD);
+        layer.classList.add('spinning');
+        place(HOLD, true);
         // עמוד שבטוח להחלפה — רענון רך, בלי הבהוב; כל השאר — רענון מלא
         const soft = document.querySelector('main[data-soft-reload]') && window.softReload;
-        if (!soft) { window.location.reload(); return; }
-        Promise.resolve(window.softReload()).then(function () {
-            busy = false; reset();
-        }, function () {
-            busy = false; reset();
+        if (!soft) { setTimeout(function () { window.location.reload(); }, 250); return; }
+        const shown = new Promise(function (r) { setTimeout(r, 500); });   // שיספיקו לראות שהסתובב
+        Promise.all([Promise.resolve(window.softReload()).catch(function () {}), shown]).then(function () {
+            busy = false; springBack();
         });
     });
 })();
