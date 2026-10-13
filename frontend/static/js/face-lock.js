@@ -1,13 +1,13 @@
 /* נעילה ב-Face ID — צד הדפדפן (מתן, 13.10). רק בטלפון שהגדיר (‎data-face-lock‎).
  *
- * השרת נועל אחרי 5 דקות בלי בקשה. שני דברים כאן מתאימים את זה ל"5 דקות ברקע":
+ * השרת נועל אחרי דקה בלי בקשה (מתן, 13.10). שני דברים כאן מתאימים את זה ל"דקה ברקע":
  *   • דופק כל דקה כשהאפליקציה על המסך — קריאה בלי לגעת במסך לא נועלת.
- *   • חזרה מהרקע אחרי יותר מ-5 דקות: האייפון מחזיר את העמוד מהזיכרון, בלי
+ *   • חזרה מהרקע אחרי יותר מדקה: האייפון מחזיר את העמוד מהזיכרון, בלי
  *     בקשה לשרת — אז כאן עוברים למסך הנעילה לפני שמשהו מוצג. */
 (function () {
     'use strict';
     if (!document.body || !document.body.hasAttribute('data-face-lock')) return;
-    const LOCK_AFTER = 5 * 60 * 1000;
+    const LOCK_AFTER = 60 * 1000;
     let hiddenAt = null;
 
     function lockNow() {
@@ -29,5 +29,5 @@
     window.addEventListener('pageshow', function (e) {
         if (e.persisted && hiddenAt && Date.now() - hiddenAt > LOCK_AFTER) lockNow();
     });
-    setInterval(beat, 60 * 1000);
+    setInterval(beat, 20 * 1000);   // שליש מהדקה — דופק שהתעכב לא נועל אפליקציה פתוחה
 })();
