@@ -1517,14 +1517,7 @@ def month_view():
     if _fixed:
         fixed_total = round(sum(t["amount"] for t in _fixed), 2)
         exp_total = round(sum(t["amount"] for t in _exp), 2)
-        names = []
-        for t in sorted(_fixed, key=lambda t: -t["amount"]):
-            n = t.get("description") or t.get("category_name") or ""
-            if n and n not in names:
-                names.append(n)
-        fixed_split = {"fixed": fixed_total, "variable": round(exp_total - fixed_total, 2),
-                       "pct": round(fixed_total / exp_total * 100) if exp_total else 0,
-                       "names": names[:3], "items": sorted(_fixed, key=lambda t: -t["amount"])}
+        fixed_split = {"fixed": fixed_total, "variable": round(exp_total - fixed_total, 2)}
 
     # גרף חלוקה בין בני משפחה לכל סוג עסקה שהמשפחה הפעילה בו שיוך
     _type_labels = {"expense": "הוצאות", "income": "הכנסות", "savings": "חיסכון"}

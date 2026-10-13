@@ -5387,17 +5387,15 @@ body.tx-screen-open { overflow: hidden; }
 
 
 /* קבועות מול משתנות (מתן, 12.10) */
-.fixed-split { margin: 12px 0 6px; padding-top: 12px; border-top: 1px solid var(--color-border, rgba(0,0,0,.08)); }
-.fixed-split > summary { list-style: none; cursor: pointer; display: block; }
-.fixed-split > summary::-webkit-details-marker { display: none; }
-.fixed-split-row { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--color-text-muted); }
-.fixed-split-row b { color: var(--color-text); font-weight: 700; }
-.fixed-split-bar { display: flex; height: 8px; margin: 8px 0 6px; border-radius: 99px; overflow: hidden; background: var(--color-gold); }
-.fixed-split-bar i { display: block; height: 100%; background: #8A7A5C; }
-.fixed-split-hint { display: block; font-size: 0.76rem; color: var(--color-text-muted); }
-.fixed-split[open] .fixed-split-hint { color: var(--color-gold-text); }
-.fixed-split-list { list-style: none; margin: 8px 0 0; padding: 0; }
-.fixed-split-list li { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.86rem; border-top: 1px solid var(--color-border, rgba(0,0,0,.06)); }
+/* קבועות / משתנות בפינות שליד העיגול (מתן, 13.10) — קטן, בלי פס */
+.donut-row { position: relative; }
+.split-corner {
+    position: absolute; bottom: 18px; margin: 0; display: flex; flex-direction: column; gap: 1px;
+    font-size: 0.72rem; color: var(--color-text-muted); line-height: 1.25;
+}
+.split-corner b { font-size: 0.86rem; font-weight: 700; color: var(--color-text); }
+.split-fixed { right: 0; text-align: right; }
+.split-variable { left: 0; text-align: left; }
 
 
 /* פרויקט מוצמד בבית (מתן, 12.10) */

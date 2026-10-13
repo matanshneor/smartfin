@@ -157,31 +157,21 @@
     <script type="application/json" id="sf-budgets">{{ expense_breakdown | selectattr('category_id') | list | tojson }}</script>
     {% endif %}
     {% if expense_active %}
-    <div class="doughnut-wrap">
-        <canvas id="expenseChart" role="img" aria-label="גרף הוצאות לפי קטגוריה"></canvas>
-        <div class="doughnut-center">
-            <p class="doughnut-total">₪{{ summary.expense | money }}</p>
-            <p class="doughnut-label">הוצאות</p>
+    <div class="donut-row">
+        <div class="doughnut-wrap">
+            <canvas id="expenseChart" role="img" aria-label="גרף הוצאות לפי קטגוריה"></canvas>
+            <div class="doughnut-center">
+                <p class="doughnut-total">₪{{ summary.expense | money }}</p>
+                <p class="doughnut-label">הוצאות</p>
+            </div>
         </div>
+        {# קבועות מול משתנות (מתן, 12.10) — בקטן, בפינות שליד הגרף (מתן, 13.10:
+           בלי הפס ובלי שורת השמות) #}
+        {% if fixed_split %}
+        <p class="split-corner split-fixed"><span>קבועות</span><b>₪{{ fixed_split.fixed | money }}</b></p>
+        <p class="split-corner split-variable"><span>משתנות</span><b>₪{{ fixed_split.variable | money }}</b></p>
+        {% endif %}
     </div>
-    {# קבועות מול משתנות (מתן, 12.10). נגיעה פותחת את רשימת הקבועות #}
-    {% if fixed_split %}
-    <details class="fixed-split">
-        <summary>
-            <span class="fixed-split-row">
-                <span><b>₪{{ fixed_split.fixed | money }}</b> קבועות</span>
-                <span><b>₪{{ fixed_split.variable | money }}</b> משתנות</span>
-            </span>
-            <span class="fixed-split-bar" aria-hidden="true"><i style="width: {{ fixed_split.pct }}%"></i></span>
-            <span class="fixed-split-hint">קבועות: {{ fixed_split.names | join(', ') }} · לפירוט</span>
-        </summary>
-        <ul class="fixed-split-list">
-            {% for t in fixed_split['items'] %}
-            <li><span>{{ t.category_icon }} {{ t.description or t.category_name }}</span><b>₪{{ t.amount | money }}</b></li>
-            {% endfor %}
-        </ul>
-    </details>
-    {% endif %}
     {% else %}
     <div class="chart-empty">{{ empty_illus("pie") }}<p>אין הוצאות רשומות החודש</p></div>
     {% endif %}

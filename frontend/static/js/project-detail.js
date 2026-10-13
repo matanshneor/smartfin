@@ -5,11 +5,29 @@ const SF_VIEW = window.sfData('sf-view-data');
 (function () {
 
 // ── הרחבת קטגוריה: הצגת כל העסקאות שלה בפרויקט (כמו בעמוד החודש) ──
+/* קטגוריה אחת פתוחה בכל פעם (מתן, 13.10): פתיחה של אחת סוגרת מיד את
+ * האחרות — בלי תנועה, ובלי שהשורה שנגעו בה תקפוץ על המסך כשמה שמעליה מתקצר. */
+function closeOtherCategories(trigger, wrap) {
+    const before = wrap.getBoundingClientRect().top;
+    document.querySelectorAll('.legend-item.clickable[aria-expanded="true"]').forEach(function (other) {
+        if (other === trigger) return;
+        other.setAttribute('aria-expanded', 'false');
+        const w = other.closest('.legend-item-wrap');
+        if (!w) return;
+        const list = w.querySelector('.cat-tx-list');
+        if (list && list.sfAnim) { list.sfAnim.cancel(); list.sfAnim = null; list.style.overflow = ''; }
+        w.classList.remove('open');
+    });
+    const shift = wrap.getBoundingClientRect().top - before;
+    if (shift) window.scrollBy(0, shift);
+}
+
 function toggleExpand(trigger) {
     const wrap = trigger.closest('.legend-item-wrap');
     if (!wrap) return;
     // המצב לפי ‎aria-expanded‎ ולא לפי המחלקה: בסגירה המחלקה נשארת עד סוף ההחלקה
     const isOpen = trigger.getAttribute('aria-expanded') !== 'true';
+    if (isOpen) closeOtherCategories(trigger, wrap);
     trigger.setAttribute('aria-expanded', isOpen);
     const list = wrap.querySelector('.cat-tx-list');
     const apply = function (open) { wrap.classList.toggle('open', open); };

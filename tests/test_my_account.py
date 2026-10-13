@@ -60,3 +60,19 @@ def test_an_old_session_that_was_locked_just_goes_in(monkeypatch):
         s["token_expires_at"] = time.time() + 3000
         s["face_lock"] = True; s["locked"] = True; s["last_seen"] = 0
     assert c.get("/__test/old-lock").status_code == 200
+
+
+def test_fixed_and_variable_sit_small_beside_the_donut():
+    """מתן (13.10): "בלי הפס ובלי הכיתוב — שיהיה כתוב בצד הגרף בקטן"."""
+    tpl = (_ROOT / "frontend/templates/month.html").read_text(encoding="utf-8")
+    assert "fixed-split" not in tpl
+    assert 'class="split-corner split-fixed"' in tpl and 'class="split-corner split-variable"' in tpl
+    src = (_ROOT / "backend/app.py").read_text(encoding="utf-8")
+    assert 'fixed_split = {"fixed": fixed_total, "variable": round(exp_total - fixed_total, 2)}' in src
+
+
+def test_opening_a_category_closes_the_others():
+    """מתן (13.10): "כאשר לוחצים על קטגוריה אחת — האחרות נסגרות מיד"."""
+    for name in ("month.js", "project-detail.js"):
+        js = (_ROOT / "frontend/static/js" / name).read_text(encoding="utf-8")
+        assert "if (isOpen) closeOtherCategories(trigger, wrap);" in js, name
