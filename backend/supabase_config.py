@@ -1,6 +1,8 @@
 import hashlib
 import os
 import re
+import threading
+import time
 
 from dotenv import load_dotenv
 from gotrue.errors import AuthApiError, AuthRetryableError
@@ -58,6 +60,7 @@ def get_client():
         from supabase import create_client
         _client = create_client(url, key)
         _keep_connection_warm(_client)
+        _start_warm_pings(_client)
         return _client
     except Exception:
         logger.exception("Failed to connect to Supabase")
@@ -99,6 +102,70 @@ def _keep_connection_warm(client):
     except Exception:
         # שיפור מהירות בלבד — בלעדיו הכול עובד כמו קודם
         logger.exception("_keep_connection_warm")
+
+
+# ─── חיבור חם גם אחרי הפסקה (מתן, 13.10) ─────────────────────────────────────
+#
+# אחרי ‎_keep_connection_warm‎ דף הבית נטען ב-‎70-130ms‎ — כשהאפליקציה בשימוש.
+# הפתיחה הראשונה אחרי הפסקה של יותר מדקה עדיין לקחה ‎530-710ms‎: החיבור נסגר
+# (‎KEEPALIVE_SECONDS‎) ונפתח מחדש בשליפה הראשונה. אז כל worker שולח בעצמו
+# פנייה קלה כשהוא שקט ‎WARM_IDLE_SECONDS‎, והחיבור לא מספיק להיסגר.
+#
+# הלקוח משותף, ופנייה במקביל לבקשה כבר גרמה פעם ל-"Server disconnected"
+# (ראו ‎_run_queries‎ ב-app.py). לכן מנעול: הפנייה רצה רק כשאין בקשה, ובקשה
+# שמגיעה בדיוק אז מחכה לה (עשרות מילישניות) — הן אף פעם לא רצות יחד.
+WARM_IDLE_SECONDS = 40.0
+_warm_lock = threading.Lock()
+_warm_state = {"busy": False, "last": 0.0, "started": False}
+
+
+def request_started():
+    """מ-‎before_request‎: מכאן אין פניות חימום עד ‎request_finished‎."""
+    got = _warm_lock.acquire(timeout=3)      # פנייה באמצע — מחכים לה, לא יותר מ-3 שניות
+    try:
+        _warm_state["busy"] = True
+        _warm_state["last"] = time.monotonic()
+    finally:
+        if got:
+            _warm_lock.release()
+
+
+def request_finished():
+    _warm_state["busy"] = False
+    _warm_state["last"] = time.monotonic()
+
+
+def _warm_ping_once(client) -> bool:
+    """פנייה אחת אם ה-worker שקט מספיק זמן. ‎True‎ אם נשלחה."""
+    if _warm_state["busy"] or time.monotonic() - _warm_state["last"] < WARM_IDLE_SECONDS:
+        return False
+    with _warm_lock:
+        if _warm_state["busy"]:
+            return False
+        try:
+            # כל תשובה טובה — גם 401 על טוקן שפג. המטרה היא החיבור, לא הנתונים.
+            # שורה אחת לכל היותר (שורש ה-API מחזיר את כל תיאור הסכמה — כבד).
+            client.postgrest.session.get("families", params={"select": "id", "limit": "1"}, timeout=5)
+        except Exception:
+            pass
+        _warm_state["last"] = time.monotonic()
+        return True
+
+
+def _start_warm_pings(client):
+    """חוט רקע אחד לכל worker. נקרא מ-‎get_client‎ — כלומר אחרי ה-fork של
+    gunicorn (עם ‎--preload‎ חוט שנפתח לפני ה-fork לא קיים ב-workers)."""
+    if _warm_state["started"] or os.environ.get("SF_NO_WARM_PINGS"):
+        return
+    _warm_state["started"] = True
+    _warm_state["last"] = time.monotonic()
+
+    def loop():
+        while True:
+            time.sleep(10)
+            _warm_ping_once(client)
+
+    threading.Thread(target=loop, name="sf-warm", daemon=True).start()
 
 
 def ping(timeout: float = 2.0) -> tuple:
@@ -1123,31 +1190,21 @@ def transaction_links(tx_id: str, family_id: str):
     בשביל העריכה: בדיקות השרת על בעלים ועל פרויקט נועדו לבחירה **חדשה**,
     ודחו גם ערך שלא השתנה — עסקה של מי שעזב, או בפרויקט שהפסיק לעקוב אחרי
     הסוג. הטופס "פתר" את זה בכך שהחליף את הערך בשקט."""
-    client = get_client()
-    if not client:
-        raise DataUnavailable("transaction_links: no client")
-    try:
-        # גם הערכים עצמם — ל"בטל" אחרי עריכה (‎if_match‎ ב-app.py)
-        rows = client.table("transactions").select(
-            "user_id, project_id, amount, type, date, description, category_id, project_category_id") \
-            .eq("id", tx_id).eq("family_id", family_id).limit(1).execute().data or []
-    except Exception as e:
-        raise DataUnavailable("transaction_links") from e
-    return rows[0] if rows else None
+    # גם הערכים עצמם — ל"בטל" אחרי עריכה (‎if_match‎ ב-app.py)
+    row = _tx_row(tx_id, family_id)
+    if not row:
+        return None
+    return {k: row.get(k) for k in ("user_id", "project_id", "amount", "type", "date",
+                                     "description", "category_id", "project_category_id")}
 
 
 def transaction_meta(tx_id: str, family_id: str):
     """מי הזין ומתי — לשורה בתחתית חלון העריכה (מתן, 3.10 — רעיון 22).
     ‎None‎ אם העסקה לא נמצאה. זורקת DataUnavailable."""
-    client = get_client()
-    if not client:
-        raise DataUnavailable("transaction_meta: no client")
-    try:
-        rows = client.table("transactions").select("created_by, created_at, recurring_parent_id") \
-            .eq("id", tx_id).eq("family_id", family_id).limit(1).execute().data or []
-    except Exception as e:
-        raise DataUnavailable("transaction_meta") from e
-    return rows[0] if rows else None
+    row = _tx_row(tx_id, family_id)
+    if not row:
+        return None
+    return {k: row.get(k) for k in ("created_by", "created_at", "recurring_parent_id")}
 
 
 def get_transaction_receipt_path(transaction_id: str, family_id: str):
@@ -1559,18 +1616,36 @@ def personal_project_owner(tx_id: str, family_id: str):
     # בלי הבדיקה, PostgREST דוחה אותו בשגיאה — והיא הייתה הופכת ל-503.
     if not _UUID_RE.match(str(tx_id)):
         return None
-    client = get_client()
-    if not client:
-        raise DataUnavailable("personal_project_owner: no client")
-    try:
-        rows = client.table("transactions").select("project_id, projects(owner_id)") \
-            .eq("id", tx_id).eq("family_id", family_id).limit(1).execute().data or []
-    except Exception as e:
-        # כשל כאן חייב לעצור, לא לעבור: "לא הצלחתי לבדוק" אינו "מותר"
-        raise DataUnavailable("personal_project_owner") from e
-    if not rows:
+    # כשל כאן חייב לעצור, לא לעבור: "לא הצלחתי לבדוק" אינו "מותר" — ‎_tx_row‎ זורקת
+    row = _tx_row(tx_id, family_id)
+    if not row:
         return None
-    return (rows[0].get("projects") or {}).get("owner_id")
+    return (row.get("projects") or {}).get("owner_id")
+
+
+_TX_ROW_FIELDS = ("user_id, project_id, amount, type, date, description, category_id, "
+                  "project_category_id, created_by, created_at, recurring_parent_id, "
+                  "projects(owner_id)")
+
+
+def _tx_row(tx_id: str, family_id: str):
+    """שורת העסקה, פעם אחת לבקשה (מתן, 13.10 — מהירות העריכה).
+
+    הבדיקה "פרויקט אישי של מישהו אחר?" (‎tx_visible_required‎), "מה הערכים
+    עכשיו" (‎transaction_links‎) ו"מי הזין ומתי" (‎transaction_meta‎) קראו את
+    אותה שורה כל אחת בנפרד — שלוש נסיעות למסד לפני שהחלון נפתח או שהשמירה
+    התחילה. נקרא רק לפני כתיבה, כך שהמטמון לא מתיישן בתוך הבקשה."""
+    def load():
+        client = get_client()
+        if not client:
+            raise DataUnavailable("_tx_row: no client")
+        try:
+            rows = client.table("transactions").select(_TX_ROW_FIELDS) \
+                .eq("id", tx_id).eq("family_id", family_id).limit(1).execute().data or []
+        except Exception as e:
+            raise DataUnavailable("_tx_row") from e
+        return rows[0] if rows else None
+    return _request_cache(f"tx:{family_id}:{tx_id}", load)
 
 
 def get_recent_transactions(family_id: str, limit: int = 5, settings: dict = None,
