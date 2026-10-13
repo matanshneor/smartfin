@@ -5,6 +5,7 @@ from functools import wraps
 from datetime import date, datetime, timedelta
 from werkzeug.middleware.proxy_fix import ProxyFix
 import csv
+import gzip
 import hashlib
 import io
 import json
@@ -272,6 +273,50 @@ def _cache_static_forever(response):
     שאין דרך לרענן. עם חתימה, שינוי בקובץ מייצר כתובת אחרת ממילא."""
     if request.endpoint == "static" and request.args.get("v"):
         response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    return response
+
+
+_GZIP_TYPES = ("text/html", "text/css", "text/plain", "application/javascript",
+               "text/javascript", "application/json", "image/svg+xml",
+               "application/manifest+json")
+_GZIP_MIN = 1024
+_gzip_static = {}   # (נתיב, ETag) → בייטים דחוסים; קבצים סטטיים נדחסים פעם אחת לתהליך
+
+
+@app.after_request
+def _gzip(response):
+    """דחיסה לכל מה שנשלח לטלפון (מתן, 13.10 — "הכי מהירה שאפשר").
+
+    עמוד ההגדרות היה ‎117KB‎ וכך ‎13KB‎; ‎style.css‎ — ‎200KB‎ ו-‎45KB‎.
+    Railway לא דוחס בעצמו. קבצים סטטיים נדחסים פעם אחת ונשמרים בזיכרון;
+    עמודים — בכל בקשה (רמה 6: כמה מילישניות, מול עשרות KB פחות ברשת)."""
+    if (response.status_code != 200
+            or "gzip" not in (request.headers.get("Accept-Encoding") or "").lower()
+            or "Content-Encoding" in response.headers
+            or response.mimetype not in _GZIP_TYPES):
+        return response
+    response.vary.add("Accept-Encoding")
+    response.direct_passthrough = False
+    key = None
+    if request.endpoint == "static":
+        key = (request.path, response.headers.get("ETag"))
+        cached = _gzip_static.get(key)
+        if cached is not None:
+            response.set_data(cached)
+            response.headers["Content-Encoding"] = "gzip"
+            return response
+    data = response.get_data()
+    if len(data) < _GZIP_MIN:
+        return response
+    packed = gzip.compress(data, compresslevel=6)
+    if key is not None and len(_gzip_static) < 300:
+        _gzip_static[key] = packed
+    response.set_data(packed)
+    response.headers["Content-Encoding"] = "gzip"
+    # ETag של המקור כבר לא מתאר את הבייטים — "חלש" כדי שבדיקת 304 תמשיך לעבוד
+    etag = response.headers.get("ETag")
+    if etag and not etag.startswith("W/"):
+        response.headers["ETag"] = "W/" + etag
     return response
 
 
@@ -1257,6 +1302,38 @@ def _sync_recurring(family_id):
 
 # ─── Main pages (5 עמודים: בית · החודש · השוואה · פרויקטים · הגדרות) ────────
 
+def _home_page_separately(family_id, user, now):
+    """הדרך הישנה לדף הבית — שליפה לכל חלק. רק כש-‎get_home_page‎ לא זמינה.
+    ‎None‎ = אין קטגוריות (צריך את אשף הפתיחה)."""
+    # מקבץ השליפות הבלתי-תלויות (רצות בזו אחר זו — ראו _run_queries)
+    batch = _run_queries({
+        "settings":   lambda: db.get_family_settings(family_id),
+        "summary":    lambda: db.get_monthly_summary(family_id, now.year, now.month),
+        "categories": lambda: db.get_categories(family_id),
+        "members":    lambda: db.get_family_members(family_id),
+        "is_new":     lambda: db.family_has_no_transactions(family_id),
+    })
+
+    # "צריך onboarding" == אפס קטגוריות — נגזר מהקטגוריות שכבר שלפנו (בלי שליפה נוספת)
+    if not batch["categories"]:
+        return None
+
+    # "עסקאות אחרונות" תלויות בהעדפות — נשלפות אחרי שיש לנו אותן
+    # עשר האחרונות **שהוזנו**, בסדר ההזנה — החדשה למעלה (מתן, 30.9). היום
+    # כתוב בתוך כל שורה ("היום · רמי לוי"), כי בסדר הזנה כותרות לפי יום היו
+    # חוזרות על עצמן.
+    transactions = _timed("recent", lambda: db.get_recent_transactions(family_id, limit=10,
+                          settings=batch["settings"], viewer_user_id=user["id"]))
+    # "השבוע" (מתן, 30.9) — קישוט: תקלה בו לא מפילה את דף הבית
+    try:
+        week = _timed("week", lambda: db.week_spending(family_id))
+    except db.DataUnavailable:
+        week = None
+    batch["transactions"] = transactions
+    batch["week"] = week
+    return batch
+
+
 @app.route("/")
 def dashboard():
     """השורש מגיש שני דברים שונים: דף נחיתה ציבורי למי שלא מחובר, והדשבורד
@@ -1306,33 +1383,31 @@ def dashboard():
     # עלול לכתוב שורות, אז לפני מקבץ השליפות
     _timed("recurring", lambda: _sync_recurring(family_id))
 
-    # מקבץ השליפות הבלתי-תלויות (רצות בזו אחר זו — ראו _run_queries)
-    batch = _run_queries({
-        "settings":   lambda: db.get_family_settings(family_id),
-        "summary":    lambda: db.get_monthly_summary(family_id, now.year, now.month),
-        "categories": lambda: db.get_categories(family_id),
-        "members":    lambda: db.get_family_members(family_id),
-        "is_new":     lambda: db.family_has_no_transactions(family_id),
-    })
+    # נסיעה אחת למסד (מתן, 13.10): ‎get_home_page‎ מביאה את כל מה שהיה תשע
+    # שליפות. אם היא לא זמינה (המיגרציה עוד לא רצה, תקלה) — הדרך הישנה.
+    month_rows = None
+    try:
+        batch = _timed("home_page", lambda: db.fetch_home_page(
+            family_id, clock.today(), 10, user["id"]))
+        month_rows = batch["rows"]
+    except db.DataUnavailable:
+        logger.warning("home_page rpc unavailable — falling back to separate queries")
+        batch = None
 
-    # "צריך onboarding" == אפס קטגוריות — נגזר מהקטגוריות שכבר שלפנו (בלי שליפה נוספת)
-    if not batch["categories"]:
+    if batch is None:
+        batch = _home_page_separately(family_id, user, now)
+        if batch is None:
+            return redirect(url_for("onboarding"))
+    elif not batch["categories"]:
         return redirect(url_for("onboarding"))
 
-    # "עסקאות אחרונות" תלויות בהעדפות — נשלפות אחרי שיש לנו אותן
-    # עשר האחרונות **שהוזנו**, בסדר ההזנה — החדשה למעלה (מתן, 30.9). היום
-    # כתוב בתוך כל שורה ("היום · רמי לוי"), כי בסדר הזנה כותרות לפי יום היו
-    # חוזרות על עצמן.
-    transactions = _timed("recent", lambda: db.get_recent_transactions(family_id, limit=10,
-                          settings=batch["settings"], viewer_user_id=user["id"]))
-    # "השבוע" (מתן, 30.9) — קישוט: תקלה בו לא מפילה את דף הבית
-    try:
-        week = _timed("week", lambda: db.week_spending(family_id))
-    except db.DataUnavailable:
-        week = None
+    transactions = db.recent_from_rows(batch["recent"], 10, batch["settings"], user["id"]) \
+        if "recent" in batch else batch["transactions"]
+    week = batch["week"]
 
     # מיחזור תוצאות המקבץ ל-context-processors ו-_member_colors (בלי שליפה חוזרת)
-    _prime_request_cache(family_id, settings=batch["settings"], categories=batch["categories"], members=batch["members"])
+    _prime_request_cache(family_id, settings=batch["settings"], categories=batch["categories"],
+                         members=batch["members"], family=batch.get("family"))
 
     # התראות החודש — רק כאן, כשיש (מתן, 11.10): חריגה מתקציב של קטגוריה.
     # לחיצה מובילה לקטגוריה בעמוד החודש. שורות החודש נשלפות רק כשיש
@@ -1341,7 +1416,8 @@ def dashboard():
     if (batch["settings"] or {}).get("limits"):
         try:
             alerts = db.month_alerts(db.apply_budgets(db.category_breakdown_from_rows(
-                _timed("alerts", lambda: db.fetch_month_rows(family_id, now.year, now.month)),
+                month_rows if month_rows is not None
+                else _timed("alerts", lambda: db.fetch_month_rows(family_id, now.year, now.month)),
                 batch["categories"], "expense"),
                 batch["settings"]))
         except db.DataUnavailable:
@@ -2253,11 +2329,9 @@ def _fresh_invite(family: dict, user: dict) -> dict:
     return db.get_family(family["id"]) if code else family
 
 
-@app.route("/settings")
-@login_required
-def settings():
-    user       = get_current_user()
-    family_id  = user["family_id"]
+def _settings_separately(family_id, user):
+    """הדרך הישנה לעמוד ההגדרות — שליפה לכל חלק. רק כש-‎get_settings_page‎
+    לא זמינה, או כשאין משפחה."""
     categories = db.get_categories(family_id)
     # "בממוצע ₪1,850 בחודש" ליד כל קטגוריה (רעיון 38) — קישוט: תקלה לא מפילה
     try:
@@ -2272,8 +2346,44 @@ def settings():
                   if db.is_active_template(r)] if family_id else []
     # "₪5,000 ← ₪5,500 מאוקטובר" (רעיון 40)
     price_changes = db.recurring_price_changes(family_id, recurring) if recurring else {}
-    # "הבא: 1.11" לכל עסקה קבועה (מתן, 12.10)
+    # כמה עסקאות באמת עומדות להימחק. "פעולה סופית ולא ניתנת לביטול" הוא
+    # משפט; מספר הוא עובדה, והוא מה שגורם לעצור.
+    try:
+        family_tx_count = db.family_transaction_count(family_id) if family_id else 0
+    except db.DataUnavailable:
+        family_tx_count = None
+    return categories, cat_averages, members, family, recurring, price_changes, family_tx_count
+
+
+@app.route("/settings")
+@login_required
+def settings():
+    user       = get_current_user()
+    family_id  = user["family_id"]
     today = clock.today()
+    # נסיעה אחת למסד (מתן, 13.10) — ‎get_settings_page‎. אם היא לא זמינה
+    # (המיגרציה עוד לא רצה, תקלה) — שליפה לכל חלק, כמו קודם.
+    page = None
+    if family_id:
+        try:
+            page = _timed("settings_page", lambda: db.fetch_settings_page(family_id, today, user["id"]))
+        except db.DataUnavailable:
+            logger.warning("settings_page rpc unavailable — falling back to separate queries")
+    if page is not None:
+        _prime_request_cache(family_id, settings=page["settings"], categories=page["categories"],
+                             members=page["members"], family=page["family"])
+        categories   = page["categories"]
+        cat_averages = page["cat_averages"]
+        members      = page["members"]
+        family       = _fresh_invite(page["family"], user)
+        recurring    = [r for r in page["recurring"] if db.is_active_template(r)]
+        price_changes = db.price_changes_from(recurring, page["ended"], page["ended_last"]) \
+            if recurring else {}
+        family_tx_count = page["tx_count"]
+    else:
+        categories, cat_averages, members, family, recurring, price_changes, family_tx_count = \
+            _settings_separately(family_id, user)
+    # "הבא: 1.11" לכל עסקה קבועה (מתן, 12.10)
     next_charges = {t["id"]: next_charge_label(db.next_recurring_date(t, today), today)
                     for t in (recurring or [])}
     # הפרופיל שלי כבר נמצא ברשימת החברים שנשלפה למעלה — היא מחזירה שם
@@ -2283,13 +2393,6 @@ def settings():
     if profile is None:
         # אין משפחה, או שהחבר לא חזר מהרשימה — נופלים לשליפה הישירה
         profile = db.get_profile(user["id"]) or {}
-    # כמה עסקאות באמת עומדות להימחק. "פעולה סופית ולא ניתנת לביטול" הוא
-    # משפט; מספר הוא עובדה, והוא מה שגורם לעצור.
-    try:
-        family_tx_count = db.family_transaction_count(family_id) if family_id else 0
-    except db.DataUnavailable:
-        family_tx_count = None
-
     full_name = profile.get("full_name") or profile.get("name") or user["name"]
     name_parts = full_name.split(" ", 1)
     email, pending_email = _current_email()

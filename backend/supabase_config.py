@@ -57,10 +57,48 @@ def get_client():
     try:
         from supabase import create_client
         _client = create_client(url, key)
+        _keep_connection_warm(_client)
         return _client
     except Exception:
         logger.exception("Failed to connect to Supabase")
         return None
+
+
+KEEPALIVE_SECONDS = 60.0
+
+
+def _keep_connection_warm(client):
+    """חיבור אחד פתוח למסד, ולא חיבור חדש אחרי כל הפסקה (מתן, 13.10).
+
+    בלוגים השליפה הראשונה בבקשה לקחה לא פעם ‎400-570ms‎ במקום ‎30-60‎ — זמן
+    פתיחת חיבור מאובטח חדש. שתי סיבות, שתיהן בספרייה:
+    1. ‎httpx‎ סוגר חיבור שלא היה בשימוש 5 שניות. משתמש שקורא את המסך
+       ועובר לעמוד הבא — כבר אחרי 5 שניות.
+    2. כל התחברות ורענון טוקן (‎refresh_session‎ — בערך פעם בשעה לכל משתמש)
+       על הלקוח המשותף מפעילים אירוע ‎TOKEN_REFRESHED‎, והלקוח זורק את
+       ה-PostgREST שלו — וחיבור חדש בשליפה הבאה. הכותרת שלו ממילא נקבעת
+       מחדש בכל בקשה (‎set_auth_token‎), אז אין מה לאבד בשמירה עליו."""
+    try:
+        import httpx
+        pg = client.postgrest
+        old = pg.session
+        pg.session = httpx.Client(
+            base_url=old.base_url, headers=old.headers, timeout=old.timeout,
+            follow_redirects=True, http2=True,
+            limits=httpx.Limits(max_connections=100, max_keepalive_connections=20,
+                                keepalive_expiry=KEEPALIVE_SECONDS),
+        )
+        old.close()
+        for sub in list(client.auth._state_change_emitters.values()):
+            def keep(event, session, _cb=sub.callback):
+                kept = client._postgrest
+                _cb(event, session)
+                if kept is not None:
+                    client._postgrest = kept
+            sub.callback = keep
+    except Exception:
+        # שיפור מהירות בלבד — בלעדיו הכול עובד כמו קודם
+        logger.exception("_keep_connection_warm")
 
 
 def ping(timeout: float = 2.0) -> tuple:
@@ -1261,12 +1299,8 @@ def week_spending(family_id: str, today=None, offset: int = 0) -> dict:
 
     עסקה שהוזנה מראש ליום שעוד לא הגיע מופיעה ביום שלה ונספרת בסך השבוע
     (מתן, 4.10) — כמו שהיא נספרת בחודש שלה."""
-    from datetime import timedelta
     today = today or clock.today()
-    # ‎offset‎ — כמה שבועות אחורה (מתן, 2.10: דפדוף לשבועות קודמים). שבוע
-    # שעבר מוצג שלם, ומושווה לשבוע השלם שלפניו.
-    start = today - timedelta(days=(today.weekday() + 1) % 7) - timedelta(days=7 * offset)
-    prev_start = start - timedelta(days=7)
+    prev_start, start, end = week_bounds(today, offset)
     empty = {"days": [], "total": 0.0, "recurring_total": 0.0, "last_week": None, "diff": None,
              "offset": offset, "has_older": False}
     client = get_client()
@@ -1278,10 +1312,35 @@ def week_spending(family_id: str, today=None, offset: int = 0) -> dict:
                     "project_id, categories(name, icon)") \
             .eq("family_id", family_id).eq("type", "expense").is_("project_id", "null") \
             .gte("date", prev_start.isoformat()) \
-            .lte("date", (start + timedelta(days=6)).isoformat()).execute().data or []
+            .lte("date", end.isoformat()).execute().data or []
     except Exception as e:
         raise DataUnavailable("week_spending") from e
+    # האם יש לאן לדפדף אחורה: הוצאה שוטפת כלשהי לפני תחילת השבוע הזה
+    try:
+        older = client.table("transactions").select("date") \
+            .eq("family_id", family_id).eq("type", "expense").is_("project_id", "null") \
+            .eq("is_recurring", False).is_("recurring_parent_id", "null") \
+            .lt("date", start.isoformat()).order("date", desc=True).limit(1).execute().data or []
+    except Exception as e:
+        raise DataUnavailable("week_spending: older") from e
+    return week_from_rows(rows, bool(older), today, offset)
 
+
+def week_bounds(today, offset: int = 0):
+    """‎(ראשון של השבוע הקודם, ראשון של השבוע המוצג, שבת שלו)‎.
+
+    ‎offset‎ — כמה שבועות אחורה (מתן, 2.10: דפדוף לשבועות קודמים). שבוע
+    שעבר מוצג שלם, ומושווה לשבוע השלם שלפניו."""
+    from datetime import timedelta
+    start = today - timedelta(days=(today.weekday() + 1) % 7) - timedelta(days=7 * offset)
+    return start - timedelta(days=7), start, start + timedelta(days=6)
+
+
+def week_from_rows(rows: list, has_older: bool, today, offset: int = 0) -> dict:
+    """כרטיס "השבוע" מתוך שורות שכבר נשלפו — מ-‎week_spending‎, או מ-‎get_home_page‎
+    שמביאה אותן יחד עם כל שאר דף הבית."""
+    from datetime import timedelta
+    prev_start, start, _ = week_bounds(today, offset)
     rows = [r for r in rows if not r.get("project_id")]
     # עסקה קבועה (תבנית או מופע) מוצגת ביום שלה, מסומנת, ולא נספרת בעמודות,
     # בסך ובהשוואה (מתן, 11.10) — כשהיא נעלמה לגמרי זה נראה כמו תקלה
@@ -1316,18 +1375,10 @@ def week_spending(family_id: str, today=None, offset: int = 0) -> dict:
             [i for i, d in enumerate(days) if d["total"]][-1:] or [6]
     for i, d in enumerate(days):
         d["selected"] = i == shown[0]
-    # האם יש לאן לדפדף אחורה: הוצאה שוטפת כלשהי לפני תחילת השבוע הזה
-    try:
-        older = client.table("transactions").select("date") \
-            .eq("family_id", family_id).eq("type", "expense").is_("project_id", "null") \
-            .eq("is_recurring", False).is_("recurring_parent_id", "null") \
-            .lt("date", start.isoformat()).order("date", desc=True).limit(1).execute().data or []
-    except Exception as e:
-        raise DataUnavailable("week_spending: older") from e
     return {"days": days, "total": total, "recurring_total": recurring_total, "last_week": last,
             "diff": round(total - last, 2) if last is not None and offset else None,
             "max": max([d["total"] for d in days] + [0]),
-            "offset": offset, "has_older": bool(older)}
+            "offset": offset, "has_older": bool(has_older)}
 
 
 def _filter_hidden_personal_projects(rows: list, viewer_user_id: str) -> list:
@@ -1545,11 +1596,17 @@ def get_recent_transactions(family_id: str, limit: int = 5, settings: dict = Non
             .order("created_at", desc=True) \
             .limit(fetch_limit) \
             .execute()
-        rows = _filter_hidden_personal_projects(result.data, viewer_user_id)[:limit]
-        return _format_transactions(rows, settings)
+        return recent_from_rows(result.data, limit, settings, viewer_user_id)
     except Exception as e:
         logger.exception("get_recent_transactions")
         raise DataUnavailable("get_recent_transactions") from e
+
+
+def recent_from_rows(rows: list, limit: int, settings: dict = None,
+                     viewer_user_id: str = None) -> list:
+    """"עסקאות אחרונות" מתוך שורות שכבר נשלפו (גם מ-‎get_home_page‎)."""
+    rows = _filter_hidden_personal_projects(rows or [], viewer_user_id)[:limit]
+    return _format_transactions(rows, settings)
 
 
 def _recent_series_filter(today=None) -> str:
@@ -1974,7 +2031,6 @@ def recurring_price_changes(family_id: str, templates: list) -> dict:
 
     מחזירה ‎{template_id: {"old": סכום, "since": "YYYY-MM-DD"}}‎. קישוט: תקלה
     מחזירה מילון ריק."""
-    from datetime import date, timedelta
     client = get_client()
     if not client or not templates:
         return {}
@@ -1994,6 +2050,14 @@ def recurring_price_changes(family_id: str, templates: list) -> dict:
     last_amount = {}
     for r in last:                                   # מהחדש לישן — הראשון לכל תבנית הוא המופע האחרון שלה
         last_amount.setdefault(r["recurring_parent_id"], float(r["amount"]))
+    return price_changes_from(templates, ended, last_amount)
+
+
+def price_changes_from(templates: list, ended: list, last_amount: dict) -> dict:
+    """החלק של ‎recurring_price_changes‎ שאחרי השליפה — גם עבור ‎get_settings_page‎.
+    ‎last_amount‎: ‎{מזהה תבנית שהסתיימה: סכום המופע האחרון שלה}‎."""
+    from datetime import date, timedelta
+    last_amount = {str(k): float(v) for k, v in (last_amount or {}).items()}
     out = {}
     for t in templates:
         start = date.fromisoformat(str(t["date"])[:10])
@@ -2004,7 +2068,7 @@ def recurring_price_changes(family_id: str, templates: list) -> dict:
             if e.get("category_id") != t.get("category_id") and \
                     (e.get("description") or "") != (t.get("description") or ""):
                 continue
-            old = last_amount.get(e["id"], float(e["amount"]))
+            old = last_amount.get(str(e["id"]), float(e["amount"]))
             if round(old, 2) != round(float(t["amount"]), 2):
                 out[t["id"]] = {"old": old, "since": start.isoformat()}
             break
@@ -3103,6 +3167,99 @@ def fetch_month_page(family_id: str, year: int, month: int) -> dict:
     }
 
 
+def fetch_home_page(family_id: str, today, recent_limit: int, viewer_user_id: str) -> dict:
+    """כל מה שדף הבית צריך, בנסיעה אחת למסד (מתן, 13.10).
+
+    מחליפה תשע שליפות שרצו ברצף — ראו המיגרציה
+    ‎20261013120000_home_page_fn.sql‎. כמו ‎fetch_month_page‎: רק ההובלה
+    השתנתה; החישובים הם אותן פונקציות (‎summary_from_rows‎, ‎week_from_rows‎,
+    ‎recent_from_rows‎) שהשליפות הנפרדות עוברות דרכן.
+
+    ‎null‎ = המשפחה אינה של הקורא, או שהשליפה נכשלה — ‎DataUnavailable‎."""
+    client = get_client()
+    if not client:
+        raise DataUnavailable("fetch_home_page: no client")
+    week_from, week_start, week_to = week_bounds(today)
+    # מרווח ביטחון כמו ב-‎get_recent_transactions‎: שורות פרטיות יסוננו
+    fetch_limit = recent_limit * 3 if viewer_user_id else recent_limit
+    try:
+        data = client.rpc("get_home_page", {
+            "p_family_id":    family_id,
+            "p_year":         today.year,
+            "p_month":        today.month,
+            "p_recent_from":  today.replace(day=1).isoformat(),
+            "p_recent_limit": fetch_limit,
+            "p_week_from":    week_from.isoformat(),
+            "p_week_start":   week_start.isoformat(),
+            "p_week_to":      week_to.isoformat(),
+        }).execute().data
+    except Exception as e:
+        raise DataUnavailable("fetch_home_page") from e
+    if not data:
+        raise DataUnavailable("fetch_home_page: empty")
+
+    members = data.get("members") or []
+    for m in members:
+        m["full_name"] = m.get("name", "")
+        m["name"] = first_name(m.get("name", ""))
+    family = data.get("family") or {}
+    settings = _merge_settings(DEFAULT_FAMILY_SETTINGS, family.get("settings") or {})
+    rows = data.get("rows") or []
+    return {
+        "family":     family,
+        "settings":   settings,
+        "members":    members,
+        "categories": data.get("categories") or [],
+        "rows":       rows,
+        # זהה ל-‎get_monthly_summary‎: בלי עסקאות פרויקט
+        "summary":    summary_from_rows([r for r in rows if not r.get("project_id")]),
+        "recent":     data.get("recent") or [],
+        "week":       week_from_rows(data.get("week_rows") or [],
+                                     data.get("week_has_older"), today),
+        "is_new":     not data.get("has_transactions"),
+    }
+
+
+def fetch_settings_page(family_id: str, today, viewer_user_id: str) -> dict:
+    """כל מה שעמוד ההגדרות צריך מהמסד, בנסיעה אחת (מתן, 13.10) — ראו
+    ‎20261013120100_settings_page_fn.sql‎. החישובים — אותן פונקציות
+    (‎category_averages_from_totals‎, ‎price_changes_from‎, ‎_format_transactions‎).
+
+    ‎null‎ = המשפחה אינה של הקורא, או שהשליפה נכשלה — ‎DataUnavailable‎."""
+    client = get_client()
+    if not client:
+        raise DataUnavailable("fetch_settings_page: no client")
+    avg_from, avg_to = averages_window(today)
+    try:
+        data = client.rpc("get_settings_page", {
+            "p_family_id": family_id, "p_avg_from": avg_from, "p_avg_to": avg_to,
+        }).execute().data
+    except Exception as e:
+        raise DataUnavailable("fetch_settings_page") from e
+    if not data:
+        raise DataUnavailable("fetch_settings_page: empty")
+
+    members = data.get("members") or []
+    for m in members:
+        m["full_name"] = m.get("name", "")
+        m["name"] = first_name(m.get("name", ""))
+    family = data.get("family") or {}
+    settings = _merge_settings(DEFAULT_FAMILY_SETTINGS, family.get("settings") or {})
+    return {
+        "family":       family,
+        "settings":     settings,
+        "members":      members,
+        "categories":   data.get("categories") or [],
+        "cat_averages": category_averages_from_totals(data.get("category_totals")),
+        # זהה ל-‎get_recurring_transactions‎
+        "recurring":    _format_transactions(
+            _filter_hidden_personal_projects(data.get("recurring") or [], viewer_user_id), settings),
+        "ended":        data.get("ended") or [],
+        "ended_last":   data.get("ended_last") or {},
+        "tx_count":     int(data.get("transaction_count") or 0),
+    }
+
+
 def fetch_month_rows(family_id: str, year: int, month: int) -> list:
     """כל שורות החודש, כולל עסקאות פרויקט, עם כל השיוכים.
 
@@ -3494,26 +3651,37 @@ def category_monthly_averages(family_id: str, today=None) -> dict:
     בהגדרות (מתן, 3.10 — רעיון 38). שלושת החודשים **השלמים** האחרונים, מחולק
     ב-3, בלי פרויקטים. קטגוריה בלי שום
     הוצאה בחלון — לא במילון. זורקת DataUnavailable."""
-    today = today or clock.today()
-    end = f"{today.year:04d}-{today.month:02d}-01"           # לא כולל החודש הנוכחי
-    sm, sy = today.month - _HISTORY_MONTHS, today.year
-    while sm <= 0:
-        sm += 12
-        sy -= 1
+    start, end = averages_window(today or clock.today())
     client = get_client()
     if not client:
         raise DataUnavailable("category_monthly_averages: no client")
     try:
         rows = _fetch_all(lambda: client.table("transactions").select("amount, category_id")
                           .eq("family_id", family_id).is_("project_id", "null")
-                          .gte("date", f"{sy:04d}-{sm:02d}-01").lt("date", end).order("id"))
+                          .gte("date", start).lt("date", end).order("id"))
     except Exception as e:
         raise DataUnavailable("category_monthly_averages") from e
     totals: dict = {}
     for r in rows:
         if r.get("category_id"):
             totals[str(r["category_id"])] = totals.get(str(r["category_id"]), 0.0) + float(r["amount"])
-    return {cid: round(t / _HISTORY_MONTHS) for cid, t in totals.items() if t > 0}
+    return category_averages_from_totals(totals)
+
+
+def averages_window(today) -> tuple:
+    """‎(מ-, עד-לא-כולל)‎: שלושת החודשים השלמים האחרונים, בלי החודש הנוכחי."""
+    end = f"{today.year:04d}-{today.month:02d}-01"
+    sm, sy = today.month - _HISTORY_MONTHS, today.year
+    while sm <= 0:
+        sm += 12
+        sy -= 1
+    return f"{sy:04d}-{sm:02d}-01", end
+
+
+def category_averages_from_totals(totals: dict) -> dict:
+    """הסכום בחלון לכל קטגוריה → ממוצע חודשי מעוגל. בלי קטגוריות שלא הוציאו."""
+    return {str(cid): round(float(t) / _HISTORY_MONTHS)
+            for cid, t in (totals or {}).items() if float(t) > 0}
 
 
 # כמה חודשים אחורה נכללים בממוצע. הקבוע יושב כאן כי גם השליפה וגם
