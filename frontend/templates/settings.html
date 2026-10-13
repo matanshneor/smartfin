@@ -558,50 +558,58 @@
         </button>
 
         <div class="settings-group-body">
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">שם ומקום עבודה</p>
-                    <p class="group-row-value" id="accountNameDisplay">{{ account.full_name }}</p>
-                    <p class="group-row-hint" id="accountWorkplaceDisplay" {% if not account.workplace %}style="display:none;"{% endif %}>{{ account.workplace or '' }}</p>
-                </div>
-                <button class="btn-sm btn-ghost" id="editProfileBtn">עדכון</button>
-            </div>
-            <div class="account-edit" id="profileEdit">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label" for="editFirstName">שם פרטי</label>
-                        <input class="form-input" type="text" id="editFirstName" value="{{ account.first_name }}" maxlength="40">
+            {# "החשבון שלי" (מתן, 13.10): כמו "עסקאות קבועות" — אייקון, שם, מה רשום
+               מתחת, וחץ. נגיעה בשורה פותחת את העריכה שלה, במקום כפתורי "עדכון". #}
+            <p class="recurring-group-title">פרטים</p>
+            <ul class="acct-list">
+                <li>
+                    <button type="button" class="acct-row" id="editProfileBtn" aria-controls="profileEdit">
+                        <span class="acct-icon">{{ ui_icon("user") }}</span>
+                        <span class="acct-text">
+                            <span class="acct-label">שם ומקום עבודה</span>
+                            <span class="acct-value"><span id="accountNameDisplay">{{ account.full_name }}</span><span class="acct-value-extra" id="accountWorkplaceDisplay" {% if not account.workplace %}style="display:none;"{% endif %}>{{ account.workplace or '' }}</span></span>
+                        </span>
+                        <span class="acct-chevron" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span>
+                    </button>
+                    <div class="account-edit" id="profileEdit">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="editFirstName">שם פרטי</label>
+                                <input class="form-input" type="text" id="editFirstName" value="{{ account.first_name }}" maxlength="40">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editLastName">שם משפחה</label>
+                                <input class="form-input" type="text" id="editLastName" value="{{ account.last_name }}" maxlength="40">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="editWorkplace">מקום עבודה</label>
+                            <input class="form-input" type="text" id="editWorkplace" value="{{ account.workplace }}"
+                                   placeholder="לדוגמה: אינטל, עצמאי…" maxlength="60" autocomplete="organization">
+                        </div>
+                        <p class="form-error" id="profileError" role="alert"></p>
+                        <div class="edit-actions">
+                            <button class="btn-sm btn-primary" id="saveProfileBtn">שמירה</button>
+                            <button class="btn-sm btn-ghost" id="cancelProfileBtn">ביטול</button>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label" for="editLastName">שם משפחה</label>
-                        <input class="form-input" type="text" id="editLastName" value="{{ account.last_name }}" maxlength="40">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="editWorkplace">מקום עבודה</label>
-                    <input class="form-input" type="text" id="editWorkplace" value="{{ account.workplace }}"
-                           placeholder="לדוגמה: אינטל, עצמאי…" maxlength="60" autocomplete="organization">
-                </div>
-                <p class="form-error" id="profileError" role="alert"></p>
-                <div class="edit-actions">
-                    <button class="btn-sm btn-primary" id="saveProfileBtn">שמירה</button>
-                    <button class="btn-sm btn-ghost" id="cancelProfileBtn">ביטול</button>
-                </div>
-            </div>
-
+                </li>
+                {% if member_colors and user.id in member_colors %}
+                {% set mine = member_colors.get(user.id) %}
+                <li>
+                    <button type="button" class="acct-row member-color-open" id="memberColorOpen" aria-haspopup="dialog">
+                        <span class="acct-icon">{{ ui_icon("palette") }}</span>
+                        <span class="acct-text">
+                            <span class="acct-label">הצבע שלי</span>
+                            <span class="acct-value">כך מופיע השם שלך ליד עסקאות ובגרפים</span>
+                        </span>
+                        <span class="member-color-swatch" style="background: {{ color_hex[mine] }};"></span>
+                        <span class="acct-chevron" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span>
+                    </button>
+                </li>
+                {% endif %}
+            </ul>
             {% if member_colors and user.id in member_colors %}
-            {% set mine = member_colors.get(user.id) %}
-            <div class="group-divider"></div>
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">הצבע שלי</p>
-                    <p class="group-row-hint">כך מופיע השם שלך ליד עסקאות ובגרפים</p>
-                </div>
-                <button type="button" class="btn-sm btn-ghost member-color-open" id="memberColorOpen" aria-haspopup="dialog">
-                    <span class="member-color-swatch" style="background: {{ color_hex[mine] }};"></span>
-                    עדכון
-                </button>
-            </div>
             {# חלון בחירת הצבע: כל צבע עם דוגמה של תג השם שלי בצבע הזה #}
             {% set me = members | selectattr('id', 'equalto', user.id) | first %}
             {% set mine = member_colors.get(user.id) %}
@@ -626,18 +634,19 @@
             </div>
             {% endif %}
 
-            <div class="group-divider"></div>
-
-            {# מייל וטלפון — פרטי ההתחברות, במקום אחד (מתן, 1.10). הטלפון עבר
-               לכאן מעריכת הפרטים ב"המשפחה שלי". #}
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">מייל</p>
-                    <p class="group-row-value" dir="ltr" style="text-align:right;" id="accountEmailValue">{{ account.email }}</p>
-                    <p class="group-row-hint" id="emailPendingNote" {% if not account.pending_email %}hidden{% endif %}>ממתין לאישור: <span dir="ltr" id="emailPendingValue">{{ account.pending_email or '' }}</span> — המייל יתחלף אחרי הלחיצה על הקישור שנשלח אליו. אם הגיע מייל אישור גם לכתובת הנוכחית, צריך ללחוץ גם עליו.</p>
-                </div>
-                <button class="btn-sm btn-ghost" id="toggleEmailBtn">עדכון כתובת מייל</button>
-            </div>
+            {# מייל, טלפון וסיסמה — פרטי ההתחברות, במקום אחד (מתן, 1.10) #}
+            <p class="recurring-group-title">התחברות</p>
+            <ul class="acct-list">
+                <li>
+                    <button type="button" class="acct-row" id="toggleEmailBtn" aria-controls="emailForm">
+                        <span class="acct-icon">{{ ui_icon("mail") }}</span>
+                        <span class="acct-text">
+                            <span class="acct-label">מייל</span>
+                            <span class="acct-value acct-ltr" dir="ltr" id="accountEmailValue">{{ account.email }}</span>
+                        </span>
+                        <span class="acct-chevron" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span>
+                    </button>
+                    <p class="group-row-hint acct-note" id="emailPendingNote" {% if not account.pending_email %}hidden{% endif %}>ממתין לאישור: <span dir="ltr" id="emailPendingValue">{{ account.pending_email or '' }}</span> — המייל יתחלף אחרי הלחיצה על הקישור שנשלח אליו. אם הגיע מייל אישור גם לכתובת הנוכחית, צריך ללחוץ גם עליו.</p>
 
             <div class="password-form" id="emailForm">
                 <div class="form-group">
@@ -657,15 +666,16 @@
                 </div>
             </div>
 
-            <div class="group-divider"></div>
-
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">טלפון</p>
-                    <p class="group-row-value" dir="ltr" style="text-align:right;" id="accountPhoneValue">{{ account.phone or 'לא הוזן' }}</p>
-                </div>
-                <button class="btn-sm btn-ghost" id="togglePhoneBtn">עדכון מספר טלפון</button>
-            </div>
+                </li>
+                <li>
+                    <button type="button" class="acct-row" id="togglePhoneBtn" aria-controls="phoneForm">
+                        <span class="acct-icon">{{ ui_icon("phone") }}</span>
+                        <span class="acct-text">
+                            <span class="acct-label">טלפון</span>
+                            <span class="acct-value acct-ltr" dir="ltr" id="accountPhoneValue">{{ account.phone or 'לא הוזן' }}</span>
+                        </span>
+                        <span class="acct-chevron" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span>
+                    </button>
 
             <div class="password-form" id="phoneForm">
                 <div class="form-group">
@@ -681,15 +691,16 @@
                 </div>
             </div>
 
-            <div class="group-divider"></div>
-
-            <div class="group-row">
-                <div class="group-row-info">
-                    <p class="group-row-label">סיסמה</p>
-                    <p class="group-row-hint">שינוי סיסמת ההתחברות שלך</p>
-                </div>
-                <button class="btn-sm btn-ghost" id="togglePasswordBtn">עדכון סיסמה</button>
-            </div>
+                </li>
+                <li>
+                    <button type="button" class="acct-row" id="togglePasswordBtn" aria-controls="passwordForm">
+                        <span class="acct-icon">{{ ui_icon("lock") }}</span>
+                        <span class="acct-text">
+                            <span class="acct-label">סיסמה</span>
+                            <span class="acct-value">שינוי סיסמת ההתחברות שלך</span>
+                        </span>
+                        <span class="acct-chevron" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span>
+                    </button>
 
             <div class="password-form" id="passwordForm">
                 <div class="form-group">
@@ -712,18 +723,28 @@
                 </div>
             </div>
 
-            {# נעילה עם Face ID (מתן, 12.10; נעילה — 13.10). מוסתר עד ש-‎js/passkey.js‎ מוודא שהטלפון
-               תומך ושהאפשרות פעילה באתר — אחרת אין כאן כלום ללחוץ עליו #}
+                </li>
+            </ul>
+
+            {# נעילת האפליקציה באמצעות Face ID (מתן, 12.10; מתג — 13.10). מוסתר עד
+               ש-‎js/passkey.js‎ מוודא שהטלפון תומך ושהאפשרות פעילה באתר #}
             <div class="passkey-settings" id="passkeySettings" hidden>
-                <div class="group-divider"></div>
-                <div class="group-row">
-                    <div class="group-row-info">
-                        <p class="group-row-label"><span data-passkey-name>Face ID</span></p>
-                        <p class="group-row-hint" id="passkeyHint">נעילת האפליקציה באמצעות <span data-passkey-name>Face ID</span></p>
-                    </div>
-                    <button type="button" class="btn-sm btn-ghost" id="passkeyEnableBtn">הפעלה</button>
-                </div>
-                <ul class="passkey-list" id="passkeyList"></ul>
+                <p class="recurring-group-title">אבטחה</p>
+                <ul class="acct-list">
+                    <li>
+                        <label class="acct-row" for="passkeyToggle">
+                            <span class="acct-icon">{{ ui_icon("face") }}</span>
+                            <span class="acct-text">
+                                <span class="acct-label"><span data-passkey-name>Face ID</span></span>
+                                <span class="acct-value" id="passkeyHint">נעילת האפליקציה באמצעות <span data-passkey-name>Face ID</span></span>
+                            </span>
+                            <span class="pref-switch">
+                                <input type="checkbox" id="passkeyToggle" role="switch">
+                                <span class="pref-slider"></span>
+                            </span>
+                        </label>
+                    </li>
+                </ul>
                 <p class="form-error" id="passkeySettingsError" role="alert"></p>
             </div>
 

@@ -150,3 +150,19 @@ def test_the_unlock_screen_scans_by_itself_and_offers_retry():
     js = (_ROOT / "frontend/static/js/passkey.js").read_text(encoding="utf-8")
     part = js[js.index("// ── מסך הנעילה"):js.index("// ── הגדרות → החשבון שלי")]
     assert "'/api/unlock/verify'" in part and "unlockBtn.click()" in part and "'נסו שוב עם '" in part
+
+
+def test_my_account_rows_look_like_the_recurring_list():
+    """"החשבון שלי" (מתן, 13.10): כמו "עסקאות קבועות" — שורה שלמה היא הכפתור,
+    בלי כפתורי "עדכון"; Face ID — מתג. כיבוי שואל קודם."""
+    html = (_ROOT / "frontend/templates/settings.html").read_text(encoding="utf-8")
+    mine = html[html.index('id="my-details"'):]
+    mine = mine[:mine.index("</section>")]
+    for el in ("editProfileBtn", "memberColorOpen", "toggleEmailBtn", "togglePhoneBtn", "togglePasswordBtn"):
+        assert f'class="acct-row' in mine and f'id="{el}"' in mine, el
+    for old in ("עדכון כתובת מייל", "עדכון מספר טלפון", ">עדכון סיסמה<", ">עדכון</button>"):
+        assert old not in mine, old
+    for title in ("פרטים", "התחברות", "אבטחה"):
+        assert f'<p class="recurring-group-title">{title}</p>' in mine
+    js = (_ROOT / "frontend/static/js/passkey.js").read_text(encoding="utf-8")
+    assert "title: 'לכבות את נעילת האפליקציה?'" in js
