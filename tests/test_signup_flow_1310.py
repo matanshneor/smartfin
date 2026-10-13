@@ -102,3 +102,14 @@ def test_the_live_checks_use_the_server_rules():
     assert "if (e.defaultPrevented || btn.disabled) return;" in js
     assert js.index("signupChecks(document.getElementById('signupPanel'));") < \
         js.index("guardSubmit(document.getElementById('signupPanel')")
+
+
+def test_a_new_family_starts_with_matans_categories():
+    """מתן (13.10): ההוצאות וההכנסות כמו אצלו היום, ובחיסכון — השקעות ופיקדון בנקאי."""
+    from backend.app import _DEFAULT_CATEGORIES as cats
+    by = lambda t: [c["name"] for c in cats if c["type"] == t]
+    assert by("expense") == ["דיור ושכירות", "חשבונות ומנויים", "רכב ותחבורה", "בריאות",
+                             "סופר ומזון", "מסעדות ובילויים", "שופינג וקניות", "טיפוח",
+                             "ריהוט ואביזרים לבית", "חופשות", "אירועים ומתנות", "אחר"]
+    assert by("income") == ["משכורת", "הכנסה נוספת"]
+    assert by("savings") == ["השקעות", "פיקדון בנקאי"]

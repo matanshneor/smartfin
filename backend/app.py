@@ -1204,22 +1204,24 @@ def reset_password_submit():
 # סט התחלתי גנרי — כל משפחה חדשה יכולה לערוך, למחוק או להוסיף עליו.
 # (לא כולל שמות ספציפיים כמו "קופת גמל אנליסט" שרלוונטיים רק למשפחה מסוימת)
 _DEFAULT_CATEGORIES = [
-    {"name": "משכורת",          "icon": "💼", "type": "income"},
-    {"name": "הכנסה נוספת",     "icon": "💵", "type": "income"},
-    {"name": "דיור ושכירות",    "icon": "🏠", "type": "expense"},
-    {"name": "חשבונות",         "icon": "💡", "type": "expense"},
-    {"name": "סופר ומזון",      "icon": "🛒", "type": "expense"},
-    {"name": "רכב ותחבורה",     "icon": "🚗", "type": "expense"},
-    {"name": "ביגוד וטיפוח",    "icon": "👗", "type": "expense"},
-    {"name": "בריאות",          "icon": "🏥", "type": "expense"},
-    {"name": "מסעדות ובילויים", "icon": "🍽️", "type": "expense"},
-    {"name": "חופשות",          "icon": "✈️", "type": "expense"},
-    {"name": "שופינג",          "icon": "🛍️", "type": "expense"},
-    {"name": "מנויים",          "icon": "📺", "type": "expense"},
-    {"name": "אחר",             "icon": "📦", "type": "expense"},
-    {"name": "חיסכון כללי",     "icon": "💰", "type": "savings"},
-    {"name": "קרן השתלמות",     "icon": "🏦", "type": "savings"},
-    {"name": "פיקדון בנקאי",    "icon": "📈", "type": "savings"},
+    # ההוצאות וההכנסות — בדיוק כמו אצל מתן היום, באותו סדר (מתן, 13.10)
+    {"name": "משכורת",               "icon": "💼", "type": "income"},
+    {"name": "הכנסה נוספת",          "icon": "💵", "type": "income"},
+    {"name": "דיור ושכירות",         "icon": "🏠", "type": "expense"},
+    {"name": "חשבונות ומנויים",      "icon": "💳", "type": "expense"},
+    {"name": "רכב ותחבורה",          "icon": "🚗", "type": "expense"},
+    {"name": "בריאות",               "icon": "🏥", "type": "expense"},
+    {"name": "סופר ומזון",           "icon": "🛒", "type": "expense"},
+    {"name": "מסעדות ובילויים",      "icon": "🥂", "type": "expense"},
+    {"name": "שופינג וקניות",        "icon": "🛍️", "type": "expense"},
+    {"name": "טיפוח",                "icon": "💅", "type": "expense"},
+    {"name": "ריהוט ואביזרים לבית",  "icon": "🪑", "type": "expense"},
+    {"name": "חופשות",               "icon": "✈️", "type": "expense"},
+    {"name": "אירועים ומתנות",       "icon": "🎁", "type": "expense"},
+    {"name": "אחר",                  "icon": "📦", "type": "expense"},
+    # חיסכון — שתיים (מתן, 13.10)
+    {"name": "השקעות",               "icon": "📈", "type": "savings"},
+    {"name": "פיקדון בנקאי",         "icon": "🏧", "type": "savings"},
 ]
 
 
