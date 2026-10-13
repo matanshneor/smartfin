@@ -566,6 +566,8 @@
         editSnapshot = null;
         const seriesLink = document.getElementById('txSeriesLink');
         if (seriesLink) seriesLink.hidden = true;
+        const receiptLink = document.getElementById('txReceiptLink');
+        if (receiptLink) receiptLink.hidden = true;
         scanSeq++;
         formSeq++;
         setSubmitBusy(false);                   // טופס חדש לא "באמצע שמירה" — ראו ‎finish‎
@@ -636,6 +638,14 @@
         if (seriesLink) {
             seriesLink.hidden = !(tx.recurringParentId && !editingSeries);
             if (tx.recurringParentId) seriesLink.href = '/settings?series=' + encodeURIComponent(tx.recurringParentId);
+        }
+        // הקבלה של השורה — אם יש (‎.receipt-badge‎ בתוכה)
+        const receiptLink = document.getElementById('txReceiptLink');
+        if (receiptLink) {
+            const row = triggerEl && triggerEl.closest && triggerEl.closest('[data-id]');
+            const badge = row && row.querySelector('.receipt-badge[data-href]');
+            receiptLink.hidden = !badge;
+            if (badge) receiptLink.href = badge.dataset.href;
         }
         editingOriginal = tx;
         originalAmount = parseFloat(tx.amount);

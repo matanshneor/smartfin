@@ -241,9 +241,9 @@
             </div>
             {% endif %}
             {% if cat_txs %}
-            <ul class="cat-tx-list">
+            <div role="group" class="cat-tx-list">
                 {% for tx in cat_txs %}
-                <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                <div class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
                     data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
                     data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
                     data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
@@ -256,20 +256,18 @@
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
                     {% endif %}
                     {% if tx.has_receipt %}
-                    <a class="receipt-badge" href="{{ url_for('view_receipt', tx_id=tx.id) }}"
-                       target="_blank" rel="noopener"
-                       title="צפייה בקבלה" aria-label="צפייה בקבלה המצורפת">{{ ui_icon("receipt") }}</a>
+                    <span class="receipt-badge" data-href="{{ url_for('view_receipt', tx_id=tx.id) }}" title="צפייה בקבלה" aria-hidden="true">{{ ui_icon("receipt") }}</span>
                     {% endif %}
                     <span class="cat-tx-amount expense">₪{{ tx.amount | money }}</span>
-                </li>
+                </div>
                 {% endfor %}
                 {# מהקטגוריה להיסטוריה שלה בעמוד ההשוואה (מתן, 3.10 — רעיון 23) #}
                 {% if item.category_id and not item.is_project %}
-                <li class="cat-tx-row cat-tx-more">
+                <div class="cat-tx-row cat-tx-more">
                     <a href="{{ url_for('months', cat=item.category_id) }}#cat-trend">השוואה לחודשים קודמים ←</a>
-                </li>
+                </div>
                 {% endif %}
-            </ul>
+            </div>
             {% endif %}
         </li>
         {% endif %}
@@ -330,9 +328,9 @@
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                 </span>
             </div>
-            <ul class="cat-tx-list">
+            <div role="group" class="cat-tx-list">
                 {% for tx in src.transactions %}
-                <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                <div class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
                     data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
                     data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
                     data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
@@ -345,9 +343,9 @@
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
                     {% endif %}
                     <span class="cat-tx-amount income">₪{{ tx.amount | money }}</span>
-                </li>
+                </div>
                 {% endfor %}
-            </ul>
+            </div>
         </li>
         {% endfor %}
         {% for item in income_projects %}
@@ -404,9 +402,9 @@
                 </span>{% endif %}
             </div>
             {% if cat_txs %}
-            <ul class="cat-tx-list">
+            <div role="group" class="cat-tx-list">
                 {% for tx in cat_txs %}
-                <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                <div class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
                     data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
                     data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
                     data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
@@ -419,9 +417,9 @@
                     <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
                     {% endif %}
                     <span class="cat-tx-amount savings">₪{{ tx.amount | money }}</span>
-                </li>
+                </div>
                 {% endfor %}
-            </ul>
+            </div>
             {% endif %}
         </li>
         {% endfor %}
@@ -458,7 +456,7 @@
    (מתן, 5.10). עד אז הכל היה שורת "הצגת הכל" אחת שנפתחה במקום. #}
 {# ‎freq_labels‎ מועבר במפורש: ‎set‎ שבתוך הבלוק לא נראה מתוך מאקרו #}
 {% macro tx_row(tx, freq_labels) %}
-    <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+    <div class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
         data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
         data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
         data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
@@ -474,12 +472,10 @@
         <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
         {% endif %}
         {% if tx.has_receipt %}
-        <a class="receipt-badge" href="{{ url_for('view_receipt', tx_id=tx.id) }}"
-           target="_blank" rel="noopener"
-           title="צפייה בקבלה" aria-label="צפייה בקבלה המצורפת">{{ ui_icon("receipt") }}</a>
+        <span class="receipt-badge" data-href="{{ url_for('view_receipt', tx_id=tx.id) }}" title="צפייה בקבלה" aria-hidden="true">{{ ui_icon("receipt") }}</span>
         {% endif %}
         <span class="cat-tx-amount {{ tx.type }}">{% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ tx.amount | money }}</span>
-    </li>
+    </div>
 {% endmacro %}
 {% set tx_preview = 5 %}
 {% if month_transactions %}
@@ -492,9 +488,9 @@
            href="{{ url_for('month_csv', year=year, month=month) }}"
            download>ייצוא CSV</a>
     </div>
-    <ul class="cat-tx-list cat-tx-list-standalone tx-preview">
+    <div role="group" class="cat-tx-list cat-tx-list-standalone tx-preview">
         {% for tx in month_transactions[:tx_preview] %}{{ tx_row(tx, freq_labels) }}{% endfor %}
-    </ul>
+    </div>
     {% if month_transactions | length > tx_preview %}
     <button type="button" class="btn-sm btn-ghost show-all-tx" id="txScreenOpen" aria-haspopup="dialog">
         לכל עסקאות החודש
@@ -552,9 +548,9 @@
                        autocomplete="off" enterkeyhint="search">
                 <p class="tx-search-empty" id="txSearchEmpty" style="display:none;">לא נמצאו עסקאות תואמות</p>
             </div>
-            <ul class="cat-tx-list cat-tx-list-standalone tx-screen-list">
+            <div role="group" class="cat-tx-list cat-tx-list-standalone tx-screen-list">
                 {% for tx in month_transactions %}{{ tx_row(tx, freq_labels) }}{% endfor %}
-            </ul>
+            </div>
         </div>
     </div>
     {% endif %}
@@ -588,9 +584,9 @@
                 </span>
             </div>
 
-            <ul class="cat-tx-list">
+            <div role="group" class="cat-tx-list">
                 {% for tx in proj.transactions %}
-                <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                <div class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
                     data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
                     data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
                     data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
@@ -599,12 +595,12 @@
                     <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
                     <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}</span>
                     <span class="cat-tx-amount {{ tx.type }}">{% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ tx.amount | money }}</span>
-                </li>
+                </div>
                 {% endfor %}
-                <li class="cat-tx-row cat-tx-more">
+                <div class="cat-tx-row cat-tx-more">
                     <a href="{{ url_for('project_detail', project_id=proj.project_id) }}">לעמוד הפרויקט ←</a>
-                </li>
-            </ul>
+                </div>
+            </div>
         </li>
         {% endfor %}
     </ul>

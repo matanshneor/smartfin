@@ -159,9 +159,9 @@
                     {% endif %}
                 </div>
                 {% if cat_txs %}
-                <ul class="cat-tx-list">
+                <div role="group" class="cat-tx-list">
                     {% for tx in cat_txs %}
-                    <li class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+                    <div class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
                         data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
                         data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
                         data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
@@ -174,14 +174,12 @@
                         <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
                         {% endif %}
                         {% if tx.has_receipt %}
-                        <a class="receipt-badge" href="{{ url_for('view_receipt', tx_id=tx.id) }}"
-                       target="_blank" rel="noopener"
-                       title="צפייה בקבלה" aria-label="צפייה בקבלה המצורפת">{{ ui_icon("receipt") }}</a>
+                        <span class="receipt-badge" data-href="{{ url_for('view_receipt', tx_id=tx.id) }}" title="צפייה בקבלה" aria-hidden="true">{{ ui_icon("receipt") }}</span>
                         {% endif %}
                         <span class="cat-tx-amount {{ tx.type }}">₪{{ tx.amount | money }}</span>
-                    </li>
+                    </div>
                     {% endfor %}
-                </ul>
+                </div>
                 {% endif %}
             </li>
             {% endfor %}
@@ -196,9 +194,9 @@
     {# 5 האחרונות, והשאר מאחורי כפתור (מתן, 30.9): רשימה ארוכה של כל העסקאות
        דחקה את כל השאר. הרשימה ממוינת מהחדשה לישנה (‎get_project_detail‎). #}
     {% set first_shown = 5 %}
-    <ul class="cat-tx-list cat-tx-list-standalone" id="projectTxList">
+    <div role="group" class="cat-tx-list cat-tx-list-standalone" id="projectTxList">
         {% for tx in project.transactions %}
-        <li class="cat-tx-row{% if loop.index > first_shown %} tx-extra{% endif %}" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+        <div class="cat-tx-row{% if loop.index > first_shown %} tx-extra{% endif %}" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
             data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
             data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
             data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
@@ -211,17 +209,15 @@
             <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
             {% endif %}
             {% if tx.has_receipt %}
-            <a class="receipt-badge" href="{{ url_for('view_receipt', tx_id=tx.id) }}"
-                       target="_blank" rel="noopener"
-                       title="צפייה בקבלה" aria-label="צפייה בקבלה המצורפת">{{ ui_icon("receipt") }}</a>
+            <span class="receipt-badge" data-href="{{ url_for('view_receipt', tx_id=tx.id) }}" title="צפייה בקבלה" aria-hidden="true">{{ ui_icon("receipt") }}</span>
             {% endif %}
             {# סימן ולא רק צבע: ברשימה הזאת הכנסות והוצאות מעורבבות, ולמי שלא
                מבחין בין ירוק לאדום (~8% מהגברים) הצבע לבדו לא אומר כלום.
                אותו סימון כמו ברשימת האחרונות בבית. #}
             <span class="cat-tx-amount {{ tx.type }}">{% if tx.type == 'income' %}+{% elif tx.type == 'expense' %}-{% endif %}₪{{ tx.amount | money }}</span>
-        </li>
+        </div>
         {% endfor %}
-    </ul>
+    </div>
     {% if project.transactions | length > first_shown %}
     <button type="button" class="btn-sm btn-ghost show-all-tx" id="showAllProjectTx"
             aria-expanded="false" aria-controls="projectTxList"

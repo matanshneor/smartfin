@@ -269,9 +269,7 @@
                        משלה היא הגביהה את כל השורה ב-9px (מתן, 30.9) #}
                     <div class="tx-amount-row">
                     {% if tx.has_receipt %}
-                    <a class="receipt-badge" href="{{ url_for('view_receipt', tx_id=tx.id) }}"
-                       target="_blank" rel="noopener"
-                       title="צפייה בקבלה" aria-label="צפייה בקבלה המצורפת">{{ ui_icon("receipt") }}</a>
+                    <span class="receipt-badge" data-href="{{ url_for('view_receipt', tx_id=tx.id) }}" title="צפייה בקבלה" aria-hidden="true">{{ ui_icon("receipt") }}</span>
                     {% endif %}
                     <p class="tx-amount {{ tx.type }}">
                         {% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ tx.amount | money }}

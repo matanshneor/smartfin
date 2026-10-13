@@ -41,7 +41,8 @@
     /* Text */
     --color-text:          #1C1917;
     --color-text-soft:     #44403C;
-    --color-text-muted:    #78716C;
+    /* ‎#78716C‎ היה ‎4.2:1‎ על הרקע הבהיר — מתחת לסף הנגישות 4.5 (מתן, 13.10) */
+    --color-text-muted:    #6B645F;
 
     /* Semantic */
     --color-income:        #15803D;
@@ -485,7 +486,7 @@ ul { list-style: none; }
 .month-chip.is-current .month-chip-name { color: var(--color-gold-bright); }
 
 .month-chip-year {
-    font-size: 0.68rem;
+    font-size: 0.75rem;
     color: var(--hero-text-muted);
     margin-top: 1px;
 }
@@ -507,7 +508,7 @@ ul { list-style: none; }
 }
 
 .kpi-chip .kpi-label {
-    font-size: 0.71rem;
+    font-size: 0.75rem;
     color: var(--hero-text-muted);
     margin-bottom: 2px;
 }
@@ -546,7 +547,7 @@ ul { list-style: none; }
 }
 
 .month-net .kpi-label {
-    font-size: 0.74rem;
+    font-size: 0.75rem;
     color: var(--hero-text-muted);
     margin-bottom: 2px;
 }
@@ -575,7 +576,7 @@ ul { list-style: none; }
 }
 
 .project-net .kpi-label {
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     color: var(--hero-text-muted);
     margin-bottom: 2px;
 }
@@ -691,7 +692,7 @@ ul { list-style: none; }
 }
 
 .nav-item .nav-label {
-    font-size: 0.67rem;
+    font-size: 0.75rem;
     font-weight: 500;
     letter-spacing: 0.02em;
     transition: color 0.25s;
@@ -1009,7 +1010,7 @@ a.kpi-chip:active { transform: scale(0.97); }
 
 .owner-pill {
     display: inline-block;
-    font-size: 0.68rem;
+    font-size: 0.75rem;
     font-weight: 600;
     line-height: 1;
     padding: 3px 9px;
@@ -1018,7 +1019,7 @@ a.kpi-chip:active { transform: scale(0.97); }
 }
 
 .owner-pill-sm {
-    font-size: 0.63rem;
+    font-size: 0.75rem;
     padding: 2px 7px;
     flex-shrink: 0;
 }
@@ -1046,6 +1047,7 @@ a.kpi-chip:active { transform: scale(0.97); }
 
 /* תג קבלה מצורפת — לחיצה פותחת את התמונה, לא את עריכת העסקה */
 .receipt-badge {
+    cursor: pointer;
     position: relative;
     display: inline-flex;
     align-items: center;
@@ -2170,7 +2172,7 @@ a.submit-btn {
 
 .months-table th {
     font-weight: 500;
-    font-size: 0.66rem;
+    font-size: 0.75rem;
     color: var(--color-text-muted);
     text-align: start;
     padding: 9px 2px;
@@ -2236,7 +2238,7 @@ a.submit-btn {
     display: block;
     width: fit-content;
     margin-top: 2px;
-    font-size: 0.58rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--color-gold-text);
     background: var(--color-gold-dim);
@@ -2248,7 +2250,7 @@ a.submit-btn {
 /* ─── Charts & KPI (light cards) ──────────────────────────────── */
 
 .kpi-label {
-    font-size: 0.74rem;
+    font-size: 0.75rem;
     color: var(--color-text-muted);
     margin-bottom: 4px;
 }
@@ -3335,7 +3337,7 @@ a.btn-sm { display: inline-flex; align-items: center; justify-content: center; t
 
 .cat-budget-text {
     margin: 4px 0 0;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     color: var(--color-text-muted);
 }
 
@@ -4949,13 +4951,13 @@ body > .color-sheet { z-index: 180; }
     height: 100%; min-width: 0; background: none; border: 0; padding: 0; cursor: pointer; font: inherit;
 }
 .week-day:disabled { cursor: default; }
-.week-amt { font-size: 0.62rem; font-weight: 600; color: var(--color-text-muted); min-height: 1em; font-variant-numeric: tabular-nums; }
+.week-amt { font-size: 0.75rem; font-weight: 600; color: var(--color-text-muted); min-height: 1em; font-variant-numeric: tabular-nums; }
 .week-bar { width: 100%; max-width: 30px; border-radius: 7px 7px 3px 3px; background: color-mix(in srgb, var(--color-gold) 55%, var(--color-card)); }
 .week-day.today .week-bar { background: var(--color-gold); }
 .week-day.zero .week-bar { background: var(--color-input); }
 .week-day.future .week-bar { background: none; border: 1.5px dashed var(--color-input); }
 .week-day.is-selected .week-bar { outline: 2px solid var(--color-gold-border); outline-offset: 2px; }
-.week-lbl { font-size: 0.72rem; font-weight: 600; color: var(--color-text-muted); }
+.week-lbl { font-size: 0.75rem; font-weight: 600; color: var(--color-text-muted); }
 .week-day.today .week-lbl { color: var(--color-gold-text); }
 .week-detail { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--divider-subtle); }
 .week-detail-head {

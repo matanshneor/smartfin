@@ -41,12 +41,20 @@ def client(monkeypatch):
 
 # ─── התיקון עצמו ─────────────────────────────────────────────────────────────
 
-def test_the_badge_is_a_link_the_browser_can_follow(monkeypatch):
-    """הלב: ניווט שנובע מלחיצה לא נחסם, פתיחת חלון אחרי המתנה כן."""
+def test_the_badge_opens_the_in_app_viewer_and_voiceover_gets_a_real_link(monkeypatch):
+    """הקבלה נפתחת בתוך האפליקציה (‎receipt-viewer.js‎), כך שחסימת חלונות של iOS
+    כבר לא רלוונטית. הסמל בשורה יושב בתוך כפתור העריכה, אז הוא לא קישור —
+    קישור בתוך כפתור הוא מקום ש-VoiceOver לא מגיע אליו (מתן, 13.10). לקורא
+    המסך יש "צפייה בקבלה" אמיתי בחלון העריכה."""
     for page in ("index.html", "month.html", "project_detail.html"):
         html = (_ROOT / "frontend/templates" / page).read_text(encoding="utf-8")
-        assert 'class="receipt-badge" href=' in html, f"{page}: הסמל עדיין לא קישור"
+        assert '<span class="receipt-badge" data-href=' in html, f"{page}: הסמל עדיין קישור"
+        assert '<a class="receipt-badge"' not in html
         assert 'data-receipt-id' not in html, f"{page}: נשאר הכפתור הישן"
+    base = (_ROOT / "frontend/templates/base.html").read_text(encoding="utf-8")
+    assert 'id="txReceiptLink"' in base
+    viewer = (_ROOT / "frontend/static/js/receipt-viewer.js").read_text(encoding="utf-8")
+    assert "open(a.dataset.href || a.href);" in viewer
 
 
 def test_no_javascript_opens_the_receipt_any_more():
