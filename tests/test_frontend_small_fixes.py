@@ -619,7 +619,7 @@ def test_settings_has_no_projects_box():
 def test_pull_to_refresh_only_in_the_installed_app_and_only_from_the_top():
     """מתן (30.9, רעיון 14). ב-Safari רגיל זה קיים מעצמו; כפול היה מרענן פעמיים."""
     js = _strip_comments(_read("frontend/static/js/pwa.js"))
-    part = js[js.index("const TRIGGER = 70"):]
+    part = js[js.index("const TRIGGER = SAFE + 58"):]
     assert "if (!isStandalone || !('ontouchstart' in window)) return;" in js
     assert "return busy || window.scrollY > 0" in part
     assert "if (dy < 0 || Math.abs(dx) > Math.abs(dy))" in part
@@ -940,3 +940,18 @@ def test_changing_month_is_a_smooth_swap_not_a_page_load():
     nav = nav[:nav.index("\n};")]
     assert "history.replaceState(null, '', url)" in nav and "window.location.href = url" in nav
 
+
+
+def test_pull_to_refresh_moves_the_page_like_an_iphone():
+    """מתן (13.10): "שייראה טבעי כמו באייפון — המסך יורד כמו קפיץ, עם סימון
+    טעינה". העמוד עצמו זז (לא רק עיגול צף), בהתנגדות של קפיץ; גלגל עם 8 שפיצים
+    שמופיעים עם המשיכה; בזמן הרענון העמוד מחכה למטה, ואז חוזר בקפיצה רכה."""
+    js = _strip_comments(_read("frontend/static/js/pwa.js"))
+    part = js[js.index("const TRIGGER = SAFE + 58"):js.index("function sfDockOffset") if "function sfDockOffset" in js else None]
+    assert "(1 - 1 / (x * 0.55 / RANGE + 1)) * RANGE" in part
+    assert "root.style.setProperty('--ptr-y', dist + 'px');" in part
+    assert "for (let k = 0; k < 8; k++)" in part and "place(HOLD, true)" in part
+    css = _read("frontend/static/css/style.css")
+    assert "animation: ptr-spin .8s steps(8) infinite" in css
+    # ב-CSS ולא על האלמנטים: הרענון הרך מחליף אותם, והעמוד היה קופץ למעלה
+    assert "body.ptr-active > .page-hero, body.ptr-active > .main-content" in css
