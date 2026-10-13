@@ -2659,16 +2659,16 @@ li.zero-cat-row { display: none; }
     display: flex;
     align-items: center;
     gap: 12px;
-    /* שורה אחת מאז שהשורה שמתחת לכותרת ירדה (מתן, 11.10) — אז נמוכה יותר:
-       כשהכול סגור, ההגדרות נכנסות במסך אחד גם באפליקציה המותקנת */
-    padding: 11px 16px;
+    /* שורה אחת מאז שהשורה שמתחת לכותרת ירדה (מתן, 11.10). הוקטנה אז כדי
+       שהכול ייכנס במסך אחד — ונראתה קצרה מדי; הורחבה שוב (מתן, 13.10) */
+    padding: 17px 18px;
     text-align: right;
     -webkit-tap-highlight-color: transparent;
 }
 
 .group-icon {
-    width: 38px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
     border-radius: var(--radius-sm);
     background: var(--color-gold-dim);
     color: var(--color-gold-text);
@@ -2678,7 +2678,7 @@ li.zero-cat-row { display: none; }
     flex-shrink: 0;
 }
 
-.group-icon svg { width: 18px; height: 18px; }
+.group-icon svg { width: 21px; height: 21px; }
 
 .group-text {
     flex: 1;
@@ -2689,7 +2689,7 @@ li.zero-cat-row { display: none; }
 
 .group-title {
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 1.02rem;
 }
 
 .group-chevron {

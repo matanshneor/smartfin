@@ -955,11 +955,11 @@ def passkey_login_verify_route():
 # פנים." ההתחברות עצמה נשארת (‎web_sessions‎); הנעילה היא שכבה מעליה:
 #   • רק בטלפון שבו Face ID כבר עבד (כניסה או הפעלה) — ‎face_lock‎ בסשן.
 #     במכשיר שלא יכול לסרוק, נעילה הייתה סיסמה כל חמש דקות.
-#   • ננעל אחרי 5 דקות בלי בקשה לשרת. כשהאפליקציה פתוחה ‎js/face-lock.js‎
-#     שולח דופק כל דקה, אז בפועל: 5 דקות ברקע (מתן בחר, 13.10).
+#   • ננעל אחרי דקה בלי בקשה לשרת (מתן, 13.10: 5 דקות, ואז דקה). כשהאפליקציה
+#     פתוחה ‎js/face-lock.js‎ שולח דופק כל 20 שניות, אז בפועל: דקה ברקע.
 #   • נעול → כל עמוד מפנה ל-‎/unlock‎, וכל קריאת API מקבלת ‎423‎.
 #   • ‎/unlock‎: סריקה (נפתחת לבד), "נסו שוב", ו"כניסה עם סיסמה".
-_LOCK_AFTER = 5 * 60
+_LOCK_AFTER = 60
 # מה שמותר גם כשנעול: מסך הנעילה וכל מה שהוא צריך, ויציאה
 _OPEN_WHEN_LOCKED = {"unlock_page", "unlock_verify", "unlock_with_password", "passkey_login_options_route",
                      "logout", "static", "login", "manifest", "service_worker", "health"}
@@ -1070,7 +1070,7 @@ def passkey_register_verify_route():
     data, err = db.passkey_register_verify(session.get("access_token"), challenge_id, credential)
     if err:
         return _passkey_error(err)
-    _face_lock_on()          # הטלפון הזה סורק — מעכשיו ננעל אחרי 5 דקות ברקע
+    _face_lock_on()          # הטלפון הזה סורק — מעכשיו ננעל אחרי דקה ברקע
     return jsonify({"ok": True, "id": (data or {}).get("id")})
 
 
