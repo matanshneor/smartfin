@@ -71,9 +71,11 @@ def test_a_conflict_that_is_not_a_duplicate_still_raises():
 
 def test_the_average_divides_by_the_window_and_not_by_what_it_found():
     """חודש בלי הוצאה בקטגוריה הוא ₪0, לא חודש שלא קרה."""
-    body = _fn("category_monthly_averages")
+    # החלוקה עצמה עברה לפונקציה המשותפת לשליפה הנפרדת ול-‎get_settings_page‎
+    assert "category_averages_from_totals(totals)" in _fn("category_monthly_averages")
+    body = _fn("category_averages_from_totals")
 
-    assert "_HISTORY_MONTHS" in body, "הממוצע עדיין מחולק במספר החודשים שנמצאו"
+    assert "/ _HISTORY_MONTHS" in body, "הממוצע עדיין מחולק במספר החודשים שנמצאו"
     assert "/ len(past)" not in body
 
 

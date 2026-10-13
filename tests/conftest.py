@@ -84,11 +84,25 @@ def _unit_tests_cannot_reach_supabase(request, monkeypatch):
             "monkeypatch על הפונקציה שנקראה, או שהבדיקה הזאת אינה unit."
         )
 
+    _real_home_page = db.fetch_home_page
+    _real_settings_page = db.fetch_settings_page
     monkeypatch.setattr(db, "get_client", _refuse)
     # המייל העדכני מ-Supabase (‎_current_email‎ ב-app). ברירת מחדל בבדיקות:
     # "אי אפשר לדעת" — והאפליקציה נופלת למייל שבסשן, כמו לפני 1.10.
     # בדיקה שצריכה מייל אחר מחליפה את זה בעצמה.
     monkeypatch.setattr(db, "get_auth_email", lambda token: (None, None))
+    # דף הבית בנסיעה אחת (‎get_home_page‎, מתן 13.10). ברירת מחדל: "לא זמינה",
+    # כך שבדיקות דף הבית הקיימות — שמחליפות כל שליפה בנפרד — עוברות בדרך
+    # החלופית. הדרך הראשית נבדקת ב-‎test_home_page_rpc.py‎.
+    def _no_home_page(*a, **k):
+        raise db.DataUnavailable("fetch_home_page: unit default")
+    monkeypatch.setattr(db, "fetch_home_page", _no_home_page)
+    monkeypatch.setattr(db, "_real_fetch_home_page", _real_home_page, raising=False)
+    # וכך גם עמוד ההגדרות (‎get_settings_page‎) — ‎test_settings_page_rpc.py‎
+    def _no_settings_page(*a, **k):
+        raise db.DataUnavailable("fetch_settings_page: unit default")
+    monkeypatch.setattr(db, "fetch_settings_page", _no_settings_page)
+    monkeypatch.setattr(db, "_real_fetch_settings_page", _real_settings_page, raising=False)
     # הממוצע החודשי לכל קטגוריה בהגדרות (רעיון 38) — ברירת מחדל: אין
     _real_averages = db.category_monthly_averages
     monkeypatch.setattr(db, "category_monthly_averages", lambda *a, **k: {})
