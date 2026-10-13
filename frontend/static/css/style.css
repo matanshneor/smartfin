@@ -4635,8 +4635,10 @@ body.settings-page .main-content {
     padding-bottom: calc(var(--dock-height) + var(--dock-gap) + env(safe-area-inset-bottom, 0px) + 16px);
 }
 /* התנתקות ו"כתבו לנו" בתחתית המסך (מתן, 13.10): העמוד ממלא לפחות את גובה
-   המסך, והתחתית נדחפת למטה. כשתיבה פתוחה והעמוד ארוך — פשוט בסוף, כרגיל. */
-body.settings-page { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
+   המסך, והתחתית נדחפת למטה. כשתיבה פתוחה והעמוד ארוך — פשוט בסוף, כרגיל.
+   הגובה המינימלי נשאר זה של ‎body‎ (‎100lvh + 1px‎): ‎100dvh‎ כאן החזיר את
+   הבאג של 30.9 — בעמוד שלא גבוה מהמסך התפריט התחתון עולה (מתן, 13.10). */
+body.settings-page { display: flex; flex-direction: column; }
 body.settings-page > .main-content { flex: 1 0 auto; display: flex; flex-direction: column; width: 100%; }
 body.settings-page .settings-groups { flex: 1 0 auto; }
 .settings-footer { margin-top: auto; padding-top: 16px; }

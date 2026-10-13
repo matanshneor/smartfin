@@ -97,4 +97,7 @@ def test_logout_and_contact_sit_at_the_bottom_of_the_settings_page():
     assert footer.index("logout-form") < footer.index("settings-contact") < footer.index("</div>\n\n</div>")
     css = (_ROOT / "frontend/static/css/style.css").read_text(encoding="utf-8")
     assert ".settings-footer { margin-top: auto;" in css
-    assert "body.settings-page { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }" in css
+    assert "body.settings-page { display: flex; flex-direction: column; }" in css
+    # מתן (13.10): ‎100dvh‎ כאן החזיר את הבאג של 30.9 — התפריט התחתון עלה
+    rule = css[css.index("body.settings-page { display: flex"):]
+    assert "dvh" not in rule[:rule.index("}")]
