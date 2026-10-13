@@ -468,8 +468,8 @@
     }
 
     /* ── "שמירת השינויים" רק כשמשהו השתנה (מתן, 12.10) ──
-     * צילום של הטופס ברגע שהעריכה נפתחה; כל עוד הטופס זהה לו — הכפתור אפור,
-     * "אין שינויים", ולחיצה לא שומרת. חזרה לערך המקורי — שוב אפור. */
+     * צילום של הטופס ברגע שהעריכה נפתחה; כל עוד הטופס זהה לו — הכפתור אפור
+     * (אותו כיתוב), ולחיצה לא שומרת. חזרה לערך המקורי — שוב אפור. */
     let editSnapshot = null;
     function formSnapshot() {
         return JSON.stringify([amountValue() || 0, currentType, txCategory.value, txProjectCategory.value,
@@ -486,7 +486,8 @@
         submitBtn.classList.toggle('is-unchanged', same);
         if (same) submitBtn.setAttribute('aria-disabled', 'true');
         else submitBtn.removeAttribute('aria-disabled');
-        if (editId) { submitLabel.textContent = same ? 'אין שינויים' : 'שמירת השינויים'; return; }
+        // אותו כיתוב תמיד — רק כבוי או פעיל (מתן, 13.10: "שלא יהיה רשום אין שינויים")
+        if (editId) { submitLabel.textContent = 'שמירת השינויים'; return; }
         submitLabel.textContent = TYPE_LABELS[currentType];
     }
 
@@ -1261,7 +1262,7 @@
     txForm.addEventListener('submit', function (e) {
         e.preventDefault();
         if (isSubmitting) return;
-        if (isUnchanged()) return;              // "אין שינויים" — אין מה לשמור
+        if (isUnchanged()) return;              // הכפתור כבוי — אין מה לשמור
         formError.textContent = '';
         txAmount.removeAttribute('aria-invalid');
 

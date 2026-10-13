@@ -2063,7 +2063,7 @@ label.submit-btn.is-busy { cursor: default; }
 }
 .tx-series-link[hidden] { display: none; }
 
-/* עריכה בלי שינוי — "אין שינויים", אפור (מתן, 12.10) */
+/* עריכה בלי שינוי — הכפתור אפור, אותו כיתוב (מתן, 12.10; 13.10) */
 label.submit-btn.is-unchanged,
 #modalOverlay label.submit-btn.is-unchanged,
 :root[data-theme="dark"] #modalOverlay label.submit-btn.is-unchanged {
@@ -2661,14 +2661,14 @@ li.zero-cat-row { display: none; }
     gap: 12px;
     /* שורה אחת מאז שהשורה שמתחת לכותרת ירדה (מתן, 11.10). הוקטנה אז כדי
        שהכול ייכנס במסך אחד — ונראתה קצרה מדי; הורחבה שוב (מתן, 13.10) */
-    padding: 17px 18px;
+    padding: 14px 17px;
     text-align: right;
     -webkit-tap-highlight-color: transparent;
 }
 
 .group-icon {
-    width: 44px;
-    height: 44px;
+    width: 42px;
+    height: 42px;
     border-radius: var(--radius-sm);
     background: var(--color-gold-dim);
     color: var(--color-gold-text);
@@ -2678,7 +2678,7 @@ li.zero-cat-row { display: none; }
     flex-shrink: 0;
 }
 
-.group-icon svg { width: 21px; height: 21px; }
+.group-icon svg { width: 20px; height: 20px; }
 
 .group-text {
     flex: 1;
@@ -5493,3 +5493,9 @@ body.tx-screen-open { overflow: hidden; }
 .acct-note { margin: 0 0 10px; }
 .acct-list .password-form { margin-top: 2px; }
 .acct-list .password-form.visible, .acct-list .account-edit.visible { padding-bottom: 12px; }
+
+/* "שמירה" כבוי עד שמשנים משהו (מתן, 13.10) — אותו מראה כמו בחלון העסקה */
+.btn-primary:disabled, .project-save-btn:disabled {
+    background: var(--color-input); color: var(--color-text-muted);
+    box-shadow: none; cursor: default; opacity: 1;
+}

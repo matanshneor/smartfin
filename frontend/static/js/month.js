@@ -582,6 +582,7 @@ window.addEventListener('sf:refreshed', paint);
             input.step = '1';
             input.placeholder = 'אין';
             input.value = r.budget ? Math.round(r.budget) : '';
+            input.defaultValue = input.value;               // "שמירה" כבוי עד ששינו (מתן, 13.10)
             input.dataset.cat = r.category_id;
             input.dataset.old = r.budget ? String(Math.round(r.budget)) : '';
             input.dataset.alert = r.budget_alert === false ? 'false' : 'true';
@@ -600,6 +601,7 @@ window.addEventListener('sf:refreshed', paint);
         actions.innerHTML = '<button type="button" class="btn-sm btn-primary" data-save>שמירה</button>'
                           + '<button type="button" class="btn-sm btn-ghost" data-cancel>ביטול</button>';
         card.appendChild(actions);
+        if (window.sfSaveWhenChanged) window.sfSaveWhenChanged(card, actions.querySelector('[data-save]'));
         sheet.appendChild(card);
         document.body.appendChild(sheet);
 

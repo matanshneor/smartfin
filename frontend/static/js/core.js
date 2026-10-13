@@ -44,6 +44,36 @@ window.sfCount = function (n, one, many) {
     return n === 1 ? one : n + ' ' + many;
 };
 
+/* כפתור שמירה דולק רק כשמשהו השתנה (מתן, 13.10 — "בכל המקומות שאפשר לשמור").
+ * הכיתוב לא משתנה; רק כבוי או פעיל. "השתנה" = שונה מהערך השמור, ‎defaultValue‎
+ * / ‎defaultChecked‎ של כל שדה בטופס — כך גם "ביטול" והחזרה לערך המקורי מכבים.
+ * ‎commit()‎ אחרי שמירה מוצלחת: הערכים החדשים הם עכשיו השמורים. */
+window.sfSaveWhenChanged = function (scope, button) {
+    if (!scope || !button) return null;
+    function changed() {
+        return Array.prototype.some.call(scope.querySelectorAll('input:not([type="hidden"]), select, textarea'), function (el) {
+            if (el.type === 'checkbox' || el.type === 'radio') return el.checked !== el.defaultChecked;
+            if (el.tagName === 'SELECT') {
+                const def = Array.prototype.find.call(el.options, function (o) { return o.defaultSelected; });
+                return el.value !== (def ? def.value : (el.options[0] || {}).value);
+            }
+            return el.value.trim() !== el.defaultValue.trim();
+        });
+    }
+    function sync() { button.disabled = !changed(); }
+    function commit() {
+        scope.querySelectorAll('input:not([type="hidden"]), textarea').forEach(function (el) {
+            if (el.type === 'checkbox' || el.type === 'radio') el.defaultChecked = el.checked;
+            else el.defaultValue = el.value;
+        });
+        sync();
+    }
+    scope.addEventListener('input', sync);
+    scope.addEventListener('change', sync);
+    sync();
+    return { sync: sync, commit: commit, changed: changed };
+};
+
 window.sfToastAfterReload = function (message) {
     try { sessionStorage.setItem('sf_toast', message); } catch (e) { /* בלי הודעה, לא בלי טעינה */ }
 };
