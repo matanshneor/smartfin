@@ -157,7 +157,7 @@
     <script type="application/json" id="sf-budgets">{{ expense_breakdown | selectattr('category_id') | list | tojson }}</script>
     {% endif %}
     {% if expense_active %}
-    <div class="donut-row">
+    <div class="donut-row{% if fixed_split %} has-split{% endif %}">
         <div class="doughnut-wrap">
             <canvas id="expenseChart" role="img" aria-label="גרף הוצאות לפי קטגוריה"></canvas>
             <div class="doughnut-center">
@@ -221,12 +221,10 @@
             </div>
 
             {# תקציב יעד, אם המשפחה קבעה אחד לקטגוריה הזאת. האחוז למעלה
-               מודד כמה הקטגוריה מתוך סך ההוצאות; זה מודד מול ההחלטה. #}
+               מודד כמה הקטגוריה מתוך סך ההוצאות; זה מודד מול ההחלטה.
+               רק המשפט, בלי פס (מתן, 13.10: "הקו לא יעיל ולא אינפורמטיבי"). #}
             {% if item.budget %}
             <div class="cat-budget {% if item.budget_over %}over{% endif %}">
-                <div class="cat-budget-track">
-                    <div class="cat-budget-fill" style="width: {{ item.budget_pct }}%;"></div>
-                </div>
                 {# בחודש שנגמר אין "נשאר" — אין מה להוציא יותר. הניסוח
                    הזה הציג לחודש מרץ משפט שנכון רק להיום, ועוד מול
                    הסכום שקבוע **עכשיו**: התקציב נשמר כמפה גלובלית לפי

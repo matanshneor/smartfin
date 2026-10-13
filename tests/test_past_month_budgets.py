@@ -121,21 +121,12 @@ def test_an_overrun_reads_the_same_either_way():
         assert _budget_text(html) == "חריגה של ₪300 מתוך ₪2,000"
 
 
-def test_the_bar_itself_still_appears_in_a_closed_month():
-    """ההחלטה הייתה לשמור את הפס ולשנות רק את המילים — בלעדיו אי אפשר
-    להסתכל אחורה ולראות איפה חרגת."""
-    import re
+def test_a_closed_month_shows_the_sentence_without_a_bar():
+    """מתן (13.10): "הקו לא יעיל ולא אינפורמטיבי" — רק המשפט. בחודש שנגמר
+    המשפט עדיין אומר כמה יצא מול התקציב, אז אפשר להסתכל אחורה."""
     html = _render(_breakdown(spent=1500), is_current=False)
-
-    bar = re.search(r'<div class="cat-budget[ "].*?</div>\s*</div>', html, re.S)
-    assert bar, "אזור התקציב לא רונדר"
-    bar = bar.group(0)
-
-    assert "cat-budget-track" in bar and "cat-budget-fill" in bar
-    # "קיים ב-HTML" אינו "נראה על המסך". מוטציה ששמה ‎display:none‎
-    # על המסלול שרדה את הגרסה הראשונה של הבדיקה הזאת.
-    assert "display:none" not in bar.replace(" ", "")
-    assert 'width: 75%' in bar, f"הפס לא משקף 1,500 מתוך 2,000: {bar}"
+    assert "cat-budget-track" not in html and "cat-budget-fill" not in html
+    assert _budget_text(html) == "₪1,500 מתוך תקציב של ₪2,000"
 
 
 def test_the_number_shown_is_what_was_actually_spent():
