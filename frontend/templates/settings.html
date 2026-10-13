@@ -726,28 +726,6 @@
                 </li>
             </ul>
 
-            {# נעילת האפליקציה באמצעות Face ID (מתן, 12.10; מתג — 13.10). מוסתר עד
-               ש-‎js/passkey.js‎ מוודא שהטלפון תומך ושהאפשרות פעילה באתר #}
-            <div class="passkey-settings" id="passkeySettings" hidden>
-                <p class="recurring-group-title">אבטחה</p>
-                <ul class="acct-list">
-                    <li>
-                        <label class="acct-row" for="passkeyToggle">
-                            <span class="acct-icon">{{ ui_icon("face") }}</span>
-                            <span class="acct-text">
-                                <span class="acct-label"><span data-passkey-name>Face ID</span></span>
-                                <span class="acct-value" id="passkeyHint">נעילת האפליקציה באמצעות <span data-passkey-name>Face ID</span></span>
-                            </span>
-                            <span class="pref-switch">
-                                <input type="checkbox" id="passkeyToggle" role="switch">
-                                <span class="pref-slider"></span>
-                            </span>
-                        </label>
-                    </li>
-                </ul>
-                <p class="form-error" id="passkeySettingsError" role="alert"></p>
-            </div>
-
             <div class="group-divider"></div>
             <details class="advanced-options">
                 <summary class="advanced-summary">אפשרויות מתקדמות</summary>
@@ -808,5 +786,4 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 <script src="{{ url_for('static', filename='js/password-eye.js') }}"></script>
-<script src="{{ url_for('static', filename='js/passkey.js') }}"></script>
 {% endblock %}

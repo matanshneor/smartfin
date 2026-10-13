@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 </head>
-<body class="{% block body_class %}{% endblock %}"{% if session.get("face_lock") %} data-face-lock{% endif %}>
+<body class="{% block body_class %}{% endblock %}">
 
     <header class="page-hero">
         <div class="hero-inner">
@@ -343,7 +343,6 @@
 
     <script src="{{ url_for('static', filename='js/net.js') }}"></script>
     <script src="{{ url_for('static', filename='js/auth-guard.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/face-lock.js') }}"></script>
     <script src="{{ url_for('static', filename='js/clipboard.js') }}"></script>
     <script src="{{ url_for('static', filename='js/core.js') }}"></script>
     <script src="{{ url_for('static', filename='js/icon-picker.js') }}"></script>

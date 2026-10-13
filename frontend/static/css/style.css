@@ -1036,40 +1036,6 @@ a.kpi-chip:active { transform: scale(0.97); }
 .owner-7 { background: rgba(47, 115, 133, 0.12); color: #2F7385; }  /* כחול-פטרול */
 .owner-shared { background: rgba(var(--ink-rgb), 0.07); color: var(--color-text-muted); }
 
-/* כניסה עם Face ID (‎js/passkey.js‎, מתן 12.10) */
-.passkey-btn {
-    width: 100%; margin-top: 10px; min-height: 48px; padding: 12px;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    border-radius: var(--radius-sm); border: 1.5px solid var(--color-gold-border);
-    background: var(--color-gold-dim); color: var(--color-gold-text);
-    font: inherit; font-size: 1rem; font-weight: 700; cursor: pointer;
-}
-.passkey-btn[hidden] { display: none; }
-.passkey-btn .ui-icon { width: 1.3em; height: 1.3em; }
-.passkey-btn:disabled { opacity: 0.6; }
-.passkey-settings[hidden], #passkeyEnableBtn[hidden], #passkeyHint[hidden] { display: none; }
-.passkey-list { list-style: none; margin: 0; padding: 0; }
-.passkey-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 0; }
-.passkey-item-name { font-size: 0.85rem; color: var(--color-text-muted); }
-
-/* מסך הנעילה (מתן, 13.10) — רקע ה-hero, הלוגו, ושני כפתורים */
-.unlock-body { background: linear-gradient(180deg, var(--hero-bg-2, #2a2112), var(--hero-bg, #141007)); min-height: 100vh; }
-.unlock-screen {
-    min-height: 100vh; min-height: 100dvh; width: 100%; max-width: 360px; margin: 0 auto; box-sizing: border-box;
-    padding: calc(env(safe-area-inset-top) + 18vh) 24px calc(env(safe-area-inset-bottom) + 32px);
-    display: flex; flex-direction: column; align-items: center; text-align: center;
-}
-.unlock-logo { margin-bottom: 18px; }
-.unlock-title { color: #FFF8E7; font-size: 1.5rem; font-weight: 700; margin: 0; }
-.unlock-sub { color: rgba(255, 248, 231, 0.6); margin: 6px 0 36px; font-size: 0.95rem; }
-.unlock-btn { margin-top: auto; align-self: stretch; width: 100%; }
-.unlock-screen .form-error { color: #F3A79B; min-height: 1.2em; margin: 10px 0 0; }
-.unlock-password { margin-top: 8px; }
-.link-btn {
-    background: none; border: 0; padding: 12px; min-height: 44px; font: inherit; font-size: 0.95rem;
-    color: rgba(255, 248, 231, 0.75); text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
-}
-
 /* החלון מקבל מיקוד בפתיחה בטלפון (במקום הסכום) — בלי מסגרת סביבו */
 .modal-sheet:focus { outline: none; }
 
