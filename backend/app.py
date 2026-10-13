@@ -1808,20 +1808,36 @@ def months():
     user      = get_current_user()
     family_id = user["family_id"]
     _sync_recurring(family_id)
-    archive   = db.get_months_archive(family_id)              if family_id else []
-    trend     = db.monthly_trend(archive, 12)
     now       = clock.now()
+    # נסיעה אחת למסד (מתן, 13.10) — ‎get_months_page‎; אם לא זמינה, כמו קודם
+    page = None
+    if family_id:
+        try:
+            page = _timed("months_page", lambda: db.fetch_months_page(family_id, clock.today()))
+        except db.DataUnavailable:
+            logger.warning("months_page rpc unavailable — falling back to separate queries")
+    if page is not None:
+        _prime_request_cache(family_id, settings=page["settings"], categories=page["categories"],
+                             members=page["members"], family=page["family"])
+    archive   = (page["archive"] if page is not None
+                 else db.get_months_archive(family_id) if family_id else [])
+    trend     = db.monthly_trend(archive, 12)
+    months_shown = [(t["year"], t["month"]) for t in trend[-12:]]
     # "לפי קטגוריה" (מתן, 30.9): אותם חודשים כמו הגרף שמעליו. נשלחים 12, והדפדפן
     # מציג 3 / 6 / 12 לפי הטווח שבוחרים (רעיון 24)
-    cat_trend = db.category_trend(family_id, [(t["year"], t["month"]) for t in trend[-12:]],
-                                  db.get_categories(family_id)) if family_id else None
+    if page is not None:
+        cat_trend = db.category_trend_from_rows(page["expense_rows"], months_shown, page["categories"])
+    else:
+        cat_trend = db.category_trend(family_id, months_shown,
+                                      db.get_categories(family_id)) if family_id else None
     # "הוצאות לפי בן משפחה" לאורך החודשים (רעיון 15) — רק כששיוך ההוצאות פעיל
     # ויש יותר מבן משפחה אחד. קישוט: תקלה לא מפילה את העמוד
     member_series = None
     if family_id and family_settings()["owner_attribution"].get("expense") \
             and len(db.get_family_members(family_id)) > 1:
         try:
-            series = db.member_trend(family_id, [(t["year"], t["month"]) for t in trend[-12:]])
+            series = (db.member_trend_from_rows(page["expense_rows"], months_shown) if page is not None
+                      else db.member_trend(family_id, months_shown))
         except db.DataUnavailable:
             series = []
         mcolors = _member_colors(family_id)
@@ -1843,14 +1859,26 @@ def projects():
     """עמוד פרויקטים: תקציב לפרויקט — טיול, שיפוץ, אירוע ועוד."""
     user      = get_current_user()
     family_id = user["family_id"]
-    project_list = db.get_projects(family_id, user["id"]) if family_id else []
+    # נסיעה אחת למסד (מתן, 13.10) — ‎get_projects_page‎; אם לא זמינה, כמו קודם
+    page = None
+    if family_id:
+        try:
+            page = _timed("projects_page", lambda: db.fetch_projects_page(family_id, user["id"]))
+        except db.DataUnavailable:
+            logger.warning("projects_page rpc unavailable — falling back to separate queries")
+    if page is not None:
+        _prime_request_cache(family_id, settings=page["settings"], members=page["members"],
+                             family=page["family"])
+        project_list, finished, last = page["active"], page["finished"], page["last_activity"]
+    else:
+        project_list = db.get_projects(family_id, user["id"]) if family_id else []
+        # "פרויקטים שהסתיימו" — חלק סגור בתחתית (מתן, 30.9)
+        finished = db.get_projects(family_id, user["id"], archived=True) if family_id else []
+        last = db.project_last_activity(family_id) if len(project_list) > 1 else {}
     # הפרויקט שנוספה לו עסקה לאחרונה — ראשון (מתן, 12.10). בלי עסקאות — אחריהם,
     # בסדר שהגיע (החדש קודם). ‎sorted‎ יציב, אז שני הסדרים נשמרים.
     if len(project_list) > 1:
-        last = db.project_last_activity(family_id)
         project_list = sorted(project_list, key=lambda p: last.get(p["id"]) or "", reverse=True)
-    # "פרויקטים שהסתיימו" — חלק סגור בתחתית (מתן, 30.9)
-    finished = db.get_projects(family_id, user["id"], archived=True) if family_id else []
     return render_template("projects.html", active_page="projects", user=user,
                            projects=project_list, finished_projects=finished)
 

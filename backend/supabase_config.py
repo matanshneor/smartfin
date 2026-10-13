@@ -2711,36 +2711,40 @@ def get_projects(family_id: str, viewer_user_id: str, archived=False) -> list:
         if archived is not None:
             query = query.eq("archived", bool(archived))
         projects = query.order("created_at", desc=True).execute().data
-        visible = [p for p in projects if not p.get("owner_id") or p["owner_id"] == viewer_user_id]
-
-        totals = _project_totals(family_id)
-        out = []
-        for p in visible:
-            t = totals.get(p["id"], {"expense": 0.0, "income": 0.0, "savings": 0.0})
-            # "הסכום הנוכחי" המוצג ברשימה: נטו — הכנסות+חיסכון פחות הוצאות
-            net = t["income"] + t["savings"] - t["expense"]
-            budget = p.get("budget_target")
-            out.append({
-                "id": p["id"], "name": p["name"],
-                "description": p.get("description"),
-                "icon": p.get("icon"),
-                "is_personal": bool(p.get("owner_id")),
-                "owner_id": p.get("owner_id"),
-                "budget_target": float(budget) if budget is not None else None,
-                "amount": round(net, 2),
-                # למלבן ברשימה (מתן, 12.10): "נשארו ₪X מתוך ₪Y" — אותו חישוב
-                # כמו בעמוד הפרויקט (‎spent‎ = הוצאות בלבד)
-                "spent": round(t["expense"], 2),
-                "saved": round(t["savings"], 2),
-                "track_expense": p.get("track_expense", True),
-                "track_income": p.get("track_income", False),
-                "track_savings": p.get("track_savings", False),
-                "archived": bool(p.get("archived")),
-            })
-        return out
+        return projects_from_rows(projects, _project_totals(family_id), viewer_user_id)
     except Exception as e:
         logger.exception("get_projects")
         raise DataUnavailable("get_projects") from e
+
+
+def projects_from_rows(projects: list, totals: dict, viewer_user_id: str) -> list:
+    """רשימת הפרויקטים מתוך שורות וסכומים שכבר נשלפו — גם עבור ‎get_projects_page‎.
+    פרויקט אישי של בן משפחה אחר לא נכלל (הפרטיות היא בתוך המשפחה)."""
+    visible = [p for p in projects if not p.get("owner_id") or p["owner_id"] == viewer_user_id]
+    out = []
+    for p in visible:
+        t = totals.get(p["id"], {"expense": 0.0, "income": 0.0, "savings": 0.0})
+        # "הסכום הנוכחי" המוצג ברשימה: נטו — הכנסות+חיסכון פחות הוצאות
+        net = t["income"] + t["savings"] - t["expense"]
+        budget = p.get("budget_target")
+        out.append({
+            "id": p["id"], "name": p["name"],
+            "description": p.get("description"),
+            "icon": p.get("icon"),
+            "is_personal": bool(p.get("owner_id")),
+            "owner_id": p.get("owner_id"),
+            "budget_target": float(budget) if budget is not None else None,
+            "amount": round(net, 2),
+            # למלבן ברשימה (מתן, 12.10): "נשארו ₪X מתוך ₪Y" — אותו חישוב
+            # כמו בעמוד הפרויקט (‎spent‎ = הוצאות בלבד)
+            "spent": round(t["expense"], 2),
+            "saved": round(t["savings"], 2),
+            "track_expense": p.get("track_expense", True),
+            "track_income": p.get("track_income", False),
+            "track_savings": p.get("track_savings", False),
+            "archived": bool(p.get("archived")),
+        })
+    return out
 
 
 def _project_totals(family_id: str) -> dict:
@@ -3335,6 +3339,75 @@ def fetch_settings_page(family_id: str, today, viewer_user_id: str) -> dict:
     }
 
 
+def _members_first_names(members: list) -> list:
+    """זהה ל-‎_fetch_family_members‎: שם פרטי לתצוגה, והמלא לצדו."""
+    for m in members:
+        m["full_name"] = m.get("name", "")
+        m["name"] = first_name(m.get("name", ""))
+    return members
+
+
+def fetch_projects_page(family_id: str, viewer_user_id: str) -> dict:
+    """עמוד הפרויקטים בנסיעה אחת (מתן, 13.10) — ראו
+    ‎20261013130000_projects_and_months_page_fn.sql‎. ‎DataUnavailable‎ בכשל."""
+    client = get_client()
+    if not client:
+        raise DataUnavailable("fetch_projects_page: no client")
+    try:
+        data = client.rpc("get_projects_page", {"p_family_id": family_id}).execute().data
+    except Exception as e:
+        raise DataUnavailable("fetch_projects_page") from e
+    if not data:
+        raise DataUnavailable("fetch_projects_page: empty")
+    family = data.get("family") or {}
+    # זהה ל-‎_project_totals‎
+    totals = {pid: {k: float((t or {}).get(k) or 0) for k in ("expense", "income", "savings")}
+              for pid, t in (data.get("totals") or {}).items()}
+    rows = data.get("projects") or []
+    return {
+        "family":   family,
+        "settings": _merge_settings(DEFAULT_FAMILY_SETTINGS, family.get("settings") or {}),
+        "members":  _members_first_names(data.get("members") or []),
+        "active":   projects_from_rows([p for p in rows if not p.get("archived")], totals, viewer_user_id),
+        "finished": projects_from_rows([p for p in rows if p.get("archived")], totals, viewer_user_id),
+        "last_activity": {pid: str(d or "")[:10] for pid, d in (data.get("last_activity") or {}).items()},
+    }
+
+
+def months_window(today) -> tuple:
+    """‎(מ-, עד-לא-כולל)‎: 12 החודשים שעד החודש הנוכחי — החלון של ‎monthly_trend‎."""
+    last = today.year * 12 + today.month - 1
+    first = last - 11
+    nxt = last + 1
+    return (f"{first // 12:04d}-{first % 12 + 1:02d}-01", f"{nxt // 12:04d}-{nxt % 12 + 1:02d}-01")
+
+
+def fetch_months_page(family_id: str, today) -> dict:
+    """עמוד ההשוואה בנסיעה אחת (מתן, 13.10). ההוצאות של החלון נשלפות פעם אחת
+    ומזינות גם את "לפי קטגוריה" וגם את "לפי בן משפחה". ‎DataUnavailable‎ בכשל."""
+    client = get_client()
+    if not client:
+        raise DataUnavailable("fetch_months_page: no client")
+    start, end = months_window(today)
+    try:
+        data = client.rpc("get_months_page", {
+            "p_family_id": family_id, "p_from": start, "p_to": end,
+        }).execute().data
+    except Exception as e:
+        raise DataUnavailable("fetch_months_page") from e
+    if not data:
+        raise DataUnavailable("fetch_months_page: empty")
+    family = data.get("family") or {}
+    return {
+        "family":       family,
+        "settings":     _merge_settings(DEFAULT_FAMILY_SETTINGS, family.get("settings") or {}),
+        "members":      _members_first_names(data.get("members") or []),
+        "categories":   data.get("categories") or [],
+        "archive":      data.get("archive") or [],
+        "expense_rows": data.get("expense_rows") or [],
+    }
+
+
 def fetch_month_rows(family_id: str, year: int, month: int) -> list:
     """כל שורות החודש, כולל עסקאות פרויקט, עם כל השיוכים.
 
@@ -3672,7 +3745,15 @@ def category_trend(family_id: str, months: list, categories: list, today=None) -
                           .order("id"))
     except Exception as e:
         raise DataUnavailable("category_trend") from e
+    return category_trend_from_rows(rows, months, categories, today)
 
+
+def category_trend_from_rows(rows: list, months: list, categories: list, today=None) -> dict:
+    """החלק של ‎category_trend‎ שאחרי השליפה — גם עבור ‎get_months_page‎.
+    שורות מחוץ ל-‎months‎ נזרקות, אז חלון רחב יותר לא משנה את התוצאה."""
+    today = today or clock.today()
+    if not months:
+        return {"months": [], "categories": []}
     index = {(y, m): i for i, (y, m) in enumerate(months)}
     names = {c["id"]: c for c in categories}
     totals, items = {}, {}
@@ -3734,6 +3815,13 @@ def member_trend(family_id: str, months: list) -> list:
                           .order("id"))
     except Exception as e:
         raise DataUnavailable("member_trend") from e
+    return member_trend_from_rows(rows, months)
+
+
+def member_trend_from_rows(rows: list, months: list) -> list:
+    """החלק של ‎member_trend‎ שאחרי השליפה — גם עבור ‎get_months_page‎."""
+    if not months:
+        return []
     index = {(y, m): i for i, (y, m) in enumerate(months)}
     out: dict = {}
     for r in rows:

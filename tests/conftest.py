@@ -107,6 +107,13 @@ def _unit_tests_cannot_reach_supabase(request, monkeypatch):
     # "ספטמבר נסגר" רק ביום הראשון של החודש — בלי זה כל בדיקות דף הבית היו
     # נכשלות כשהן רצות ב-1 לחודש. ‎test_month_recap.py‎ בודק את האמיתית.
     monkeypatch.setattr(db, "month_recap", lambda *a, **k: None)
+    # פרויקטים והשוואה בנסיעה אחת — ברירת מחדל "לא זמינה", כמו הבית וההגדרות.
+    # ‎test_projects_months_rpc.py‎ בודק את האמיתיות.
+    for _name in ("fetch_projects_page", "fetch_months_page"):
+        monkeypatch.setattr(db, "_real_" + _name, getattr(db, _name), raising=False)
+        def _unavailable(*a, _n=_name, **k):
+            raise db.DataUnavailable(_n + ": unit default")
+        monkeypatch.setattr(db, _name, _unavailable)
     monkeypatch.setattr(db, "_real_month_recap", _real_recap, raising=False)
     # הממוצע החודשי לכל קטגוריה בהגדרות (רעיון 38) — ברירת מחדל: אין
     _real_averages = db.category_monthly_averages
