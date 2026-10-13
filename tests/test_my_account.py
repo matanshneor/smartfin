@@ -66,7 +66,9 @@ def test_fixed_and_variable_sit_small_beside_the_donut():
     """מתן (13.10): "בלי הפס ובלי הכיתוב — שיהיה כתוב בצד הגרף בקטן"."""
     tpl = (_ROOT / "frontend/templates/month.html").read_text(encoding="utf-8")
     assert "fixed-split" not in tpl
-    assert 'class="split-corner split-fixed"' in tpl and 'class="split-corner split-variable"' in tpl
+    corner = tpl[tpl.index('<div class="split-corner">'):]
+    corner = corner[:corner.index("</div>")]
+    assert "קבועות" in corner and "משתנות" in corner          # שתיהן באותו צד
     src = (_ROOT / "backend/app.py").read_text(encoding="utf-8")
     assert 'fixed_split = {"fixed": fixed_total, "variable": round(exp_total - fixed_total, 2)}' in src
 
