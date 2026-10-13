@@ -75,6 +75,7 @@ if (cancelBtn) {
     cancelBtn.addEventListener('click', function () {
         nameEdit.classList.remove('visible');
         nameInput.value = nameDisplay.textContent;
+        nameEdit.dispatchEvent(new Event('input'));      // "שמירה" חוזר לכבוי
     });
 }
 
@@ -93,6 +94,7 @@ if (saveBtn) {
             saveBtn.disabled = false;
             if (d.status === 'ok') {
                 nameDisplay.textContent = newName;
+                nameInput.defaultValue = newName;           // השם השמור — "שמירה" כבוי עד שינוי הבא
                 // גם השם בראש העמוד — בלי זה הוא נשאר הישן עד רענון
                 document.querySelectorAll('.settings-family-name').forEach(el => { el.textContent = newName; });
                 nameEdit.classList.remove('visible');
@@ -357,6 +359,9 @@ document.addEventListener('click', function (e) {
     // ערכי המשתמש נכתבים דרך .value (לא אינטרפולציה) — בטוח מ-attribute-XSS
     row.querySelector('.cat-edit-icon').value = origIcon;
     row.querySelector('.cat-edit-name').value = origName;
+    row.querySelector('.cat-edit-icon').defaultValue = origIcon;
+    row.querySelector('.cat-edit-name').defaultValue = origName;
+    if (window.sfSaveWhenChanged) window.sfSaveWhenChanged(row.querySelector('.cat-edit-form'), row.querySelector('.cat-edit-save'));
     row.querySelector('.cat-edit-name').focus();
 });
 
@@ -495,6 +500,9 @@ if (cancelProfileBtn) {
     cancelProfileBtn.addEventListener('click', function () {
         profileEdit.classList.remove('visible');
         profileError.textContent = '';
+        // "ביטול" באמת מבטל — חזרה לשמור, ו"שמירה" כבוי (מתן, 13.10)
+        profileEdit.querySelectorAll('input').forEach(function (el) { el.value = el.defaultValue; });
+        profileEdit.dispatchEvent(new Event('input'));
     });
 }
 
@@ -529,6 +537,9 @@ function submitProfile(workplaceScope) {
         // הערך השמור הוא עכשיו נקודת ההשוואה. בלי זה "שינית את מקום העבודה"
         // נשאל שוב בכל שמירה הבאה של הפרופיל, גם כשלא נגעו בו.
         document.getElementById('editWorkplace').defaultValue = d.workplace || '';
+        document.getElementById('editFirstName').defaultValue = document.getElementById('editFirstName').value;
+        document.getElementById('editLastName').defaultValue = document.getElementById('editLastName').value;
+        profileEdit.dispatchEvent(new Event('input'));
 
         profileEdit.classList.remove('visible');
     })
@@ -584,6 +595,7 @@ function resetPasswordForm() {
     document.getElementById('newPasswordConfirm').value = '';
     document.getElementById('passwordError').textContent = '';
     document.getElementById('passwordSuccess').textContent = '';
+    document.getElementById('passwordForm').dispatchEvent(new Event('input'));
 }
 
 if (togglePasswordBtn) {
@@ -682,6 +694,7 @@ function resetEmailForm() {
     document.getElementById('newEmail').value = '';
     document.getElementById('emailCurrentPassword').value = '';
     document.getElementById('emailError').textContent = '';
+    document.getElementById('emailForm').dispatchEvent(new Event('input'));
 }
 function closeEmailForm() { document.getElementById('emailForm').classList.remove('visible'); resetEmailForm(); }
 toggleForm('toggleEmailBtn', 'emailForm', resetEmailForm);
@@ -725,6 +738,7 @@ function resetPhoneForm() {
     if (phoneInput) phoneInput.value = phoneInput.defaultValue;
     const err = document.getElementById('phoneError');
     if (err) err.textContent = '';
+    document.getElementById('phoneForm').dispatchEvent(new Event('input'));
 }
 function closePhoneForm() { document.getElementById('phoneForm').classList.remove('visible'); resetPhoneForm(); }
 toggleForm('togglePhoneBtn', 'phoneForm', resetPhoneForm);
@@ -1416,4 +1430,17 @@ attrSwitches.forEach(function (sw) {
             form.submit();
         });
     });
+})();
+
+
+// ── "שמירה" דולק רק כשמשהו השתנה (מתן, 13.10) ──
+// בכל טופס עריכה בהגדרות: כבוי כשהכול כמו השמור, דולק כששינו משהו. הכיתוב
+// לא משתנה. ראו ‎sfSaveWhenChanged‎ ב-core.js.
+(function () {
+    if (!window.sfSaveWhenChanged) return;
+    [['familyNameEdit', 'saveFamilyNameBtn'], ['profileEdit', 'saveProfileBtn'],
+     ['emailForm', 'saveEmailBtn'], ['phoneForm', 'savePhoneBtn'], ['passwordForm', 'changePasswordBtn']]
+        .forEach(function (pair) {
+            window.sfSaveWhenChanged(document.getElementById(pair[0]), document.getElementById(pair[1]));
+        });
 })();

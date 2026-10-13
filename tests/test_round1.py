@@ -95,7 +95,9 @@ def test_recurring_transactions_have_no_duplicate_button():
 def test_save_is_grey_until_something_changes():
     tx = _read(_JS / "transactions.js")
     assert "editSnapshot = formSnapshot();" in tx
-    assert "submitLabel.textContent = same ? 'אין שינויים' : 'שמירת השינויים';" in tx
+    # מאז 13.10 — אותו כיתוב, רק כבוי/פעיל ("שלא יהיה רשום אין שינויים")
+    assert "if (editId) { submitLabel.textContent = 'שמירת השינויים'; return; }" in tx
+    assert "'אין שינויים'" not in tx
     assert "if (isUnchanged()) return;" in tx
     assert "label.submit-btn.is-unchanged" in _CSS
 

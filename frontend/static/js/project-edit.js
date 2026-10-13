@@ -65,6 +65,7 @@ function showOwnership() {
     ownershipNote.textContent = ownership === 'share'
         ? 'הפרויקט יהפוך למשותף בשמירה'
         : 'הפרויקט יחזור להיות אישי בשמירה';
+    syncSave();
 }
 
 if (shareBtn) {
@@ -170,7 +171,13 @@ function rowHTML(c) {
     `;
 }
 
+// "שמירת השינויים" דולק רק כשמשהו השתנה — פרטים, בעלות או קטגוריות (מתן, 13.10)
+function syncSave() { saveBtn.disabled = !isDirty(); }
+editForm.addEventListener('input', syncSave);
+editForm.addEventListener('change', syncSave);
+
 function render() {
+    syncSave();
     updateCount();
     if (!loaded) return;
     catList.innerHTML = '';
@@ -448,4 +455,5 @@ document.addEventListener('click', function (e) {
         window.location.href = link.href;
     });
 });
+syncSave();
 })();
