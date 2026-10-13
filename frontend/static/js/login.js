@@ -103,6 +103,82 @@ if (window.location.hash.includes('type=recovery')) {
  * שורפת מהמכסה של 10 לדקה, ומי שחצה אותה נחת על דף שגיאה בלי מוצא.
  */
 (function () {
+    /* הרשמה: כל בעיה מתחת לשדה שלה, בזמן ההקלדה (מתן, 13.10).
+     *
+     * עד עכשיו השרת החזיר שגיאה אחת בכל פעם, למעלה, ושני שדות הסיסמה
+     * התרוקנו — מי שטעה בשלושה שדות שלח ארבע פעמים והקליד את הסיסמה ארבע
+     * פעמים. הכללים זהים לאלה שבשרת (‎_EMAIL_RE‎, ‎_PHONE_RE‎ ב-app.py), שנשאר
+     * הבודק האחרון. שדה מתחיל להיבדק רק אחרי שעזבו אותו, כדי שלא יצעק "לא
+     * תקין" באמצע ההקלדה הראשונה; משם — בכל הקשה, כך שהתיקון נראה מיד. */
+    const EMAIL_RE = /^[^@\s]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/;
+    const PHONE_RE = /^0(5\d|7\d|[2-4689])\d{7}$/;
+
+    function phoneDigits(raw) {
+        let d = (raw || '').replace(/\D/g, '');
+        if (d.indexOf('972') === 0) d = '0' + d.slice(3);
+        return d;
+    }
+
+    const RULES = {
+        first_name: function (v) { return v.trim() ? '' : 'נא למלא שם פרטי'; },
+        last_name:  function (v) { return v.trim() ? '' : 'נא למלא שם משפחה'; },
+        signup_email: function (v) {
+            v = v.trim();
+            if (!v) return 'נא למלא מייל';
+            if (v.indexOf('@') < 0) return 'חסר @ במייל';
+            if (!/@[^@]+\.[^@.]+$/.test(v)) return 'המייל חסר סיומת — למשל ‎@gmail.com‎';
+            return EMAIL_RE.test(v) ? '' : 'כתובת המייל אינה תקינה';
+        },
+        phone: function (v) {
+            if (!v.trim()) return 'נא למלא טלפון';
+            return PHONE_RE.test(phoneDigits(v)) ? '' : 'מספר הטלפון אינו תקין — למשל 050-1234567';
+        },
+        signup_password: function (v) {
+            if (!v) return 'נא לבחור סיסמה';
+            return v.length >= 6 ? '' : (6 - v.length === 1 ? 'עוד תו אחד' : 'עוד ' + (6 - v.length) + ' תווים');
+        },
+    };
+
+    function signupChecks(form) {
+        if (!form) return;
+        const touched = {};
+
+        function check(id) {
+            const input = document.getElementById(id);
+            const out = document.getElementById(id + '_error');
+            if (!input || !out) return true;
+            const msg = RULES[id](input.value);
+            out.textContent = msg;
+            out.hidden = !msg;
+            input.setAttribute('aria-invalid', msg ? 'true' : 'false');
+            if (msg) input.setAttribute('aria-describedby', out.id);
+            else input.removeAttribute('aria-describedby');
+            return !msg;
+        }
+
+        Object.keys(RULES).forEach(function (id) {
+            const input = document.getElementById(id);
+            if (!input) return;
+            input.addEventListener('blur', function () {
+                if (input.value) touched[id] = true;
+                if (touched[id]) check(id);
+            });
+            input.addEventListener('input', function () { if (touched[id]) check(id); });
+        });
+
+        form.addEventListener('submit', function (e) {
+            let first = null;
+            Object.keys(RULES).forEach(function (id) {
+                touched[id] = true;
+                if (!check(id) && !first) first = document.getElementById(id);
+            });
+            if (first) {
+                e.preventDefault();
+                first.focus();
+            }
+        });
+    }
+
     function guardSubmit(form, busyText) {
         if (!form) return;
         const btn = form.querySelector('button[type="submit"]');
@@ -114,8 +190,9 @@ if (window.location.hash.includes('type=recovery')) {
             btn.textContent = idleText;
         }
 
-        form.addEventListener('submit', function () {
-            if (btn.disabled) return;
+        form.addEventListener('submit', function (e) {
+            // הבדיקה בזמן ההקלדה עצרה את השליחה — הכפתור לא ננעל
+            if (e.defaultPrevented || btn.disabled) return;
             btn.disabled = true;
             btn.textContent = busyText;
             // שסתום ביטחון: אם השליחה לא הובילה לניווט (נפילת רשת), הכפתור
@@ -128,6 +205,7 @@ if (window.location.hash.includes('type=recovery')) {
         window.addEventListener('pageshow', function (e) { if (e.persisted) release(); });
     }
 
+    signupChecks(document.getElementById('signupPanel'));
     guardSubmit(document.getElementById('loginPanel'),  'מתחברים…');
     guardSubmit(document.getElementById('signupPanel'), 'נרשמים…');
 })();

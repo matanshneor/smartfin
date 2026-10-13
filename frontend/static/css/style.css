@@ -5496,3 +5496,8 @@ body.tx-screen-open { overflow: hidden; }
     display: block; text-align: center; font-size: 0.86rem; font-weight: 600; color: var(--color-gold-text);
     text-decoration: none; padding-top: 10px; border-top: 1px solid var(--divider-subtle);
 }
+
+/* הרשמה: הבעיה מתחת לשדה שלה, בזמן ההקלדה (מתן, 13.10 — ‎login.js‎) */
+.field-error { margin: 5px 2px 0; font-size: 0.8rem; font-weight: 500; color: var(--color-expense); }
+.field-error[hidden] { display: none; }
+.form-input[aria-invalid="true"] { border-color: var(--color-expense); }

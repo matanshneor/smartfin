@@ -1013,7 +1013,9 @@ def signup():
             error = "מספר הטלפון אינו תקין — למשל 050-1234567"
         elif len(password) < 6:
             error = "הסיסמה חייבת להכיל לפחות 6 תווים"
-        elif password != password_confirm:
+        # "אימות סיסמה" הוסר מהטופס (מתן, 13.10 — יש עין שמראה מה הוקלד). נבדק
+        # רק אם נשלח, כדי שטופס ישן שעוד פתוח בטלפון ימשיך לעבוד
+        elif "password_confirm" in request.form and password != password_confirm:
             error = "הסיסמאות אינן תואמות"
         else:
             name = f"{first_name} {last_name}"
@@ -1052,6 +1054,7 @@ def signup():
                 # להיכנס — אבל הוא כן חייב להיאמר בקול. בעבר הערך המוחזר נזרק,
                 # וכל מצטרף קיבל "נרשמת בהצלחה" ואז משפחה חדשה משלו בשקט.
                 success = "נרשמתם בהצלחה! כעת ניתן להתחבר."
+                join_err = None
                 if invite_code and response and response.user:
                     # ה-RPC מזהה את המצטרף דרך auth.uid(), ולכן ה-client חייב
                     # לשאת את הטוקן של המשתמש החדש. לא מסתמכים על כך שה-SDK
@@ -1067,6 +1070,23 @@ def signup():
                         logger.warning("signup join failed for %s: %s", email, join_err)
                         success = (f"נרשמתם בהצלחה! אבל {join_err}. "
                                    "אפשר להתחבר ולהצטרף למשפחה דרך ההגדרות.")
+
+                # נכנסים ישר (מתן, 13.10): עד עכשיו מי שסיים את הטופס קיבל "כעת
+                # ניתן להתחבר" והקליד שוב מייל וסיסמה — בדיוק ברגע שהכי קל לאבד
+                # משתמש חדש. ‎sign_up‎ מחזירה סשן כשאימות מייל כבוי; כשהוא דלוק
+                # (אין סשן) או שהכניסה נכשלה — כמו קודם, למסך ההתחברות.
+                session_obj = getattr(response, "session", None) if response else None
+                if session_obj and session_obj.access_token and response.user:
+                    begin_err = _begin_session(response.user.id, response.user.email,
+                                               session_obj.access_token, session_obj.refresh_token,
+                                               session_obj.expires_at)
+                    if not begin_err:
+                        if join_err:
+                            session["sf_notice"] = (f"נרשמתם בהצלחה! אבל {join_err}. "
+                                                    "אפשר להצטרף למשפחה דרך ההגדרות.")
+                        # בלי קטגוריות (משפחה חדשה) הבית מעביר לאשף הפתיחה
+                        return _remember_device(redirect(url_for("dashboard")), email)
+                    logger.warning("signup auto sign-in failed for %s: %s", email, begin_err)
                 # ההרשמה לא מחברת אוטומטית, אבל היא כן הופכת את המכשיר
                 # למוכר — מי שהרגע פתח חשבון בוודאי לא צריך לראות שוב את
                 # דף השיווק, והמייל שלו כבר ממולא בטופס.
