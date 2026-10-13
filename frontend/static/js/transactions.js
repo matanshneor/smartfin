@@ -154,6 +154,12 @@
     /* ההגדרות ועמוד עריכת הפרויקט משנים קטגוריות בלי לעזוב את העמוד. המטמון
      * כאן לא ידע על זה: קטגוריה שנוספה לא הופיעה ב-+, ושנמחקה — הופיעה,
      * ונכשלה בשמירה. */
+    // מה שהעמוד כבר שלף בשרת מגיע בתוכו (‎client_lists‎ ב-app.py) — בלי
+    // שתי בקשות נוספות בכל עמוד (מתן, 13.10)
+    const pageLists = (window.SF_PAGE_DATA && window.SF_PAGE_DATA.lists) || {};
+    if (Array.isArray(pageLists.categories)) categoriesCache = pageLists.categories;
+    if (Array.isArray(pageLists.members)) membersCache = pageLists.members;
+
     window.sfForgetCategories = function () {
         categoriesCache = null;
         projectCategoriesCache = {};
