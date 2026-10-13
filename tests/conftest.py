@@ -85,6 +85,7 @@ def _unit_tests_cannot_reach_supabase(request, monkeypatch):
         )
 
     _real_home_page = db.fetch_home_page
+    _real_recap = db.month_recap
     _real_settings_page = db.fetch_settings_page
     monkeypatch.setattr(db, "get_client", _refuse)
     # המייל העדכני מ-Supabase (‎_current_email‎ ב-app). ברירת מחדל בבדיקות:
@@ -103,6 +104,10 @@ def _unit_tests_cannot_reach_supabase(request, monkeypatch):
         raise db.DataUnavailable("fetch_settings_page: unit default")
     monkeypatch.setattr(db, "fetch_settings_page", _no_settings_page)
     monkeypatch.setattr(db, "_real_fetch_settings_page", _real_settings_page, raising=False)
+    # "ספטמבר נסגר" רק ביום הראשון של החודש — בלי זה כל בדיקות דף הבית היו
+    # נכשלות כשהן רצות ב-1 לחודש. ‎test_month_recap.py‎ בודק את האמיתית.
+    monkeypatch.setattr(db, "month_recap", lambda *a, **k: None)
+    monkeypatch.setattr(db, "_real_month_recap", _real_recap, raising=False)
     # הממוצע החודשי לכל קטגוריה בהגדרות (רעיון 38) — ברירת מחדל: אין
     _real_averages = db.category_monthly_averages
     monkeypatch.setattr(db, "category_monthly_averages", lambda *a, **k: {})

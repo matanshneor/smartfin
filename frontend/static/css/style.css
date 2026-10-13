@@ -5468,3 +5468,29 @@ body.tx-screen-open { overflow: hidden; }
     background: var(--color-input); color: var(--color-text-muted);
     box-shadow: none; cursor: default; opacity: 1;
 }
+
+
+/* "ספטמבר נסגר" (מתן, 13.10) — ביום הראשון של החודש בדף הבית */
+.recap-wrap { margin-bottom: 14px; }
+.recap-card {
+    padding: 16px 16px 14px; border-radius: var(--radius);
+    background: var(--color-card); box-shadow: var(--shadow-card); color: var(--color-text);
+}
+.recap-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.recap-icon { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 11px; background: var(--color-gold-dim); font-size: 1.1rem; flex-shrink: 0; }
+.recap-title { margin: 0; font-weight: 700; font-size: 1rem; }
+.recap-wrap .recap-close { top: 17px; translate: none; inset-inline-end: 8px; }
+.recap-figures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.recap-fig { text-align: center; padding: 8px 4px; border-radius: 12px; background: var(--color-bg); }
+.recap-fig-label { display: block; font-size: 0.74rem; color: var(--color-text-muted); }
+.recap-fig-value { display: block; font-weight: 700; font-size: 0.98rem; margin-top: 2px; }
+.recap-fig.good .recap-fig-value, .recap-lines .good { color: var(--color-income); font-weight: 700; }
+.recap-fig.bad .recap-fig-value, .recap-lines .bad { color: var(--color-expense); font-weight: 700; }
+.recap-lines { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 7px; font-size: 0.87rem; }
+.recap-lines li { display: flex; gap: 8px; align-items: baseline; }
+.recap-line-icon { width: 20px; text-align: center; flex-shrink: 0; }
+.recap-lines b { font-weight: 700; }
+.recap-link {
+    display: block; text-align: center; font-size: 0.86rem; font-weight: 600; color: var(--color-gold-text);
+    text-decoration: none; padding-top: 10px; border-top: 1px solid var(--divider-subtle);
+}

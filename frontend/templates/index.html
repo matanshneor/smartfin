@@ -138,6 +138,42 @@
     </a>
 </section>
 
+{# "ספטמבר נסגר" (מתן, 13.10): ביום הראשון של החודש בלבד — "יום למחרת זה
+   נעלם לבד". ✕ מסתיר אותו בטלפון הזה (אותו מנגנון כמו ההתראות, ‎core.js‎). #}
+{% if recap %}
+{% set rm = hebrew_months[recap.month] %}
+<div class="alert-wrap recap-wrap" data-alert-key="recap|{{ recap.year }}-{{ recap.month }}">
+<section class="recap-card" aria-label="סיכום {{ rm }}">
+    <div class="recap-head">
+        <span class="recap-icon" aria-hidden="true">📊</span>
+        <h2 class="recap-title">{{ rm }} נסגר</h2>
+    </div>
+    <div class="recap-figures">
+        <div class="recap-fig"><span class="recap-fig-label">נכנס</span><span class="recap-fig-value">₪{{ recap.income | money }}</span></div>
+        <div class="recap-fig"><span class="recap-fig-label">יצא</span><span class="recap-fig-value">₪{{ recap.expense | money }}</span></div>
+        <div class="recap-fig {{ 'good' if recap.balance >= 0 else 'bad' }}"><span class="recap-fig-label">נשאר</span><span class="recap-fig-value">{{ '-' if recap.balance < 0 }}₪{{ (recap.balance | abs) | money }}</span></div>
+    </div>
+    <ul class="recap-lines">
+        {% if recap.diff is not none and recap.diff != 0 %}
+        {% set before = hebrew_months[recap.month - 1 if recap.month > 1 else 12] %}
+        <li><span class="recap-line-icon" aria-hidden="true">{{ '📉' if recap.diff < 0 else '📈' }}</span>
+            <span>הוצאתם <span class="{{ 'good' if recap.diff < 0 else 'bad' }}">₪{{ (recap.diff | abs) | money }} {{ 'פחות' if recap.diff < 0 else 'יותר' }}</span> מ{{ before }}</span></li>
+        {% endif %}
+        {% if recap.top %}
+        <li><span class="recap-line-icon" aria-hidden="true">{{ recap.top.icon }}</span>
+            <span>הכי הרבה הלך על <b>{{ recap.top.name }}</b> — ₪{{ recap.top.total | money }}</span></li>
+        {% endif %}
+        {% if recap.savings > 0 %}
+        <li><span class="recap-line-icon" aria-hidden="true">💰</span>
+            <span>חסכתם <b>₪{{ recap.savings | money }}</b></span></li>
+        {% endif %}
+    </ul>
+    <a class="recap-link" href="{{ url_for('month_view', year=recap.year, month=recap.month) }}">לסיכום המלא של {{ rm }} ←</a>
+</section>
+<button type="button" class="alert-dismiss recap-close" aria-label="סגירה">✕</button>
+</div>
+{% endif %}
+
 {# התראות החודש (מתן, 11.10) — רק כשיש. אותן התראות כמו בעמוד החודש,
    ולחיצה מובילה ליעד שלהן שם: הקטגוריה שחרגה, או פירוט ההוצאות. #}
 {% if alerts %}
