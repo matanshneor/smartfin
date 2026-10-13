@@ -955,3 +955,22 @@ def test_pull_to_refresh_moves_the_page_like_an_iphone():
     assert "animation: ptr-spin .8s steps(8) infinite" in css
     # ב-CSS ולא על האלמנטים: הרענון הרך מחליף אותם, והעמוד היה קופץ למעלה
     assert "body.ptr-active > .page-hero, body.ptr-active > .main-content" in css
+
+
+def test_add_to_home_screen_stays_until_opened_from_the_icon():
+    """מתן (13.10): "משהו שיופיע באופן קבוע — עד שהמשתמש עושה את זה"; ✕ מסתיר
+    עד הכניסה הבאה; מעל התפריט התחתון; בלי "ספארי" — יש גם דפדפנים אחרים."""
+    js = _strip_comments(_read("frontend/static/js/pwa.js"))
+    part = js[js.index("getElementById('installBar')"):js.index("const START = 8;")]
+    assert "fetch('/api/app-installed'" in part
+    assert "if (bar.hasAttribute('data-installed')) return;" in part
+    assert "sessionStorage.setItem('sf_install_hidden', '1')" in part
+    assert "localStorage" not in part                     # לא "לתמיד"
+    assert "ספארי" not in part and "Safari" not in part
+    assert "deferredPrompt.prompt()" in part             # אנדרואיד — התקנה ישירה
+    base = _read("frontend/templates/base.html")
+    assert 'id="installBar"' in base and "app_installed" in base
+    assert base.index('id="installBar"') > base.index("</main>")   # הרענון הרך לא מוחק אותו
+    import backend.app as app_module
+    src = _read("backend/app.py")
+    assert '{"app_installed": {user["id"]: clock.today().isoformat()}}' in src

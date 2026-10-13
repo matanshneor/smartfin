@@ -30,16 +30,22 @@
        מואצלות, ואין בו מופעי Chart.js שצריך לחבר מחדש. עמוד שלא מסמן את
        עצמו ממשיך לקבל רענון מלא, שזו ההתנהגות הקיימת. #}
     <main class="main-content"{% block soft_reload %}{% endblock %}{% block main_attrs %}{% endblock %}>
-        {# ‎data-sf-keep‎: הרענון הרך מחליף את ‎main‎, והבאנר הוחלף בעותק מוסתר —
-           וה-handlers של pwa.js נשארו מחוברים לעותק המנותק. אחרי העסקה
-           הראשונה ההצעה להתקין נעלמה. ראו ‎softReload‎ ב-core.js. #}
-        <div class="alert-card warning install-banner" id="installBanner" style="display:none;" role="status" data-sf-keep>
-            <span class="alert-text" id="installBannerText"></span>
-            <button type="button" class="btn-sm btn-primary" id="installBannerAction" style="display:none;">התקנה</button>
-            <button type="button" class="install-banner-close" id="installBannerClose" aria-label="סגירת ההודעה">✕</button>
-        </div>
         {% block content %}{% endblock %}
     </main>
+
+    {# "הוסיפו למסך הבית" (מתן, 13.10) — פס קבוע מעל התפריט התחתון, עד שנכנסים
+       פעם אחת מהאייקון (אז השרת זוכר: ‎app_installed‎). ✕ מסתיר עד הכניסה הבאה.
+       מחוץ ל-‎main‎: הרענון הרך מחליף את ‎main‎. ראו ‎js/pwa.js‎. #}
+    {% set _installed = ((family_settings or {}).get('app_installed') or {}).get(session.get('user_id')) %}
+    <div class="install-bar" id="installBar" role="region" aria-label="הוספה למסך הבית" hidden{% if _installed %} data-installed{% endif %}>
+        <img class="install-bar-icon" src="{{ url_for('static', filename='icons/icon-180.png') }}" alt="" width="40" height="40">
+        <span class="install-bar-text">
+            <span class="install-bar-title" id="installBarTitle">הוסיפו למסך הבית</span>
+            <span class="install-bar-sub" id="installBarSub">SmartFin תיפתח כמו אפליקציה</span>
+        </span>
+        <button type="button" class="install-bar-go" id="installBarGo">איך?</button>
+        <button type="button" class="install-bar-close" id="installBarClose" aria-label="הסתרה עד הכניסה הבאה">✕</button>
+    </div>
 
     <nav class="bottom-nav" role="navigation" aria-label="ניווט ראשי">
         <a href="{{ url_for('dashboard') }}"

@@ -1102,7 +1102,7 @@ a.kpi-chip:active { transform: scale(0.97); }
 
 /* אזור נגיעה אמיתי: הסמל עצמו 22px, מתחת למינימום הנגישות, והוא יושב
    בתוך שורה שגם נגררת וגם נלחצת — פספוס פותח את מודאל העריכה במקום את
-   הקבלה. אותו דפוס כמו .install-banner-close ו-.cat-move-btn. */
+   הקבלה. אותו דפוס כמו .install-bar-close ו-.cat-move-btn. */
 .receipt-badge::before {
     content: '';
     position: absolute;
@@ -1162,39 +1162,50 @@ a.kpi-chip:active { transform: scale(0.97); }
     margin-top: 4px;
 }
 
-/* ─── Install banner (PWA) ────────────────────────────────────── */
-
-.install-banner {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 16px 0;
+/* ─── "הוסיפו למסך הבית" (מתן, 13.10) ─────────────────────────────
+   פס כהה קבוע מעל התפריט התחתון, עד הכניסה הראשונה מהאייקון. ראו ‎js/pwa.js‎. */
+.install-bar {
+    position: fixed; left: 16px; right: 16px; z-index: 950;
+    bottom: calc(var(--dock-height) + var(--dock-gap) + env(safe-area-inset-bottom, 0px) + 10px);
+    max-width: 528px; margin: 0 auto;
+    display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+    border-radius: 18px; border: 1px solid rgba(212, 175, 55, 0.35);
+    background: linear-gradient(160deg, var(--hero-bg-2), var(--hero-bg)); color: #FFF8E7;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
 }
-
-.install-banner .alert-text { flex: 1; }
-
-.install-banner-close {
-    position: relative;
-    width: 22px;
-    height: 22px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    color: inherit;
-    opacity: 0.6;
+.install-bar[hidden] { display: none; }
+.install-bar-icon { width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0; }
+.install-bar-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.install-bar-title { font-weight: 700; font-size: 0.92rem; }
+.install-bar-sub { font-size: 0.76rem; opacity: 0.7; margin-top: 1px; }
+.install-bar-go {
+    border: 0; border-radius: 999px; padding: 9px 16px; min-height: 40px; flex-shrink: 0;
+    font: inherit; font-weight: 700; font-size: 0.85rem; background: var(--gradient-gold); color: #FFFFFF; cursor: pointer;
 }
-
-.install-banner-close::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 40px;
-    height: 40px;
-    transform: translate(-50%, -50%);
+.install-bar-close {
+    position: relative; width: 26px; height: 26px; flex-shrink: 0; border: 0; background: none;
+    color: inherit; opacity: 0.6; font-size: 0.8rem; cursor: pointer;
 }
+.install-bar-close::before { content: ''; position: absolute; inset: -9px; }   /* אזור נגיעה 44px */
+/* התוכן לא נחבא מתחת לפס */
+body.has-install-bar .main-content {
+    padding-bottom: calc(var(--dock-height) + var(--dock-gap) + env(safe-area-inset-bottom, 0px) + 96px);
+}
+.install-steps { list-style: none; margin: 4px 0 14px; padding: 0; text-align: right; }
+.install-steps li { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--divider-subtle); }
+.install-steps li:first-child { border-top: 0; }
+.install-step-num {
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    background: var(--color-gold-dim); color: var(--color-gold-text); font-weight: 700; font-size: 0.9rem;
+}
+.install-step-text { flex: 1; font-size: 0.92rem; line-height: 1.4; }
+.install-step-hint { display: block; color: var(--color-text-muted); font-size: 0.8rem; margin-top: 2px; }
+.install-step-pic {
+    width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    background: var(--color-input); color: #007AFF;
+}
+.install-step-pic svg { width: 26px; height: 26px; }
+.install-step-pic img { width: 34px; height: 34px; border-radius: 9px; }
 
 /* ─── Alerts (חריגות) ─────────────────────────────────────────── */
 

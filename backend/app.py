@@ -2307,6 +2307,21 @@ def pin_project_route(project_id):
     return jsonify({"status": "ok", "pinned": pinned})
 
 
+@app.route("/api/app-installed", methods=["POST"])
+@limiter.limit("10 per minute")
+@login_required
+def app_installed_route():
+    """נכנסו מהאייקון במסך הבית (מתן, 13.10): מעכשיו בלי הפס "הוסיפו למסך הבית"
+    — גם כשהמשתמש הזה נכנס מהדפדפן. נשמר בהגדרות המשפחה תחת
+    ‎app_installed[user_id]‎, ממוזג לפי מפתח כמו ‎pinned_projects‎."""
+    user = get_current_user()
+    if ((family_settings().get("app_installed") or {}).get(user["id"])):
+        return jsonify({"status": "ok"})
+    if not db.update_family_settings(user["family_id"], {"app_installed": {user["id"]: clock.today().isoformat()}}):
+        return jsonify({"error": "השמירה נכשלה"}), 500
+    return jsonify({"status": "ok"})
+
+
 @app.route("/api/projects/<project_id>/categories", methods=["GET"])
 @login_required
 @project_access_required
