@@ -78,3 +78,13 @@ def test_opening_a_category_closes_the_others():
     for name in ("month.js", "project-detail.js"):
         js = (_ROOT / "frontend/static/js" / name).read_text(encoding="utf-8")
         assert "if (isOpen) closeOtherCategories(trigger, wrap);" in js, name
+
+
+def test_the_split_is_separated_from_the_list_and_budgets_have_no_bar():
+    """מתן (13.10): "שיהיה הפרדה ביניהם לבין רשימת הקטגוריות"; "גם כשיש חריגה
+    — בלי הקו, רק ההערה"."""
+    css = (_ROOT / "frontend/static/css/style.css").read_text(encoding="utf-8")
+    assert ".donut-row.has-split { padding-bottom: 30px; margin-bottom: 6px; border-bottom: 1px solid var(--divider-subtle); }" in css
+    tpl = (_ROOT / "frontend/templates/month.html").read_text(encoding="utf-8")
+    assert "cat-budget-track" not in tpl and "cat-budget-fill" not in tpl
+    assert "cat-budget-track" not in css

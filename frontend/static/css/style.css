@@ -3333,29 +3333,13 @@ a.btn-sm { display: inline-flex; align-items: center; justify-content: center; t
 
 .cat-budget { padding: 2px 0 10px; }
 
-.cat-budget-track {
-    height: 5px;
-    border-radius: 99px;
-    background: var(--color-input);
-    overflow: hidden;
-}
-
-.cat-budget-fill {
-    height: 100%;
-    border-radius: 99px;
-    background: var(--color-gold);
-    transition: width 0.3s;
-}
-
 .cat-budget-text {
     margin: 4px 0 0;
     font-size: 0.72rem;
     color: var(--color-text-muted);
 }
 
-/* חריגה: אדום, ופס מלא. הפס נעצר ב-100% בחישוב, אז "מלא" הוא המצב
-   הנכון — פס שגולש החוצה לא מוסיף מידע ורק שובר את הפריסה. */
-.cat-budget.over .cat-budget-fill { background: var(--color-expense); }
+/* חריגה: המשפט באדום */
 .cat-budget.over .cat-budget-text { color: var(--color-expense); font-weight: 600; }
 
 /* ─── פרויקטים החודש ──────────────────────────────────────────── */
@@ -5388,9 +5372,12 @@ body.tx-screen-open { overflow: hidden; }
 
 /* קבועות מול משתנות (מתן, 12.10) */
 /* קבועות / משתנות בפינות שליד העיגול (מתן, 13.10) — קטן, בלי פס */
-.donut-row { position: relative; padding-bottom: 14px; }
+.donut-row { position: relative; }
+/* מקום לשתי השורות מתחת לעיגול, וקו שמפריד בינן לבין רשימת הקטגוריות
+   (מתן, 13.10: "שיהיה הפרדה ביניהם לבין הרשימה") */
+.donut-row.has-split { padding-bottom: 30px; margin-bottom: 6px; border-bottom: 1px solid var(--divider-subtle); }
 .split-corner {
-    position: absolute; bottom: 0; right: 0; text-align: right;
+    position: absolute; bottom: 12px; right: 0; text-align: right;
     font-size: 0.68rem; color: var(--color-text-muted); line-height: 1.45;
 }
 .split-corner p { margin: 0; white-space: nowrap; }
