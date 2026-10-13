@@ -762,6 +762,8 @@
        טופס POST ולא קישור: GET /logout אפשר להפעיל מאתר אחר עם
        ‎<img src="...">‎ ולנתק את המשתמש בלי ידיעתו. SameSite=Lax
        מתיר בדיוק את הצורה הזאת של ניווט GET. #}
+    {# בתחתית המסך, גם כשכל התיבות סגורות והעמוד קצר (מתן, 13.10) #}
+    <div class="settings-footer">
     <form method="POST" action="{{ url_for('logout') }}" class="logout-form settings-logout">
         <button type="submit" class="logout-btn">התנתקות</button>
     </form>
@@ -778,6 +780,7 @@
         <p class="settings-contact-label">משהו לא עובד, או שאלה על הנתונים שלכם?
             <a class="settings-contact-link" href="mailto:matanshneor1@gmail.com?subject=SmartFin">כתבו לנו</a></p>
     </section>
+    </div>
 
 </div>
 

@@ -88,3 +88,13 @@ def test_the_split_is_separated_from_the_list_and_budgets_have_no_bar():
     tpl = (_ROOT / "frontend/templates/month.html").read_text(encoding="utf-8")
     assert "cat-budget-track" not in tpl and "cat-budget-fill" not in tpl
     assert "cat-budget-track" not in css
+
+
+def test_logout_and_contact_sit_at_the_bottom_of_the_settings_page():
+    """מתן (13.10): "שההתנתקות והמשפט של כתבו לנו יהיו בתחתית העמוד"."""
+    tpl = (_ROOT / "frontend/templates/settings.html").read_text(encoding="utf-8")
+    footer = tpl[tpl.index('<div class="settings-footer">'):]
+    assert footer.index("logout-form") < footer.index("settings-contact") < footer.index("</div>\n\n</div>")
+    css = (_ROOT / "frontend/static/css/style.css").read_text(encoding="utf-8")
+    assert ".settings-footer { margin-top: auto;" in css
+    assert "body.settings-page { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }" in css
