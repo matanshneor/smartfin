@@ -5388,14 +5388,13 @@ body.tx-screen-open { overflow: hidden; }
 
 /* קבועות מול משתנות (מתן, 12.10) */
 /* קבועות / משתנות בפינות שליד העיגול (מתן, 13.10) — קטן, בלי פס */
-.donut-row { position: relative; }
+.donut-row { position: relative; padding-bottom: 14px; }
 .split-corner {
-    position: absolute; bottom: 18px; margin: 0; display: flex; flex-direction: column; gap: 1px;
-    font-size: 0.72rem; color: var(--color-text-muted); line-height: 1.25;
+    position: absolute; bottom: 0; right: 0; text-align: right;
+    font-size: 0.68rem; color: var(--color-text-muted); line-height: 1.45;
 }
-.split-corner b { font-size: 0.86rem; font-weight: 700; color: var(--color-text); }
-.split-fixed { right: 0; text-align: right; }
-.split-variable { left: 0; text-align: left; }
+.split-corner p { margin: 0; white-space: nowrap; }
+.split-corner b { font-size: 0.74rem; font-weight: 700; color: var(--color-text-soft); }
 
 
 /* פרויקט מוצמד בבית (מתן, 12.10) */

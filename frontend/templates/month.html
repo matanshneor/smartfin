@@ -165,11 +165,13 @@
                 <p class="doughnut-label">הוצאות</p>
             </div>
         </div>
-        {# קבועות מול משתנות (מתן, 12.10) — בקטן, בפינות שליד הגרף (מתן, 13.10:
-           בלי הפס ובלי שורת השמות) #}
+        {# קבועות מול משתנות (מתן, 12.10) — בקטן, שתיהן בפינה אחת ליד הגרף (מתן,
+           13.10: בלי הפס ובלי שורת השמות; "בקטן יותר ובאותו צד") #}
         {% if fixed_split %}
-        <p class="split-corner split-fixed"><span>קבועות</span><b>₪{{ fixed_split.fixed | money }}</b></p>
-        <p class="split-corner split-variable"><span>משתנות</span><b>₪{{ fixed_split.variable | money }}</b></p>
+        <div class="split-corner">
+            <p><span>קבועות</span> <b>₪{{ fixed_split.fixed | money }}</b></p>
+            <p><span>משתנות</span> <b>₪{{ fixed_split.variable | money }}</b></p>
+        </div>
         {% endif %}
     </div>
     {% else %}
