@@ -157,7 +157,9 @@ def _warm_ping_once(client) -> bool:
         try:
             # כל תשובה טובה — גם 401 על טוקן שפג. המטרה היא החיבור, לא הנתונים.
             # שורה אחת לכל היותר (שורש ה-API מחזיר את כל תיאור הסכמה — כבד).
-            client.postgrest.session.get("families", params={"select": "id", "limit": "1"}, timeout=5)
+            client.postgrest.session.get("families", params={"select": "id", "limit": "1"},
+                                        # קצר מה-3 שניות שבקשה מחכה למנעול — כך הן לעולם לא חופפות
+                                        timeout=2)
         except Exception:
             pass
         _warm_state["last"] = time.monotonic()
