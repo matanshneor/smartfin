@@ -314,8 +314,7 @@ def _gzip(response):
         cached = _gzip_static.get(key)
         if cached is not None:
             response.set_data(cached)
-            response.headers["Content-Encoding"] = "gzip"
-            return response
+            return _mark_gzipped(response)
     data = response.get_data()
     if len(data) < _GZIP_MIN:
         return response
@@ -323,11 +322,19 @@ def _gzip(response):
     if key is not None and len(_gzip_static) < 300:
         _gzip_static[key] = packed
     response.set_data(packed)
+    return _mark_gzipped(response)
+
+
+def _mark_gzipped(response):
+    """אותו סימון בכל דרך — גם כשהבייטים הדחוסים באו מהזיכרון (בדיקת קוד,
+    14.10: שם ה-ETag נשאר "חזק" ודחוס ולא דחוס נשאו את אותו מזהה)."""
     response.headers["Content-Encoding"] = "gzip"
     # ETag של המקור כבר לא מתאר את הבייטים — "חלש" כדי שבדיקת 304 תמשיך לעבוד
     etag = response.headers.get("ETag")
     if etag and not etag.startswith("W/"):
         response.headers["ETag"] = "W/" + etag
+    # טווח בייטים של הקובץ הלא דחוס לא מתאים לגרסה הדחוסה
+    response.headers.pop("Accept-Ranges", None)
     return response
 
 

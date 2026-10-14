@@ -148,3 +148,23 @@ def test_the_settings_email_check_is_cached_unless_a_change_is_pending(monkeypat
         assert "pending_email" not in session
         app_module._current_email()
         assert len(calls) == 3, "פעולות שבודקות סיסמה — תמיד טרי"
+
+
+def test_a_gzipped_static_file_has_the_same_weak_etag_every_time():
+    """בדיקת קוד (14.10): מהזיכרון הוא חזר עם ETag "חזק" של הקובץ הלא דחוס."""
+    c = app.test_client()
+    first = c.get("/static/css/style.css", headers={"Accept-Encoding": "gzip"})
+    second = c.get("/static/css/style.css", headers={"Accept-Encoding": "gzip"})
+    for res in (first, second):
+        assert res.headers["Content-Encoding"] == "gzip"
+        assert res.headers["ETag"].startswith("W/")
+        assert "Accept-Ranges" not in res.headers
+    assert first.headers["ETag"] == second.headers["ETag"]
+
+
+def test_the_warm_ping_gives_up_before_a_request_would():
+    from pathlib import Path
+    src = (Path(__file__).resolve().parent.parent / "backend/supabase_config.py").read_text(encoding="utf-8")
+    assert "_warm_lock.acquire(timeout=3)" in src
+    ping = src[src.index("def _warm_ping_once"):src.index("def _start_warm_pings")]
+    assert "timeout=2)" in ping
