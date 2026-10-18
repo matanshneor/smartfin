@@ -172,7 +172,8 @@ def test_the_card_states_last_week_as_a_fact_and_a_past_week_compares(monkeypatc
     with app.test_request_context():
         now_html = app.jinja_env.from_string(tpl).render(week=sunday)
         past_html = app.jinja_env.from_string(tpl).render(week=past)
-    assert '<span class="week-cmp same">שבוע שעבר: ₪2,832</span>' in now_html
+    # ראשון בבוקר, עוד בלי הוצאות: השורה הקצרה של שבוע ריק, עם סך השבוע שעבר כעובדה
+    assert '<p class="week-empty-sub">בשבוע שעבר: ₪2,832</p>' in now_html
     assert "פחות" not in now_html and "יותר" not in now_html
     assert '<span class="week-cmp up">₪413 יותר מהשבוע שלפניו</span>' in past_html
 
@@ -285,3 +286,37 @@ def test_a_sideways_swipe_locks_the_page_and_a_scroll_does_not():
     assert "axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';" in move
     assert "if (axis !== 'x') return;" in move and "e.preventDefault();" in move
     assert move.index("if (axis !== 'x') return;") < move.index("e.preventDefault();"), "גלילה רגילה נחסמת"
+
+
+# ─── שבוע ריק: שורה אחת במקום ₪0 ושבעה פסים ריקים (מתן, 18.10) ──────────────
+
+
+def _render_week(w):
+    from pathlib import Path
+    from backend.app import app
+    tpl = (Path(__file__).resolve().parent.parent / "frontend/templates/_week_card.html").read_text(encoding="utf-8")
+    with app.test_request_context():
+        return app.jinja_env.from_string(tpl).render(week=w)
+
+
+def test_an_empty_week_shows_one_short_row_instead_of_bars(monkeypatch):
+    w = _week([_tx(300, "2026-09-29")], monkeypatch, today=datetime.date(2026, 10, 6))
+    html = _render_week(w)
+    assert '<p class="week-empty-title">עדיין אין הוצאות השבוע</p>' in html
+    assert 'class="week-empty-add"' in html
+    assert 'class="week-bars"' not in html and 'class="week-sum"' not in html
+    # הכותרת והחצים לדפדוף נשארים
+    assert 'class="week-nav-btn"' in html
+
+
+def test_a_week_with_spending_keeps_the_chart(monkeypatch):
+    html = _render_week(_week([_tx(100, "2026-10-05")], monkeypatch))
+    assert 'class="week-bars"' in html and 'class="week-empty-state"' not in html
+
+
+def test_an_empty_past_week_says_so_without_an_add_button(monkeypatch):
+    _week([], monkeypatch, today=datetime.date(2026, 10, 11))
+    past = db.week_spending(_FAM, today=datetime.date(2026, 10, 11), offset=1)
+    html = _render_week(past)
+    assert '<p class="week-empty-title">לא היו הוצאות בשבוע הזה</p>' in html
+    assert 'class="week-empty-add"' not in html
