@@ -4973,6 +4973,19 @@ body > .color-sheet { z-index: 180; }
 .week-detail-list li.is-fixed { color: var(--color-text-muted); }
 .week-detail-list li.is-fixed .week-detail-amount { color: inherit; font-weight: 500; }
 .week-fixed-tag { font-size: 0.7rem; font-weight: 600; padding: 1px 7px; margin-inline-start: 4px; border-radius: 99px; background: var(--color-input); }
+/* שבוע ריק — שורה אחת במקום גרף ריק (מתן, 18.10) */
+.week-empty-state {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-top: 10px; padding: 12px 14px; border-radius: 12px; background: var(--color-input);
+}
+.week-empty-text { min-width: 0; }
+.week-empty-title { margin: 0; font-size: 0.95rem; font-weight: 600; }
+.week-empty-sub { margin: 2px 0 0; font-size: 0.8rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.week-empty-add {
+    flex: none; min-height: 44px; padding: 0 14px; border-radius: 10px;
+    border: 1px solid var(--color-gold-border); background: var(--color-gold-dim);
+    color: var(--color-gold-text); font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+}
 
 /* חלון ההוצאות של קטגוריה בחודש — עמוד ההשוואה (מתן, 30.9) */
 .cat-month-sheet .color-sheet-card { max-height: 80vh; max-height: 80dvh; }

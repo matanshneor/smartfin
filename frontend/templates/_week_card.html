@@ -18,6 +18,24 @@
             </button>
         </div>
     </div>
+    {# שבוע בלי אף הוצאה (גם לא קבועה או מוזנת מראש): במקום ₪0 ושבעה פסים
+       מקווקווים שנראים כמו טעינה — שורה אחת קצרה (מתן, 18.10) #}
+    {% set week_empty = (not week.total) and (not week.recurring_total)
+        and not (week.days | selectattr('transactions') | list)
+        and not (week.days | selectattr('recurring') | list) %}
+    {% if week_empty %}
+    <div class="week-empty-state">
+        <div class="week-empty-text">
+            <p class="week-empty-title">{{ 'עדיין אין הוצאות השבוע' if ago == 0 else 'לא היו הוצאות בשבוע הזה' }}</p>
+            {% if ago == 0 and week.last_week %}
+            <p class="week-empty-sub">בשבוע שעבר: ₪{{ week.last_week | round | int | money }}</p>
+            {% endif %}
+        </div>
+        {% if ago == 0 %}
+        <button type="button" class="week-empty-add">הוספת הוצאה</button>
+        {% endif %}
+    </div>
+    {% else %}
     <div class="week-total">
         <span class="week-sum">₪{{ week.total | round | int | money }}</span>
         {# השבוע הנוכחי: רק סך השבוע שעבר, כעובדה — "פחות/יותר" באמצע שבוע
@@ -68,4 +86,5 @@
         {% endif %}
     </div>
     {% endif %}{% endfor %}
+    {% endif %}
 </section>

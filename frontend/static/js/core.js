@@ -706,6 +706,13 @@ document.addEventListener('click', function (e) {
                  older ? '.week-nav-btn[aria-label="שבוע קודם"]' : '.week-nav-btn[aria-label="שבוע הבא"]');
     });
 
+    // "הוספת הוצאה" בשבוע ריק — אותו חלון של כפתור ה-+ (מתן, 18.10)
+    document.addEventListener('click', function (e) {
+        if (!(e.target.closest && e.target.closest('.week-empty-add'))) return;
+        const fab = document.getElementById('fabBtn');
+        if (fab) fab.click();
+    });
+
     // החלקה: בעברית הזמן זורם מימין לשמאל (ראשון בימין), אז השבוע הקודם
     // "נמצא" מימין — גרירה שמאלה מביאה אותו, וגרירה ימינה חוזרת קדימה.
     //
