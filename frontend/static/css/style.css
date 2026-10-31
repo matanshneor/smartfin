@@ -5559,6 +5559,14 @@ body.tx-screen-open { overflow: hidden; }
     border-radius: 50%; background: var(--color-gold-dim); color: var(--color-gold-text); font-size: 1.5rem; font-weight: 700;
 }
 .import-done .edit-actions { justify-content: center; }
-.settings-import { margin: 0 0 12px; text-align: center; font-size: 0.875rem; }
-.settings-import-link { display: inline-block; padding: 6px 2px; color: var(--color-gold-text); font-weight: 700; text-decoration: none; }
+.settings-import { margin: 4px 0 28px; text-align: center; font-size: 0.875rem; }
+/* כפתור קטן ולא קישור (מתן, 31.10): "זה לא נראה לחיץ". ברוחב הטקסט, בזהב
+   בהיר — שקט מהקבוצות שמעליו, ורחוק מספיק מ"התנתקות" */
+.settings-import-link {
+    display: inline-block; padding: 9px 18px; border-radius: var(--radius-sm);
+    background: var(--color-gold-dim); border: 1px solid var(--color-gold-border);
+    color: var(--color-gold-text); font-weight: 600; text-decoration: none;
+    -webkit-tap-highlight-color: transparent; transition: transform 120ms ease-out;
+}
+.settings-import-link:active { transform: scale(0.97); }
 .export-links { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
