@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}SmartFin – ייבוא מהאשראי{% endblock %}
+
+{# ייבוא מחברת האשראי (מתן, 31.10): מעלים את קובץ פירוט העסקאות, רואים
+   קטגוריה מוצעת וסימון של מה שכבר קיים, ומאשרים. בלי ה-+ הצף — הוא
+   "הוספת עסקה", ואין לו משמעות באמצע ייבוא. #}
+{% block body_class %}no-fab{% endblock %}
+
+{% block hero %}
+<div class="hero-top">
+    <div>
+        <a href="{{ url_for('settings') }}" class="stats-nav-btn" aria-label="חזרה להגדרות" style="margin-inline-end:10px;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        <h1 class="hero-title">ייבוא מהאשראי</h1>
+        <p class="hero-subtitle">כל העסקאות של החודש מהקובץ של חברת האשראי — בלי להקליד</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{# שלב 1 — העלאה #}
+<section class="chart-card" id="importUpload">
+    <h2 class="chart-title">איך זה עובד</h2>
+    <ol class="import-steps">
+        <li>באתר או באפליקציה של חברת האשראי (מקס, כאל, ישראכרט ועוד) — <b>פירוט עסקאות ← ייצוא לאקסל</b>, או <b>דף החיוב החודשי כ-PDF</b></li>
+        <li>בוחרים כאן את הקובץ שירד</li>
+        <li>בודקים את הקטגוריות ומאשרים</li>
+    </ol>
+    <form id="importForm" novalidate>
+        <label class="btn-sm btn-primary import-file-btn" for="importFile">בחירת קובץ</label>
+        <input type="file" id="importFile" class="sr-only"
+               accept=".xlsx,.xls,.csv,.htm,.html,.pdf,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv">
+        <p class="field-hint" id="importFileName" aria-live="polite"></p>
+        <p class="form-error" id="importError" role="alert"></p>
+    </form>
+    <p class="field-hint import-privacy">
+        הקובץ לא נשמר — נשמרות רק העסקאות שתאשרו. עסקה שכבר קיימת (אותו סכום ובית עסק,
+        עד 3 ימים הפרש) מסומנת ולא תיכנס פעמיים. לזיהוי קובץ לא מוכר ולהצעת קטגוריה לבתי עסק
+        חדשים, נשלחים ל-OpenAI כותרות הטבלה ושמות בתי העסק.
+    </p>
+</section>
+
+{# שלב 2 — קובץ שלא זוהה: המשתמש אומר איזו עמודה היא מה #}
+<section class="chart-card" id="importMapping" hidden>
+    <h2 class="chart-title">איזו עמודה היא מה?</h2>
+    <p class="field-hint">לא זיהינו את המבנה של הקובץ הזה. בחרו פעם אחת — ובפעם הבאה במכשיר הזה הוא ייקרא לבד.</p>
+    <div class="import-sample-wrap"><table class="import-sample" id="importSample"></table></div>
+    <div class="import-map-grid">
+        {% for key, label, required in [('date', 'תאריך העסקה', true), ('merchant', 'בית העסק / תיאור', true),
+                                         ('charge', 'סכום החיוב (₪)', false), ('amount', 'סכום העסקה', false)] %}
+        <label class="form-group">
+            <span class="form-label">{{ label }}{% if not required %} <span class="field-hint">(אם יש)</span>{% endif %}</span>
+            <select class="form-input" data-map="{{ key }}"></select>
+        </label>
+        {% endfor %}
+    </div>
+    <p class="form-error" id="importMapError" role="alert"></p>
+    <div class="edit-actions">
+        <button type="button" class="btn-sm btn-primary" id="importMapGo">המשך</button>
+        <button type="button" class="btn-sm btn-ghost" data-import-restart>קובץ אחר</button>
+    </div>
+</section>
+
+{# שלב 3 — בדיקה ואישור #}
+<section class="chart-card" id="importReview" hidden>
+    <div class="chart-title-row">
+        <h2 class="chart-title">מה נמצא בקובץ</h2>
+        <button type="button" class="btn-sm btn-ghost" data-import-restart>קובץ אחר</button>
+    </div>
+    <p class="import-summary" id="importSummary" aria-live="polite"></p>
+
+    {% if show_owner %}
+    <label class="form-group import-owner">
+        <span class="form-label">של מי הכרטיס?</span>
+        <select class="form-input" id="importOwner">
+            {% for m in members %}
+            <option value="{{ m.id }}"{% if m.id == user.id %} selected{% endif %}>{{ m.name }}</option>
+            {% endfor %}
+            <option value="shared">משותף</option>
+        </select>
+    </label>
+    {% endif %}
+
+    <div class="import-bulk">
+        <button type="button" class="btn-sm btn-ghost" id="importAll">סימון הכל</button>
+        <button type="button" class="btn-sm btn-ghost" id="importNone">ניקוי</button>
+    </div>
+    <ul class="import-list" id="importList"></ul>
+
+    <details class="advanced-options import-more" id="importExistsWrap" hidden>
+        <summary class="advanced-summary" id="importExistsTitle"></summary>
+        <ul class="import-list" id="importExists"></ul>
+    </details>
+    <details class="advanced-options import-more" id="importRefundsWrap" hidden>
+        <summary class="advanced-summary" id="importRefundsTitle"></summary>
+        <p class="field-hint">זיכויים והחזרות לא נכנסים כהוצאה. אם ההוצאה המקורית נרשמה — אפשר לערוך או למחוק אותה.</p>
+        <ul class="import-list" id="importRefunds"></ul>
+    </details>
+
+    <p class="form-error" id="importCommitError" role="alert"></p>
+    <div class="import-commit-bar">
+        <button type="button" class="btn-sm btn-primary" id="importCommit" disabled>ייבוא</button>
+    </div>
+</section>
+
+{# שלב 4 — סיום #}
+<section class="chart-card import-done" id="importDone" hidden>
+    <p class="import-done-icon" aria-hidden="true">✓</p>
+    <h2 class="chart-title" id="importDoneTitle"></h2>
+    <div class="edit-actions">
+        <a class="btn-sm btn-primary" id="importDoneMonth" href="{{ url_for('month_view') }}">לחודש</a>
+        <button type="button" class="btn-sm btn-ghost" data-import-restart>ייבוא קובץ נוסף</button>
+    </div>
+</section>
+
+<script type="application/json" id="importData">
+    {{ {'categories': categories, 'showOwner': show_owner} | tojson }}
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/import.js') }}"></script>
+{% endblock %}

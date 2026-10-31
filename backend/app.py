@@ -21,6 +21,7 @@ from .wording import count_of, day_label, share_map, greeting, next_charge_label
 from . import clock
 from . import logs
 from . import notify
+from . import card_import
 
 logs.setup()
 logger = logs.get("smartfin.app")
@@ -3620,6 +3621,187 @@ def view_receipt(tx_id):
     # הכתובת החתומה קצרת-מועד ואישית; אסור שתישמר במטמון של proxy
     response.headers["Cache-Control"] = "no-store"
     return response
+
+
+# ─── ייבוא מחברת האשראי (מתן, 31.10) ─────────────────────────────────────────
+#
+# פעם בחודש: מורידים מהאתר של חברת האשראי את פירוט העסקאות, מעלים אותו כאן,
+# רואים טבלה עם קטגוריה מוצעת לכל עסקה וסימון של מה שכבר קיים — ומאשרים.
+# שני שלבים ושני מסלולים: ‎preview‎ קורא את הקובץ ולא כותב כלום, ‎commit‎
+# מקבל רק את השורות שאושרו. הקובץ עצמו לא נשמר בשום מקום.
+
+def _expense_categories(family_id):
+    return [c for c in db.get_categories(family_id) if c.get("type") == "expense"]
+
+
+def _json_form_field(name, kind):
+    """שדה JSON בטופס multipart — או ‎None‎ כשהוא חסר או שבור."""
+    raw = request.form.get(name)
+    if not raw or len(raw) > 50_000:
+        return None
+    try:
+        value = json.loads(raw)
+    except ValueError:
+        return None
+    return value if isinstance(value, kind) else None
+
+
+@app.route("/import")
+@login_required
+def import_page():
+    user = get_current_user()
+    if not user["family_id"]:
+        return redirect(url_for("onboarding"))
+    attribution = (family_settings() or {}).get("owner_attribution", {}).get("expense", False)
+    members = db.get_family_members(user["family_id"]) if attribution else []
+    return render_template(
+        "import.html", active_page="settings", user=user,
+        categories=[{"id": c["id"], "name": c.get("name") or "", "icon": c.get("icon") or ""}
+                    for c in _expense_categories(user["family_id"])],
+        members=[{"id": m["id"], "name": m.get("name") or ""} for m in members],
+        show_owner=bool(attribution and len(members) > 1),
+    )
+
+
+@app.route("/api/import/preview", methods=["POST"])
+# קורא ל-OpenAI כשהקובץ לא מוכר וכדי לנחש קטגוריות לבתי עסק חדשים — כסף
+# אמיתי, כמו סריקת קבלה. ייבוא אמיתי הוא פעם בחודש; עשר לדקה הן לניסיונות
+# חוזרים עם קובץ אחר, ושישים ביום — תקרה לסקריפט.
+@limiter.limit("10 per minute;60 per day")
+@login_required
+def import_preview_route():
+    user = get_current_user()
+    family_id = user["family_id"]
+    if not family_id:
+        return jsonify({"error": "לא מצאנו את המשפחה שלך — רעננו את הדף, ואם זה חוזר התחברו מחדש"}), 400
+
+    file = request.files.get("file")
+    if not file or not file.filename:
+        return jsonify({"error": "לא התקבל קובץ"}), 422
+    data = file.read(card_import.MAX_FILE_BYTES + 1)
+
+    layouts = [l for l in (_json_form_field("layouts", list) or [])[:20] if isinstance(l, dict)]
+    chosen = _json_form_field("mapping", dict)       # בחירה ידנית (שכבה 3)
+    if chosen:
+        layouts.insert(0, chosen)
+
+    try:
+        sheets = card_import.read_sheets(data, file.filename)
+        txs, used = card_import.extract(sheets, layouts)
+        ai_mapped = False
+        if not used:
+            candidate = card_import.find_header_candidate(sheets)
+            if not candidate:
+                return jsonify({"error": "לא מצאנו בקובץ טבלת עסקאות. ודאו שזה קובץ פירוט "
+                                         "העסקאות שהורד מהאתר של חברת האשראי."}), 422
+            mapping = None if chosen else card_import.ai_map_columns(
+                candidate["headers"], candidate["samples"])
+            if mapping:
+                txs, used = card_import.extract(
+                    sheets, [{"signature": candidate["signature"], "mapping": mapping}])
+                ai_mapped = bool(used)
+            if not used:
+                # שכבה 3: המשתמש בוחר בעצמו איזו עמודה היא מה
+                return jsonify({"status": "needs_mapping", **candidate})
+    except card_import.ImportError_ as e:
+        return jsonify({"error": str(e)}), 422
+
+    if not txs:
+        return jsonify({"error": "לא נמצאו עסקאות בקובץ"}), 422
+
+    categories = _expense_categories(family_id)
+    valid_ids = {c["id"] for c in categories}
+    by_name = {c["name"]: c["id"] for c in categories}
+
+    days = [date.fromisoformat(t["date"]) for t in txs]
+    pad = timedelta(days=card_import.DUPLICATE_DAYS)
+    try:
+        existing = db.import_existing_expenses(family_id, user["id"], (min(days) - pad).isoformat(),
+                                               (max(days) + pad).isoformat())
+    except db.DataUnavailable:
+        # בלי בדיקת כפילויות כל עסקה שכבר הוזנה ידנית הייתה נכנסת פעמיים
+        return jsonify({"error": "לא הצלחנו לבדוק מה כבר קיים — נסו שוב בעוד רגע"}), 503
+    history = db.import_category_history(family_id, (clock.today() - timedelta(days=365)).isoformat())
+    learned = card_import.learned_categories(history)
+
+    for i, t in enumerate(txs):
+        t["id"] = i
+        cat = card_import.lookup_learned(card_import.merchant_key(t["merchant"]), learned)
+        source = "history"
+        if cat not in valid_ids:
+            cat, source = card_import.rule_category(t["merchant"], categories), "rule"
+        if not cat:
+            cat, source = card_import.sector_category(t.get("sector"), categories), "sector"
+        t["category_id"], t["category_source"] = (cat, source) if cat else (None, None)
+        if t["refund"]:
+            t["status"] = "refund"
+
+    card_import.mark_duplicates([t for t in txs if not t["refund"]], existing)
+
+    unknown = sorted({t["merchant"] for t in txs if not t["category_id"] and t["status"] != "refund"})
+    ai_categorized = False
+    if unknown:
+        guesses = card_import.ai_categorize(unknown, list(by_name))
+        for t in txs:
+            name = guesses.get(t["merchant"])
+            if not t["category_id"] and name in by_name:
+                t["category_id"], t["category_source"] = by_name[name], "ai"
+                ai_categorized = True
+
+    counts = {s: sum(1 for t in txs if t["status"] == s) for s in ("new", "exists", "maybe", "refund")}
+    return jsonify({"status": "ok", "transactions": txs, "layouts": used, "counts": counts,
+                    "ai_mapped": ai_mapped, "ai_categorized": ai_categorized})
+
+
+@app.route("/api/import/commit", methods=["POST"])
+@limiter.limit("10 per minute")
+@login_required
+def import_commit_route():
+    user = get_current_user()
+    family_id = user["family_id"]
+    if not family_id:
+        return jsonify({"error": "לא מצאנו את המשפחה שלך — רעננו את הדף, ואם זה חוזר התחברו מחדש"}), 400
+
+    body = request.get_json(silent=True) or {}
+    rows = body.get("transactions")
+    if not isinstance(rows, list) or not rows:
+        return jsonify({"error": "לא נבחרו עסקאות לייבוא"}), 422
+    if len(rows) > card_import.MAX_TRANSACTIONS:
+        return jsonify({"error": f"אפשר לייבא עד {card_import.MAX_TRANSACTIONS} עסקאות בפעם אחת"}), 422
+
+    owner_id, owner_err = _resolve_owner(body, user, "expense")
+    if owner_err:
+        return jsonify({"error": owner_err}), 422
+
+    valid_ids = {c["id"] for c in _expense_categories(family_id)}
+    payload = []
+    for n, row in enumerate(rows, start=1):
+        if not isinstance(row, dict):
+            return jsonify({"error": f"שורה {n} אינה תקינה"}), 422
+        amount, err = _parse_amount(row.get("amount"))
+        if err:
+            return jsonify({"error": f"שורה {n}: {err}"}), 422
+        tx_date, err = _parse_date(row.get("date"))
+        if err:
+            return jsonify({"error": f"שורה {n}: {err}"}), 422
+        if row.get("category_id") not in valid_ids:
+            return jsonify({"error": f"שורה {n}: נא לבחור קטגוריה"}), 422
+        payload.append({
+            "amount":       round(amount, 2),
+            "type":         "expense",
+            "date":         tx_date,
+            "description":  _text(row.get("description"))[:120],
+            "category_id":  row["category_id"],
+            "user_id":      owner_id,
+            "family_id":    family_id,
+            "is_recurring": False,
+        })
+
+    created, err = db.add_transactions(payload)
+    if err:
+        logger.error("import_commit: %s", err)
+        return jsonify({"error": "הייבוא נכשל ושום עסקה לא נשמרה — נסו שוב"}), 500
+    return jsonify({"status": "ok", "created": created}), 201
 
 
 # ─── API: Categories ──────────────────────────────────────────────────────────
