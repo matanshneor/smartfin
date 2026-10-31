@@ -5514,3 +5514,55 @@ body.tx-screen-open { overflow: hidden; }
 .field-error { margin: 5px 2px 0; font-size: 0.8rem; font-weight: 500; color: var(--color-expense); }
 .field-error[hidden] { display: none; }
 .form-input[aria-invalid="true"] { border-color: var(--color-expense); }
+
+/* ייבוא מהאשראי (‎/import‎, מתן 31.10) */
+.import-steps { margin: 0 0 16px; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; color: var(--color-text-soft); }
+.import-steps b { font-weight: 600; color: var(--color-text); }
+.import-file-btn { cursor: pointer; padding: 12px 24px; font-size: 0.95rem; }
+.import-file-btn.is-busy { opacity: 0.7; pointer-events: none; }
+.import-privacy { margin-top: 14px; }
+.import-sample-wrap { overflow-x: auto; margin: 12px 0 16px; border-radius: var(--radius-sm); border: var(--border-subtle); }
+.import-sample { border-collapse: collapse; font-size: 0.78rem; white-space: nowrap; }
+.import-sample th, .import-sample td { padding: 6px 10px; text-align: start; border-bottom: 1px solid var(--divider-subtle); }
+.import-sample th { font-weight: 700; background: var(--color-bg); }
+.import-map-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+@media (max-width: 380px) { .import-map-grid { grid-template-columns: 1fr; } }
+.import-summary { margin: -6px 0 12px; font-size: 0.88rem; color: var(--color-text-muted); }
+.import-owner { margin-bottom: 12px; }
+.import-bulk { display: flex; gap: 8px; margin-bottom: 8px; }
+.import-list { list-style: none; margin: 0; padding: 0; }
+.import-row { display: flex; gap: 10px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--divider-subtle); }
+.import-row:last-child { border-bottom: none; }
+.import-row.is-off .import-main { opacity: 0.5; }
+.import-check { width: 20px; height: 20px; margin-top: 2px; flex-shrink: 0; accent-color: var(--color-gold); }
+.import-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.import-line { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.import-merchant { font-weight: 600; font-size: 0.92rem; overflow-wrap: anywhere; }
+.import-amount { font-weight: 700; white-space: nowrap; color: var(--color-expense); }
+.import-meta { display: flex; gap: 10px; align-items: center; }
+.import-date { font-size: 0.8rem; color: var(--color-text-muted); white-space: nowrap; min-width: 40px; }
+.import-cat { padding: 7px 10px; font-size: 0.86rem; }
+.import-row.needs-cat .import-cat { border-color: var(--color-expense); }
+.import-note { margin: 0; font-size: 0.78rem; color: var(--color-text-muted); }
+.import-note.is-warn { color: var(--alert-warn-ink); }
+.import-more { margin-top: 8px; }
+.import-more .import-amount { color: var(--color-text-soft); }
+.import-commit-bar {
+    position: sticky; bottom: calc(var(--dock-height) + var(--dock-gap) + env(safe-area-inset-bottom, 0px) + 10px); z-index: 2;
+    margin-top: 14px; display: flex;
+}
+.import-commit-bar .btn-sm { flex: 1; padding: 14px 18px; font-size: 0.95rem; box-shadow: var(--shadow-gold); }
+.import-commit-bar .btn-sm:disabled { box-shadow: none; opacity: 0.6; }
+.import-done { text-align: center; }
+.import-done-icon {
+    width: 52px; height: 52px; margin: 6px auto 12px; display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; background: var(--color-gold-dim); color: var(--color-gold-text); font-size: 1.5rem; font-weight: 700;
+}
+.import-done .edit-actions { justify-content: center; }
+.settings-import-link {
+    display: flex; align-items: center; gap: 12px; padding: 14px 17px; margin-top: 6px;
+    text-decoration: none; color: var(--color-text); -webkit-tap-highlight-color: transparent;
+}
+.settings-import-title { font-weight: 600; font-size: 1.02rem; }
+.settings-import-sub { font-size: 0.78rem; color: var(--color-text-muted); margin-top: 2px; }
+.export-links { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }

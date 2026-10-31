@@ -484,9 +484,13 @@
         <h2 class="chart-title">כל העסקאות</h2>
         {# קישור ולא fetch: הדפדפן מוריד את הקובץ בעצמו. ה-Service Worker
            לא מיירט אותו כי הוא לא ‎/static/‎ ולא ‎/api/‎. #}
+        <span class="export-links">
+        {# ייבוא מהאשראי (מתן, 31.10) — ליד הייצוא, כי שם מחפשים "קובץ" #}
+        <a class="btn-sm btn-ghost export-link" href="{{ url_for('import_page') }}">ייבוא מהאשראי</a>
         <a class="btn-sm btn-ghost export-link"
            href="{{ url_for('month_csv', year=year, month=month) }}"
            download>ייצוא CSV</a>
+        </span>
     </div>
     <div role="group" class="cat-tx-list cat-tx-list-standalone tx-preview">
         {% for tx in month_transactions[:tx_preview] %}{{ tx_row(tx, freq_labels) }}{% endfor %}

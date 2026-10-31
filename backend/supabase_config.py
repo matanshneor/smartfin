@@ -1760,6 +1760,59 @@ def add_transaction(data: dict):
         return None, str(e)
 
 
+def add_transactions(rows: list):
+    """הוספה של כמה עסקאות בבקשה אחת (ייבוא מהאשראי). הכול או כלום —
+    PostgREST מכניס מערך בטרנזקציה אחת, כך שייבוא שנכשל באמצע לא משאיר
+    חצי חודש במסד. מחזיר ‎(count, error)‎."""
+    client = get_client()
+    if not client:
+        return 0, "Database not configured"
+    if not rows:
+        return 0, None
+    try:
+        client.table("transactions").insert(rows, returning="minimal").execute()
+        return len(rows), None
+    except Exception as e:
+        logger.exception("add_transactions")
+        return 0, str(e)
+
+
+def import_existing_expenses(family_id: str, viewer_user_id: str, start: str, end: str) -> list:
+    """הוצאות המשפחה בטווח — מולן נבדקות כפילויות בייבוא מהאשראי. כולל
+    פרויקטים (קנייה בטיול יורדת מאותו כרטיס), בלי פרויקט אישי של בן משפחה
+    אחר: התיאור שלה מוצג ב"ייתכן שכבר הוזן", וזו דליפה."""
+    client = get_client()
+    if not client:
+        raise DataUnavailable("import_existing_expenses: no client")
+    try:
+        rows = _fetch_all(lambda: client.table("transactions")
+                          .select("id, date, amount, description, project_id, projects(owner_id)")
+                          .eq("family_id", family_id).eq("type", "expense")
+                          .gte("date", start).lte("date", end).order("id"))
+    except Exception as e:
+        raise DataUnavailable("import_existing_expenses") from e
+    return _filter_hidden_personal_projects(rows, viewer_user_id)
+
+
+def import_category_history(family_id: str, since: str, limit: int = 3000) -> list:
+    """הוצאות הבית האחרונות עם תיאור וקטגוריה, מהחדשה לישנה — ה"זיכרון"
+    של בית עסק → קטגוריה (‎card_import.learned_categories‎). ריק בכישלון:
+    בלי היסטוריה הייבוא עדיין עובד, רק מנחש פחות."""
+    client = get_client()
+    if not client:
+        return []
+    try:
+        return client.table("transactions") \
+            .select("description, category_id, date") \
+            .eq("family_id", family_id).eq("type", "expense") \
+            .is_("project_id", "null").not_.is_("category_id", "null") \
+            .gte("date", since).order("date", desc=True).order("created_at", desc=True) \
+            .limit(limit).execute().data or []
+    except Exception:
+        logger.exception("import_category_history")
+        return []
+
+
 def get_recurring_transactions(family_id: str, viewer_user_id: str, settings: dict = None) -> list:
     """כל התבניות הקבועות שהצופה רשאי לראות.
 
