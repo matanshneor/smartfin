@@ -5559,10 +5559,6 @@ body.tx-screen-open { overflow: hidden; }
     border-radius: 50%; background: var(--color-gold-dim); color: var(--color-gold-text); font-size: 1.5rem; font-weight: 700;
 }
 .import-done .edit-actions { justify-content: center; }
-.settings-import-link {
-    display: flex; align-items: center; gap: 12px; padding: 14px 17px; margin-top: 6px;
-    text-decoration: none; color: var(--color-text); -webkit-tap-highlight-color: transparent;
-}
-.settings-import-title { font-weight: 600; font-size: 1.02rem; }
-.settings-import-sub { font-size: 0.78rem; color: var(--color-text-muted); margin-top: 2px; }
+.settings-import { margin: 0 0 12px; text-align: center; font-size: 0.875rem; }
+.settings-import-link { display: inline-block; padding: 6px 2px; color: var(--color-gold-text); font-weight: 700; text-decoration: none; }
 .export-links { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }

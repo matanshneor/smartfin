@@ -569,3 +569,16 @@ def test_preview_uses_the_sector_only_after_merchant_rules(client):
     by = {t["merchant"]: t for t in _preview(client, blob).get_json()["transactions"]}
     assert (by["חנות לא מוכרת"]["category_id"], by["חנות לא מוכרת"]["category_source"]) == (_CAR, "sector")
     assert by["שופרסל"]["category_id"] == _FOOD
+
+
+def test_the_settings_link_is_a_quiet_line_not_a_box():
+    """מתן (31.10): פעולה של פעם בחודש — "לא תיבה בפני עצמה בהגדרות". שורת
+    טקסט מעל "התנתקות", בלי מסגרת ובלי חץ."""
+    from pathlib import Path
+    html = (Path(__file__).resolve().parent.parent / "frontend/templates/settings.html").read_text(encoding="utf-8")
+    footer = html[html.index('<div class="settings-footer">'):]
+    link = footer[:footer.index('class="logout-form')]
+    assert "url_for('import_page')" in link
+    groups = html[:html.index('<div class="settings-footer">')]
+    assert "import_page" not in groups
+    assert "←" not in link and "<svg" not in link
