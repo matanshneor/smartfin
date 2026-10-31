@@ -3845,6 +3845,56 @@ def add_category():
     return jsonify(cat), 201
 
 
+def _category_key(name, type_) -> tuple:
+    return (" ".join((name or "").split()), type_)
+
+
+def _missing_default_categories(family_id) -> tuple:
+    """קטגוריות ברירת המחדל שאין למשפחה (לפי שם ומחלקה), ומה שכבר יש."""
+    existing = [c for c in db.get_categories(family_id) if c.get("family_id") == family_id]
+    have = {_category_key(c.get("name"), c.get("type")) for c in existing}
+    missing = [dict(c) for c in _DEFAULT_CATEGORIES if _category_key(c["name"], c["type"]) not in have]
+    return missing, existing
+
+
+@app.route("/api/categories/defaults", methods=["GET"])
+@login_required
+def missing_default_categories_route():
+    """מה יתווסף בשחזור ברירת המחדל — כדי שהאישור יגיד את זה בשמות."""
+    user = get_current_user()
+    if not user["family_id"]:
+        return jsonify({"error": "לא מצאנו את המשפחה שלך — רעננו את הדף"}), 400
+    missing, _ = _missing_default_categories(user["family_id"])
+    return jsonify({"missing": missing})
+
+
+@app.route("/api/categories/defaults", methods=["POST"])
+@limiter.limit("10 per minute")
+@login_required
+def restore_default_categories_route():
+    """מחזיר את קטגוריות ברירת המחדל שחסרות (מתן, 31.10 — "למי שמחק בטעות").
+
+    רק מוסיף: קטגוריה קיימת לא משתנה ולא נמחקת, ועסקאות לא זזות — ולכן
+    זה פתוח לכל בן משפחה, כמו הוספת קטגוריה. מה שכבר קיים באותו שם ובאותה
+    מחלקה לא נוסף שוב, כך שלחיצה כפולה לא יוצרת כפילויות."""
+    user = get_current_user()
+    family_id = user["family_id"]
+    if not family_id:
+        return jsonify({"error": "לא מצאנו את המשפחה שלך — רעננו את הדף"}), 400
+    missing, existing = _missing_default_categories(family_id)
+    if not missing:
+        return jsonify({"status": "ok", "added": 0})
+    start = {}
+    for c in existing:
+        t = c.get("type")
+        start[t] = max(start.get(t, 0), c.get("sort_order") or 0)
+    added, err = db.bulk_add_categories(family_id, missing, start=start)
+    if err:
+        logger.error("restore_default_categories: %s", err)
+        return jsonify({"error": "ההוספה נכשלה — נסו שוב"}), 500
+    return jsonify({"status": "ok", "added": added}), 201
+
+
 @app.route("/api/categories/<cat_id>", methods=["PUT"])
 @limiter.limit("30 per minute")
 @login_required

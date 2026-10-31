@@ -202,10 +202,17 @@
 
             <!-- Step 4: קטגוריות -->
             <section class="onboarding-step" id="step3" style="display:none;">
-                <h2 class="auth-form-title">בחרו את הקטגוריות שלכם</h2>
-                <p class="onboarding-sub">
-                    הצענו סט בסיסי לכל מחלקה — אפשר להסיר מה שלא רלוונטי, לשנות שם או אייקון, ולהוסיף קטגוריות משלכם.
-                </p>
+                {# שני אנשים ביטלו כאן את כל הקטגוריות במקום לבחור אותן (מתן, 31.10):
+                   הכותרת הייתה "בחרו את הקטגוריות" — אבל כולן כבר מסומנות, אז
+                   "לבחור" אחת פירושו ללחוץ עליה, וזה בדיוק מה שמבטל אותה. עכשיו
+                   הכותרת אומרת שהן כבר שלכם, ✓ על כל מסומנת, ומונה חי. #}
+                <h2 class="auth-form-title">הקטגוריות שלכם</h2>
+                {# שלוש שורות, אחת לכל פעולה, בלי סימנים לידן (מתן, 31.10 — נוסח ג) #}
+                <ul class="onboarding-legend">
+                    <li>כל המסומנות כבר נבחרו</li>
+                    <li>לא צריכים קטגוריה? לחצו עליה כדי להוריד</li>
+                    <li>אפשר להוסיף משלכם, ולשנות הכל אחר כך בהגדרות</li>
+                </ul>
 
                 <div class="type-toggle type-toggle-3 onboarding-type-tabs" role="group" aria-label="מחלקה">
                     <button type="button" class="toggle-btn active" data-cat-type="expense">הוצאות</button>
@@ -215,9 +222,10 @@
 
                 {% for type_key in ['expense', 'income', 'savings'] %}
                 <div class="onboarding-cat-panel" data-panel-type="{{ type_key }}" {% if not loop.first %}style="display:none;"{% endif %}>
+                    <p class="onboarding-cat-count" data-count-type="{{ type_key }}" aria-live="polite"></p>
                     <div class="onboarding-cat-grid" data-grid-type="{{ type_key }}">
                         {% for cat in default_categories if cat.type == type_key %}
-                        <button type="button" class="cat-btn onboarding-cat-btn active"
+                        <button type="button" class="cat-btn onboarding-cat-btn active" aria-pressed="true"
                                 data-name="{{ cat.name }}" data-icon="{{ cat.icon }}" data-type="{{ cat.type }}">
                             <span class="cat-emoji">{{ cat.icon }}</span>
                             <span>{{ cat.name }}</span>

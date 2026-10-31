@@ -24,7 +24,7 @@ restrained charts and motion.
 ```
 SmartFin/
 ├── backend/
-│   ├── app.py                  # all 79 routes: pages, API, auth, hardening
+│   ├── app.py                  # all 81 routes: pages, API, auth, hardening
 │   ├── clock.py                # Asia/Jerusalem — every "today" in the app comes from here
 │   ├── money.py                # the one rule for showing an amount (agorot only when present)
 │   ├── wording.py              # Hebrew counts, percentages that sum to 100, day labels, month names
@@ -109,6 +109,9 @@ SmartFin/
 
 ### Analytics
 
+- Default categories can be brought back from Settings → Categories → manage
+  (`/api/categories/defaults`): only the missing ones are added, nothing changes
+  or moves
 - Per-category monthly budgets, with a progress bar and an overrun warning. An
   overrun is also an alert on the home page — the only kind of category alert
 - CSV export of any month (`/month.csv`), and a full account export
