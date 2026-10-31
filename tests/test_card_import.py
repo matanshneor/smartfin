@@ -470,3 +470,102 @@ def test_settings_and_month_link_to_the_import():
     root = Path(__file__).resolve().parent.parent / "frontend/templates"
     for name in ("settings.html", "month.html"):
         assert "url_for('import_page')" in (root / name).read_text(encoding="utf-8"), name
+
+
+# ─── PDF: דף חיוב חודשי ─────────────────────────────────────────────────────
+#
+# מבוסס על דף החיוב של כאל שמתן העלה (31.10), בלי שום פרט אישי: אותם
+# מיקומים על הדף, אותן כותרות בשתי שורות, ואותה עברית שנשמרה בסדר חזותי
+# ("העסק" כ"קסעה"). שמות בתי העסק וסכומים — מהדוגמה, הם לא מזהים.
+
+def _w(text, x0, x1, top, visual=True):
+    if visual and ci._HEB.search(text):
+        text = text[::-1]
+    return {"text": text, "x0": x0, "x1": x1, "top": top}
+
+
+def _cal_page(visual=True):
+    w = lambda *a: _w(*a, visual=visual)
+    return [
+        w("פירוט", 518, 538, 336), w("עסקות", 493, 516, 336), w("שנצברו", 465, 491, 336),
+        # כותרות בשתי שורות
+        w("תאריך", 518, 538, 347.5), w("שם", 488, 499, 347.5), w("בית", 474, 486, 347.5),
+        w("העסק", 453, 472, 347.5), w("ענף", 404, 416, 347.5), w("פירוט", 362, 380, 347.5),
+        w("כרטיס", 255, 275, 347.5), w("סכום", 230, 246, 347.5), w("סכום", 166, 181, 347.5),
+        w("העסקה", 514, 538, 354), w("הוצג", 259, 275, 354), w("העסקה", 222, 246, 354),
+        w("חיוב", 168, 181, 354),
+        # עסקאות
+        w("10/08/2026", 503, 538, 364.2), w("קוסטה", 481, 499, 364.2), w("ג'ים", 468, 479, 364.2),
+        w("פנאי", 403, 416, 364.2), w("הוראת", 364, 380, 364.2), w("קבע", 352, 362, 364.2),
+        w("לא", 267, 275, 364.2), w("255.00", 225, 246, 364.2), w("₪", 218, 223, 364.2),
+        w("255.00", 161, 181, 364.2), w("₪", 153, 159, 364.2),
+        w("20/08/2026", 503, 538, 383.7), w("כביש", 485, 499, 383.7), w("6", 479, 483, 383.7),
+        w("רכב", 405, 416, 383.7), w("לא", 267, 275, 383.7), w("149.39", 225, 246, 383.7),
+        w("₪", 218, 223, 383.7), w("149.39", 161, 181, 383.7), w("₪", 153, 159, 383.7),
+        w("13/09/2026", 503, 538, 393.4), w("Netflix.com", 465, 499, 393.4),
+        w("תקשורת", 393, 416, 393.4), w("לא", 267, 275, 393.4), w("-69.90", 225, 246, 393.4),
+        w("₪", 222, 227, 393.4), w("-69.90", 161, 181, 393.4), w("₪", 157, 162, 393.4),
+        # שורת ההמשך של התיאור — בלי תאריך, לא עסקה
+        w("7610", 400, 416, 402),
+        # סיכום: תאריך וסכום, אבל לא בעמודת התאריך
+        w('סה"כ', 254, 272, 414), w("לתאריך", 226, 252, 414), w("15/09/26", 190, 224, 414),
+        w("514.19", 156, 181, 414), w("₪", 146, 153, 414),
+        # טבלת הריביות — תאריך ואחוזים, בלי סכום כסף
+        w("סוג", 290, 300, 530), w("שיעור", 234, 256, 530), w("מתאריך", 159, 187, 530),
+        w("+30", 290, 300, 549), w("13.75%", 234, 256, 549), w("03/09/26", 159, 187, 549),
+    ]
+
+
+@pytest.mark.parametrize("visual", [True, False])
+def test_a_cal_statement_pdf_is_read_like_a_spreadsheet(visual):
+    sheets = ci.sheets_from_pdf_words([_cal_page(visual)])
+    assert sheets[0][0] == ["תאריך העסקה", "שם בית העסק", "ענף", "פירוט", "כרטיס הוצג",
+                            "סכום העסקה", "סכום חיוב"]
+    txs, _ = ci.extract(sheets)
+    assert [(t["date"], t["merchant"], t["amount"], t["refund"]) for t in txs] == [
+        ("2026-08-10", "קוסטה ג'ים", 255.0, False),
+        ("2026-08-20", "כביש 6", 149.39, False),
+        ("2026-09-13", "Netflix.com", 69.9, True),
+    ]
+
+
+def test_a_pdf_without_text_says_it_may_be_scanned(monkeypatch):
+    monkeypatch.setattr(ci, "sheets_from_pdf_words", lambda pages: [])
+
+    class _Pdf:
+        pages = []
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    import pdfplumber
+    monkeypatch.setattr(pdfplumber, "open", lambda *a, **k: _Pdf())
+    with pytest.raises(ci.ImportError_) as e:
+        ci.read_sheets(b"%PDF-1.7 scanned", "s.pdf")
+    assert "סרוק" in str(e.value)
+
+
+def test_the_preview_route_accepts_a_pdf(client, monkeypatch):
+    monkeypatch.setattr(ci, "_read_pdf", lambda data: ci.sheets_from_pdf_words([_cal_page()]))
+    body = _preview(client, b"%PDF-1.7 ...", name="statement.pdf").get_json()
+    assert body["status"] == "ok"
+    assert body["counts"] == {"new": 2, "exists": 0, "maybe": 0, "refund": 1}
+
+
+def test_the_card_companys_own_sector_is_a_fallback_hint():
+    """"קוסטה ג'ים" לא אומר כלום לכללים — אבל כאל כבר כתבה "פנאי בילוי"."""
+    cats = _CATS + [{"id": "c-fun", "name": "מסעדות ובילויים", "type": "expense"}]
+    txs, _ = ci.extract(ci.sheets_from_pdf_words([_cal_page()]))
+    gym = txs[0]
+    assert gym["sector"] == "פנאי"
+    assert ci.rule_category(gym["merchant"], cats) is None
+    assert ci.sector_category(gym["sector"], cats) == "c-fun"
+    assert ci.sector_category("משהו אחר", cats) is None
+    assert ci.sector_category(None, cats) is None
+
+
+def test_preview_uses_the_sector_only_after_merchant_rules(client):
+    blob = _xlsx([["תאריך עסקה", "שם בית העסק", "קטגוריה", "סכום חיוב"],
+                  ["01/10/2026", "חנות לא מוכרת", "רכב ותחבורה", 20],
+                  ["01/10/2026", "שופרסל", "רכב ותחבורה", 30]])
+    by = {t["merchant"]: t for t in _preview(client, blob).get_json()["transactions"]}
+    assert (by["חנות לא מוכרת"]["category_id"], by["חנות לא מוכרת"]["category_source"]) == (_CAR, "sector")
+    assert by["שופרסל"]["category_id"] == _FOOD

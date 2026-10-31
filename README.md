@@ -13,7 +13,7 @@ restrained charts and motion.
 - **Database & auth:** Supabase (PostgreSQL + GoTrue), RLS enforced on every table
 - **Frontend:** HTML + hand-written CSS + vanilla JS + Chart.js (no build step)
 - **Receipt scanning:** OpenAI (`gpt-4o-mini`, vision)
-- **Credit-card import:** `openpyxl` / `xlrd` for the statement file, OpenAI only for unknown layouts and new merchants
+- **Credit-card import:** `openpyxl` / `xlrd` / `pdfplumber` for the statement file, OpenAI only for unknown layouts and new merchants
 - **Rate limiting:** Flask-Limiter — shared storage via `RATELIMIT_STORAGE_URI`
   (Redis in production), falling back to in-memory counters if it is unreachable
 - **PWA:** service worker — stale-while-revalidate for static assets, network-only for API calls
@@ -41,7 +41,7 @@ SmartFin/
 │       ├── js/                 # one script per page/feature; vendor/ holds Chart.js
 │       ├── fonts/              # Rubik, self-hosted
 │       ├── sw.js, manifest.json, icons/
-├── tests/                      # 2111 tests: 2070 unit (no network) + 41 against the real DB
+├── tests/                      # 2117 tests: 2076 unit (no network) + 41 against the real DB
 │   └── browser/                # manual Playwright checks (screenshots, not run in CI)
 ├── docs/SPEC.md                # product specification
 ├── Procfile / runtime.txt      # Railway configuration (gunicorn, Python 3.11.9)
@@ -82,11 +82,12 @@ SmartFin/
   Manual entry is always available.
 - **Credit-card import** (`/import`) — once a month, upload the transactions file
   downloaded from the card company (Max, Cal, Isracard and others: `.xlsx`, old
-  `.xls`, `.csv`, or the HTML-as-`.xls` some of them produce). Columns are found
+  `.xls`, `.csv`, the HTML-as-`.xls` some of them produce, or the monthly
+  statement PDF, whose table is rebuilt from word positions). Columns are found
   by their Hebrew headers; an unknown layout goes to OpenAI (headers and three
   sample rows only), and failing that the user picks the columns once. Each
   transaction gets a category from the family's own history for that merchant,
-  then keyword rules, then OpenAI. Anything already entered (same amount and
+  then keyword rules, then the card company's own sector column, then OpenAI. Anything already entered (same amount and
   merchant within 3 days) is flagged and left out; refunds are not imported;
   installment payments land in the month they are charged. Nothing is written
   until the user approves, and the file itself is never stored

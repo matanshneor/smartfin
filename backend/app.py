@@ -3730,6 +3730,8 @@ def import_preview_route():
         source = "history"
         if cat not in valid_ids:
             cat, source = card_import.rule_category(t["merchant"], categories), "rule"
+        if not cat:
+            cat, source = card_import.sector_category(t.get("sector"), categories), "sector"
         t["category_id"], t["category_source"] = (cat, source) if cat else (None, None)
         if t["refund"]:
             t["status"] = "refund"

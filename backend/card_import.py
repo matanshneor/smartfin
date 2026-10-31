@@ -37,7 +37,7 @@ MAX_TRANSACTIONS = 500
 # או יומיים אחרי הקנייה, וחברת האשראי רושמת לפעמים את יום הקליטה.
 DUPLICATE_DAYS = 3
 
-FIELDS = ("date", "merchant", "charge", "amount", "notes")
+FIELDS = ("date", "merchant", "charge", "amount", "notes", "sector")
 
 
 class ImportError_(Exception):
@@ -62,12 +62,13 @@ def read_sheets(data: bytes, filename: str = "") -> list:
     if head.startswith(b"\xd0\xcf\x11\xe0"):
         return _read_xls(data)
 
+    if head.startswith(b"%PDF"):
+        return _read_pdf(data)
+
     text = _decode(data)
     sniff = text.lstrip()[:2000].lower()
     if sniff.startswith("<") and ("<table" in sniff or "<html" in sniff or "<tr" in text.lower()):
         return [_read_html(text)]
-    if filename.lower().endswith((".pdf",)) or head.startswith(b"%PDF"):
-        raise ImportError_("קובץ PDF עוד לא נתמך — הורידו מהאתר את הפירוט כקובץ אקסל")
     return [_read_csv(text)]
 
 
@@ -184,6 +185,162 @@ def _read_csv(text: str) -> list:
     return rows
 
 
+# ─── PDF: דף החיוב החודשי (מתן, 31.10 — דוגמה של כאל) ───────────────────────
+#
+# ב-PDF אין טבלה — יש מילים במקומות על הדף. משחזרים אותה כך:
+#   1. מילים → שורות, לפי הגובה בדף.
+#   2. "שורת נתונים" = שורה עם תאריך וסכום. רצף שלהן הוא טבלה.
+#   3. הכותרות (שורה אחת או שתיים צמודות מעל — "תאריך / העסקה") קובעות את
+#      העמודות לפי המיקום האופקי; כל מילה בשורת נתונים הולכת לעמודה שלה.
+# כל טבלה יוצאת כ"גיליון" נפרד, ומשם הכל כמו באקסל — אותו זיהוי כותרות.
+#
+# ובעברית: חלק מהקבצים שומרים כל מילה בסדר חזותי — "העסק" נשמר "קסעה".
+# מזהים את זה לפי מילות הכותרת המוכרות, והופכים.
+
+MAX_PDF_PAGES = 30
+_HEB = re.compile(r"[֐-׿]")
+_HEB_RUNS = re.compile(r"[֐-׿\"'׳״]+|[^֐-׿\"'׳״]+")
+_KNOWN_WORDS = ("תאריך", "סכום", "העסק", "העסקה", "חיוב", "פירוט", "עסקות", "עסקאות")
+# כמה נקודות מתחת לשורה קודמת עוד נחשבות אותה שורה, ומרווחים בין שורות כותרת
+_LINE_TOLERANCE = 2.0
+_HEADER_TO_DATA = 15.0
+_HEADER_TO_HEADER = 8.0
+_BLOCK_GAP = 40.0
+_COLUMN_GAP = 6.0
+
+
+def _read_pdf(data: bytes) -> list:
+    try:
+        import pdfplumber
+    except ImportError:                     # pragma: no cover — תלות מוצהרת
+        raise ImportError_("קריאת PDF אינה זמינה כרגע — הורידו מהאתר את הפירוט כקובץ אקסל")
+    pages = []
+    try:
+        with pdfplumber.open(io.BytesIO(data)) as pdf:
+            for page in pdf.pages[:MAX_PDF_PAGES]:
+                pages.append([{"text": w["text"], "x0": w["x0"], "x1": w["x1"], "top": w["top"]}
+                              for w in page.extract_words()])
+    except Exception:
+        logger.info("card_import: pdf לא נקרא", exc_info=True)
+        raise ImportError_("לא הצלחנו לפתוח את קובץ ה-PDF — נסו להוריד מהאתר את הפירוט כקובץ אקסל")
+    sheets = sheets_from_pdf_words(pages)
+    if not sheets:
+        raise ImportError_("לא מצאנו טקסט ב-PDF (אולי זה קובץ סרוק). "
+                           "הורידו מהאתר את הפירוט כקובץ אקסל, או כ-PDF מקורי")
+    return sheets
+
+
+def _visual_order(pages) -> bool:
+    """האם המילים העבריות שמורות הפוך. מכריעים לפי מילות כותרת מוכרות."""
+    straight = flipped = 0
+    for words in pages:
+        for w in words:
+            t = w["text"]
+            if not _HEB.search(t):
+                continue
+            straight += any(k in t for k in _KNOWN_WORDS)
+            flipped += any(k in t[::-1] for k in _KNOWN_WORDS)
+    return flipped > straight
+
+
+def _fix_word(text: str, visual: bool) -> str:
+    if not visual or not _HEB.search(text):
+        return text
+    runs = _HEB_RUNS.findall(text)
+    return "".join(r[::-1] if _HEB.search(r) else r for r in reversed(runs))
+
+
+def _lines(words, visual):
+    """מילים → שורות, מלמעלה למטה; בכל שורה המילים מימין לשמאל."""
+    lines = []
+    for w in sorted(words, key=lambda w: w["top"]):
+        w = dict(w, text=_fix_word(w["text"], visual))
+        if lines and abs(lines[-1]["top"] - w["top"]) <= _LINE_TOLERANCE:
+            lines[-1]["words"].append(w)
+        else:
+            lines.append({"top": w["top"], "words": [w]})
+    for line in lines:
+        line["words"].sort(key=lambda w: -w["x1"])
+        line["text"] = " ".join(w["text"] for w in line["words"])
+    return lines
+
+
+def _is_data_line(line) -> bool:
+    texts = [w["text"] for w in line["words"]]
+    has_date = any(parse_date(t) for t in texts)
+    has_amount = any(parse_date(t) is None and _parse_amount_or_none(t) not in (None, 0)
+                     and re.search(r"\d[.,]\d{2}$|^\d+$", t.strip("₪ ")) for t in texts)
+    return has_date and has_amount
+
+
+def _columns(header_lines):
+    """עמודות מהכותרות: מילים צמודות באותה שורה הן כותרת אחת ("שם בית
+    העסק"), וכותרות בשתי שורות שחופפות אופקית הן אותה עמודה ("סכום / חיוב")."""
+    cols = []
+    for line in header_lines:
+        clusters = []
+        for w in line["words"]:              # מימין לשמאל
+            if clusters and clusters[-1]["x0"] - w["x1"] <= _COLUMN_GAP:
+                c = clusters[-1]
+                c["x0"] = min(c["x0"], w["x0"])
+                c["parts"].append(w["text"])
+            else:
+                clusters.append({"x0": w["x0"], "x1": w["x1"], "parts": [w["text"]]})
+        for c in clusters:
+            same = next((k for k in cols if c["x0"] < k["x1"] and k["x0"] < c["x1"]), None)
+            if same:
+                same["x0"], same["x1"] = min(same["x0"], c["x0"]), max(same["x1"], c["x1"])
+                same["text"] += " " + " ".join(c["parts"])
+            else:
+                cols.append({"x0": c["x0"], "x1": c["x1"], "text": " ".join(c["parts"])})
+    return sorted(cols, key=lambda c: -c["x1"])
+
+
+def _cells(line, cols):
+    """כל מילה לעמודה הקרובה אליה (לפי הגבול שבאמצע הרווח בין עמודות)."""
+    cells = [[] for _ in cols]
+    for w in line["words"]:
+        mid = (w["x0"] + w["x1"]) / 2
+        best = min(range(len(cols)), key=lambda i: 0 if cols[i]["x0"] <= mid <= cols[i]["x1"]
+                   else min(abs(mid - cols[i]["x0"]), abs(mid - cols[i]["x1"])))
+        cells[best].append(w["text"])
+    return [" ".join(c) if c else None for c in cells]
+
+
+def sheets_from_pdf_words(pages) -> list:
+    """עמודים של מילים (‎text, x0, x1, top‎) → "גיליונות" לפי טבלאות.
+    נפרד מ-‎pdfplumber‎ כדי שאפשר יהיה לבדוק אותו בלי קובץ."""
+    visual = _visual_order(pages)
+    sheets = []
+    for words in pages:
+        lines = _lines(words, visual)
+        i = 0
+        while i < len(lines):
+            if not _is_data_line(lines[i]):
+                i += 1
+                continue
+            # הכותרות: עד שתי שורות צמודות מעל שורת הנתונים הראשונה
+            header, top = [], lines[i]["top"]
+            j = i - 1
+            gap = _HEADER_TO_DATA
+            while j >= 0 and len(header) < 2 and top - lines[j]["top"] <= gap \
+                    and not _is_data_line(lines[j]):
+                header.insert(0, lines[j])
+                top, gap = lines[j]["top"], _HEADER_TO_HEADER
+                j -= 1
+            block, last = [], lines[i]["top"]
+            while i < len(lines) and lines[i]["top"] - last <= _BLOCK_GAP:
+                if _is_data_line(lines[i]):
+                    block.append(lines[i])
+                    last = lines[i]["top"]
+                i += 1
+            if not header:
+                continue
+            cols = _columns(header)
+            sheets.append([[c["text"] for c in cols]] + [_cells(l, cols) for l in block])
+    return sheets
+
+
 # סימני כיווניות שאקסל בעברית מפזר בתוך תאים — בלתי נראים, ושוברים השוואות
 _BIDI = dict.fromkeys(map(ord, "‎‏‪‫‬‭‮⁦⁧⁨⁩﻿"), None)
 
@@ -264,6 +421,10 @@ def detect_mapping(header_row) -> dict | None:
                              lambda h: h in ("הערות", "הערה", "פירוט נוסף", "סוג עסקה",
                                              "פרטים נוספים", "notes"),
                              has("הער"), has("סוג עסק"), has("פירוט")))
+    # הקטגוריה של חברת האשראי עצמה ("ענף" בכאל, "קטגוריה" במקס) — רמז
+    m["sector"] = take(_first(headers, used,
+                              lambda h: h in ("ענף", "קטגוריה", "ענף עסקי", "סוג בית עסק",
+                                              "category")))
     if m["date"] is None or m["merchant"] is None or (m["charge"] is None and m["amount"] is None):
         return None
     return {k: v for k, v in m.items() if v is not None}
@@ -533,7 +694,12 @@ def _row_to_tx(row, mapping):
         "amount":      round(abs(value), 2),
         "refund":      value < 0,
         "installment": list(inst) if inst else None,
+        "sector":      _sector(_cell(row, mapping.get("sector"))),
     }
+
+
+def _sector(value):
+    return re.sub(r"\s+", " ", value).strip()[:40] if isinstance(value, str) and value.strip() else None
 
 
 # ─── שמות בתי עסק: התאמה להיסטוריה ──────────────────────────────────────────
@@ -642,6 +808,33 @@ def rule_category(merchant: str, categories: list):
         if cat and (best is None or len(max(hits, key=len)) > best[0]):
             best = (len(max(hits, key=len)), cat["id"])
     return best[1] if best else None
+
+
+# הענף שחברת האשראי עצמה נותנת ("פנאי בילוי", "רכב ותחבורה") → מילה בשם
+# הקטגוריה של המשפחה. רק כשאין התאמה לפי בית העסק עצמו — הענף כללי יותר.
+_SECTOR_RULES = [
+    (("מזון", "סופר", "מכולת"), ("מזון", "סופר")),
+    (("רכב", "תחבור", "דלק", "חניה"), ("רכב", "תחבורה")),
+    (("מסעד", "בילוי", "פנאי", "מזון מהיר", "בתי קפה"), ("מסעדות", "בילויים", "בידור")),
+    (("תקשורת", "מחשבים", "חשמל ומים", "ביטוח", "שירותים"), ("חשבונות", "מנויים")),
+    (("רפואה", "בריאות", "פארם", "אופטיקה"), ("בריאות",)),
+    (("אופנה", "ביגוד", "הנעלה", "קניות", "כלבו", "מוצרי און"), ("שופינג", "קניות", "ביגוד")),
+    (("ריהוט", "בית ומשרד", "בית וגן", "עיצוב"), ("ריהוט", "לבית", "בית")),
+    (("תיירות", "טיסות", "נופש", "מלונות"), ("חופשות", "טיולים", "נסיעות")),
+    (("קוסמטיקה", "טיפוח", "יופי"), ("טיפוח",)),
+]
+
+
+def sector_category(sector, categories: list):
+    if not sector:
+        return None
+    for sector_words, category_words in _SECTOR_RULES:
+        if any(w in sector for w in sector_words):
+            cat = next((c for c in categories
+                        if any(cw in (c.get("name") or "") for cw in category_words)), None)
+            if cat:
+                return cat["id"]
+    return None
 
 
 # ─── כפילויות ───────────────────────────────────────────────────────────────

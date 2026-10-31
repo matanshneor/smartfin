@@ -25,14 +25,14 @@
 <section class="chart-card" id="importUpload">
     <h2 class="chart-title">איך זה עובד</h2>
     <ol class="import-steps">
-        <li>באתר או באפליקציה של חברת האשראי (מקס, כאל, ישראכרט ועוד) — <b>פירוט עסקאות ← ייצוא לאקסל</b></li>
+        <li>באתר או באפליקציה של חברת האשראי (מקס, כאל, ישראכרט ועוד) — <b>פירוט עסקאות ← ייצוא לאקסל</b>, או <b>דף החיוב החודשי כ-PDF</b></li>
         <li>בוחרים כאן את הקובץ שירד</li>
         <li>בודקים את הקטגוריות ומאשרים</li>
     </ol>
     <form id="importForm" novalidate>
         <label class="btn-sm btn-primary import-file-btn" for="importFile">בחירת קובץ</label>
         <input type="file" id="importFile" class="sr-only"
-               accept=".xlsx,.xls,.csv,.htm,.html,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv">
+               accept=".xlsx,.xls,.csv,.htm,.html,.pdf,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv">
         <p class="field-hint" id="importFileName" aria-live="polite"></p>
         <p class="form-error" id="importError" role="alert"></p>
     </form>
