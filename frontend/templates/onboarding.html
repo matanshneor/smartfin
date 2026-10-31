@@ -207,10 +207,12 @@
                    "לבחור" אחת פירושו ללחוץ עליה, וזה בדיוק מה שמבטל אותה. עכשיו
                    הכותרת אומרת שהן כבר שלכם, ✓ על כל מסומנת, ומונה חי. #}
                 <h2 class="auth-form-title">הקטגוריות שלכם</h2>
-                <p class="onboarding-sub">
-                    <b>כל הקטגוריות המסומנות ב-✓ כבר נבחרו</b> — אין צורך ללחוץ עליהן.
-                    לחיצה על קטגוריה מורידה אותה, ולחיצה נוספת מחזירה. אפשר גם להוסיף משלכם, ולשנות הכל אחר כך בהגדרות.
-                </p>
+                {# שלוש שורות, אחת לכל פעולה (מתן, 31.10 — נוסח ג) #}
+                <ul class="onboarding-legend">
+                    <li><span class="legend-mark is-on" aria-hidden="true">✓</span>כל המסומנות כבר נבחרו</li>
+                    <li><span class="legend-mark" aria-hidden="true">✕</span>לא צריכים קטגוריה? לחצו עליה כדי להוריד</li>
+                    <li><span class="legend-mark" aria-hidden="true">＋</span>אפשר להוסיף משלכם, ולשנות הכל אחר כך בהגדרות</li>
+                </ul>
 
                 <div class="type-toggle type-toggle-3 onboarding-type-tabs" role="group" aria-label="מחלקה">
                     <button type="button" class="toggle-btn active" data-cat-type="expense">הוצאות</button>

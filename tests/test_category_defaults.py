@@ -31,7 +31,7 @@ def test_the_wizard_does_not_ask_to_choose_what_is_already_chosen():
     step = _WIZARD[_WIZARD.index('id="step3"'):]
     step = re.sub(r"\{#.*?#\}", "", step[:step.index("</section>")], flags=re.S)   # בלי הערות
     assert "בחרו את הקטגוריות" not in step
-    assert "כבר נבחרו" in step and "מורידה" in step
+    assert "כל המסומנות כבר נבחרו" in step and "כדי להוריד" in step
 
 
 def test_every_chip_says_whether_it_is_in():

@@ -5591,3 +5591,13 @@ body.tx-screen-open { overflow: hidden; }
 /* שחזור קטגוריות ברירת המחדל — בתחתית מצב הניהול (מתן, 31.10) */
 .restore-defaults { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--divider-subtle); text-align: center; }
 .restore-defaults .field-hint { margin-top: 6px; }
+
+/* מקרא שלב הקטגוריות באשף — שלוש שורות (מתן, 31.10) */
+.onboarding-legend { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem; color: var(--color-text-soft); }
+.onboarding-legend li { display: flex; align-items: center; gap: 10px; }
+.legend-mark {
+    width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--color-input); color: var(--color-text-muted); font-size: 0.75rem; font-weight: 700;
+}
+.legend-mark.is-on { background: var(--color-gold); color: #FFFFFF; }
