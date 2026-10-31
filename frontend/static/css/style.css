@@ -2736,6 +2736,7 @@ li.zero-cat-row { display: none; }
 #categoriesArea:not(.managing) .cat-reorder-btns,
 #categoriesArea:not(.managing) .cat-drag-handle,
 #categoriesArea:not(.managing) #addCatForm,
+#categoriesArea:not(.managing) #restoreDefaultsRow,
 #projectCategoriesArea:not(.managing) .edit-cat-btn,
 #projectCategoriesArea:not(.managing) .delete-cat-btn,
 #projectCategoriesArea:not(.managing) #addProjectCatForm {
@@ -3723,15 +3724,31 @@ a.btn-sm { display: inline-flex; align-items: center; justify-content: center; t
     margin-bottom: 14px;
 }
 
+/* מסומנת: ✓ בפינה. לא מסומנת: דהויה, עם מסגרת מקווקווה ושם מחוק — כך שאין
+   ספק מה ייכנס (מתן, 31.10: שניים ביטלו הכל במקום לבחור) */
 .onboarding-cat-btn {
-    opacity: 0.4;
-    filter: grayscale(0.6);
+    position: relative;
+    opacity: 0.45;
+    filter: grayscale(0.7);
+    border-style: dashed;
 }
+.onboarding-cat-btn:not(.active) > span:last-child { text-decoration: line-through; }
 
 .onboarding-cat-btn.active {
     opacity: 1;
     filter: none;
+    border-style: solid;
 }
+.onboarding-cat-btn.active::after {
+    content: "✓";
+    position: absolute; top: 4px; inset-inline-start: 5px;
+    width: 18px; height: 18px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--color-gold); color: #FFFFFF;
+    font-size: 0.7rem; font-weight: 700; line-height: 1;
+}
+.onboarding-cat-count { margin: 0 0 8px; font-size: 0.82rem; color: var(--color-text-muted); }
+.onboarding-cat-count.is-empty { color: var(--color-expense); font-weight: 600; }
 
 .onboarding-add-row {
     display: flex;
@@ -5570,3 +5587,7 @@ body.tx-screen-open { overflow: hidden; }
 }
 .settings-import-link:active { transform: scale(0.97); }
 .export-links { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* שחזור קטגוריות ברירת המחדל — בתחתית מצב הניהול (מתן, 31.10) */
+.restore-defaults { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--divider-subtle); text-align: center; }
+.restore-defaults .field-hint { margin-top: 6px; }

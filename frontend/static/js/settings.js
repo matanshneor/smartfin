@@ -427,6 +427,49 @@ document.addEventListener('click', function (e) {
     });
 });
 
+// ── החזרת קטגוריות ברירת המחדל (מתן, 31.10) ──
+// קודם שואלים את השרת מה חסר, ומציגים את זה בשמות באישור — "נוסיף 3
+// קטגוריות" לבד לא אומר למשתמש אם זה מה שהוא חיפש. רק הוספה, אף פעם לא מחיקה.
+const restoreBtn = document.getElementById('restoreDefaultCatsBtn');
+if (restoreBtn) {
+    restoreBtn.addEventListener('click', function () {
+        restoreBtn.disabled = true;
+        fetch('/api/categories/defaults')
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+            .then(function (res) {
+                if (!res.ok) throw new Error(res.d.error || '');
+                const missing = res.d.missing || [];
+                if (!missing.length) {
+                    restoreBtn.disabled = false;
+                    window.showToast('כל קטגוריות ברירת המחדל כבר קיימות');
+                    return null;
+                }
+                const names = missing.map(function (c) { return c.icon + ' ' + c.name; }).join(' · ');
+                return window.appConfirm({
+                    title: 'להחזיר את קטגוריות ברירת המחדל?',
+                    message: 'יתווספו ' + window.sfCount(missing.length, 'קטגוריה אחת', 'קטגוריות') + ': ' + names +
+                             '. הקטגוריות הקיימות והעסקאות לא ישתנו.',
+                    confirmText: 'הוספה',
+                    danger: false,
+                }).then(function (ok) {
+                    if (!ok) { restoreBtn.disabled = false; return null; }
+                    return fetch('/api/categories/defaults', { method: 'POST' })
+                        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+                        .then(function (done) {
+                            if (!done.ok) throw new Error(done.d.error || '');
+                            forgetCategories();
+                            window.sfToastAfterReload(window.sfCount(done.d.added, 'נוספה קטגוריה אחת', 'קטגוריות נוספו'));
+                            window.location.reload();
+                        });
+                });
+            })
+            .catch(function (err) {
+                restoreBtn.disabled = false;
+                window.showToast((err && err.message) || window.sfNetError(), 'error');
+            });
+    });
+}
+
 // ── Add category (הסוג נקבע לפי הטאב הפעיל) ──
 const addForm  = document.getElementById('addCatForm');
 const addError = document.getElementById('addCatError');

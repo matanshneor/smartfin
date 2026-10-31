@@ -345,6 +345,14 @@
                     </div>
                     <p class="form-error" id="addCatError" role="alert"></p>
                 </form>
+
+                {# שחזור ברירת המחדל (מתן, 31.10) — "למי שמחק בטעות או רוצה את
+                   הקטגוריות של ברירת המחדל". רק מוסיף את מה שחסר; במצב ניהול,
+                   כמו ההוספה #}
+                <div class="restore-defaults" id="restoreDefaultsRow">
+                    <button type="button" class="btn-sm btn-ghost" id="restoreDefaultCatsBtn">החזרת קטגוריות ברירת המחדל</button>
+                    <p class="field-hint">מוסיף רק את מה שחסר. הקטגוריות הקיימות והעסקאות לא משתנות.</p>
+                </div>
             </div>
         </div>
     </section>

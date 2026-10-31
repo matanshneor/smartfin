@@ -186,12 +186,29 @@ window.escapeHtml = window.escapeHtml || function (s) {
         });
     });
 
+    // "נבחרו 12 מתוך 14" מעל כל רשת — כך שמי שלוחץ כדי "לבחור" רואה מיד
+    // שהמספר יורד, ולא מגלה את זה רק אחרי ההרשמה (מתן, 31.10)
+    function updateCount(type) {
+        const grid = document.querySelector('.onboarding-cat-grid[data-grid-type="' + type + '"]');
+        const label = document.querySelector('.onboarding-cat-count[data-count-type="' + type + '"]');
+        if (!grid || !label) return;
+        const all = grid.querySelectorAll('.onboarding-cat-btn').length;
+        const on = grid.querySelectorAll('.onboarding-cat-btn.active').length;
+        label.textContent = on === all ? 'כל ' + all + ' הקטגוריות נבחרו'
+                          : on === 0 ? 'לא נבחרה אף קטגוריה — לחצו על קטגוריה כדי להחזיר אותה'
+                          : 'נבחרו ' + on + ' מתוך ' + all;
+        label.classList.toggle('is-empty', on === 0);
+    }
+    ['expense', 'income', 'savings'].forEach(updateCount);
+
     // Toggle category chips on/off (multi-select, not radio)
     document.querySelectorAll('.onboarding-cat-grid').forEach(function (grid) {
         grid.addEventListener('click', function (e) {
             const btn = e.target.closest('.onboarding-cat-btn');
             if (!btn) return;
-            btn.classList.toggle('active');
+            const on = btn.classList.toggle('active');
+            btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+            updateCount(grid.dataset.gridType);
         });
     });
 
@@ -209,11 +226,13 @@ window.escapeHtml = window.escapeHtml || function (s) {
             const chip = document.createElement('button');
             chip.type = 'button';
             chip.className = 'cat-btn onboarding-cat-btn active';
+            chip.setAttribute('aria-pressed', 'true');
             chip.dataset.name = nameVal;
             chip.dataset.icon = icon.value.trim() || '🏷';
             chip.dataset.type = type;
             chip.innerHTML = `<span class="cat-emoji">${window.escapeHtml(chip.dataset.icon)}</span><span>${window.escapeHtml(nameVal)}</span>`;
             grid.appendChild(chip);
+            updateCount(type);
 
             name.value = '';
             icon.value = '🏷';

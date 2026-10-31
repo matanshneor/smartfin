@@ -2646,7 +2646,7 @@ def family_has_no_transactions(family_id: str) -> bool:
 _MAX_CATEGORIES_PER_FAMILY = 200
 
 
-def bulk_add_categories(family_id: str, categories: list) -> tuple:
+def bulk_add_categories(family_id: str, categories: list, start: dict = None) -> tuple:
     """Inserts multiple categories at once for a family's onboarding.
     `categories` is a list of {name, icon, type} dicts. Returns (count, error).
     sort_order נקבע לפי הסדר ברשימת הקלט (בתוך כל סוג בנפרד) — כך שהסדר
@@ -2662,7 +2662,10 @@ def bulk_add_categories(family_id: str, categories: list) -> tuple:
     if len(categories or []) > _MAX_CATEGORIES_PER_FAMILY:
         return 0, "יותר מדי קטגוריות בבת אחת"
 
+    # ‎start‎: הסדר האחרון שכבר תפוס לכל מחלקה — כשמוסיפים למשפחה קיימת
+    # (שחזור ברירת המחדל), החדשות נכנסות בסוף הרשימה ולא מתנגשות בראשונות
     counters = {"income": 0, "expense": 0, "savings": 0}
+    counters.update({k: v for k, v in (start or {}).items() if k in counters})
     rows = []
     for c in categories:
         if not c.get("name") or c.get("type") not in counters:
