@@ -1813,6 +1813,66 @@ def import_category_history(family_id: str, since: str, limit: int = 3000) -> li
         return []
 
 
+# ─── התראות לטלפון (מתן, 31.10) — ראו ‎backend/push.py‎ ─────────────────────
+
+def push_subscribe(endpoint: str, p256dh: str, auth: str) -> bool:
+    client = get_client()
+    if not client:
+        return False
+    try:
+        client.rpc("push_subscribe", {"p_endpoint": endpoint, "p_p256dh": p256dh,
+                                      "p_auth": auth}).execute()
+        return True
+    except Exception:
+        logger.exception("push_subscribe")
+        return False
+
+
+def push_unsubscribe(endpoint: str) -> None:
+    """רק המכשיר של המחובר (RLS) — כתובת של מישהו אחר פשוט לא נמצאת."""
+    client = get_client()
+    if not client or not endpoint:
+        return
+    try:
+        client.table("push_subscriptions").delete().eq("endpoint", endpoint).execute()
+    except Exception:
+        logger.exception("push_unsubscribe")
+
+
+def push_family_targets(kind: str = None, period: str = None) -> list:
+    """המכשירים של שאר בני המשפחה של המחובר. עם ‎kind/period‎ — רק בפעם
+    הראשונה לתקופה (המסד רושם). ריק בכל כישלון: התראה היא תוספת."""
+    client = get_client()
+    if not client:
+        return []
+    try:
+        return client.rpc("push_family_targets", {"p_kind": kind, "p_period": period}).execute().data or []
+    except Exception:
+        logger.exception("push_family_targets")
+        return []
+
+
+def push_daily(secret: str, today: str) -> list:
+    client = get_client()
+    if not client:
+        return []
+    try:
+        return client.rpc("push_daily", {"p_secret": secret, "p_today": today}).execute().data or []
+    except Exception:
+        logger.exception("push_daily")
+        return []
+
+
+def push_forget(secret: str, endpoints: list) -> None:
+    client = get_client()
+    if not client or not endpoints:
+        return
+    try:
+        client.rpc("push_forget", {"p_secret": secret, "p_endpoints": list(endpoints)}).execute()
+    except Exception:
+        logger.exception("push_forget")
+
+
 def get_recurring_transactions(family_id: str, viewer_user_id: str, settings: dict = None) -> list:
     """כל התבניות הקבועות שהצופה רשאי לראות.
 
