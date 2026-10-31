@@ -29,10 +29,18 @@
 </div>
 
 {% if is_new_family %}
-<section class="hero-balance" aria-label="ברוכים הבאים">
+{# משפחה בלי אף עסקה (מתן, 31.10): שתי דרכים מפורשות להתחיל, ולא רק "לחצו על +".
+   משפחה שנרשמה ולא רשמה כלום בימים הראשונים כמעט לא חוזרת — והייבוא מכניס
+   חודש שלם בכמה דקות. נעלם מעצמו ברגע שיש עסקה ראשונה. #}
+<section class="hero-balance hero-start" aria-label="ברוכים הבאים">
     <p class="hero-label">עדיין אין נתונים החודש</p>
     <p class="hero-empty-message">בואו נתחיל</p>
-    <p class="hero-sub">לחצו על + כדי להוסיף את העסקה הראשונה שלכם ולראות כאן את היתרה שלכם</p>
+    <p class="hero-sub">איך תרצו להכניס את ההוצאות הראשונות?</p>
+    <div class="hero-start-actions">
+        <button type="button" class="hero-start-btn is-primary" data-add-type="expense">הוספת הוצאה ראשונה</button>
+        <a class="hero-start-btn" href="{{ url_for('import_page') }}">ייבוא החודש מחברת האשראי</a>
+    </div>
+    <p class="hero-start-hint">בייבוא: קובץ האקסל או ה-PDF של דף החיוב, וכל החודש נכנס בכמה דקות</p>
 </section>
 {% else %}
 {# חודש בלי הכנסות אינו גירעון.

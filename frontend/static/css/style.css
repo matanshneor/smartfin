@@ -5594,3 +5594,15 @@ body.tx-screen-open { overflow: hidden; }
 
 /* מקרא שלב הקטגוריות באשף — שלוש שורות טקסט, בלי סימנים (מתן, 31.10) */
 .onboarding-legend { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; color: var(--color-text-soft); text-align: center; }
+
+/* משפחה חדשה בלי עסקאות — שתי דרכים להתחיל (מתן, 31.10) */
+.hero-start-actions { display: flex; flex-direction: column; gap: 10px; margin: 18px auto 0; max-width: 320px; }
+.hero-start-btn {
+    display: block; padding: 13px 18px; border-radius: var(--radius-sm); text-align: center; text-decoration: none;
+    font-size: 0.95rem; font-weight: 600; color: var(--hero-text);
+    background: var(--hero-chip-bg); border: 1px solid var(--hero-chip-border);
+    -webkit-tap-highlight-color: transparent; transition: transform 120ms ease-out;
+}
+.hero-start-btn.is-primary { background: var(--gradient-gold); border-color: transparent; color: #FFFFFF; box-shadow: var(--shadow-gold); }
+.hero-start-btn:active { transform: scale(0.97); }
+.hero-start-hint { margin-top: 10px; font-size: 0.78rem; color: var(--hero-text-muted); }

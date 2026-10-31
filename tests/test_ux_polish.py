@@ -136,10 +136,16 @@ def test_no_template_addresses_the_user_in_the_singular(template):
 
 
 def test_the_dashboard_says_the_same_thing_twice_the_same_way():
-    """הבולט מכולם: ה-Hero והרשימה מתחתיו, אותו מסך, אותה פעולה."""
+    """הבולט מכולם: ה-Hero והרשימה מתחתיו, אותו מסך, אותה פעולה.
+
+    מאז 31.10 ה-Hero של משפחה חדשה לא מסביר איפה ה-+ — הוא כפתור שפותח את
+    אותו חלון (‎data-add-type‎), ולידו הייבוא. ההנחיה בטקסט נשארה רק ברשימה."""
     html = _strip_jinja(_read("frontend/templates/index.html"))
 
-    assert html.count("לחצו על +") == 2, "שתי ההנחיות לא מנוסחות אותו דבר"
+    assert html.count("לחצו על +") == 1
+    hero = html[html.index('class="hero-balance hero-start"'):]
+    hero = hero[:hero.index("</section>")]
+    assert 'data-add-type="expense"' in hero and "import_page" in _read("frontend/templates/index.html")
 
 
 # ─── 4. חודש בלי הכנסות אינו גירעון ──────────────────────────────────────────
