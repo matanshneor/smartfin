@@ -1552,7 +1552,7 @@ def dashboard():
         welcome_invite=welcome_invite,
         alerts=alerts,
         recap=recap,
-        # "2026 שלכם" (מתן, 1.11) — כרטיס מ-20.12 עד 15.1, הסיכום נטען בלחיצה
+        # "2026 שלכם" (מתן, 1.11) — כרטיס 1–15 בינואר, הסיכום נטען בלחיצה
         year_recap_year=db.year_recap_due(clock.today()),
         hebrew_months=_HEBREW_MONTHS,
         pinned_project=pinned_project,
@@ -1928,12 +1928,10 @@ def months():
                            verdict=db.trend_verdict(trend),
                            member_series=member_series,
                            today_year=now.year, today_month=now.month,
-                           # "2026 עד עכשיו" במהלך השנה, "סיכום 2026" מ-20.12 ועד
-                           # סוף ינואר (מתן, 1.11 — אפשרות ב)
-                           recap_year=(db.year_recap_due(now.date()) or
-                                       (now.year - 1 if now.month == 1 else now.year)),
-                           recap_partial=db.year_recap_partial(now.year, now.date())
-                                         and now.month > 1,
+                           # "2026 עד עכשיו" כל השנה, כולל דצמבר; בינואר "סיכום 2026"
+                           # (מתן, 1.11 — "השנה עוד לא נגמרה")
+                           recap_year=now.year - 1 if now.month == 1 else now.year,
+                           recap_partial=now.month > 1,
                            _HEBREW_MONTHS=_HEBREW_MONTHS)
 
 

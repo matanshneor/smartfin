@@ -27,7 +27,7 @@ def _r(date, typ, amount, cat=None, project=None, owner=None):
             "projects": {"owner_id": owner, "name": "חופשה", "icon": "🏖️"} if project else None}
 
 
-def _recap(monkeypatch, rows, year=2026, today=datetime.date(2026, 12, 28)):
+def _recap(monkeypatch, rows, year=2026, today=datetime.date(2027, 1, 5)):
     monkeypatch.setattr(db, "get_client", lambda: object())
     monkeypatch.setattr(db, "_fetch_all", lambda make: rows)
     return db.year_recap(_FAM, _ME, year, today)
@@ -67,8 +67,9 @@ def test_someone_elses_private_project_is_left_out(monkeypatch):
 
 
 @pytest.mark.parametrize("today,year", [
-    (datetime.date(2026, 12, 20), 2026), (datetime.date(2027, 1, 15), 2026),
-    (datetime.date(2026, 12, 19), None), (datetime.date(2027, 1, 16), None),
+    (datetime.date(2027, 1, 1), 2026), (datetime.date(2027, 1, 15), 2026),
+    (datetime.date(2026, 12, 31), None), (datetime.date(2026, 12, 20), None),
+    (datetime.date(2027, 1, 16), None),
 ])
 def test_when_the_home_card_shows(today, year):
     assert db.year_recap_due(today) == year
@@ -76,7 +77,7 @@ def test_when_the_home_card_shows(today, year):
 
 def test_the_api_returns_only_for_the_one_who_asks(monkeypatch):
     calls = []
-    monkeypatch.setattr(app_module.clock, "today", lambda: datetime.date(2026, 12, 28))
+    monkeypatch.setattr(app_module.clock, "today", lambda: datetime.date(2027, 1, 5))
     monkeypatch.setattr(app_module.db, "year_recap",
                         lambda fam, viewer, year, today: calls.append((fam, viewer, year)) or {"year": year})
     app.config["TESTING"] = True
@@ -111,8 +112,8 @@ def test_at_the_end_of_the_year_it_is_the_full_summary(monkeypatch):
 
 
 @pytest.mark.parametrize("today,partial", [
-    (datetime.date(2026, 7, 10), True), (datetime.date(2026, 12, 19), True),
-    (datetime.date(2026, 12, 20), False),
+    (datetime.date(2026, 7, 10), True), (datetime.date(2026, 12, 31), True),
+    (datetime.date(2027, 1, 1), False),
 ])
 def test_when_it_is_a_checkpoint(today, partial):
     assert db.year_recap_partial(2026, today) is partial

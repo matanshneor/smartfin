@@ -4388,18 +4388,17 @@ _YEAR_COMPARE_MIN = 500
 
 
 def year_recap_due(today):
-    """איזו שנה מסכמים בכרטיס בדף הבית — מ-20 בדצמבר עד 15 בינואר, אחרת ‎None‎."""
-    if today.month == 12 and today.day >= 20:
-        return today.year
+    """איזו שנה מסכמים בכרטיס בדף הבית — 1–15 בינואר, אחרת ‎None‎. לא מדצמבר:
+    "השנה עוד לא נגמרה" (מתן, 1.11)."""
     if today.month == 1 and today.day <= 15:
         return today.year - 1
     return None
 
 
 def year_recap_partial(year: int, today) -> bool:
-    """"2026 עד עכשיו" (מתן, 1.11 — אפשרות ב): השנה הנוכחית, מחוץ לחלון של סוף
-    השנה, היא בקרה באמצע הדרך ולא סיכום."""
-    return year == today.year and year_recap_due(today) != year
+    """"2026 עד עכשיו" (מתן, 1.11 — אפשרות ב): השנה הנוכחית היא תמיד בקרה באמצע
+    הדרך — גם בדצמבר. הסיכום המלא רק כשהשנה נגמרה."""
+    return year == today.year
 
 
 def year_recap(family_id: str, viewer_user_id: str, year: int, today=None) -> dict:
