@@ -99,10 +99,6 @@
     </div>
     {% endif %}
 
-    {# ובלי הכנסות — משפט שאומר מה חסר, במקום פס ריק שנראה כמו תקלה. #}
-    {% if summary.income <= 0 %}
-    <p class="hero-sub hero-bar-empty">הוסיפו הכנסה כדי לראות איך התחלק החודש</p>
-    {% endif %}
 </section>
 {% endif %}
 {% endblock %}
@@ -157,9 +153,10 @@
         <h2 class="recap-title">{{ rm }} נסגר</h2>
     </div>
     <div class="recap-figures">
-        <div class="recap-fig"><span class="recap-fig-label">נכנס</span><span class="recap-fig-value">₪{{ recap.income | money }}</span></div>
-        <div class="recap-fig"><span class="recap-fig-label">יצא</span><span class="recap-fig-value">₪{{ recap.expense | money }}</span></div>
-        <div class="recap-fig {{ 'good' if recap.balance >= 0 else 'bad' }}"><span class="recap-fig-label">נשאר</span><span class="recap-fig-value">{{ '-' if recap.balance < 0 }}₪{{ (recap.balance | abs) | money }}</span></div>
+        {# הכנסות · הוצאות · חיסכון (מתן, 1.11) — במקום נכנס · יצא · נשאר #}
+        <div class="recap-fig"><span class="recap-fig-label">הכנסות</span><span class="recap-fig-value">₪{{ recap.income | money }}</span></div>
+        <div class="recap-fig"><span class="recap-fig-label">הוצאות</span><span class="recap-fig-value">₪{{ recap.expense | money }}</span></div>
+        <div class="recap-fig"><span class="recap-fig-label">חיסכון</span><span class="recap-fig-value">₪{{ recap.savings | money }}</span></div>
     </div>
     <ul class="recap-lines">
         {% if recap.diff is not none and recap.diff != 0 %}
@@ -171,12 +168,8 @@
         <li><span class="recap-line-icon" aria-hidden="true">{{ recap.top.icon }}</span>
             <span>הכי הרבה הלך על <b>{{ recap.top.name }}</b> — ₪{{ recap.top.total | money }}</span></li>
         {% endif %}
-        {% if recap.savings > 0 %}
-        <li><span class="recap-line-icon" aria-hidden="true">💰</span>
-            <span>חסכתם <b>₪{{ recap.savings | money }}</b></span></li>
-        {% endif %}
     </ul>
-    <a class="recap-link" href="{{ url_for('month_view', year=recap.year, month=recap.month) }}">לסיכום המלא של {{ rm }} ←</a>
+    {# בלי "חסכתם" — כבר במספרים — ובלי קישור לסיכום המלא (מתן, 1.11: "זהו") #}
 </section>
 <button type="button" class="alert-dismiss recap-close" aria-label="סגירה">✕</button>
 </div>
