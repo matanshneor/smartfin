@@ -5659,11 +5659,7 @@ body.tx-screen-open { overflow: hidden; }
 .year-card-title { font-size: 1.15rem; font-weight: 700; color: var(--color-gold-bright); }
 .year-card-sub { font-size: 0.85rem; color: var(--hero-text-muted); }
 .year-card-arrow { font-size: 1.4rem; color: var(--color-gold-bright); }
-.year-recap-chip {
-    margin-top: 12px; padding: 8px 14px; border-radius: 99px; cursor: pointer;
-    background: var(--hero-chip-bg); border: 1px solid rgba(212, 175, 55, 0.35);
-    color: var(--color-gold-bright); font-size: 0.88rem; font-weight: 700;
-}
+.months-year-card { margin: 16px 0 8px; }
 
 .yr-overlay {
     position: fixed; inset: 0; z-index: 400; background: rgba(10, 8, 3, 0.55);
@@ -5718,7 +5714,7 @@ body.tx-screen-open { overflow: hidden; }
 .yr-bar.is-best i { background: var(--color-gold); }
 .yr-bar span { font-size: 0.6rem; color: var(--color-text-muted); }
 .yr-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem; color: var(--color-text-soft); }
-.yr-lines li { display: flex; gap: 8px; align-items: baseline; }
+.yr-lines li { line-height: 1.5; }
 .yr-lines .good { color: var(--color-income); }
 .yr-lines .bad { color: var(--color-expense); }
 .yr-cats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }

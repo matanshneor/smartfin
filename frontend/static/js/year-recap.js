@@ -15,8 +15,9 @@
     function section(title, inner) {
         return '<section class="yr-card"><h3 class="yr-card-title">' + title + '</h3>' + inner + '</section>';
     }
-    function line(icon, html) {
-        return '<li><span class="yr-line-icon" aria-hidden="true">' + icon + '</span><span>' + html + '</span></li>';
+    // בלי אימוג'י בשורות (מתן, 1.11)
+    function line(html) {
+        return '<li>' + html + '</li>';
     }
 
     function render(d) {
@@ -31,7 +32,7 @@
             + '<div class="yr-fig expense"><span>הוצאתם</span><b>' + money(d.expense) + '</b></div>'
             + '<div class="yr-fig savings"><span>חסכתם</span><b>' + money(d.savings) + '</b></div>'
             + '</div>';
-        if (d.savings_rate) html += '<p class="yr-rate">חסכתם <b>' + d.savings_rate + '%</b> מההכנסות 💪</p>';
+        if (d.savings_rate) html += '<p class="yr-rate">חסכתם <b>' + d.savings_rate + '%</b> מההכנסות</p>';
 
         // החודשים — עמודת הוצאות לכל חודש, והקיצוניים מסומנים
         const max = Math.max.apply(null, d.months.map(m => m.expense)) || 1;
@@ -45,11 +46,11 @@
         let lines = '';
         if (d.best) {
             const b = d.months[d.best - 1];
-            lines += line('🏆', 'החודש הכי חסכוני' + (d.partial ? ' עד עכשיו' : '') + ': <b>' + MONTHS[d.best - 1] + '</b> — נשארו ' + money(b.balance));
+            lines += line('החודש הכי חסכוני' + (d.partial ? ' עד עכשיו' : '') + ': <b>' + MONTHS[d.best - 1] + '</b> — נשארו ' + money(b.balance));
         }
         if (d.costliest) {
             const c = d.months[d.costliest - 1];
-            lines += line('💸', 'החודש הכי יקר' + (d.partial ? ' עד עכשיו' : '') + ': <b>' + MONTHS[d.costliest - 1] + '</b> — ' + money(c.expense) + ' הוצאות');
+            lines += line('החודש הכי יקר' + (d.partial ? ' עד עכשיו' : '') + ': <b>' + MONTHS[d.costliest - 1] + '</b> — ' + money(c.expense) + ' הוצאות');
         }
         html += section('החודשים', bars + '<ul class="yr-lines">' + lines + '</ul>');
 
@@ -65,12 +66,12 @@
 
         if (d.compare) {
             const k = d.compare;
-            let cmp = line(k.expense_diff <= 0 ? '📉' : '📈', 'הוצאתם <b class="' + (k.expense_diff <= 0 ? 'good' : 'bad') + '">'
+            let cmp = line('הוצאתם <b class="' + (k.expense_diff <= 0 ? 'good' : 'bad') + '">'
                            + money(k.expense_diff) + ' ' + (k.expense_diff <= 0 ? 'פחות' : 'יותר') + '</b>' + (d.partial ? '' : ' מ-' + k.year));
-            if (k.savings_diff) cmp += line('🐷', 'חסכתם <b class="' + (k.savings_diff > 0 ? 'good' : 'bad') + '">'
+            if (k.savings_diff) cmp += line('חסכתם <b class="' + (k.savings_diff > 0 ? 'good' : 'bad') + '">'
                            + money(k.savings_diff) + ' ' + (k.savings_diff > 0 ? 'יותר' : 'פחות') + '</b>');
-            if (k.up) cmp += line('⬆️', esc(k.up.icon) + ' <b>' + esc(k.up.name) + '</b> עלה ב-' + k.up.pct + '%');
-            if (k.down) cmp += line('⬇️', esc(k.down.icon) + ' <b>' + esc(k.down.name) + '</b> ירד ב-' + Math.abs(k.down.pct) + '% 👏');
+            if (k.up) cmp += line('<b>' + esc(k.up.name) + '</b> עלה ב-' + k.up.pct + '%');
+            if (k.down) cmp += line('<b>' + esc(k.down.name) + '</b> ירד ב-' + Math.abs(k.down.pct) + '%');
             html += section(d.partial ? 'מול אותה תקופה ב-' + k.year : 'מול ' + k.year, '<ul class="yr-lines">' + cmp + '</ul>');
         }
 

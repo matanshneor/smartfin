@@ -118,7 +118,10 @@ def test_when_it_is_a_checkpoint(today, partial):
     assert db.year_recap_partial(2026, today) is partial
 
 
-def test_no_emoji_on_the_buttons():
+def test_no_emoji_and_not_at_the_top():
     html = (ROOT / "frontend/templates/months.html").read_text(encoding="utf-8")
     assert "{{ recap_year }} עד עכשיו" in html and "🎉" not in html
+    assert html.index("data-year-recap") > html.index("{% block content %}")   # לא ב-hero
     assert "🎉" not in (ROOT / "frontend/templates/index.html").read_text(encoding="utf-8")
+    js = (ROOT / "frontend/static/js/year-recap.js").read_text(encoding="utf-8")
+    assert not any(e in js for e in ("🏆", "💸", "💪", "👏", "📈", "📉", "🐷"))

@@ -9,9 +9,7 @@
         <p class="hero-subtitle">החודש הנוכחי מול החודשים הקודמים</p>
     </div>
 </div>
-{# סיכום השנה (מתן, 1.11) — נפתח בלחיצה. במהלך השנה "2026 עד עכשיו", בסוף
-   השנה "סיכום 2026" (אפשרות ב). בלי אימוג'י. #}
-<button type="button" class="year-recap-chip" data-year-recap="{{ recap_year }}">{% if recap_partial %}{{ recap_year }} עד עכשיו{% else %}סיכום {{ recap_year }}{% endif %}</button>
+
 
 {# בלי סכום כולל של כל החודשים (החלטה של מתן, 30.9): העמוד משווה חודשים
    זה לזה, וסכום של כל התקופה — בלי לומר איזו — לא עונה על שום שאלה שלו. #}
@@ -131,6 +129,16 @@
     </details>
 {% endfor %}
 </div>
+
+{# סיכום השנה (מתן, 1.11) — בתחתית העמוד, לא למעלה. נפתח בלחיצה. במהלך השנה
+   "2026 עד עכשיו", מ-20.12 ועד סוף ינואר "סיכום 2026" (אפשרות ב). בלי אימוג'י. #}
+<button type="button" class="year-card months-year-card" data-year-recap="{{ recap_year }}">
+    <span class="year-card-text">
+        <span class="year-card-title">{% if recap_partial %}{{ recap_year }} עד עכשיו{% else %}סיכום {{ recap_year }}{% endif %}</span>
+        <span class="year-card-sub">{% if recap_partial %}איפה אתם עומדים השנה — לצפייה{% else %}הסיכום השנתי מוכן — לצפייה{% endif %}</span>
+    </span>
+    <span class="year-card-arrow" aria-hidden="true">‹</span>
+</button>
 
 {% else %}
 
