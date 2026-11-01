@@ -89,7 +89,7 @@ SmartFin/
   transaction gets a category from the family's own history for that merchant,
   then keyword rules, then the card company's own sector column, then OpenAI. Anything already entered (same amount and
   merchant within 3 days) is flagged and left out; refunds are not imported;
-  installment payments land in the month they are charged. Nothing is written
+  installment payments land in the month they are charged. Standing orders ("הוראת קבע") are offered — pre-ticked — as monthly recurring transactions, once per merchant and never when the family already has a series for it. Nothing is written
   until the user approves, and the file itself is never stored
   (`backend/card_import.py`).
 - **Phone notifications** (Web Push, opt-in per device in Settings → Notifications):

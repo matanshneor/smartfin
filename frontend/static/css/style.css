@@ -5606,3 +5606,7 @@ body.tx-screen-open { overflow: hidden; }
 .hero-start-btn.is-primary { background: var(--gradient-gold); border-color: transparent; color: #FFFFFF; box-shadow: var(--shadow-gold); }
 .hero-start-btn:active { transform: scale(0.97); }
 .hero-start-hint { margin-top: 10px; font-size: 0.78rem; color: var(--hero-text-muted); }
+
+/* הוראת קבע בייבוא — להפוך לעסקה קבועה (מתן, 1.11) */
+.import-recurring { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--color-gold-text); font-weight: 600; cursor: pointer; }
+.import-recurring input { width: 16px; height: 16px; accent-color: var(--color-gold); flex-shrink: 0; }

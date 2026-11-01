@@ -277,6 +277,7 @@ def client(monkeypatch):
     monkeypatch.setattr(app_module, "family_settings", lambda: dict(db.DEFAULT_FAMILY_SETTINGS))
     monkeypatch.setattr(app_module.db, "import_existing_expenses", lambda *a, **k: [])
     monkeypatch.setattr(app_module.db, "import_category_history", lambda *a, **k: [])
+    monkeypatch.setattr(app_module.db, "get_recurring_transactions", lambda *a, **k: [])
     monkeypatch.setattr(app_module.db, "get_family_members", lambda *a: [{"id": _ME, "name": "מתן"}])
     # בלי OpenAI בבדיקות — כל קריאה כזאת היא כסף אמיתי
     monkeypatch.setattr(ci, "ai_map_columns", lambda *a: None)
@@ -404,7 +405,8 @@ def test_commit_writes_only_the_approved_rows_in_one_request(client, monkeypatch
     first = calls[0][0]
     assert first == {"amount": 412.3, "type": "expense", "date": "2026-10-03",
                      "description": "שופרסל דיל", "category_id": _FOOD, "user_id": _ME,
-                     "family_id": _FAM, "is_recurring": False}
+                     "family_id": _FAM, "is_recurring": False,
+                     "recurring_frequency": None, "recurring_end_date": None}
 
 
 @pytest.mark.parametrize("row,message", [
@@ -582,3 +584,67 @@ def test_the_settings_link_is_a_quiet_line_not_a_box():
     groups = html[:html.index('<div class="settings-footer">')]
     assert "import_page" not in groups
     assert "←" not in link and "<svg" not in link
+
+
+
+# ─── הוראות קבע (מתן, 1.11) ─────────────────────────────────────────────────
+
+def test_standing_orders_are_recognised_and_the_suffix_dropped():
+    txs, _ = ci.extract(ci.sheets_from_pdf_words([_cal_page()]))
+    rows = [["תאריך עסקה", "שם בית העסק", "סכום חיוב", "הערות"],
+            ["01/10/2026", 'קוסטה ג\'ים הו"ק', 179, None],
+            ["02/10/2026", "NETFLIX", 69.9, "הוראת קבע"],
+            ["03/10/2026", "הוקרה לעובד", 50, None],
+            ["04/10/2026", "ACE", 400, "תשלום 2 מתוך 3 הוראת קבע"]]
+    by = {t["merchant"]: t for t in ci.extract([rows])[0]}
+    assert by["קוסטה ג'ים"]["standing_order"] is True          # ‎הו"ק‎ ירד מהשם
+    assert by["NETFLIX"]["standing_order"] is True
+    assert by["הוקרה לעובד"]["standing_order"] is False         # מילה שלמה בלבד
+    assert by["ACE"]["standing_order"] is False                 # תשלומים — לא סדרה קבועה
+
+
+def test_preview_offers_one_series_per_merchant_at_the_latest_amount(client):
+    blob = _xlsx([["תאריך עסקה", "שם בית העסק", "סכום חיוב", "הערות"],
+                  ["10/08/2026", 'קוסטה ג\'ים הו"ק', 255, "הוראת קבע"],
+                  ["10/09/2026", 'קוסטה ג\'ים הו"ק', 179, "הוראת קבע"],
+                  ["11/09/2026", "שופרסל", 80, None]])
+    txs = _preview(client, blob).get_json()["transactions"]
+    offers = [(t["date"], t["amount"]) for t in txs if t["recurring_offer"]]
+    assert offers == [("2026-09-10", 179.0)]
+    assert not any(t["recurring_offer"] for t in txs if t["merchant"] == "שופרסל")
+
+
+def test_an_existing_series_is_not_offered_again(client, monkeypatch):
+    monkeypatch.setattr(app_module.db, "get_recurring_transactions",
+                        lambda *a, **k: [{"description": "Netflix.com", "is_recurring": True,
+                                          "recurring_end_date": None, "date": "2026-01-05"}])
+    monkeypatch.setattr(app_module.db, "is_active_template", lambda r: True)
+    blob = _xlsx([["תאריך עסקה", "שם בית העסק", "סכום חיוב", "הערות"],
+                  ["13/10/2026", "Netflix.com", 69.9, "הוראת קבע"]])
+    t = _preview(client, blob).get_json()["transactions"][0]
+    assert (t["recurring_offer"], t["already_recurring"]) == (False, True)
+
+
+def test_commit_turns_an_approved_standing_order_into_a_monthly_series(client, monkeypatch):
+    calls, materialized = [], []
+    monkeypatch.setattr(app_module.db, "add_transactions",
+                        lambda rows: (calls.append(rows), (len(rows), None))[1])
+    monkeypatch.setattr(app_module.db, "materialize_recurring", lambda fam: materialized.append(fam))
+    res = _commit(client, [
+        {"date": "2026-10-13", "amount": 69.9, "description": "Netflix.com", "category_id": _FOOD,
+         "recurring": True},
+        {"date": "2026-10-14", "amount": 80, "description": "שופרסל", "category_id": _FOOD},
+    ])
+    assert res.status_code == 201 and res.get_json()["recurring"] == 1
+    netflix, super_ = calls[0]
+    assert (netflix["is_recurring"], netflix["recurring_frequency"]) == (True, "monthly_same")
+    assert (super_["is_recurring"], super_["recurring_frequency"]) == (False, None)
+    assert set(netflix) == set(super_)                          # אותם מפתחות — מערך אחד
+    assert materialized == [_FAM]
+
+
+def test_no_series_means_no_materializing(client, monkeypatch):
+    monkeypatch.setattr(app_module.db, "add_transactions", lambda rows: (len(rows), None))
+    monkeypatch.setattr(app_module.db, "materialize_recurring", lambda fam: pytest.fail("לא היה צריך"))
+    row = {"date": "2026-10-03", "amount": 10, "description": "x", "category_id": _FOOD, "recurring": "yes"}
+    assert _commit(client, [row]).get_json()["recurring"] == 0   # רק ‎True‎ ממש

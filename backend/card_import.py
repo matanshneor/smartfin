@@ -657,6 +657,16 @@ def _cell(row, i):
     return row[i] if i is not None and i < len(row) else None
 
 
+# הוראת קבע (מתן, 1.11): כאל כותבת "הוראת קבע" בפירוט ו-‎הו"ק‎ בסוף שם בית
+# העסק, מקס — "הוראת קבע" בסוג העסקה. מילה שלמה בלבד — "הוקרה" אינה ‎הו"ק‎.
+_STANDING = re.compile(r"הוראת\s*קבע|(?<![\u0590-\u05FF])הו[\"״']?ק(?![\u0590-\u05FF])")
+_STANDING_SUFFIX = re.compile(r"\s*(?<![\u0590-\u05FF])הו[\"״']?ק\s*$")
+
+
+def is_standing_order(cells) -> bool:
+    return any(isinstance(c, str) and _STANDING.search(c) for c in cells)
+
+
 def _row_to_tx(row, mapping):
     when = parse_date(_cell(row, mapping.get("date")))
     if when is None:
@@ -678,6 +688,10 @@ def _row_to_tx(row, mapping):
         return None
 
     inst = parse_installment([_cell(row, mapping.get("notes"))] + list(row))
+    # סדרת תשלומים אינה הוראת קבע: היא נגמרת, ויש לה מנגנון משלה
+    standing = not inst and value > 0 and is_standing_order(row)
+    if standing:
+        merchant = _STANDING_SUFFIX.sub("", merchant) or merchant
     description = merchant
     if inst:
         k, n = inst
@@ -695,6 +709,7 @@ def _row_to_tx(row, mapping):
         "refund":      value < 0,
         "installment": list(inst) if inst else None,
         "sector":      _sector(_cell(row, mapping.get("sector"))),
+        "standing_order": standing,
     }
 
 
