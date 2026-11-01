@@ -102,30 +102,50 @@ def test_dead_subscriptions_are_reported(monkeypatch):
     assert {e for _, e in sent} == {"aes128gcm"}
 
 
-# ─── נוסחים ─────────────────────────────────────────────────────────────────
+# ─── נוסחים (מתן, 1.11) ─────────────────────────────────────────────────────
 
-def test_month_closed_reads_like_a_summary():
-    m = push.month_closed(10, 14000, 11200, 800)
-    assert m["title"] == "אוקטובר נסגר 📅"
-    assert m["body"] == "הכנסות ₪14,000 · הוצאות ₪11,200 · חיסכון ₪800. נשארו ₪2,000"
-    assert "גירעון של ₪500" in push.month_closed(10, 1000, 1500, 0)["body"]
+import re
+_EMOJI = re.compile("[\U0001F300-\U0001FAFF\u2600-\u27BF]")
 
 
-def test_member_joined_does_not_guess_gender():
-    body = push.member_joined("נועה", "משפחת שניאור")["body"]
-    assert body == "נועה עכשיו חלק ממשפחת שניאור"
-    assert "הצטרף" not in body
+def _all_messages():
+    return [push.month_closed(10, 14000, 11200, 800), push.member_joined("נועה"),
+            push.salary(14000, 11), push.last_installment("ACE", 400),
+            push.quiet_week(1), push.quiet_week(2), push.quiet_week(3)]
 
 
-@pytest.mark.parametrize("weeks,phrase", [(1, "כבר שבוע"), (2, "כבר שבועיים"), (3, "כבר 3 שבועות")])
-def test_quiet_week(weeks, phrase):
-    m = push.quiet_week(weeks)
-    assert phrase in m["title"] and m["url"] == "/import"
+def test_no_emojis_anywhere():
+    for m in _all_messages():
+        assert not _EMOJI.search(m["title"] + m["body"]), m
 
 
-def test_last_installment_and_salary():
-    assert "ACE: היום יורד התשלום האחרון, ₪400" in push.last_installment("ACE", 400)["body"]
+def test_the_wording_matan_chose():
+    assert push.month_closed(10, 14000, 11200, 800) == {
+        "title": "אוקטובר נסגר", "body": "הכנסות ₪14,000 · הוצאות ₪11,200 · חיסכון ₪800",
+        "url": "/months", "tag": "month-closed"}
+    assert push.salary(14000, 11)["title"] == "משכורת נכנסה"
     assert push.salary(14000, 11)["body"] == "משכורת של ₪14,000 נרשמה לנובמבר"
+    assert push.last_installment("ACE", 400)["title"] == "תשלום אחרון של ACE"
+    assert push.last_installment("ACE", 400)["body"] == "₪400 פחות בחודש מעכשיו"
+    assert push.member_joined("נועה")["title"] == "הצטרפות למשפחה"
+
+
+def test_a_name_does_not_decide_gender():
+    body = push.member_joined("נועה")["body"]
+    assert body == "נועה הצטרף/ה לתקציב המשפחתי"
+
+
+@pytest.mark.parametrize("weeks,title", [(1, "לא נרשמו עסקאות כבר שבוע"),
+                                         (2, "לא נרשמו עסקאות כבר שבועיים"),
+                                         (3, "לא נרשמו עסקאות כבר 3 שבועות")])
+def test_quiet_week(weeks, title):
+    m = push.quiet_week(weeks)
+    assert m["title"] == title
+    assert m["body"] == "היכנסו כדי להוסיף עסקאות ולעקוב אחר התקציב שלכם"
+
+
+def test_a_series_without_a_name_still_reads():
+    assert push.last_installment("", 400)["title"] == "תשלום אחרון"
 
 
 # ─── המסלולים ───────────────────────────────────────────────────────────────
@@ -228,10 +248,39 @@ def test_a_salary_notifies_the_family_once_a_month(client, monkeypatch):
     assert sent == ["משכורת של ₪14,000 נרשמה לנובמבר"]
 
 
-def test_the_settings_toggle_only_appears_when_push_is_configured():
+def test_the_settings_switch_is_just_on_or_off():
     from pathlib import Path
-    html = (Path(__file__).resolve().parent.parent / "frontend/templates/settings.html").read_text(encoding="utf-8")
+    root = Path(__file__).resolve().parent.parent
+    html = (root / "frontend/templates/settings.html").read_text(encoding="utf-8")
     block = html[html.index("{% if push_key %}"):]
-    assert 'id="pushSettings"' in block[:block.index("{% endif %}")]
-    sw = (Path(__file__).resolve().parent.parent / "frontend/static/sw.js").read_text(encoding="utf-8")
+    block = block[:block.index("{% endif %}")]
+    assert 'id="pushToggle"' in block and 'class="pref-switch"' in block
+    assert "<ul" not in block and "<li" not in block            # בלי רשימת הסבר
+    group = html[html.index('id="notification-settings"'):]
+    assert '<span class="group-title">התראות</span>' in group[:group.index("</section>")]
+    assert 'id="pushToggle"' in group[:group.index("</section>")]
+    sw = (root / "frontend/static/sw.js").read_text(encoding="utf-8")
     assert "addEventListener('push'" in sw and "addEventListener('notificationclick'" in sw
+
+
+def test_notifications_are_offered_by_default_on_every_page():
+    """ברירת מחדל — מופעלות (מתן, 1.11): מי שכבר אישר נרשם לבד, ומי שלא —
+    מקבל פס "הפעלה" פעם אחת. ומי שכיבה — לא נשאל שוב."""
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    base = (root / "frontend/templates/base.html").read_text(encoding="utf-8")
+    assert 'id="pushBar"' in base and "js/push.js" in base and "'pushKey'" in base
+    assert base.index("js/pwa.js") < base.index("js/push.js")   # אחרי הפס של ההתקנה
+    js = (root / "frontend/static/js/push.js").read_text(encoding="utf-8")
+    assert "Notification.permission === 'granted'" in js and "sf_push_off" in js
+    assert "has-install-bar" in js                               # לא שני פסים יחד
+
+
+def test_every_signed_in_page_gets_the_key(client, monkeypatch):
+    monkeypatch.setattr(app_module, "family_settings", lambda: dict(db.DEFAULT_FAMILY_SETTINGS))
+    from flask import session
+    with app.test_request_context():
+        session["user_id"] = _ME
+        assert app_module.inject_family_settings()["push_key"] == push.public_key()
+    with app.test_request_context():                     # אורח — בלי מפתח
+        assert app_module.inject_family_settings()["push_key"] is None

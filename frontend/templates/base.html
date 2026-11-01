@@ -47,6 +47,20 @@
         <button type="button" class="install-bar-close" id="installBarClose" aria-label="הסתרה עד הכניסה הבאה">✕</button>
     </div>
 
+    {# התראות — מופעלות כברירת מחדל, אבל הטלפון דורש לחיצת אישור אחת (מתן, 1.11).
+       אותו פס כמו "הוסיפו למסך הבית", ורק כשהוא לא מוצג. ראו ‎js/push.js‎. #}
+    {% if push_key %}
+    <div class="install-bar" id="pushBar" role="region" aria-label="התראות" hidden>
+        <img class="install-bar-icon" src="{{ url_for('static', filename='icons/icon-180.png') }}" alt="" width="40" height="40">
+        <span class="install-bar-text">
+            <span class="install-bar-title">התראות מ-SmartFin</span>
+            <span class="install-bar-sub">סיכום חודשי, משכורת ותשלומים</span>
+        </span>
+        <button type="button" class="install-bar-go" id="pushBarGo">הפעלה</button>
+        <button type="button" class="install-bar-close" id="pushBarClose" aria-label="לא עכשיו">✕</button>
+    </div>
+    {% endif %}
+
     <nav class="bottom-nav" role="navigation" aria-label="ניווט ראשי">
         <a href="{{ url_for('dashboard') }}"
            class="nav-item {% if active_page == 'dashboard' %}active{% endif %}"
@@ -343,7 +357,7 @@
          הדפדפן, ולכן CSP קפדני לא חוסם אותו — וזה מה שמאפשר להוציא את כל
          ה-JS לקבצים חיצוניים בלי לאבד גישה למשתני Jinja. -->
     <script type="application/json" id="sf-page-data">
-        {{ {'attribution': (family_settings.owner_attribution if family_settings else {}), 'singleMember': (single_member() if single_member is defined else false), 'lists': (client_lists() if client_lists is defined else {})} | tojson }}
+        {{ {'attribution': (family_settings.owner_attribution if family_settings else {}), 'singleMember': (single_member() if single_member is defined else false), 'lists': (client_lists() if client_lists is defined else {}), 'pushKey': push_key or None} | tojson }}
     </script>
 
     <script src="{{ url_for('static', filename='js/net.js') }}"></script>
@@ -358,6 +372,7 @@
 
     <!-- ── הצעת התקנה ל-PWA (מסך הבית) ── -->
     <script src="{{ url_for('static', filename='js/pwa.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/push.js') }}"></script>
 
     <!-- ── אנימציות גלובליות: count-up, כניסה מדורגת, פסי התקדמות ── -->
     <script src="{{ url_for('static', filename='js/motion.js') }}"></script>

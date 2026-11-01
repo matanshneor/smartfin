@@ -71,10 +71,17 @@ def _vapid_key():
         return None
 
 
+_public_cache = {}
+
+
 def public_key() -> str | None:
-    """המפתח הציבורי, לדפדפן (‎applicationServerKey‎). ‎None‎ — התראות כבויות."""
-    key = _vapid_key()
-    return b64u(_point(key.public_key())) if key else None
+    """המפתח הציבורי, לדפדפן (‎applicationServerKey‎). ‎None‎ — התראות כבויות.
+    נגזר פעם אחת לכל ערך של המשתנה — הוא מוצג בכל עמוד."""
+    raw = os.environ.get("VAPID_PRIVATE_KEY", "").strip()
+    if raw not in _public_cache:
+        key = _vapid_key()
+        _public_cache[raw] = b64u(_point(key.public_key())) if key else None
+    return _public_cache[raw]
 
 
 def enabled() -> bool:
@@ -193,40 +200,39 @@ def _shekels(value) -> str:
     return "₪" + format_money(round(float(value or 0)))
 
 
-def member_joined(name: str, family_name: str) -> dict:
-    # בלי פועל — "הצטרף" / "הצטרפה" ניחוש של מגדר לפי שם
-    return {"title": "הצטרפות למשפחה 👋",
-            "body": f"{name or 'בן משפחה חדש'} עכשיו חלק מ{family_name or 'המשפחה'}",
+# הנוסחים — מתן, 1.11: בלי אימוג'ים, כותרת קצרה ושורה אחת של פרטים.
+
+def member_joined(name: str, family_name: str = "") -> dict:
+    # מתן כתב "נועה הצטרפה". אין לאפליקציה דרך לדעת מגדר, ושם לא אומר אותו —
+    # עד שיוחלט אחרת, הצורה הכפולה
+    who = (name or "").strip() or "בן משפחה חדש"
+    return {"title": "הצטרפות למשפחה",
+            "body": f"{who} הצטרף/ה לתקציב המשפחתי",
             "url": "/settings", "tag": "member-joined"}
 
 
 def salary(amount, month: int) -> dict:
-    return {"title": "המשכורת נרשמה 💰",
+    return {"title": "משכורת נכנסה",
             "body": f"משכורת של {_shekels(amount)} נרשמה ל{HEBREW_MONTHS[month]}",
             "url": "/", "tag": "salary"}
 
 
 def month_closed(month: int, income, expense, savings) -> dict:
-    left = float(income or 0) - float(expense or 0) - float(savings or 0)
-    parts = [f"הכנסות {_shekels(income)}", f"הוצאות {_shekels(expense)}"]
-    if float(savings or 0):
-        parts.append(f"חיסכון {_shekels(savings)}")
-    tail = f"נשארו {_shekels(left)}" if left >= 0 else f"גירעון של {_shekels(-left)}"
-    return {"title": f"{HEBREW_MONTHS[month]} נסגר 📅",
-            "body": " · ".join(parts) + ". " + tail,
+    return {"title": f"{HEBREW_MONTHS[month]} נסגר",
+            "body": f"הכנסות {_shekels(income)} · הוצאות {_shekels(expense)} · חיסכון {_shekels(savings)}",
             "url": "/months", "tag": "month-closed"}
 
 
 def last_installment(description: str, amount) -> dict:
-    what = (description or "").strip() or "סדרת תשלומים"
-    return {"title": "תשלום אחרון 🏁",
-            "body": f"{what}: היום יורד התשלום האחרון, {_shekels(amount)}. "
-                    f"מהחודש הבא — {_shekels(amount)} פחות בחודש",
+    # שם בית העסק בכותרת, אחרי העברית — בתחילת שורה, שם באנגלית הופך את כיוונה
+    what = (description or "").strip()
+    return {"title": f"תשלום אחרון של {what}" if what else "תשלום אחרון",
+            "body": f"{_shekels(amount)} פחות בחודש מעכשיו",
             "url": "/settings", "tag": "last-installment"}
 
 
 def quiet_week(weeks: int) -> dict:
-    span = "כבר שבוע" if weeks <= 1 else ("כבר שבועיים" if weeks == 2 else f"כבר {weeks} שבועות")
-    return {"title": f"לא נרשמו עסקאות {span}",
-            "body": "רוצים לייבא את החודש מחברת האשראי? זה לוקח כמה דקות",
-            "url": "/import", "tag": "quiet-week"}
+    span = "שבוע" if weeks <= 1 else ("שבועיים" if weeks == 2 else f"{weeks} שבועות")
+    return {"title": f"לא נרשמו עסקאות כבר {span}",
+            "body": "היכנסו כדי להוסיף עסקאות ולעקוב אחר התקציב שלכם",
+            "url": "/", "tag": "quiet-week"}

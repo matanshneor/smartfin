@@ -609,17 +609,19 @@ def inject_family_settings():
     משפחה ב-_resolve_owner — קוראות ל-family_settings() ישירות וממשיכות
     להיכשל בגלוי, כי שם ערך שגוי נכתב למסד."""
     if "user_id" not in session:
-        return {"family_settings": None}
+        return {"family_settings": None, "push_key": None}
     try:
         settings = family_settings()
     except db.DataUnavailable:
-        return {"family_settings": None}
+        return {"family_settings": None, "push_key": push.public_key()}
     # משפחה של אדם אחד (מתן, 5.10): "של מי" אומר כלום — לא התגית ליד כל
     # עסקה, לא הגרף "לפי בן משפחה" ולא השאלה בחלון. רק בתצוגה: ההעדפה
     # עצמה לא משתנה, וכשמצטרף מישהו הכל חוזר. עצל: נשלף רק בעמוד שבאמת
     # מציג "של מי" — לא בדף שגיאה, למשל.
     single = _LazySingleMember()
-    return {"family_settings": settings, "single_member": single, "show_owner": _ShowOwner(settings, single)}
+    # המפתח הציבורי להתראות — בכל עמוד, כי ההרשמה האוטומטית רצה מכל עמוד (‎js/push.js‎)
+    return {"family_settings": settings, "single_member": single, "show_owner": _ShowOwner(settings, single),
+            "push_key": push.public_key()}
 
 
 @app.context_processor
@@ -2521,7 +2523,6 @@ def settings():
         invite_expired=_invite_expired(family),
         invite_expires_in=_invite_days_left(family),
         family_tx_count=family_tx_count,
-        push_key=push.public_key(),
         active_page="settings",
         user=user,
         categories=categories,
