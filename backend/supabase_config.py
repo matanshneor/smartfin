@@ -2699,6 +2699,22 @@ def delete_one_occurrence(transaction_id: str, template_id: str,
         logger.exception("delete_one_occurrence")
         return False, str(e)
 
+def skip_recurring_date(template_id: str, family_id: str, on_date: str, skip: bool = True):
+    """דילוג על מופע עתידי בסדרה (או ביטול הדילוג). מחזירה ‎(ok, error)‎.
+    הכול ב-‎skip_recurring_date‎ במסד — עדכון אטומי אחד (מתן, 1.11)."""
+    client = get_client()
+    if not client:
+        return False, "Database not configured"
+    try:
+        result = client.rpc("skip_recurring_date", {
+            "p_template_id": template_id, "p_family_id": family_id,
+            "p_date": on_date, "p_skip": bool(skip),
+        }).execute()
+        return (int(result.data or 0) > 0), (None if result.data else "not found")
+    except Exception as e:
+        logger.exception("skip_recurring_date")
+        return False, str(e)
+
 def delete_occurrences_from(template_id: str, occurrence_date: str, family_id: str):
     """מוחקת את המופע הזה וכל המאוחרים ממנו, ועוצרת את הסדרה שם.
     מחזירה (deleted, error).
@@ -4362,3 +4378,114 @@ def _format_transactions(rows: list, settings: dict = None) -> list:
             "projected":            bool(row.get("projected")),
         })
     return out
+
+
+# ─── סיכום שנתי (מתן, 1.11) ───────────────────────────────────────────────
+
+# שינוי בקטגוריה מול השנה הקודמת — רק כשבשנה הקודמת הלך עליה לפחות זה.
+# ₪40 → ₪90 הוא "+125%" שלא אומר כלום.
+_YEAR_COMPARE_MIN = 500
+
+
+def year_recap_due(today):
+    """איזו שנה מסכמים בכרטיס בדף הבית — מ-20 בדצמבר עד 15 בינואר, אחרת ‎None‎."""
+    if today.month == 12 and today.day >= 20:
+        return today.year
+    if today.month == 1 and today.day <= 15:
+        return today.year - 1
+    return None
+
+
+def year_recap(family_id: str, viewer_user_id: str, year: int) -> dict:
+    """"2026 שלכם" — סיכום שנה שנפתח בלחיצה (מתן, 1.11).
+
+    הכנסות, הוצאות וחיסכון של הבית (בלי פרויקטים — כמו כל סיכום), החודש הכי
+    חסכוני והכי יקר, הקטגוריות הגדולות, הפרויקטים של השנה, ומול השנה הקודמת —
+    **רק כשהשנה הקודמת מלאה** (יש בה ינואר). שליפה אחת לשתי השנים, בעמודים.
+    פרויקט אישי של בן משפחה אחר לא נכלל. זורק ‎DataUnavailable‎."""
+    client = get_client()
+    if not client:
+        raise DataUnavailable("year_recap: no client")
+    try:
+        rows = _fetch_all(lambda: client.table("transactions")
+                          .select("id, amount, type, date, category_id, project_id, "
+                                  "categories(name, icon), projects(owner_id, name, icon)")
+                          .eq("family_id", family_id)
+                          .gte("date", f"{year - 1}-01-01").lt("date", f"{year + 1}-01-01")
+                          .order("id"))
+    except Exception as e:
+        raise DataUnavailable("year_recap") from e
+    rows = _filter_hidden_personal_projects(rows, viewer_user_id)
+    cur = [r for r in rows if str(r["date"]).startswith(str(year))]
+    prev = [r for r in rows if not str(r["date"]).startswith(str(year))]
+
+    months = []
+    for m in range(1, 13):
+        in_month = [r for r in cur if int(str(r["date"])[5:7]) == m]
+        s = summary_from_rows(in_month)
+        months.append({"month": m, "income": s["income"], "expense": s["expense"],
+                       "savings": s["savings"], "balance": s["balance"],
+                       "has_data": bool(_household_rows(in_month))})
+    active = [m for m in months if m["has_data"]]
+    totals = summary_from_rows(cur)
+
+    def by_category(rs):
+        out = {}
+        for r in _household_rows(rs):
+            if r["type"] != "expense":
+                continue
+            cat = r.get("categories") or {}
+            key = r.get("category_id") or ""
+            c = out.setdefault(key, {"name": cat.get("name") or "ללא קטגוריה",
+                                     "icon": cat.get("icon") or "📦", "total": 0.0})
+            c["total"] += float(r["amount"])
+        return out
+
+    cats = by_category(cur)
+    top = sorted(cats.values(), key=lambda c: -c["total"])[:3]
+    for c in top:
+        c["total"] = round(c["total"], 2)
+        c["share"] = round(c["total"] / totals["expense"] * 100) if totals["expense"] else 0
+
+    compare = None
+    if any(str(r["date"])[5:7] == "01" for r in _household_rows(prev)):
+        before = summary_from_rows(prev)
+        old = by_category(prev)
+        changes = []
+        for key, c in old.items():
+            if c["total"] < _YEAR_COMPARE_MIN:
+                continue
+            now_total = cats.get(key, {}).get("total", 0.0)
+            changes.append({"name": c["name"], "icon": c["icon"],
+                            "pct": round((now_total - c["total"]) / c["total"] * 100)})
+        up = max(changes, key=lambda c: c["pct"], default=None)
+        down = min(changes, key=lambda c: c["pct"], default=None)
+        compare = {"year": year - 1,
+                   "expense_diff": round(totals["expense"] - before["expense"], 2),
+                   "savings_diff": round(totals["savings"] - before["savings"], 2),
+                   "up": up if up and up["pct"] > 0 else None,
+                   "down": down if down and down["pct"] < 0 else None}
+
+    projects = {}
+    for r in cur:
+        if not r.get("project_id") or r["type"] != "expense":
+            continue
+        p = r.get("projects") or {}
+        e = projects.setdefault(r["project_id"], {"name": p.get("name") or "פרויקט",
+                                                  "icon": p.get("icon") or "🎯", "total": 0.0})
+        e["total"] += float(r["amount"])
+    projects = sorted(({**p, "total": round(p["total"], 2)} for p in projects.values()),
+                      key=lambda p: -p["total"])
+
+    return {
+        "year": year,
+        "income": totals["income"], "expense": totals["expense"], "savings": totals["savings"],
+        "savings_rate": round(totals["savings"] / totals["income"] * 100) if totals["income"] else None,
+        "count": len(cur),
+        "months": months,
+        "best": max(active, key=lambda m: m["balance"])["month"] if active else None,
+        "costliest": max(active, key=lambda m: m["expense"])["month"] if active else None,
+        "top": top,
+        "projects": projects,
+        "compare": compare,
+    }

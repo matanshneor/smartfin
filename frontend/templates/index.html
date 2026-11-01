@@ -175,6 +175,22 @@
 </div>
 {% endif %}
 
+{# "2026 שלכם" (מתן, 1.11) — מ-20 בדצמבר עד 15 בינואר. לחיצה פותחת את
+   הסיכום (‎_year_recap.html‎); רק מי שלוחץ רואה אותו. #}
+{% if year_recap_year %}
+<div class="alert-wrap year-card-wrap" data-alert-key="year-recap|{{ year_recap_year }}">
+<button type="button" class="year-card" data-year-recap="{{ year_recap_year }}">
+    <span class="year-card-icon" aria-hidden="true">🎉</span>
+    <span class="year-card-text">
+        <span class="year-card-title">{{ year_recap_year }} שלכם</span>
+        <span class="year-card-sub">הסיכום השנתי מוכן — לצפייה</span>
+    </span>
+    <span class="year-card-arrow" aria-hidden="true">‹</span>
+</button>
+<button type="button" class="alert-dismiss recap-close" aria-label="סגירה">✕</button>
+</div>
+{% endif %}
+
 {# התראות החודש (מתן, 11.10) — רק כשיש. אותן התראות כמו בעמוד החודש,
    ולחיצה מובילה ליעד שלהן שם: הקטגוריה שחרגה, או פירוט ההוצאות. #}
 {% if alerts %}
@@ -302,6 +318,7 @@
 {# מסך החיפוש — מחוץ ל-‎main‎, כדי שרענון רך (אחרי עריכה מתוך התוצאות) לא
    יסגור אותו באמצע #}
 {% include "_search_screen.html" %}
+{% if year_recap_year %}{% include "_year_recap.html" %}{% endif %}
 {# "מה חדש" ובן משפחה שהצטרף (‎js/whats-new.js‎, מתן 12.10) #}
 <span id="sfHomeInfo" hidden data-new-family="{{ 'true' if is_new_family else 'false' }}"
       data-me="{{ user.id }}" data-family="{{ user.family_id }}"

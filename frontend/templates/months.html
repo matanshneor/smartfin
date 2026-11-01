@@ -9,6 +9,8 @@
         <p class="hero-subtitle">החודש הנוכחי מול החודשים הקודמים</p>
     </div>
 </div>
+{# סיכום השנה (מתן, 1.11) — נפתח בלחיצה #}
+<button type="button" class="hero-chip year-recap-chip" data-year-recap="{{ recap_year }}">🎉 סיכום {{ recap_year }}</button>
 
 {# בלי סכום כולל של כל החודשים (החלטה של מתן, 30.9): העמוד משווה חודשים
    זה לזה, וסכום של כל התקופה — בלי לומר איזו — לא עונה על שום שאלה שלו. #}
@@ -142,6 +144,7 @@
 {% endblock %}
 
 {% block scripts %}
+{% include "_year_recap.html" %}
 {% if archive %}
 <script src="{{ url_for('static', filename='js/vendor/chart.umd.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/chart-setup.js') }}"></script>

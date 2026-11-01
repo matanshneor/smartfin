@@ -5640,9 +5640,97 @@ body.tx-screen-open { overflow: hidden; }
 .recap-fig.savings .recap-fig-value { color: var(--color-savings); }
 
 /* עסקה קבועה צפויה בחודש עתידי (מתן, 1.11) — נספרת, אבל עוד לא קרתה */
-.cat-tx-row.is-projected { cursor: default; }
+.cat-tx-row.is-projected { cursor: pointer; }
 .cat-tx-row.is-projected .cat-tx-desc, .cat-tx-row.is-projected .cat-tx-amount { opacity: 0.75; }
 .projected-tag {
     font-size: 0.68rem; font-weight: 600; padding: 2px 7px; border-radius: 999px; white-space: nowrap;
     color: var(--color-gold-text); background: var(--color-gold-dim); border: 1px dashed var(--color-gold-border);
+}
+
+/* ── "2026 שלכם" — הסיכום השנתי (מתן, 1.11) ── */
+.year-card {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: start;
+    padding: 16px; border: 0; border-radius: var(--radius); cursor: pointer;
+    background: linear-gradient(150deg, var(--hero-bg) 0%, var(--hero-bg-2) 100%);
+    color: var(--hero-text); box-shadow: var(--shadow-card);
+}
+.year-card-icon { font-size: 1.9rem; }
+.year-card-text { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.year-card-title { font-size: 1.15rem; font-weight: 700; color: var(--color-gold-bright); }
+.year-card-sub { font-size: 0.85rem; color: var(--hero-text-muted); }
+.year-card-arrow { font-size: 1.4rem; color: var(--color-gold-bright); }
+.year-recap-chip {
+    margin-top: 12px; padding: 8px 14px; border-radius: 99px; cursor: pointer;
+    background: var(--hero-chip-bg); border: 1px solid rgba(212, 175, 55, 0.35);
+    color: var(--color-gold-bright); font-size: 0.88rem; font-weight: 700;
+}
+
+.yr-overlay {
+    position: fixed; inset: 0; z-index: 400; background: rgba(10, 8, 3, 0.55);
+    display: flex; align-items: flex-end; justify-content: center;
+    opacity: 0; transition: opacity 0.25s;
+}
+/* ‎display: flex‎ גובר על ‎hidden‎ — בלי זה המסך הסגור, השקוף, חסם כל לחיצה בעמוד */
+.yr-overlay[hidden] { display: none; }
+.yr-overlay.open { opacity: 1; }
+.yr-sheet {
+    position: relative; width: 100%; max-width: 560px; height: 94vh; height: 94dvh; overflow-y: auto;
+    border-radius: 22px 22px 0 0; background: var(--color-bg);
+    transform: translateY(40px); transition: transform 0.3s cubic-bezier(.2,.8,.2,1);
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+.yr-overlay.open .yr-sheet { transform: none; }
+.yr-close {
+    position: absolute; top: 14px; inset-inline-start: 14px; z-index: 1;
+    width: 36px; height: 36px; border: 0; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12); color: var(--hero-text); font-size: 1rem; cursor: pointer;
+}
+.yr-hero {
+    padding: 34px 20px 26px; text-align: center; color: var(--hero-text);
+    background: radial-gradient(120% 90% at 50% 0%, #3A2A0A 0%, var(--hero-bg) 70%);
+}
+.yr-kicker { margin: 0; font-size: 0.82rem; letter-spacing: 0.04em; color: var(--hero-text-muted); }
+.yr-title {
+    margin: 6px 0 4px; font-size: 2.4rem; font-weight: 700;
+    background: var(--gradient-gold-text); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.yr-sub { margin: 0; font-size: 0.88rem; color: var(--hero-text-muted); }
+.yr-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.yr-loading { text-align: center; color: var(--color-text-muted); padding: 40px 0; }
+.yr-figures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: -34px; }
+.yr-fig {
+    display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 6px;
+    border-radius: var(--radius-sm); background: var(--color-card); box-shadow: var(--shadow-card);
+}
+.yr-fig span { font-size: 0.78rem; color: var(--color-text-muted); }
+.yr-fig b { font-size: 1.02rem; }
+.yr-fig.income b { color: var(--color-income); }
+.yr-fig.expense b { color: var(--color-expense); }
+.yr-fig.savings b { color: var(--color-savings); }
+.yr-rate { margin: 0; text-align: center; font-size: 0.92rem; color: var(--color-text-soft); }
+.yr-rate b { color: var(--color-savings); }
+.yr-card { padding: 16px; border-radius: var(--radius); background: var(--color-card); box-shadow: var(--shadow-card); }
+.yr-card-title { margin: 0 0 12px; font-size: 1rem; font-weight: 700; color: var(--color-text); }
+.yr-bars { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; align-items: end; height: 96px; margin-bottom: 12px; }
+.yr-bar { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
+.yr-bar i { display: block; width: 100%; border-radius: 4px 4px 2px 2px; background: rgba(var(--ink-rgb), 0.12); }
+.yr-bar.is-high i { background: var(--color-expense); }
+.yr-bar.is-best i { background: var(--color-gold); }
+.yr-bar span { font-size: 0.6rem; color: var(--color-text-muted); }
+.yr-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem; color: var(--color-text-soft); }
+.yr-lines li { display: flex; gap: 8px; align-items: baseline; }
+.yr-lines .good { color: var(--color-income); }
+.yr-lines .bad { color: var(--color-expense); }
+.yr-cats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.yr-cats li { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-size: 0.9rem; }
+.yr-cat-name { font-weight: 600; color: var(--color-text); }
+.yr-cat-amount { color: var(--color-text-muted); font-size: 0.82rem; }
+.yr-cat-bar { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: rgba(var(--ink-rgb), 0.07); overflow: hidden; }
+.yr-cat-bar i { display: block; height: 100%; border-radius: 3px; background: var(--gradient-gold); }
+.yr-projects { list-style: none; margin: 0; padding: 0; }
+.yr-projects li { display: flex; justify-content: space-between; padding: 10px 0; font-size: 0.92rem; color: var(--color-text); }
+.yr-projects li + li { border-top: 1px solid rgba(var(--ink-rgb), 0.07); }
+.yr-done {
+    margin-top: 4px; padding: 14px; border: 0; border-radius: var(--radius-sm); cursor: pointer;
+    background: var(--color-text); color: var(--color-bg); font-size: 1rem; font-weight: 700;
 }
