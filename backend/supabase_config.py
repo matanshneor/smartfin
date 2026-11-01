@@ -2104,6 +2104,51 @@ def recurring_can_wait(nxt: dict, today) -> bool:
     return due is not None and today < due
 
 
+def projected_recurring_rows(family_id: str, viewer_user_id: str, year: int, month: int) -> list:
+    """חודש עתידי (מתן, 1.11): המופעים שהעסקאות הקבועות ייצרו בו — אותם
+    תאריכים ואותם סכומים שהמנוע ייצור ביום עצמו (‎_recurring_occurrences‎,
+    תשלומים, מופעים שבוטלו), עד שהסדרה נגמרת. נספרים בסיכומי החודש, ומסומנים
+    ‎projected‎ — הם עוד לא עסקה, אז אין מה לערוך.
+
+    (4.10–1.11 חודש עתידי לא הציג אותם בכלל; מתן החליט להחזיר, וכחלק מהסכום.)
+    ריק בכישלון — חודש עתידי בלי תחזית עדיף על עמוד שלא נטען."""
+    import calendar
+    from datetime import date
+
+    client = get_client()
+    if not client:
+        return []
+    start = date(year, month, 1)
+    end = date(year, month, calendar.monthrange(year, month)[1])
+    try:
+        templates = client.table("transactions") \
+            .select("*, categories(name, icon), project_categories(name, icon), "
+                    "profiles(name, workplace), projects(owner_id, name, icon)") \
+            .eq("family_id", family_id).eq("is_recurring", True) \
+            .limit(_MAX_RECURRING_TEMPLATES).execute().data or []
+    except Exception:
+        logger.exception("projected_recurring_rows")
+        return []
+    out = []
+    for t in _filter_hidden_personal_projects(templates, viewer_user_id):
+        skips = {str(x)[:10] for x in (t.get("recurring_skips") or [])}
+        plan = None
+        if t.get("installments") and t.get("installment_total"):
+            plan = installment_plan(t["installment_total"], int(t["installments"]), str(t["date"]))
+        first = date.fromisoformat(str(t["date"])[:10])
+        for d in _recurring_occurrences(t, end):
+            if d < start or d.isoformat() in skips:
+                continue
+            row = dict(t, id=f"projected-{t['id']}-{d.isoformat()}", date=d.isoformat(),
+                       is_recurring=False, recurring_parent_id=t["id"], receipt_path=None,
+                       projected=True)
+            if plan:
+                row.update(amount=plan["base"], installments=plan["count"],
+                           installment_no=(d.year - first.year) * 12 + d.month - first.month + 1)
+            out.append(row)
+    return out
+
+
 def _occurrence_period(freq: str, d):
     """מפתח התקופה של מופע. שני מופעים של אותה תבנית באותה תקופה הם אותה
     עסקה — גם אם התאריך שלהם שונה.
@@ -4313,5 +4358,7 @@ def _format_transactions(rows: list, settings: dict = None) -> list:
             "project_name":         proj.get("name"),
             "project_icon":         proj.get("icon"),
             "has_receipt":          bool(row.get("receipt_path")),
+            # מופע צפוי של עסקה קבועה בחודש עתידי — עוד לא עסקה (‎projected_recurring_rows‎)
+            "projected":            bool(row.get("projected")),
         })
     return out
