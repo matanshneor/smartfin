@@ -181,3 +181,37 @@ self.addEventListener('fetch', function (e) {
             .catch(() => caches.match(e.request).then(cached => cached || offlinePage()))
     );
 });
+
+
+/* ── התראות לטלפון (מתן, 31.10) ──
+ * השרת שולח ‎{title, body, url, tag}‎ מוצפן (‎backend/push.py‎). ‎tag‎ — התראה
+ * חדשה מאותו סוג מחליפה את הקודמת במקום להיערם. */
+self.addEventListener('push', function (e) {
+    let data = {};
+    try { data = e.data ? e.data.json() : {}; } catch (err) { data = { body: e.data && e.data.text() }; }
+    e.waitUntil(self.registration.showNotification(data.title || 'SmartFin', {
+        body: data.body || '',
+        tag: data.tag || undefined,
+        icon: '/static/icons/icon-192.png',
+        badge: '/static/icons/icon-192.png',
+        lang: 'he', dir: 'rtl',
+        data: { url: data.url || '/' },
+    }));
+});
+
+/* לחיצה: אם האפליקציה כבר פתוחה — אליה, לעמוד של ההתראה; אחרת חלון חדש.
+ * רק כתובות של האתר עצמו. */
+self.addEventListener('notificationclick', function (e) {
+    e.notification.close();
+    let target = '/';
+    try {
+        const u = new URL((e.notification.data && e.notification.data.url) || '/', self.location.origin);
+        if (u.origin === self.location.origin) target = u.pathname + u.search;
+    } catch (err) { /* ברירת מחדל — הבית */ }
+    e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+        for (const c of list) {
+            if ('focus' in c) return c.navigate(target).then(function (w) { return (w || c).focus(); });
+        }
+        return self.clients.openWindow(target);
+    }));
+});

@@ -22,6 +22,7 @@ from . import clock
 from . import logs
 from . import notify
 from . import card_import
+from . import push
 
 logs.setup()
 logger = logs.get("smartfin.app")
@@ -1133,6 +1134,9 @@ def logout():
     בדיוק המקרה שבו דף שיווק הוא התשובה הלא נכונה."""
     if session.get("sid"):
         db.web_session_close(session["sid"])
+    # טלפון משותף: מי שהתנתק לא ממשיך לקבל את ההתראות של המשפחה (מתן, 31.10)
+    if session.get("push_endpoint"):
+        db.push_unsubscribe(session["push_endpoint"])
     session.clear()
     response = redirect(url_for("dashboard"))
     response.delete_cookie(_LAST_ID_COOKIE, samesite="Lax", secure=not _IS_DEV)
@@ -1335,6 +1339,11 @@ def _notify_owner_about_family(kind: str, family_id: str, family_name: str = Non
                       f"מייל: {person.get('email') or '—'}",
                       f"טלפון: {person.get('phone') or 'לא הוזן'}"]
         notify.notify_owner(subject, lines)
+        if kind == "joined":
+            # ולבני המשפחה עצמם — התראה לטלפון (מתן, 31.10). הקריאה רצה בשם
+            # מי שהצטרף, שכבר חבר, ומחזירה את המכשירים של כל השאר.
+            joiner = (person or {}).get("name") or (person or {}).get("full_name") or ""
+            push.send_in_background(db.push_family_targets(), push.member_joined(joiner, name))
     except Exception:
         logger.exception("notify owner about family (%s)", kind)
 
@@ -2512,6 +2521,7 @@ def settings():
         invite_expired=_invite_expired(family),
         invite_expires_in=_invite_days_left(family),
         family_tx_count=family_tx_count,
+        push_key=push.public_key(),
         active_page="settings",
         user=user,
         categories=categories,
@@ -3096,11 +3106,30 @@ def add_transaction():
     if payload["is_recurring"]:
         db.materialize_recurring(user["family_id"])   # (created, ok) — כאן לא נדרש
 
+    if tx_type == "income" and category_id and _is_salary(category_id, user):
+        _push_salary(payload)
+
     reply = {"status": "ok", "transaction": result}
     note = _budget_note(user["family_id"], payload)
     if note:
         reply["budget_note"] = note
     return jsonify(reply), 201
+
+
+def _is_salary(category_id, user) -> bool:
+    cat = next((c for c in db.get_categories(user["family_id"]) if c["id"] == category_id), None)
+    return bool(cat and "משכורת" in (cat.get("name") or ""))
+
+
+def _push_salary(payload):
+    """"המשכורת נרשמה" (מתן, 31.10) — לשאר בני המשפחה, פעם אחת בחודש של
+    העסקה: ‎push_family_targets‎ רושמת את החודש ולא מחזירה כלום בפעם השנייה."""
+    try:
+        when = date.fromisoformat(str(payload["date"])[:10])
+        targets = db.push_family_targets("salary", f"{when.year}-{when.month:02d}")
+        push.send_in_background(targets, push.salary(payload["amount"], when.month))
+    except Exception:
+        logger.exception("push salary")
 
 
 def _budget_note(family_id, payload):
@@ -3802,6 +3831,80 @@ def import_commit_route():
         logger.error("import_commit: %s", err)
         return jsonify({"error": "הייבוא נכשל ושום עסקה לא נשמרה — נסו שוב"}), 500
     return jsonify({"status": "ok", "created": created}), 201
+
+
+# ─── התראות לטלפון (מתן, 31.10) ───────────────────────────────────────────────
+#
+# ‎backend/push.py‎ — ההצפנה והנוסחים. כאן: רישום המכשיר, ביטולו, והריצה
+# היומית ש-‎pg_cron‎ מפעיל (חודש נסגר, תשלום אחרון, שבוע בלי רישום).
+
+@app.route("/api/push/subscribe", methods=["POST"])
+@limiter.limit("20 per hour")
+@login_required
+def push_subscribe_route():
+    if not push.enabled():
+        return jsonify({"error": "התראות אינן זמינות כרגע"}), 503
+    body = request.get_json(silent=True) or {}
+    endpoint = _text(body.get("endpoint"))
+    keys = body.get("keys") if isinstance(body.get("keys"), dict) else {}
+    p256dh, auth = _text(keys.get("p256dh")), _text(keys.get("auth"))
+    if not push._allowed_endpoint(endpoint) or len(endpoint) > 1000 \
+            or not 60 <= len(p256dh) <= 200 or not 16 <= len(auth) <= 100:
+        return jsonify({"error": "המכשיר הזה לא תומך בהתראות"}), 422
+    if not db.push_subscribe(endpoint, p256dh, auth):
+        return jsonify({"error": "ההרשמה להתראות נכשלה — נסו שוב"}), 500
+    session["push_endpoint"] = endpoint
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/push/unsubscribe", methods=["POST"])
+@limiter.limit("20 per hour")
+@login_required
+def push_unsubscribe_route():
+    endpoint = _text((request.get_json(silent=True) or {}).get("endpoint")) or session.get("push_endpoint")
+    if endpoint:
+        db.push_unsubscribe(endpoint)
+    session.pop("push_endpoint", None)
+    return jsonify({"status": "ok"})
+
+
+def _daily_message(kind: str, data: dict):
+    if kind == "month_closed":
+        return push.month_closed(int(data.get("month") or 1), data.get("income"),
+                                 data.get("expense"), data.get("savings"))
+    if kind == "last_installment":
+        return push.last_installment(data.get("description"), data.get("amount"))
+    if kind == "quiet_week":
+        return push.quiet_week(int(data.get("weeks") or 1))
+    return None
+
+
+@app.route("/internal/push/daily", methods=["POST"])
+@limiter.limit("10 per hour")
+def push_daily_route():
+    """‎pg_cron‎ קורא לכאן פעם ביום. בלי הסוד הנכון — 404, כאילו אין כאן כלום.
+    הסוד עובר גם למסד: ‎push_daily‎ בודקת אותו מול ה-Vault, כך שגם קריאה
+    ישירה ל-RPC בלי הסוד לא מחזירה דבר."""
+    secret = os.environ.get("PUSH_CRON_SECRET", "")
+    given = request.headers.get("X-Cron-Secret", "")
+    if not secret or not secrets.compare_digest(secret.encode(), given.encode()):
+        return jsonify({"error": "לא נמצא"}), 404
+    rows = db.push_daily(secret, clock.today().isoformat())
+    groups = {}
+    for row in rows:
+        key = (row.get("kind"), json.dumps(row.get("data") or {}, sort_keys=True))
+        groups.setdefault(key, []).append(row)
+    sent, dead = 0, []
+    for (kind, _), subs in groups.items():
+        message = _daily_message(kind, subs[0].get("data") or {})
+        if not message:
+            continue
+        dead += push.send(subs, message)
+        sent += len(subs)
+    if dead:
+        db.push_forget(secret, dead)
+    logger.info("push daily: %s התראות, %s מכשירים שנמחקו", sent, len(dead))
+    return jsonify({"status": "ok", "sent": sent, "forgotten": len(dead)})
 
 
 # ─── API: Categories ──────────────────────────────────────────────────────────

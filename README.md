@@ -24,13 +24,13 @@ restrained charts and motion.
 ```
 SmartFin/
 ├── backend/
-│   ├── app.py                  # all 81 routes: pages, API, auth, hardening
+│   ├── app.py                  # all 84 routes: pages, API, auth, hardening
 │   ├── clock.py                # Asia/Jerusalem — every "today" in the app comes from here
 │   ├── money.py                # the one rule for showing an amount (agorot only when present)
 │   ├── wording.py              # Hebrew counts, percentages that sum to 100, day labels, month names
 │   ├── logs.py                 # logging setup
 │   ├── supabase_config.py      # data layer: queries, auth, analytics, recurring engine
-│   └── supabase/migrations/    # source of truth for the database schema (63 migrations)
+│   └── supabase/migrations/    # source of truth for the database schema (64 migrations)
 ├── frontend/
 │   ├── templates/              # base, index, month, months, settings, projects,
 │   │                           # project_detail, project_edit, login, onboarding,
@@ -92,6 +92,13 @@ SmartFin/
   installment payments land in the month they are charged. Nothing is written
   until the user approves, and the file itself is never stored
   (`backend/card_import.py`).
+- **Phone notifications** (Web Push, opt-in per device in Settings → Display):
+  month closed (on the 1st), a family member joined, the month's salary was
+  recorded, the last payment of an installment series, and a week with no new
+  transactions. Encryption and VAPID signing are in `backend/push.py` (RFC 8291
+  / 8292, on `cryptography`). The daily ones are sent by `pg_cron` calling
+  `/internal/push/daily` with a shared secret held in Supabase Vault and in
+  `PUSH_CRON_SECRET`; nothing is sent without `VAPID_PRIVATE_KEY`
 - Saving a transaction fires a short haptic tap (`navigator.vibrate`, with a hidden
   `switch` input as the iOS fallback). There is no sound, so there is nothing to
   switch off.
@@ -178,6 +185,8 @@ flask --app backend.app run --port 8080
 | `RECEIPT_GLOBAL_MONTHLY_LIMIT` | scans per month across **all** families (default 2000) |
 | `SENTRY_DSN` | error reporting. Request bodies, cookies and auth headers are stripped before sending |
 | `RESEND_API_KEY`, `OWNER_NOTIFY_EMAIL` | an email to the site owner when a family finishes onboarding or someone joins one (family name, member count, and the name, email and phone of whoever registered or joined). Without both, nothing is sent |
+| `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | phone notifications. The key is generated once (`backend.push.generate_vapid_keys`); the public half is derived from it. Without it the Settings toggle is hidden and nothing is sent |
+| `PUSH_CRON_SECRET` | must match the `push_cron_secret` Vault secret; guards `/internal/push/daily` and the `push_daily` RPC |
 | `LOG_LEVEL` | `INFO` by default |
 | `CSP_REPORT_ONLY` | set while tightening the Content-Security-Policy, so violations are reported instead of blocking |
 
