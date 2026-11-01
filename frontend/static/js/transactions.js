@@ -126,17 +126,21 @@
     function syncDateChips() {
         let quick = false;
         document.querySelectorAll('.date-quick-chips .date-chip').forEach(function (chip) {
-            const on = dateStr(parseInt(chip.dataset.days, 10)) === txDate.value;
+            const ds = dateStr(parseInt(chip.dataset.days, 10));
+            const on = ds === txDate.value;
             chip.classList.toggle('active', on);
             quick = quick || on;
+            // התאריך עצמו מתחת ל"היום"/"אתמול" — לא צריך לחשוב מה התאריך (מתן, 1.11)
+            const sub = chip.querySelector('.date-sub');
+            if (sub) sub.textContent = parseInt(ds.slice(8, 10), 10) + '.' + parseInt(ds.slice(5, 7), 10);
         });
         if (!datePickText) return;
         const d = /^\d{4}-\d{2}-\d{2}$/.test(txDate.value) ? new Date(txDate.value + 'T00:00:00') : null;
         const editing = modalSheetEl && modalSheetEl.classList.contains('is-edit');
-        // בעריכה — התאריך המלא. בהוספה — "תאריך אחר", או התאריך עצמו כשנבחר כזה
-        datePickText.textContent = !d ? 'תאריך אחר'
+        // בעריכה — התאריך המלא. בהוספה — "אחר", או התאריך עצמו כשנבחר כזה
+        datePickText.textContent = !d ? (editing ? 'תאריך אחר' : 'אחר')
             : editing ? HE_LONG_DATE.format(d)
-            : quick ? 'תאריך אחר' : d.getDate() + '.' + (d.getMonth() + 1);
+            : quick ? 'אחר' : d.getDate() + '.' + (d.getMonth() + 1);
         if (datePick) datePick.classList.toggle('active', !editing && !!d && !quick);
     }
     // במחשב נגיעה בשדה השקוף לא פותחת את הבורר (רק החץ שלו) — פותחים ידנית

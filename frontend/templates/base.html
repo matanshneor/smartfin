@@ -231,20 +231,21 @@
                 </div>
 
 
-                {# שורה אחת (מתן, 5.10): בהוספה — היום/אתמול/שלשום ו"תאריך אחר";
+                {# שורה אחת (מתן, 5.10): בהוספה — היום/אתמול ו"אחר" בפס אחד כמו "של מי
+                   ההוצאה", עם התאריך עצמו מתחת לכל אחד (מתן, 1.11 — אפשרות ב);
                    בעריכה — רק התאריך, בעברית, עם "שינוי". שדה התאריך עצמו שקוף
                    ומכסה את הכפתור, כך שנגיעה פותחת את הבורר של המכשיר. #}
                 <div class="form-group detail-row">
                     <label class="form-label" for="txDate">תאריך</label>
                     <div class="date-row">
                         <div class="date-quick-chips">
-                            <button type="button" class="date-chip" data-days="0">היום</button>
-                            <button type="button" class="date-chip" data-days="-1">אתמול</button>
+                            <button type="button" class="date-chip" data-days="0">היום<span class="date-sub" aria-hidden="true"></span></button>
+                            <button type="button" class="date-chip" data-days="-1">אתמול<span class="date-sub" aria-hidden="true"></span></button>
                             {# "שלשום" הוסר (מתן, 11.10) — "תאריך אחר" מכסה אותו #}
                         </div>
                         <div class="date-pick">
                             <span class="date-pick-icon" aria-hidden="true">{{ ui_icon("calendar") }}</span>
-                            <span class="date-pick-text" id="datePickText" aria-hidden="true">תאריך אחר</span>
+                            <span class="date-pick-text" id="datePickText" aria-hidden="true">אחר</span>
                             <span class="date-pick-change" aria-hidden="true">שינוי ›</span>
                             <input class="date-pick-input" type="date" id="txDate" required>
                         </div>
