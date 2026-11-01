@@ -1552,6 +1552,8 @@ def dashboard():
         welcome_invite=welcome_invite,
         alerts=alerts,
         recap=recap,
+        # "2026 שלכם" (מתן, 1.11) — כרטיס מ-20.12 עד 15.1, הסיכום נטען בלחיצה
+        year_recap_year=db.year_recap_due(clock.today()),
         hebrew_months=_HEBREW_MONTHS,
         pinned_project=pinned_project,
         # ל"בן משפחה הצטרף" (‎whats-new.js‎): מזהה, שם פרטי וצבע — בלי פרטים נוספים
@@ -1559,6 +1561,25 @@ def dashboard():
                        "color": _member_colors(family_id).get(m["id"])}
                       for m in (batch["members"] or [])],
     )
+
+
+@app.route("/api/year-recap")
+@limiter.limit("30 per minute")
+@login_required
+def year_recap_api():
+    """"2026 שלכם" — סיכום השנה, נפתח בלחיצה (מתן, 1.11). רק מי שלוחץ רואה."""
+    user = get_current_user()
+    if not user["family_id"]:
+        return jsonify({"error": "לא משויכת משפחה לחשבון"}), 400
+    today = clock.today()
+    year = request.args.get("year", type=int) or (db.year_recap_due(today) or today.year)
+    if not 2000 <= year <= today.year:
+        return jsonify({"error": "אין סיכום לשנה הזו"}), 422
+    try:
+        return jsonify(db.year_recap(user["family_id"], user["id"], year))
+    except db.DataUnavailable:
+        logger.exception("year_recap")
+        return jsonify({"error": "לא הצלחנו לטעון את הסיכום — נסו שוב"}), 503
 
 
 @app.route("/month")
@@ -1907,6 +1928,8 @@ def months():
                            verdict=db.trend_verdict(trend),
                            member_series=member_series,
                            today_year=now.year, today_month=now.month,
+                           # "סיכום השנה" — בינואר השנה שעברה, אחרת השנה עד עכשיו
+                           recap_year=now.year if now.month > 1 else now.year - 1,
                            _HEBREW_MONTHS=_HEBREW_MONTHS)
 
 

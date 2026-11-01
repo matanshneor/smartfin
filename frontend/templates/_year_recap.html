@@ -1,0 +1,15 @@
+{# "2026 שלכם" — מסך הסיכום השנתי (מתן, 1.11). נפתח מכל כפתור עם
+   ‎data-year-recap‎ (הכרטיס בבית, "סיכום השנה" בהשוואה); הנתונים נטענים רק
+   בלחיצה, מ-‎/api/year-recap‎. ‎js/year-recap.js‎ #}
+<div class="yr-overlay" id="yearRecap" role="dialog" aria-modal="true" aria-labelledby="yrTitle" hidden>
+    <div class="yr-sheet">
+        <button type="button" class="yr-close" id="yrClose" aria-label="סגירה">✕</button>
+        <header class="yr-hero">
+            <p class="yr-kicker">הסיכום השנתי</p>
+            <h2 class="yr-title" id="yrTitle"></h2>
+            <p class="yr-sub" id="yrSub"></p>
+        </header>
+        <div class="yr-body" id="yrBody" aria-live="polite"></div>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='js/year-recap.js') }}"></script>
