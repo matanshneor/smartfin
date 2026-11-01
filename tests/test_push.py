@@ -274,6 +274,8 @@ def test_notifications_are_offered_by_default_on_every_page():
     js = (root / "frontend/static/js/push.js").read_text(encoding="utf-8")
     assert "Notification.permission === 'granted'" in js and "sf_push_off" in js
     assert "has-install-bar" in js                               # לא שני פסים יחד
+    # פעם אחת ולא כל שבוע (מתן, 1.11): ✕ זוכר לתמיד במכשיר
+    assert "sf_push_asked" in js and "WEEK" not in js and "snooze" not in js.lower()
 
 
 def test_every_signed_in_page_gets_the_key(client, monkeypatch):
