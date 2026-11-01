@@ -614,6 +614,11 @@ def inject_family_settings():
         settings = family_settings()
     except db.DataUnavailable:
         return {"family_settings": None, "push_key": push.public_key()}
+    # מתי החיוב הקבוע הבא — עותק בסשן, כדי שהבדיקה בתחילת העמוד הבא לא
+    # תצטרך לשלוף (‎_sync_recurring‎). משותף למשפחה: כל ריצה של המנוע מעדכנת.
+    nxt = (settings or {}).get("recurring_next")
+    if nxt and session.get("recurring_next") != nxt:
+        session["recurring_next"] = nxt
     # משפחה של אדם אחד (מתן, 5.10): "של מי" אומר כלום — לא התגית ליד כל
     # עסקה, לא הגרף "לפי בן משפחה" ולא השאלה בחלון. רק בתצוגה: ההעדפה
     # עצמה לא משתנה, וכשמצטרף מישהו הכל חוזר. עצל: נשלף רק בעמוד שבאמת
@@ -1366,8 +1371,14 @@ def _sync_recurring(family_id):
     מסומן רק אחרי הצלחה, כך שכישלון חולף נפתר בטעינת העמוד הבאה."""
     if not family_id:
         return
-    today_str = clock.today().isoformat()
+    today = clock.today()
+    today_str = today.isoformat()
     if session.get("recurring_synced") == today_str:
+        return
+    # אין היום שום חיוב קבוע — לא בודקים (מתן 1.11). מהעותק שבסשן, שמתעדכן
+    # מההגדרות של המשפחה בכל עמוד (‎inject_family_settings‎) — בלי שליפה כאן.
+    if db.recurring_can_wait(session.get("recurring_next"), today):
+        session["recurring_synced"] = today_str
         return
     _, ok = db.materialize_recurring(family_id)
     if ok:
@@ -2612,7 +2623,9 @@ def update_password():
     return jsonify({"status": "ok"})
 
 
-_EMAIL_FRESH_SECONDS = 600
+# מתן (13.10): 10 דקות. ביומנים (1.11) הבדיקה עלתה ‎0.2-0.4‎ שניות כל פעם, והמייל
+# כמעט לא משתנה — ושינוי מכאן ממילא נבדק בכל טעינה (‎pending_email‎). 12 שעות.
+_EMAIL_FRESH_SECONDS = 12 * 3600
 
 
 def _current_email(cached=False):

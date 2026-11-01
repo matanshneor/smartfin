@@ -1935,6 +1935,7 @@ def materialize_recurring(family_id: str) -> int:
             .eq("family_id", family_id).eq("is_recurring", True) \
             .limit(_MAX_RECURRING_TEMPLATES).execute().data
         if not templates:
+            _remember_next_due(family_id, [], clock.today())
             return 0, True
 
         # בעמודים: הרשימה היא של כל המשפחה. מעבר לאלף המנוע הפסיק לראות
@@ -2049,12 +2050,58 @@ def materialize_recurring(family_id: str) -> int:
                         if "uq_tx_recurring_occurrence" in str(one) or "23505" in str(one):
                             continue    # מישהו אחר כבר יצר בדיוק את זה
                         raise
+        _remember_next_due(family_id, templates, today)
         # ‎created‎ ולא ‎len(new_rows)‎: אחרי נפילה חלקית המספרים שונים,
         # והקורא משתמש בזה כדי להחליט אם משהו באמת נוצר.
         return created, True
     except Exception:
         logger.exception("materialize_recurring")
         return 0, False
+
+
+# מהירות (מתן, 1.11 — רעיון 5): בדיקת הקבועות בטעינה הראשונה של היום לקחה
+# ‎0.25-0.9‎ שניות בדף הבית, ורוב הימים אין בה כלום — שכר דירה ומשכורת
+# הם פעם בחודש. אחרי כל ריצה נשמר מתי החיוב הקבוע הבא, ועד אז מדלגים.
+# כל שינוי בתבנית (הוספה, עריכה, פיצול, ייבוא) מריץ את המנוע ומחשב מחדש.
+RECURRING_RECHECK_DAYS = 7
+
+
+def next_due_date(templates: list, today):
+    """החיוב הקבוע הבא אחרי היום, בכל התבניות. ‎None‎ — אין אף אחד צפוי."""
+    from datetime import timedelta
+    tomorrow = today + timedelta(days=1)
+    dates = [d for d in (next_recurring_date(t, tomorrow) for t in templates) if d]
+    return min(dates) if dates else None
+
+
+def _remember_next_due(family_id: str, templates: list, today) -> None:
+    due = next_due_date(templates, today)
+    update_family_settings(family_id, {"recurring_next": {
+        "due": due.isoformat() if due else None, "checked": today.isoformat()}})
+
+
+def _iso_date(value):
+    from datetime import date
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(str(value)[:10])
+    except ValueError:
+        logger.warning("recurring_next: תאריך לא תקין %r — בודקים כרגיל", value)
+        return None
+
+
+def recurring_can_wait(nxt: dict, today) -> bool:
+    """האם אפשר לדלג על בדיקת הקבועות היום. ‎nxt‎ — ‎settings.recurring_next‎:
+    נבדק לפני פחות משבוע, ושום חיוב קבוע לא צפוי עד היום (כולל)."""
+    nxt = nxt if isinstance(nxt, dict) else {}
+    checked = _iso_date(nxt.get("checked"))
+    if checked is None or not 0 <= (today - checked).days < RECURRING_RECHECK_DAYS:
+        return False
+    if nxt.get("due") is None:
+        return True
+    due = _iso_date(nxt.get("due"))
+    return due is not None and today < due
 
 
 def _occurrence_period(freq: str, d):
