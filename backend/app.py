@@ -1576,7 +1576,7 @@ def year_recap_api():
     if not 2000 <= year <= today.year:
         return jsonify({"error": "אין סיכום לשנה הזו"}), 422
     try:
-        return jsonify(db.year_recap(user["family_id"], user["id"], year))
+        return jsonify(db.year_recap(user["family_id"], user["id"], year, today))
     except db.DataUnavailable:
         logger.exception("year_recap")
         return jsonify({"error": "לא הצלחנו לטעון את הסיכום — נסו שוב"}), 503
@@ -1928,8 +1928,12 @@ def months():
                            verdict=db.trend_verdict(trend),
                            member_series=member_series,
                            today_year=now.year, today_month=now.month,
-                           # "סיכום השנה" — בינואר השנה שעברה, אחרת השנה עד עכשיו
-                           recap_year=now.year if now.month > 1 else now.year - 1,
+                           # "2026 עד עכשיו" במהלך השנה, "סיכום 2026" מ-20.12 ועד
+                           # סוף ינואר (מתן, 1.11 — אפשרות ב)
+                           recap_year=(db.year_recap_due(now.date()) or
+                                       (now.year - 1 if now.month == 1 else now.year)),
+                           recap_partial=db.year_recap_partial(now.year, now.date())
+                                         and now.month > 1,
                            _HEBREW_MONTHS=_HEBREW_MONTHS)
 
 

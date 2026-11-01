@@ -4396,7 +4396,13 @@ def year_recap_due(today):
     return None
 
 
-def year_recap(family_id: str, viewer_user_id: str, year: int) -> dict:
+def year_recap_partial(year: int, today) -> bool:
+    """"2026 עד עכשיו" (מתן, 1.11 — אפשרות ב): השנה הנוכחית, מחוץ לחלון של סוף
+    השנה, היא בקרה באמצע הדרך ולא סיכום."""
+    return year == today.year and year_recap_due(today) != year
+
+
+def year_recap(family_id: str, viewer_user_id: str, year: int, today=None) -> dict:
     """"2026 שלכם" — סיכום שנה שנפתח בלחיצה (מתן, 1.11).
 
     הכנסות, הוצאות וחיסכון של הבית (בלי פרויקטים — כמו כל סיכום), החודש הכי
@@ -4416,8 +4422,15 @@ def year_recap(family_id: str, viewer_user_id: str, year: int) -> dict:
     except Exception as e:
         raise DataUnavailable("year_recap") from e
     rows = _filter_hidden_personal_projects(rows, viewer_user_id)
+    today = today or clock.today()
+    partial = year_recap_partial(year, today)
     cur = [r for r in rows if str(r["date"]).startswith(str(year))]
     prev = [r for r in rows if not str(r["date"]).startswith(str(year))]
+    if partial:
+        # עד היום — ומול **אותה תקופה** בשנה שעברה, לא מול שנה שלמה
+        upto = today.isoformat()[5:]
+        cur = [r for r in cur if str(r["date"])[5:10] <= upto]
+        prev = [r for r in prev if str(r["date"])[5:10] <= upto]
 
     months = []
     for m in range(1, 13):
@@ -4479,6 +4492,8 @@ def year_recap(family_id: str, viewer_user_id: str, year: int) -> dict:
 
     return {
         "year": year,
+        "partial": partial,
+        "through": today.month if partial else 12,
         "income": totals["income"], "expense": totals["expense"], "savings": totals["savings"],
         "savings_rate": round(totals["savings"] / totals["income"] * 100) if totals["income"] else None,
         "count": len(cur),

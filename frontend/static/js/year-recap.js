@@ -20,8 +20,12 @@
     }
 
     function render(d) {
-        document.getElementById('yrTitle').textContent = d.year + ' שלכם';
-        document.getElementById('yrSub').textContent = d.count.toLocaleString('he-IL') + ' עסקאות נרשמו השנה';
+        // במהלך השנה — בקרה, "2026 עד עכשיו"; בסוף השנה — "2026 שלכם" (מתן, 1.11)
+        const now = new Date();
+        document.getElementById('yrKicker').textContent = d.partial ? 'איפה אתם עומדים השנה' : 'הסיכום השנתי';
+        document.getElementById('yrTitle').textContent = d.year + (d.partial ? ' עד עכשיו' : ' שלכם');
+        document.getElementById('yrSub').textContent = (d.partial ? 'נכון ל-' + now.getDate() + '.' + (now.getMonth() + 1) + ' · ' : '')
+            + d.count.toLocaleString('he-IL') + ' עסקאות נרשמו השנה';
         let html = '<div class="yr-figures">'
             + '<div class="yr-fig income"><span>הכנסתם</span><b>' + money(d.income) + '</b></div>'
             + '<div class="yr-fig expense"><span>הוצאתם</span><b>' + money(d.expense) + '</b></div>'
@@ -31,8 +35,8 @@
 
         // החודשים — עמודת הוצאות לכל חודש, והקיצוניים מסומנים
         const max = Math.max.apply(null, d.months.map(m => m.expense)) || 1;
-        let bars = '<div class="yr-bars" aria-hidden="true">';
-        d.months.forEach(function (m) {
+        let bars = '<div class="yr-bars" aria-hidden="true" style="grid-template-columns:repeat(' + d.through + ',1fr)">';
+        d.months.filter(m => m.month <= d.through).forEach(function (m) {
             const cls = m.month === d.costliest ? ' is-high' : m.month === d.best ? ' is-best' : '';
             bars += '<div class="yr-bar' + cls + '"><i style="height:' + Math.max(4, Math.round(m.expense / max * 100)) + '%"></i>'
                   + '<span>' + MONTHS[m.month - 1].slice(0, 3) + '</span></div>';
@@ -41,11 +45,11 @@
         let lines = '';
         if (d.best) {
             const b = d.months[d.best - 1];
-            lines += line('🏆', 'החודש הכי חסכוני: <b>' + MONTHS[d.best - 1] + '</b> — נשארו ' + money(b.balance));
+            lines += line('🏆', 'החודש הכי חסכוני' + (d.partial ? ' עד עכשיו' : '') + ': <b>' + MONTHS[d.best - 1] + '</b> — נשארו ' + money(b.balance));
         }
         if (d.costliest) {
             const c = d.months[d.costliest - 1];
-            lines += line('💸', 'החודש הכי יקר: <b>' + MONTHS[d.costliest - 1] + '</b> — ' + money(c.expense) + ' הוצאות');
+            lines += line('💸', 'החודש הכי יקר' + (d.partial ? ' עד עכשיו' : '') + ': <b>' + MONTHS[d.costliest - 1] + '</b> — ' + money(c.expense) + ' הוצאות');
         }
         html += section('החודשים', bars + '<ul class="yr-lines">' + lines + '</ul>');
 
@@ -62,12 +66,12 @@
         if (d.compare) {
             const k = d.compare;
             let cmp = line(k.expense_diff <= 0 ? '📉' : '📈', 'הוצאתם <b class="' + (k.expense_diff <= 0 ? 'good' : 'bad') + '">'
-                           + money(k.expense_diff) + ' ' + (k.expense_diff <= 0 ? 'פחות' : 'יותר') + '</b> מ-' + k.year);
+                           + money(k.expense_diff) + ' ' + (k.expense_diff <= 0 ? 'פחות' : 'יותר') + '</b>' + (d.partial ? '' : ' מ-' + k.year));
             if (k.savings_diff) cmp += line('🐷', 'חסכתם <b class="' + (k.savings_diff > 0 ? 'good' : 'bad') + '">'
                            + money(k.savings_diff) + ' ' + (k.savings_diff > 0 ? 'יותר' : 'פחות') + '</b>');
             if (k.up) cmp += line('⬆️', esc(k.up.icon) + ' <b>' + esc(k.up.name) + '</b> עלה ב-' + k.up.pct + '%');
             if (k.down) cmp += line('⬇️', esc(k.down.icon) + ' <b>' + esc(k.down.name) + '</b> ירד ב-' + Math.abs(k.down.pct) + '% 👏');
-            html += section('מול ' + k.year, '<ul class="yr-lines">' + cmp + '</ul>');
+            html += section(d.partial ? 'מול אותה תקופה ב-' + k.year : 'מול ' + k.year, '<ul class="yr-lines">' + cmp + '</ul>');
         }
 
         if (d.projects.length) {
@@ -83,7 +87,7 @@
 
     function open(year, trigger) {
         lastFocus = trigger || document.activeElement;
-        document.getElementById('yrTitle').textContent = year + ' שלכם';
+        document.getElementById('yrTitle').textContent = year;
         document.getElementById('yrSub').textContent = '';
         body.innerHTML = '<p class="yr-loading">מכינים את הסיכום…</p>';
         overlay.hidden = false;

@@ -27,10 +27,10 @@ def _r(date, typ, amount, cat=None, project=None, owner=None):
             "projects": {"owner_id": owner, "name": "חופשה", "icon": "🏖️"} if project else None}
 
 
-def _recap(monkeypatch, rows, year=2026):
+def _recap(monkeypatch, rows, year=2026, today=datetime.date(2026, 12, 28)):
     monkeypatch.setattr(db, "get_client", lambda: object())
     monkeypatch.setattr(db, "_fetch_all", lambda make: rows)
-    return db.year_recap(_FAM, _ME, year)
+    return db.year_recap(_FAM, _ME, year, today)
 
 
 def test_the_year_in_numbers(monkeypatch):
@@ -78,7 +78,7 @@ def test_the_api_returns_only_for_the_one_who_asks(monkeypatch):
     calls = []
     monkeypatch.setattr(app_module.clock, "today", lambda: datetime.date(2026, 12, 28))
     monkeypatch.setattr(app_module.db, "year_recap",
-                        lambda fam, viewer, year: calls.append((fam, viewer, year)) or {"year": year})
+                        lambda fam, viewer, year, today: calls.append((fam, viewer, year)) or {"year": year})
     app.config["TESTING"] = True
     with app.test_client() as c:
         with c.session_transaction() as s:
@@ -92,3 +92,33 @@ def test_the_closed_screen_does_not_block_the_page():
     """‎display: flex‎ גבר על ‎hidden‎ — המסך הסגור והשקוף חסם כל לחיצה."""
     css = (ROOT / "frontend/static/css/style.css").read_text(encoding="utf-8")
     assert ".yr-overlay[hidden] { display: none; }" in css
+
+
+# ─── "2026 עד עכשיו" — בקרה במהלך השנה (מתן, 1.11 — אפשרות ב) ──────────────
+
+def test_during_the_year_it_is_up_to_today_against_the_same_period(monkeypatch):
+    rows = [_r("2025-01-05", "expense", 1000, "food"), _r("2025-12-01", "expense", 9000, "food"),
+            _r("2026-01-05", "expense", 1200, "food"), _r("2026-07-20", "expense", 300, "fun")]
+    d = _recap(monkeypatch, rows, today=datetime.date(2026, 7, 10))
+    assert d["partial"] is True and d["through"] == 7
+    assert d["expense"] == 1200                         # 20.7 עוד לא הגיע
+    assert d["compare"]["expense_diff"] == 200          # מול ינואר–10.7 של 2025, לא מול כל 2025
+
+
+def test_at_the_end_of_the_year_it_is_the_full_summary(monkeypatch):
+    d = _recap(monkeypatch, [_r("2026-12-24", "expense", 100, "food")])
+    assert d["partial"] is False and d["through"] == 12 and d["expense"] == 100
+
+
+@pytest.mark.parametrize("today,partial", [
+    (datetime.date(2026, 7, 10), True), (datetime.date(2026, 12, 19), True),
+    (datetime.date(2026, 12, 20), False),
+])
+def test_when_it_is_a_checkpoint(today, partial):
+    assert db.year_recap_partial(2026, today) is partial
+
+
+def test_no_emoji_on_the_buttons():
+    html = (ROOT / "frontend/templates/months.html").read_text(encoding="utf-8")
+    assert "{{ recap_year }} עד עכשיו" in html and "🎉" not in html
+    assert "🎉" not in (ROOT / "frontend/templates/index.html").read_text(encoding="utf-8")
