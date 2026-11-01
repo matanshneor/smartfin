@@ -255,6 +255,28 @@ function rowElement(row, importable) {
         p.textContent = text;
         main.appendChild(p);
     }
+
+    // הוראת קבע (מתן, 1.11): להפוך לעסקה קבועה — מסומן מראש, כי זה בדיוק
+    // מה שהוראת קבע היא. מי שכבר יש לו סדרה לאותו בית עסק — רק אומרים.
+    if (importable && row.recurring_offer) {
+        const label = document.createElement('label');
+        label.className = 'import-recurring';
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        box.checked = row.recurring !== false;
+        row.recurring = box.checked;
+        box.addEventListener('change', function () { row.recurring = box.checked; });
+        const span = document.createElement('span');
+        span.textContent = 'הוראת קבע · להוסיף כעסקה קבועה חודשית';
+        label.appendChild(box);
+        label.appendChild(span);
+        main.appendChild(label);
+    } else if (importable && row.already_recurring) {
+        const p = document.createElement('p');
+        p.className = 'import-note';
+        p.textContent = 'כבר מוגדרת כעסקה קבועה';
+        main.appendChild(p);
+    }
     li.appendChild(main);
     li.classList.toggle('is-off', importable && !row.checked);
     return li;
@@ -336,7 +358,8 @@ commitBtn.addEventListener('click', function () {
     }
     const body = {
         transactions: chosen.map(function (r) {
-            return { date: r.date, amount: r.amount, description: r.description, category_id: r.category_id };
+            return { date: r.date, amount: r.amount, description: r.description, category_id: r.category_id,
+                     recurring: !!(r.recurring_offer && r.recurring) };
         }),
     };
     const owner = $('importOwner');
@@ -352,7 +375,8 @@ commitBtn.addEventListener('click', function () {
         .then(function (r) { return r.json().catch(function () { return { error: 'הייבוא נכשל — נסו שוב' }; }); })
         .then(function (res) {
             if (res.error) { commitErr.textContent = res.error; refresh(); return; }
-            $('importDoneTitle').textContent = window.sfCount(res.created, 'עסקה אחת נוספה', 'עסקאות נוספו');
+            $('importDoneTitle').textContent = window.sfCount(res.created, 'עסקה אחת נוספה', 'עסקאות נוספו') +
+                (res.recurring ? ' · ' + window.sfCount(res.recurring, 'עסקה קבועה אחת', 'עסקאות קבועות') : '');
             // החודש של רוב העסקאות — לשם "לחודש" מוביל
             const months = {};
             chosen.forEach(function (r) { const k = r.date.slice(0, 7); months[k] = (months[k] || 0) + 1; });

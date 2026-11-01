@@ -3767,6 +3767,7 @@ def import_preview_route():
             t["status"] = "refund"
 
     card_import.mark_duplicates([t for t in txs if not t["refund"]], existing)
+    _offer_recurring(txs, family_id, user["id"])
 
     unknown = sorted({t["merchant"] for t in txs if not t["category_id"] and t["status"] != "refund"})
     ai_categorized = False
@@ -3781,6 +3782,33 @@ def import_preview_route():
     counts = {s: sum(1 for t in txs if t["status"] == s) for s in ("new", "exists", "maybe", "refund")}
     return jsonify({"status": "ok", "transactions": txs, "layouts": used, "counts": counts,
                     "ai_mapped": ai_mapped, "ai_categorized": ai_categorized})
+
+
+def _offer_recurring(txs, family_id, viewer_id):
+    """הוראות קבע (מתן, 1.11): מציעים להפוך לעסקה קבועה חודשית — ולא חוזרים
+    עליהן בכל ייבוא. רק לחיוב האחרון של כל בית עסק בקובץ (קוסטה ג'ים חויב
+    ‎₪255‎ באוגוסט ו-‎₪179‎ בספטמבר — סדרה אחת, בסכום העדכני), ולא כשכבר יש
+    במשפחה סדרה פעילה לאותו בית עסק."""
+    try:
+        templates = [r for r in db.get_recurring_transactions(family_id, viewer_id)
+                     if db.is_active_template(r)]
+    except db.DataUnavailable:
+        templates = []
+    known = [card_import.merchant_key(r.get("description")) for r in templates]
+    latest = {}
+    for t in txs:
+        t["recurring_offer"] = False
+        t["already_recurring"] = False
+        if not t.get("standing_order") or t["refund"]:
+            continue
+        key = card_import.merchant_key(t["merchant"])
+        if any(card_import._related(key, k) for k in known if k):
+            t["already_recurring"] = True
+            continue
+        if key not in latest or t["date"] >= latest[key]["date"]:
+            latest[key] = t
+    for t in latest.values():
+        t["recurring_offer"] = True
 
 
 @app.route("/api/import/commit", methods=["POST"])
@@ -3825,13 +3853,23 @@ def import_commit_route():
             "user_id":      owner_id,
             "family_id":    family_id,
             "is_recurring": False,
+            # אותם מפתחות בכל השורות: PostgREST מכניס מערך רק כשלכולן אותן עמודות
+            "recurring_frequency": None,
+            "recurring_end_date":  None,
         })
+        # הוראת קבע שאושרה כעסקה קבועה: תבנית חודשית באותו יום בחודש, כמו
+        # עסקה קבועה שמוזנת ידנית. החודשים הבאים נוצרים מעצמם.
+        if row.get("recurring") is True:
+            payload[-1].update(is_recurring=True, recurring_frequency="monthly_same")
 
     created, err = db.add_transactions(payload)
     if err:
         logger.error("import_commit: %s", err)
         return jsonify({"error": "הייבוא נכשל ושום עסקה לא נשמרה — נסו שוב"}), 500
-    return jsonify({"status": "ok", "created": created}), 201
+    recurring = sum(1 for p in payload if p["is_recurring"])
+    if recurring:
+        db.materialize_recurring(family_id)
+    return jsonify({"status": "ok", "created": created, "recurring": recurring}), 201
 
 
 # ─── התראות לטלפון (מתן, 31.10) ───────────────────────────────────────────────
