@@ -5730,3 +5730,7 @@ body.tx-screen-open { overflow: hidden; }
     margin-top: 4px; padding: 14px; border: 0; border-radius: var(--radius-sm); cursor: pointer;
     background: var(--color-text); color: var(--color-bg); font-size: 1rem; font-weight: 700;
 }
+/* בדף הבית: רווח מהכרטיס הבא, ו-✕ בהיר בקצה — החץ זז פנימה כדי לא להתנגש בו */
+.year-card-wrap { margin-bottom: 14px; }
+.year-card-wrap .year-card { padding-inline-end: 46px; }
+.year-card-wrap .alert-dismiss { color: var(--hero-text); opacity: 0.6; }
