@@ -83,7 +83,7 @@ def test_the_database_does_it_in_one_atomic_call(monkeypatch):
 
 
 def test_the_db_function_checks_the_caller_and_the_date():
-    sql = (ROOT / "backend/supabase/migrations/20261101120000_skip_recurring_date.sql").read_text()
+    sql = (ROOT / "backend/supabase/migrations/20261101220902_skip_recurring_date.sql").read_text()
     assert "auth.uid()" in sql and "is_recurring" in sql
     assert "p_date <= (now() at time zone 'Asia/Jerusalem')::date" in sql
     assert "from public, anon" in sql
