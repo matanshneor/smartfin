@@ -116,8 +116,11 @@ def test_the_progress_bar_does_not_render_without_income():
 
 
 def test_a_message_explains_the_missing_bar_instead_of_showing_nothing():
+    """מתן (1.11): "עדיין לא הוזנו הכנסות החודש" מספיק — השורה השנייה,
+    "הוסיפו הכנסה כדי לראות איך התחלק החודש", ירדה."""
     html = _read("frontend/templates/index.html")
-    assert "הוסיפו הכנסה" in html
+    assert "עדיין לא הוזנו הכנסות החודש" in html
+    assert "הוסיפו הכנסה" not in html
 
 
 # ─── ג2: כשל שרת בעסקה הראשונה לא מוחק את מה שהוקלד ──────────────────────────

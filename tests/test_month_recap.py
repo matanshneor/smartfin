@@ -107,12 +107,19 @@ _RECAP = {"year": 2026, "month": 9, "income": 18400.0, "expense": 14950.0, "bala
 def test_the_card_on_the_home_page(home):
     html = home(_RECAP)
 
+    """מתן (1.11): הכנסות · הוצאות · חיסכון, ושתי השורות — "זהו"."""
+    import re
     assert "ספטמבר נסגר" in html
-    assert "₪18,400" in html and "₪14,950" in html and "₪3,450" in html
-    assert "₪1,240 פחות</span> מאוגוסט" in html
-    assert "<b>סופר</b> — ₪3,180" in html
-    assert "חסכתם <b>₪1,500</b>" in html
-    assert "/month?year=2026&amp;month=9" in html or "/month?month=9&amp;year=2026" in html
+    card = html[html.index('class="recap-card"'):]
+    card = card[:card.index("</section>")]
+    labels = re.findall(r'recap-fig-label">([^<]+)<', card)
+    assert labels == ["הכנסות", "הוצאות", "חיסכון"]
+    assert "₪18,400" in card and "₪14,950" in card and "₪1,500" in card
+    assert "₪3,450" not in card                                   # בלי "נשאר"
+    assert "₪1,240 פחות</span> מאוגוסט" in card
+    assert "<b>סופר</b> — ₪3,180" in card
+    assert "חסכתם" not in card                                   # כבר בקוביות
+    assert "recap-link" not in card and "/month?" not in card    # בלי קישור
 
 
 def test_x_hides_it_on_this_phone(home):
@@ -124,9 +131,10 @@ def test_x_hides_it_on_this_phone(home):
 
 
 def test_a_month_that_ended_in_the_red(home):
+    """בלי "נשאר" אין גירעון להציג — רק המספרים, ו"יותר" באדום."""
     html = home(dict(_RECAP, balance=-600.0, diff=800.0, savings=0.0))
 
-    assert 'recap-fig bad' in html and "-₪600" in html
+    assert "-₪600" not in html and 'recap-fig bad' not in html
     assert "₪800 יותר</span> מאוגוסט" in html
     assert "חסכתם" not in html
 
