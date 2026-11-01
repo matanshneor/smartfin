@@ -543,20 +543,17 @@
             {# התראות לטלפון (מתן, 31.10) — לכל מכשיר בנפרד, כמו המראה. מופיע רק
                כשהשרת מוגדר לשלוח (‎VAPID_PRIVATE_KEY‎). #}
             {% if push_key %}
-            <div class="form-group" id="pushSettings" data-key="{{ push_key }}">
-                <label class="form-label" id="pushLabel">התראות לטלפון</label>
-                <div class="type-toggle" role="group" aria-labelledby="pushLabel">
-                    <button type="button" class="toggle-btn push-choice" data-push="off" aria-pressed="true">כבויות</button>
-                    <button type="button" class="toggle-btn push-choice" data-push="on" aria-pressed="false">פעילות</button>
+            {# מתג אחד, בלי הסבר (מתן, 1.11). שורה מתחתיו רק כשמשהו מונע —
+               חסום בטלפון, או אייפון מחוץ לאפליקציה המותקנת. #}
+            <div class="group-row" id="pushSettings">
+                <div class="group-row-info">
+                    <p class="group-row-label">התראות</p>
+                    <p class="group-row-hint" id="pushStatus" aria-live="polite" hidden></p>
                 </div>
-                <p class="field-hint" id="pushStatus" aria-live="polite"></p>
-                <ul class="push-list">
-                    <li>חודש נסגר — סיכום ב-1 לחודש</li>
-                    <li>בן משפחה הצטרף</li>
-                    <li>המשכורת נרשמה</li>
-                    <li>תשלום אחרון בסדרת תשלומים</li>
-                    <li>שבוע בלי עסקאות חדשות</li>
-                </ul>
+                <label class="pref-switch">
+                    <input type="checkbox" id="pushToggle" aria-label="התראות">
+                    <span class="pref-slider"></span>
+                </label>
             </div>
             {% endif %}
         </div>

@@ -1307,89 +1307,31 @@ attrSwitches.forEach(function (sw) {
 })();
 
 
-// ── התראות לטלפון (מתן, 31.10) ──
-// לכל מכשיר בנפרד: "פעילות" = הדפדפן הזה רשום אצל שירות ההתראות, והשרת יודע
-// עליו. המצב נקרא מהדפדפן עצמו (‎getSubscription‎) ולא נשמר בשום מקום אחר.
+// ── התראות: מתג כן/לא (מתן, 1.11) — הלוגיקה ב-‎js/push.js‎ ──
 (function () {
-    const box = document.getElementById('pushSettings');
-    if (!box) return;
-    const buttons = box.querySelectorAll('.push-choice');
+    const toggle = document.getElementById('pushToggle');
     const status = document.getElementById('pushStatus');
-    const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
-    const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-    const iOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-
-    function show(on, text) {
-        buttons.forEach(function (b) {
-            const active = (b.dataset.push === 'on') === on;
-            b.classList.toggle('active', active);
-            b.setAttribute('aria-pressed', active ? 'true' : 'false');
-        });
-        status.textContent = text || '';
+    const push = window.sfPush;
+    if (!toggle || !push) return;
+    function say(text) { status.textContent = text || ''; status.hidden = !text; }
+    function show(st) {
+        toggle.checked = st === 'on';
+        toggle.disabled = st === 'blocked' || st === 'unsupported';
+        say(st === 'blocked' ? 'חסומות בהגדרות הטלפון'
+          : st === 'unsupported' ? (push.iOS && !push.standalone ? 'זמינות מהאפליקציה שבמסך הבית' : 'לא נתמכות בדפדפן הזה')
+          : '');
     }
-    function disable(text) {
-        buttons.forEach(function (b) { b.disabled = true; });
-        show(false, text);
-    }
-    function keyBytes(b64) {
-        const s = (b64 + '='.repeat((4 - b64.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/');
-        return Uint8Array.from(atob(s), function (c) { return c.charCodeAt(0); });
-    }
-    function post(url, body) {
-        return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(body || {}) })
-            .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ''); return d; }); });
-    }
-
-    if (!supported) {
-        disable(iOS && !standalone
-            ? 'באייפון התראות עובדות רק מהאפליקציה המותקנת: שיתוף ← "הוספה למסך הבית", ואז מכאן.'
-            : 'הדפדפן הזה לא תומך בהתראות.');
-        return;
-    }
-    if (Notification.permission === 'denied') {
-        disable('ההתראות חסומות בהגדרות הטלפון לאתר הזה. אפשר לאשר אותן שם, ואז לחזור לכאן.');
-        return;
-    }
-
-    let busy = false;
-    navigator.serviceWorker.ready
-        .then(function (reg) { return reg.pushManager.getSubscription(); })
-        .then(function (sub) {
-            show(!!sub);
-            // הדפדפן רשום — מוודאים שגם השרת יודע (למשל אחרי התחברות מחדש)
-            if (sub) post('/api/push/subscribe', sub.toJSON()).catch(function () {});
-        });
-
-    buttons.forEach(function (b) {
-        b.addEventListener('click', function () {
-            if (busy) return;
-            const wantOn = b.dataset.push === 'on';
-            busy = true;
-            status.textContent = wantOn ? 'מפעיל…' : 'מכבה…';
-            navigator.serviceWorker.ready.then(function (reg) {
-                return reg.pushManager.getSubscription().then(function (sub) {
-                    if (!wantOn) {
-                        if (!sub) return null;
-                        const endpoint = sub.endpoint;
-                        return sub.unsubscribe().then(function () {
-                            return post('/api/push/unsubscribe', { endpoint: endpoint });
-                        });
-                    }
-                    return Notification.requestPermission().then(function (perm) {
-                        if (perm !== 'granted') throw new Error('כדי לקבל התראות צריך לאשר אותן בחלון של הטלפון');
-                        return sub || reg.pushManager.subscribe({
-                            userVisibleOnly: true, applicationServerKey: keyBytes(box.dataset.key) });
-                    }).then(function (s) { return post('/api/push/subscribe', s.toJSON()); });
-                });
-            }).then(function () {
-                busy = false;
-                show(wantOn, wantOn ? 'מעכשיו ההתראות יגיעו לטלפון הזה' : '');
-            }).catch(function (err) {
-                busy = false;
-                show(!wantOn, (err && err.message) || window.sfNetError());
+    push.state().then(show);
+    toggle.addEventListener('change', function () {
+        const on = toggle.checked;
+        toggle.disabled = true;
+        (on ? push.enable() : push.disable())
+            .then(function () { toggle.disabled = false; say(''); })
+            .catch(function (err) {
+                toggle.disabled = false;
+                push.state().then(show);
+                say((err && err.message) || window.sfNetError());
             });
-        });
     });
 })();
 

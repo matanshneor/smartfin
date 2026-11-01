@@ -5606,6 +5606,3 @@ body.tx-screen-open { overflow: hidden; }
 .hero-start-btn.is-primary { background: var(--gradient-gold); border-color: transparent; color: #FFFFFF; box-shadow: var(--shadow-gold); }
 .hero-start-btn:active { transform: scale(0.97); }
 .hero-start-hint { margin-top: 10px; font-size: 0.78rem; color: var(--hero-text-muted); }
-
-/* התראות לטלפון — מה יגיע (מתן, 31.10) */
-.push-list { margin: 8px 0 0; padding-inline-start: 18px; font-size: 0.8rem; color: var(--color-text-muted); display: flex; flex-direction: column; gap: 3px; }
