@@ -92,7 +92,7 @@ SmartFin/
   installment payments land in the month they are charged. Nothing is written
   until the user approves, and the file itself is never stored
   (`backend/card_import.py`).
-- **Phone notifications** (Web Push, opt-in per device in Settings → Display & notifications):
+- **Phone notifications** (Web Push, opt-in per device in Settings → Notifications):
   month closed (on the 1st), a family member joined, the month's salary was
   recorded, the last payment of an installment series, and a week with no new
   transactions. Encryption and VAPID signing are in `backend/push.py` (RFC 8291

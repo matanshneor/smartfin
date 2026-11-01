@@ -256,7 +256,9 @@ def test_the_settings_switch_is_just_on_or_off():
     block = block[:block.index("{% endif %}")]
     assert 'id="pushToggle"' in block and 'class="pref-switch"' in block
     assert "<ul" not in block and "<li" not in block            # בלי רשימת הסבר
-    assert '<span class="group-title">תצוגה והתראות</span>' in html
+    group = html[html.index('id="notification-settings"'):]
+    assert '<span class="group-title">התראות</span>' in group[:group.index("</section>")]
+    assert 'id="pushToggle"' in group[:group.index("</section>")]
     sw = (root / "frontend/static/sw.js").read_text(encoding="utf-8")
     assert "addEventListener('push'" in sw and "addEventListener('notificationclick'" in sw
 

@@ -514,7 +514,7 @@
                 </svg>
             </span>
             <span class="group-text">
-                <span class="group-title">תצוגה והתראות</span>
+                <span class="group-title">תצוגה</span>
             </span>
             <span class="group-chevron">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -542,22 +542,44 @@
                אין מה לכבות. #}
             {# התראות לטלפון (מתן, 31.10) — לכל מכשיר בנפרד, כמו המראה. מופיע רק
                כשהשרת מוגדר לשלוח (‎VAPID_PRIVATE_KEY‎). #}
-            {% if push_key %}
-            {# מתג אחד, בלי הסבר (מתן, 1.11). שורה מתחתיו רק כשמשהו מונע —
-               חסום בטלפון, או אייפון מחוץ לאפליקציה המותקנת. #}
+        </div>
+    </section>
+
+    <!-- ═══ התראות ═══ -->
+    {# קבוצה משלה (מתן, 1.11 — דוגמה ב): בתוך "תצוגה" המתג נראה מבולגן ולא
+       כמו משהו נפרד. מוצגת רק כשהשרת מוגדר לשלוח (‎VAPID_PRIVATE_KEY‎). #}
+    {% if push_key %}
+    <section class="settings-group" id="notification-settings">
+        <button type="button" class="settings-group-header" aria-expanded="false">
+            <span class="group-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+            </span>
+            <span class="group-text">
+                <span class="group-title">התראות</span>
+            </span>
+            <span class="group-chevron">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+        </button>
+
+        <div class="settings-group-body">
+            {# מתג אחד, בלי הסבר. שורה מתחתיו רק כשמשהו מונע — חסום בטלפון,
+               או אייפון מחוץ לאפליקציה המותקנת. #}
             <div class="group-row" id="pushSettings">
                 <div class="group-row-info">
-                    <p class="group-row-label">התראות</p>
+                    <p class="group-row-label">התראות לטלפון</p>
                     <p class="group-row-hint" id="pushStatus" aria-live="polite" hidden></p>
                 </div>
                 <label class="pref-switch">
-                    <input type="checkbox" id="pushToggle" aria-label="התראות">
+                    <input type="checkbox" id="pushToggle" aria-label="התראות לטלפון">
                     <span class="pref-slider"></span>
                 </label>
             </div>
-            {% endif %}
         </div>
     </section>
+    {% endif %}
 
 
     <!-- ═══ החשבון שלי ═══ -->
