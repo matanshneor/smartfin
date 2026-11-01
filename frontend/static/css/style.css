@@ -5282,10 +5282,31 @@ body.tx-screen-open { overflow: hidden; }
     box-shadow: 0 1px 3px rgba(31, 24, 8, 0.12);
 }
 #modalOverlay .detail-row .date-row { flex: 1 1 200px; gap: 6px; }
-#modalOverlay .detail-row .date-chip { padding: 5px 12px; }
 #modalOverlay .detail-row .date-pick { padding: 5px 12px; }
-/* בהוספה — בלי סמל הלוח: כך "תאריך אחר" נכנס באותה שורה עם היום/אתמול */
-#modalOverlay .modal-sheet:not(.is-edit) .detail-row .date-pick-icon { display: none; }
+.date-sub { display: none; }
+/* בהוספה — פס אחד כמו "של מי ההוצאה": היום | אתמול | אחר, והתאריך עצמו
+   מתחת לכל אחד (מתן, 1.11 — "לא מספיק ברור", אפשרות ב) */
+#modalOverlay .modal-sheet:not(.is-edit) .detail-row .date-row {
+    display: grid; grid-template-columns: 1fr 1fr 1.15fr; flex: 1 1 190px;
+    gap: 3px; padding: 3px; border-radius: 10px; background: var(--color-input);
+}
+#modalOverlay .modal-sheet:not(.is-edit) .date-row .date-quick-chips { display: contents; }
+#modalOverlay .modal-sheet:not(.is-edit) .detail-row .date-chip,
+#modalOverlay .modal-sheet:not(.is-edit) .detail-row .date-pick {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 44px; margin: 0; padding: 4px 6px; border: 0; border-radius: 8px;
+    background: transparent; font-size: 0.88rem; font-weight: 500; line-height: 1.15;
+    color: var(--color-text-soft);
+}
+#modalOverlay .modal-sheet:not(.is-edit) .detail-row .date-pick { flex-direction: row; gap: 4px; }
+#modalOverlay .modal-sheet:not(.is-edit) .detail-row .date-chip.active,
+#modalOverlay .modal-sheet:not(.is-edit) .detail-row .date-pick.active {
+    background: var(--color-card); color: var(--color-gold-text); font-weight: 700;
+    box-shadow: 0 1px 3px rgba(31, 24, 8, 0.12);
+}
+#modalOverlay .modal-sheet:not(.is-edit) .date-sub { display: block; font-size: 0.72rem; font-weight: 500; opacity: 0.75; }
+#modalOverlay .modal-sheet:not(.is-edit) .date-pick-icon { display: inline-flex; }
+#modalOverlay .modal-sheet:not(.is-edit) .date-pick-icon svg { width: 15px; height: 15px; }
 
 /* עסקה קבועה — מתג במקום תיבת סימון, באותו עיצוב כמו בהגדרות (‎.pref-switch‎) */
 #modalOverlay .tx-details .recurring-group { margin: 0; }
