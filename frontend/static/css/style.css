@@ -5610,3 +5610,8 @@ body.tx-screen-open { overflow: hidden; }
 /* הוראת קבע בייבוא — להפוך לעסקה קבועה (מתן, 1.11) */
 .import-recurring { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--color-gold-text); font-weight: 600; cursor: pointer; }
 .import-recurring input { width: 16px; height: 16px; accent-color: var(--color-gold); flex-shrink: 0; }
+
+/* סיכום החודש — כל מספר בצבע של המחלקה שלו, כמו בכרטיסים שמעליו (מתן, 1.11) */
+.recap-fig.income .recap-fig-value  { color: var(--color-income); }
+.recap-fig.expense .recap-fig-value { color: var(--color-expense); }
+.recap-fig.savings .recap-fig-value { color: var(--color-savings); }

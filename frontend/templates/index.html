@@ -153,10 +153,10 @@
         <h2 class="recap-title">{{ rm }} נסגר</h2>
     </div>
     <div class="recap-figures">
-        {# הכנסות · הוצאות · חיסכון (מתן, 1.11) — במקום נכנס · יצא · נשאר #}
-        <div class="recap-fig"><span class="recap-fig-label">הכנסות</span><span class="recap-fig-value">₪{{ recap.income | money }}</span></div>
-        <div class="recap-fig"><span class="recap-fig-label">הוצאות</span><span class="recap-fig-value">₪{{ recap.expense | money }}</span></div>
-        <div class="recap-fig"><span class="recap-fig-label">חיסכון</span><span class="recap-fig-value">₪{{ recap.savings | money }}</span></div>
+        {# הכנסות · הוצאות · חיסכון (מתן, 1.11) — במקום נכנס · יצא · נשאר, כל אחד בצבע שלו #}
+        <div class="recap-fig income"><span class="recap-fig-label">הכנסות</span><span class="recap-fig-value">₪{{ recap.income | money }}</span></div>
+        <div class="recap-fig expense"><span class="recap-fig-label">הוצאות</span><span class="recap-fig-value">₪{{ recap.expense | money }}</span></div>
+        <div class="recap-fig savings"><span class="recap-fig-label">חיסכון</span><span class="recap-fig-value">₪{{ recap.savings | money }}</span></div>
     </div>
     <ul class="recap-lines">
         {% if recap.diff is not none and recap.diff != 0 %}
