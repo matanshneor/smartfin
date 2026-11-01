@@ -175,17 +175,16 @@
 </div>
 {% endif %}
 
-{# "2026 שלכם" (מתן, 1.11) — מ-20 בדצמבר עד 15 בינואר. לחיצה פותחת את
+{# "2026 שלכם" (מתן, 1.11) — 1–15 בינואר, כשהשנה כבר נגמרה. לחיצה פותחת את
    הסיכום (‎_year_recap.html‎); רק מי שלוחץ רואה אותו. #}
 {% if year_recap_year %}
 <div class="alert-wrap year-card-wrap" data-alert-key="year-recap|{{ year_recap_year }}">
 <button type="button" class="year-card" data-year-recap="{{ year_recap_year }}">
-    <span class="year-card-icon" aria-hidden="true">🎉</span>
     <span class="year-card-text">
         <span class="year-card-title">{{ year_recap_year }} שלכם</span>
         <span class="year-card-sub">הסיכום השנתי מוכן — לצפייה</span>
     </span>
-    <span class="year-card-arrow" aria-hidden="true">‹</span>
+    <span class="year-card-arrow" aria-hidden="true">›</span>
 </button>
 <button type="button" class="alert-dismiss recap-close" aria-label="סגירה">✕</button>
 </div>

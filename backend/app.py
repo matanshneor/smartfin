@@ -1552,7 +1552,7 @@ def dashboard():
         welcome_invite=welcome_invite,
         alerts=alerts,
         recap=recap,
-        # "2026 שלכם" (מתן, 1.11) — כרטיס מ-20.12 עד 15.1, הסיכום נטען בלחיצה
+        # "2026 שלכם" (מתן, 1.11) — כרטיס 1–15 בינואר, הסיכום נטען בלחיצה
         year_recap_year=db.year_recap_due(clock.today()),
         hebrew_months=_HEBREW_MONTHS,
         pinned_project=pinned_project,
@@ -1576,7 +1576,7 @@ def year_recap_api():
     if not 2000 <= year <= today.year:
         return jsonify({"error": "אין סיכום לשנה הזו"}), 422
     try:
-        return jsonify(db.year_recap(user["family_id"], user["id"], year))
+        return jsonify(db.year_recap(user["family_id"], user["id"], year, today))
     except db.DataUnavailable:
         logger.exception("year_recap")
         return jsonify({"error": "לא הצלחנו לטעון את הסיכום — נסו שוב"}), 503
@@ -1928,8 +1928,10 @@ def months():
                            verdict=db.trend_verdict(trend),
                            member_series=member_series,
                            today_year=now.year, today_month=now.month,
-                           # "סיכום השנה" — בינואר השנה שעברה, אחרת השנה עד עכשיו
-                           recap_year=now.year if now.month > 1 else now.year - 1,
+                           # "2026 עד עכשיו" כל השנה, כולל דצמבר; בינואר "סיכום 2026"
+                           # (מתן, 1.11 — "השנה עוד לא נגמרה")
+                           recap_year=now.year - 1 if now.month == 1 else now.year,
+                           recap_partial=now.month > 1,
                            _HEBREW_MONTHS=_HEBREW_MONTHS)
 
 
