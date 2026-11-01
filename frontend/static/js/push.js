@@ -5,7 +5,8 @@
  * הכי קרוב שאפשר:
  *   · מי שכבר אישר בעבר — נרשם אוטומטית, בשקט, בכל מכשיר שנכנס ממנו.
  *   · מי שעוד לא נשאל — פס קטן מעל התפריט התחתון, פעם אחת: "הפעלה". לחיצה
- *     אחת, והחלון של הטלפון. "לא עכשיו" — שוב בעוד שבוע.
+ *     אחת, והחלון של הטלפון. ✕ — לא נשאלים שוב במכשיר הזה ("שלא יציק
+ *     להם כל שבוע", מתן 1.11). אפשר תמיד להפעיל בהגדרות ← התראות.
  *   · מי שכיבה בהגדרות — לא נשאל ולא נרשם שוב במכשיר הזה.
  * באייפון זה עובד רק מהאפליקציה המותקנת — מחוץ לה אין שם התראות בכלל.
  *
@@ -14,8 +15,7 @@
     'use strict';
     const key = (window.SF_PAGE_DATA || {}).pushKey;
     const OFF = 'sf_push_off';
-    const SNOOZE = 'sf_push_snooze';
-    const WEEK = 7 * 24 * 3600 * 1000;
+    const ASKED = 'sf_push_asked';
 
     const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
     const iOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
@@ -100,12 +100,12 @@
     // עוד לא נשאלו: הפס, אם אין כרגע את הפס של "הוסיפו למסך הבית"
     const bar = document.getElementById('pushBar');
     if (!bar || document.body.classList.contains('has-install-bar')) return;
-    if (+(read(SNOOZE) || 0) > Date.now()) return;
+    if (read(ASKED) === '1') return;
     function hide() { bar.hidden = true; document.body.classList.remove('has-install-bar'); }
     bar.hidden = false;
     document.body.classList.add('has-install-bar');
     document.getElementById('pushBarClose').addEventListener('click', function () {
-        store(SNOOZE, String(Date.now() + WEEK));
+        store(ASKED, '1');
         hide();
     });
     document.getElementById('pushBarGo').addEventListener('click', function () {
@@ -113,7 +113,7 @@
             hide();
             if (window.showToast) window.showToast('ההתראות הופעלו');
         }).catch(function (err) {
-            store(SNOOZE, String(Date.now() + WEEK));
+            store(ASKED, '1');
             hide();
             if (window.showToast && err && err.message) window.showToast(err.message, 'error');
         });
