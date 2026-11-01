@@ -2699,6 +2699,22 @@ def delete_one_occurrence(transaction_id: str, template_id: str,
         logger.exception("delete_one_occurrence")
         return False, str(e)
 
+def skip_recurring_date(template_id: str, family_id: str, on_date: str, skip: bool = True):
+    """דילוג על מופע עתידי בסדרה (או ביטול הדילוג). מחזירה ‎(ok, error)‎.
+    הכול ב-‎skip_recurring_date‎ במסד — עדכון אטומי אחד (מתן, 1.11)."""
+    client = get_client()
+    if not client:
+        return False, "Database not configured"
+    try:
+        result = client.rpc("skip_recurring_date", {
+            "p_template_id": template_id, "p_family_id": family_id,
+            "p_date": on_date, "p_skip": bool(skip),
+        }).execute()
+        return (int(result.data or 0) > 0), (None if result.data else "not found")
+    except Exception as e:
+        logger.exception("skip_recurring_date")
+        return False, str(e)
+
 def delete_occurrences_from(template_id: str, occurrence_date: str, family_id: str):
     """מוחקת את המופע הזה וכל המאוחרים ממנו, ועוצרת את הסדרה שם.
     מחזירה (deleted, error).

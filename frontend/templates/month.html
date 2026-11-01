@@ -91,10 +91,13 @@
 {% block content %}
 {% macro tx_row(tx, freq_labels) %}
     {# מופע צפוי בחודש עתידי (מתן, 1.11): בלי ‎data-id‎ — לא נפתח לעריכה ולא
-       מחליק, כי זו עוד לא עסקה. עורכים את הסדרה עצמה. #}
+       מחליק, כי זו עוד לא עסקה. לחיצה שואלת: לדלג על החודש הזה, או לערוך
+       את הסדרה עצמה (‎projected.js‎). #}
     {% if tx.projected %}
-    <div class="cat-tx-row is-projected" data-cat-key="{{ tx.get('cat_key', '') }}"
-        data-search="{{ tx.category_name or '' }} {{ tx.project_name or '' }}">
+    <div class="cat-tx-row is-projected" role="button" tabindex="0" data-cat-key="{{ tx.get('cat_key', '') }}"
+        data-search="{{ tx.category_name or '' }} {{ tx.project_name or '' }}"
+        data-template-id="{{ tx.recurring_parent_id }}" data-date="{{ tx.date }}"
+        data-label="{{ tx.description or tx.category_name }}">
         <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
         <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}{% if tx.installments and tx.installment_no %} · <span class="installment-tag">תשלום {{ tx.installment_no }} מתוך {{ tx.installments }}</span>{% endif %}</span>
         <span class="projected-tag">צפוי</span>
@@ -648,4 +651,5 @@
     {{ {'summary': summary_data, 'expense': expense_data, 'income': income_data | default([]), 'savings': savings_data | default([]), 'members': members_data} | tojson }}
 </script>
 <script src="{{ url_for('static', filename='js/month.js') }}"></script>
+<script src="{{ url_for('static', filename='js/projected.js') }}"></script>
 {% endblock %}

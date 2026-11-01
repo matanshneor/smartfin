@@ -3496,6 +3496,35 @@ def stop_recurring_route(template_id):
     return jsonify({"status": "ok"})
 
 
+@app.route("/api/recurring/<template_id>/skip", methods=["PUT"])
+@limiter.limit("30 per minute")
+@login_required
+@tx_visible_required("template_id")
+def skip_recurring_route(template_id):
+    """"דלג על החודש הזה" על מופע צפוי בחודש עתידי (מתן, 1.11), ו"בטל"."""
+    user = get_current_user()
+    if not user["family_id"]:
+        return jsonify({"error": "לא משויכת משפחה לחשבון"}), 400
+
+    body = request.get_json(silent=True) or {}
+    on_date = body.get("date")
+    try:
+        parsed = date.fromisoformat(on_date) if isinstance(on_date, str) else None
+    except ValueError:
+        parsed = None
+    if not parsed or parsed <= clock.today():
+        return jsonify({"error": "אפשר לדלג רק על חודש שעוד לא הגיע"}), 422
+
+    ok, err = db.skip_recurring_date(template_id, user["family_id"], parsed.isoformat(),
+                                     body.get("skip", True) is not False)
+    if not ok:
+        if err == "not found":
+            return jsonify({"error": "העסקה הקבועה לא נמצאה"}), 404
+        logger.error("skip_recurring route: %s", err)
+        return jsonify({"error": "הדילוג נכשל — נסו שוב"}), 500
+    return jsonify({"status": "ok"})
+
+
 @app.route("/api/recurring/<template_id>/sync", methods=["PUT"])
 @limiter.limit("30 per minute")
 @login_required
