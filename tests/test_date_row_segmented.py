@@ -23,3 +23,8 @@ def test_the_chips_show_their_actual_date():
 def test_adding_looks_like_the_owner_toggle_and_editing_is_untouched():
     assert "#modalOverlay .modal-sheet:not(.is-edit) .detail-row .date-row {" in CSS
     assert ".date-sub { display: none; }" in CSS   # בעריכה — רק התאריך המלא
+
+
+def test_owner_and_date_boxes_are_the_same_width():
+    """מתן, 1.11: התוויות ברוחב קבוע, אז התיבות שאחריהן ברוחב זהה."""
+    assert "#modalOverlay .detail-row > .form-label { flex: 0 0 100px;" in CSS

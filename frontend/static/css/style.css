@@ -5266,7 +5266,9 @@ body.tx-screen-open { overflow: hidden; }
     margin: 0; padding: 6px 14px; min-height: 52px;
 }
 #modalOverlay .tx-details .detail-row + .detail-row { border-top: 1px solid rgba(var(--ink-rgb), 0.07); }
-#modalOverlay .detail-row > .form-label { flex: none; min-width: 84px; margin: 0; font-size: 0.875rem; }
+/* כל התוויות באותו רוחב — כך "של מי ההוצאה?" ו"תאריך" מקבלים תיבות ברוחב זהה
+   (מתן, 1.11). 100px — "של מי החיסכון?" נכנס בשורה אחת. */
+#modalOverlay .detail-row > .form-label { flex: 0 0 100px; min-width: 0; margin: 0; font-size: 0.875rem; }
 #modalOverlay .tx-details .detail-row > .form-input {
     flex: 1 1 150px; min-width: 0; border: 0; background: transparent; box-shadow: none;
     padding-inline: 0; font-size: max(1rem, 16px);
