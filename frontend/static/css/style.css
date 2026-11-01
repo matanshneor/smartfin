@@ -5615,3 +5615,11 @@ body.tx-screen-open { overflow: hidden; }
 .recap-fig.income .recap-fig-value  { color: var(--color-income); }
 .recap-fig.expense .recap-fig-value { color: var(--color-expense); }
 .recap-fig.savings .recap-fig-value { color: var(--color-savings); }
+
+/* עסקה קבועה צפויה בחודש עתידי (מתן, 1.11) — נספרת, אבל עוד לא קרתה */
+.cat-tx-row.is-projected { cursor: default; }
+.cat-tx-row.is-projected .cat-tx-desc, .cat-tx-row.is-projected .cat-tx-amount { opacity: 0.75; }
+.projected-tag {
+    font-size: 0.68rem; font-weight: 600; padding: 2px 7px; border-radius: 999px; white-space: nowrap;
+    color: var(--color-gold-text); background: var(--color-gold-dim); border: 1px dashed var(--color-gold-border);
+}

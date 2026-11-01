@@ -1,10 +1,13 @@
-"""חודש עתידי והחודש הנוכחי — מה מופיע בהם (מתן, 4.10).
+"""חודש עתידי והחודש הנוכחי — מה מופיע בהם.
 
-עסקה קבועה מופיעה רק מהיום שהיא יורדת, כשהמנוע יוצר אותה כעסקה אמיתית —
-לא מראש, לא בחודש הנוכחי ולא בחודש עתידי. עסקה שהוזנה ידנית בתאריך עתידי
-היא שורה רגילה: מופיעה בחודש שלה, נספרת בו, ונפתחת לעריכה.
+החודש הנוכחי (מתן, 4.10 — ונשאר כך ב-1.11): עסקה קבועה מופיעה רק מהיום שהיא
+יורדת, כשהמנוע יוצר אותה כעסקה אמיתית.
 
-(עד 4.10 חודש עתידי הציג מראש את המופעים הצפויים — מתן, 30.9 — וזה בוטל.)
+חודש עתידי (מתן, 1.11): העסקאות הקבועות הצפויות בו מופיעות ונספרות בסיכומים,
+עד שהסדרה נגמרת — "כמו תחזית". מסומנות "צפוי" ולא נפתחות לעריכה.
+(4.10–1.11 גם חודש עתידי לא הציג אותן.)
+
+עסקה שהוזנה ידנית בתאריך עתידי היא שורה רגילה: מופיעה, נספרת, נפתחת לעריכה.
 """
 import datetime
 
@@ -40,6 +43,7 @@ def month_page(monkeypatch):
     monkeypatch.setattr(app_module, "family_settings", lambda: dict(db.DEFAULT_FAMILY_SETTINGS))
     monkeypatch.setattr(app_module.clock, "now", lambda: datetime.datetime(2026, 10, 4, 12, 0))
     monkeypatch.setattr(app_module.clock, "today", lambda: _TODAY)
+    monkeypatch.setattr(db, "projected_recurring_rows", lambda *a, **k: [])
 
     def render(real_rows, url):
         monkeypatch.setattr(db, "fetch_month_page", lambda fid, y, m: {
@@ -57,12 +61,27 @@ def month_page(monkeypatch):
     return render
 
 
-@pytest.mark.parametrize("url", ["/month", "/month?year=2026&month=11"])
-def test_a_recurring_series_adds_nothing_before_its_date(month_page, url):
-    """התבנית עצמה מחודש ינואר לא בשורות החודש — ואין שום מופע צפוי."""
-    html = month_page([], url)
+def test_the_current_month_shows_nothing_before_its_date(month_page, monkeypatch):
+    """החודש הנוכחי — כמו קודם: לא שואלים בכלל על מופעים צפויים."""
+    monkeypatch.setattr(db, "projected_recurring_rows",
+                        lambda *a, **k: pytest.fail("החודש הנוכחי לא מציג צפויים"))
+    html = month_page([], "/month")
 
     assert "empty-state" in html
+
+
+def test_a_future_month_shows_and_counts_what_is_expected(month_page, monkeypatch):
+    rent = dict(_row("projected-rent-2026-11-15", 5500, "2026-11-15", "שכר דירה", "🏠"),
+                recurring_parent_id="rent", projected=True)
+    asked = []
+    monkeypatch.setattr(db, "projected_recurring_rows",
+                        lambda fid, viewer, y, m: asked.append((fid, viewer, y, m)) or [rent])
+    html = month_page([], "/month?year=2026&month=11")
+
+    assert asked == [(_FAM, _ME, 2026, 11)]
+    assert "₪5,500" in html and "צפוי" in html
+    # עוד לא עסקה — אין מה לפתוח
+    assert 'data-id="projected-rent-2026-11-15"' not in html
 
 
 def test_a_one_time_future_transaction_shows_in_its_month(month_page):
@@ -72,3 +91,78 @@ def test_a_one_time_future_transaction_shows_in_its_month(month_page):
     assert "₪1,400" in html and "20.11" in html
     # עסקה אמיתית — נפתחת לעריכה
     assert 'data-id="trip"' in html
+
+
+
+# ─── החישוב עצמו ────────────────────────────────────────────────────────────
+
+class _Templates:
+    def __init__(self, rows): self.rows = rows
+    def table(self, name): return self
+    def select(self, *a, **k): return self
+    def eq(self, *a): return self
+    def limit(self, n): return self
+    def execute(self):
+        class R: pass
+        r = R(); r.data = self.rows; return r
+
+
+def _tpl(**over):
+    t = {"id": "rent", "family_id": _FAM, "amount": 5500, "type": "expense", "date": "2026-01-15",
+         "description": "שכר דירה", "user_id": None, "category_id": "c1", "project_id": None,
+         "is_recurring": True, "recurring_frequency": "monthly_same", "recurring_end_date": None,
+         "categories": {"name": "שכר דירה", "icon": "🏠"}, "projects": None}
+    t.update(over)
+    return t
+
+
+def _projected(monkeypatch, templates, y, m):
+    monkeypatch.setattr(db, "get_client", lambda: _Templates(templates))
+    return db.projected_recurring_rows(_FAM, _ME, y, m)
+
+
+def test_a_monthly_series_lands_on_its_day(monkeypatch):
+    rows = _projected(monkeypatch, [_tpl()], 2026, 12)
+    assert [(r["date"], r["amount"], r["projected"], r["recurring_parent_id"]) for r in rows] == \
+        [("2026-12-15", 5500, True, "rent")]
+
+
+def test_until_the_series_ends(monkeypatch):
+    t = _tpl(recurring_end_date="2026-12-31")
+    assert len(_projected(monkeypatch, [t], 2026, 12)) == 1
+    assert _projected(monkeypatch, [t], 2027, 1) == []
+
+
+def test_a_skipped_occurrence_stays_skipped(monkeypatch):
+    t = _tpl(recurring_skips=["2026-12-15"])
+    assert _projected(monkeypatch, [t], 2026, 12) == []
+
+
+def test_installments_show_the_regular_payment_and_its_number(monkeypatch):
+    t = _tpl(id="ace", date="2026-10-12", amount=400.01, installments=3, installment_total=1200.01,
+             installment_no=1, recurring_end_date="2026-12-12")
+    rows = _projected(monkeypatch, [t], 2026, 12)
+    assert [(r["amount"], r["installment_no"]) for r in rows] == [(400.0, 3)]
+
+
+def test_weekly_shows_every_week(monkeypatch):
+    t = _tpl(date="2026-11-30", recurring_frequency="weekly")
+    assert [r["date"] for r in _projected(monkeypatch, [t], 2026, 12)] == \
+        ["2026-12-07", "2026-12-14", "2026-12-21", "2026-12-28"]
+
+
+def test_someone_elses_personal_project_stays_hidden(monkeypatch):
+    t = _tpl(project_id="p1", projects={"owner_id": "someone-else", "name": "x", "icon": "🔒"})
+    assert _projected(monkeypatch, [t], 2026, 12) == []
+
+
+def test_expected_rows_sit_in_date_order_among_real_ones(month_page, monkeypatch):
+    rent = dict(_row("projected-rent-2026-11-10", 5500, "2026-11-10", "שכר דירה", "🏠"),
+                recurring_parent_id="rent", projected=True)
+    monkeypatch.setattr(db, "projected_recurring_rows", lambda *a, **k: [rent])
+    trip = _row("trip", 1400, "2026-11-20", "טיסה", "✈️")
+    early = _row("early", 90, "2026-11-02", "מונית", "🚕")
+    html = month_page([trip, early], "/month?year=2026&month=11")
+
+    tail = html[html.index('chart-title">כל העסקאות'):]
+    assert tail.index("20.11") < tail.index("10.11") < tail.index("02.11")

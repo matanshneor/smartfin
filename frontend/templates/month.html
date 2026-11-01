@@ -89,6 +89,40 @@
 {% endblock %}
 
 {% block content %}
+{% macro tx_row(tx, freq_labels) %}
+    {# מופע צפוי בחודש עתידי (מתן, 1.11): בלי ‎data-id‎ — לא נפתח לעריכה ולא
+       מחליק, כי זו עוד לא עסקה. עורכים את הסדרה עצמה. #}
+    {% if tx.projected %}
+    <div class="cat-tx-row is-projected" data-cat-key="{{ tx.get('cat_key', '') }}"
+        data-search="{{ tx.category_name or '' }} {{ tx.project_name or '' }}">
+        <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
+        <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}{% if tx.installments and tx.installment_no %} · <span class="installment-tag">תשלום {{ tx.installment_no }} מתוך {{ tx.installments }}</span>{% endif %}</span>
+        <span class="projected-tag">צפוי</span>
+        <span class="cat-tx-amount {{ tx.type }}">{% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ tx.amount | money }}</span>
+    </div>
+    {% else %}
+    <div class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
+        data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
+        data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
+        data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
+        data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
+        data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}"
+        data-cat-key="{{ tx.get('cat_key', '') }}"
+        data-search="{{ tx.category_name or '' }} {{ tx.project_name or '' }}">
+        <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
+        <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.installments and tx.installment_no %} · <span class="installment-tag">תשלום {{ tx.installment_no }} מתוך {{ tx.installments }}</span>{% elif tx.is_recurring or tx.recurring_parent_id %} · {{ ui_icon("repeat") }} {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
+        {% if tx.project_id %}<span class="project-tag">{{ tx.project_icon or '🎯' }} {{ tx.project_name or 'פרויקט' }}</span>{% endif %}
+        {% if (show_owner or {}).get(tx.type) %}
+        {% set color = member_colors.get(tx.user_id) %}
+        <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
+        {% endif %}
+        {% if tx.has_receipt %}
+        <span class="receipt-badge" data-href="{{ url_for('view_receipt', tx_id=tx.id) }}" title="צפייה בקבלה" aria-hidden="true">{{ ui_icon("receipt") }}</span>
+        {% endif %}
+        <span class="cat-tx-amount {{ tx.type }}">{% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ tx.amount | money }}</span>
+    </div>
+    {% endif %}
+{% endmacro %}
 {% set freq_labels = {
     'monthly_same': 'כל חודש',
     'monthly_1':  'כל 1 לחודש',
@@ -243,6 +277,7 @@
             {% if cat_txs %}
             <div role="group" class="cat-tx-list">
                 {% for tx in cat_txs %}
+                {% if tx.projected %}{{ tx_row(tx, freq_labels) }}{% else %}
                 <div class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
                     data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
                     data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
@@ -260,6 +295,7 @@
                     {% endif %}
                     <span class="cat-tx-amount expense">₪{{ tx.amount | money }}</span>
                 </div>
+                {% endif %}
                 {% endfor %}
                 {# מהקטגוריה להיסטוריה שלה בעמוד ההשוואה (מתן, 3.10 — רעיון 23) #}
                 {% if item.category_id and not item.is_project %}
@@ -330,6 +366,7 @@
             </div>
             <div role="group" class="cat-tx-list">
                 {% for tx in src.transactions %}
+                {% if tx.projected %}{{ tx_row(tx, freq_labels) }}{% else %}
                 <div class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
                     data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
                     data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
@@ -344,6 +381,7 @@
                     {% endif %}
                     <span class="cat-tx-amount income">₪{{ tx.amount | money }}</span>
                 </div>
+                {% endif %}
                 {% endfor %}
             </div>
         </li>
@@ -404,6 +442,7 @@
             {% if cat_txs %}
             <div role="group" class="cat-tx-list">
                 {% for tx in cat_txs %}
+                {% if tx.projected %}{{ tx_row(tx, freq_labels) }}{% else %}
                 <div class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
                     data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
                     data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
@@ -418,6 +457,7 @@
                     {% endif %}
                     <span class="cat-tx-amount savings">₪{{ tx.amount | money }}</span>
                 </div>
+                {% endif %}
                 {% endfor %}
             </div>
             {% endif %}
@@ -455,28 +495,6 @@
 {# האחרונות למעלה, והרשימה המלאה — עם החיפוש והסינון — במסך משלה
    (מתן, 5.10). עד אז הכל היה שורת "הצגת הכל" אחת שנפתחה במקום. #}
 {# ‎freq_labels‎ מועבר במפורש: ‎set‎ שבתוך הבלוק לא נראה מתוך מאקרו #}
-{% macro tx_row(tx, freq_labels) %}
-    <div class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
-        data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
-        data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
-        data-recurring-frequency="{{ tx.recurring_frequency or '' }}"
-        data-recurring-end-date="{{ tx.recurring_end_date or '' }}"
-        data-recurring-parent-id="{{ tx.recurring_parent_id or '' }}" data-project-id="{{ tx.project_id or '' }}"
-        data-cat-key="{{ tx.get('cat_key', '') }}"
-        data-search="{{ tx.category_name or '' }} {{ tx.project_name or '' }}">
-        <span class="cat-tx-date">{{ tx.date[8:10] }}.{{ tx.date[5:7] }}</span>
-        <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}{% if tx.workplace %} · {{ tx.workplace }}{% endif %}{% if tx.installments and tx.installment_no %} · <span class="installment-tag">תשלום {{ tx.installment_no }} מתוך {{ tx.installments }}</span>{% elif tx.is_recurring or tx.recurring_parent_id %} · {{ ui_icon("repeat") }} {{ freq_labels.get(tx.recurring_frequency, 'חודשי') }}{% endif %}</span>
-        {% if tx.project_id %}<span class="project-tag">{{ tx.project_icon or '🎯' }} {{ tx.project_name or 'פרויקט' }}</span>{% endif %}
-        {% if (show_owner or {}).get(tx.type) %}
-        {% set color = member_colors.get(tx.user_id) %}
-        <span class="owner-pill owner-pill-sm owner-{{ color if color is not none else 'shared' }}">{{ tx.user_name if tx.user_id else 'משותפת' }}</span>
-        {% endif %}
-        {% if tx.has_receipt %}
-        <span class="receipt-badge" data-href="{{ url_for('view_receipt', tx_id=tx.id) }}" title="צפייה בקבלה" aria-hidden="true">{{ ui_icon("receipt") }}</span>
-        {% endif %}
-        <span class="cat-tx-amount {{ tx.type }}">{% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ tx.amount | money }}</span>
-    </div>
-{% endmacro %}
 {% set tx_preview = 5 %}
 {% if month_transactions %}
 <section class="chart-card" id="allTx">
@@ -590,6 +608,7 @@
 
             <div role="group" class="cat-tx-list">
                 {% for tx in proj.transactions %}
+                {% if tx.projected %}{{ tx_row(tx, freq_labels) }}{% else %}
                 <div class="cat-tx-row" role="button" tabindex="0" data-id="{{ tx.id }}" data-amount="{{ tx.amount }}" data-type="{{ tx.type }}"
                     data-category-id="{{ tx.category_id or '' }}" data-project-category-id="{{ tx.project_category_id or '' }}" data-description="{{ tx.description }}"
                     data-date="{{ tx.date }}" data-user-id="{{ tx.user_id or '' }}" data-is-recurring="{{ tx.is_recurring | lower }}"
@@ -600,6 +619,7 @@
                     <span class="cat-tx-desc">{{ tx.category_icon }} {{ tx.description or tx.category_name }}</span>
                     <span class="cat-tx-amount {{ tx.type }}">{% if tx.type == 'expense' %}-{% elif tx.type == 'income' %}+{% endif %}₪{{ tx.amount | money }}</span>
                 </div>
+                {% endif %}
                 {% endfor %}
                 <div class="cat-tx-row cat-tx-more">
                     <a href="{{ url_for('project_detail', project_id=proj.project_id) }}">לעמוד הפרויקט ←</a>
